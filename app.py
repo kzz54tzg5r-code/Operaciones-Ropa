@@ -10,13 +10,13 @@ import sqlite3
 import json
 
 # =========================================================
-# ORION V2
+# ORION V4
 # Acoplado a: Base de datos muertos y cambios.xlsx
 # PRICE SHOES | OPERACIONES ROPA
 # =========================================================
 
 st.set_page_config(
-    page_title="ORION V2",
+    page_title="ORION V4",
     page_icon="🚀",
     layout="wide"
 )
@@ -203,40 +203,6 @@ def to_num(x):
     except Exception:
         return 0.0
 
-def consolidar_columnas_duplicadas(df):
-    """
-    Evita el error: The truth value of a Series is ambiguous.
-    En el Excel real existe Nombre y nombre. Al renombrar ambas a Nombre,
-    pandas devuelve un DataFrame cuando se pide df["Nombre"].
-    Esta función une duplicados tomando el primer valor no vacío por fila.
-    """
-    df = df.copy()
-    if not df.columns.duplicated().any():
-        return df
-
-    resultado = pd.DataFrame(index=df.index)
-    for col in pd.unique(df.columns):
-        temp = df.loc[:, df.columns == col]
-        if temp.shape[1] == 1:
-            resultado[col] = temp.iloc[:, 0]
-        else:
-            combinado = temp.bfill(axis=1).iloc[:, 0]
-            resultado[col] = combinado
-    return resultado
-
-def serie_columna(df, col, default=None):
-    """
-    Devuelve siempre una Serie aunque existan columnas duplicadas.
-    """
-    if col not in df.columns:
-        return pd.Series(default, index=df.index)
-    value = df.loc[:, df.columns == col]
-    if isinstance(value, pd.DataFrame):
-        if value.shape[1] == 1:
-            return value.iloc[:, 0]
-        return value.bfill(axis=1).iloc[:, 0]
-    return value
-
 def pct(a, b):
     try:
         a = float(a)
@@ -349,7 +315,6 @@ def cargar_operacion(file, hoja):
             rename[c] = "Ocurrencia"
 
     df = df.rename(columns=rename)
-    df = consolidar_columnas_duplicadas(df)
 
     for c in ["Fecha", "Tienda", "Actividad Realizada", "Número de Piezas", "Nombre", "Motivo de ingreso", "Recorridos", "Ocurrencia"]:
         if c not in df.columns:
@@ -402,7 +367,6 @@ def cargar_hoja_mensual(file, hoja):
 
     df = pd.read_excel(file, sheet_name=hoja, header=header_row)
     df.columns = [str(c).strip() for c in df.columns]
-    df = consolidar_columnas_duplicadas(df)
     df = df.dropna(how="all")
 
     # Quitar columnas Unnamed vacías
@@ -423,18 +387,18 @@ def cargar_hoja_mensual(file, hoja):
 
     out = pd.DataFrame()
     out["Mes_Origen"] = hoja
-    out["Tienda"] = serie_columna(df, col_tienda, "Sin registros").apply(normalizar_texto) if col_tienda else pd.Series("Sin registros", index=df.index)
-    out["Modelo"] = serie_columna(df, col_modelo, "Sin registros").apply(normalizar_texto) if col_modelo else pd.Series("Sin registros", index=df.index)
-    out["Categoria"] = serie_columna(df, col_categoria, "Sin registros").apply(normalizar_texto) if col_categoria else pd.Series("Sin registros", index=df.index)
-    out["Subcategoria"] = serie_columna(df, col_subcat, "Sin registros").apply(normalizar_texto) if col_subcat else pd.Series("Sin registros", index=df.index)
-    out["Id Art"] = serie_columna(df, col_id, "Sin registros").apply(normalizar_texto) if col_id else pd.Series("Sin registros", index=df.index)
-    out["Color"] = serie_columna(df, col_color, "Sin registros").apply(normalizar_texto) if col_color else pd.Series("Sin registros", index=df.index)
-    out["Dev_Pzs"] = serie_columna(df, col_dev, 0).apply(to_num) if col_dev else pd.Series(0, index=df.index)
-    out["Vta_Pzs"] = serie_columna(df, col_vta, 0).apply(to_num) if col_vta else pd.Series(0, index=df.index)
-    out["Vta_Imp"] = serie_columna(df, col_imp, 0).apply(to_num) if col_imp else pd.Series(0, index=df.index)
+    out["Tienda"] = df[col_tienda].apply(normalizar_texto) if col_tienda else "Sin registros"
+    out["Modelo"] = df[col_modelo].apply(normalizar_texto) if col_modelo else "Sin registros"
+    out["Categoria"] = df[col_categoria].apply(normalizar_texto) if col_categoria else "Sin registros"
+    out["Subcategoria"] = df[col_subcat].apply(normalizar_texto) if col_subcat else "Sin registros"
+    out["Id Art"] = df[col_id].apply(normalizar_texto) if col_id else "Sin registros"
+    out["Color"] = df[col_color].apply(normalizar_texto) if col_color else "Sin registros"
+    out["Dev_Pzs"] = df[col_dev].apply(to_num) if col_dev else 0
+    out["Vta_Pzs"] = df[col_vta].apply(to_num) if col_vta else 0
+    out["Vta_Imp"] = df[col_imp].apply(to_num) if col_imp else 0
 
     if col_costo:
-        out["Costo_Dev"] = serie_columna(df, col_costo, 0).apply(to_num)
+        out["Costo_Dev"] = df[col_costo].apply(to_num)
     else:
         # Si no existe costo, usamos Vta_Imp como base para evitar ruptura.
         out["Costo_Dev"] = out["Vta_Imp"]
@@ -509,7 +473,7 @@ now = datetime.now()
 st.markdown(f"""
 <div class="orion-header">
     <div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div>
-    <div class="orion-title">🚀 ORION V2</div>
+    <div class="orion-title">🚀 ORION V4</div>
     <div class="orion-subtitle">Plataforma Indicadores de Recuperación de Mercancía</div>
     <div class="orion-mini">
         Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
@@ -536,15 +500,20 @@ with st.sidebar:
 
     if is_admin:
         uploaded = st.file_uploader("Cargar/Reemplazar Excel", type=["xlsx"])
+
         if uploaded is not None:
-            try:
-                operacion_new, comercial_new, diag = procesar_excel(uploaded)
-                guardar_datos(operacion_new, comercial_new, diag, uploaded.name)
-                st.success("Archivo procesado y guardado correctamente.")
-                st.rerun()
-            except Exception as e:
-                st.error(f"No se pudo procesar el archivo: {e}")
-                st.exception(e)
+            st.info("Archivo listo. Presiona el botón para procesarlo una sola vez.")
+            procesar_btn = st.button("🚀 Procesar archivo", type="primary")
+
+            if procesar_btn:
+                with st.spinner("Procesando archivo. Puede tardar algunos minutos por el tamaño del Excel..."):
+                    try:
+                        operacion_new, comercial_new, diag = procesar_excel(uploaded)
+                        guardar_datos(operacion_new, comercial_new, diag, uploaded.name)
+                        st.success("Archivo procesado y guardado correctamente. Retira el archivo del cargador o cambia a rol Consulta.")
+                        st.cache_data.clear()
+                    except Exception as e:
+                        st.error(f"No se pudo procesar el archivo: {e}")
     else:
         st.caption("Modo consulta: no requiere cargar Excel.")
 
