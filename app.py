@@ -9,7 +9,7 @@ from io import BytesIO
 from datetime import datetime
 import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5.2 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION V5.3 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "orion_v5.db"
@@ -249,7 +249,7 @@ def load_saved():
 ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
 now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
 st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.2 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
+<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.3 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
 """,unsafe_allow_html=True)
 
 # Sidebar
@@ -333,6 +333,15 @@ def ensure_dashboard_columns(df):
     if "Ocurrencia" not in df.columns:
         df["Ocurrencia"] = "Sin registros"
 
+    # Fecha Día para metas por periodo
+    if "Fecha Día" not in df.columns:
+        if "Fecha" in df.columns:
+            df["Fecha Día"] = pd.to_datetime(df["Fecha"], errors="coerce").dt.date
+        elif "Día" in df.columns:
+            df["Fecha Día"] = pd.to_datetime(df["Día"], errors="coerce").dt.date
+        else:
+            df["Fecha Día"] = pd.NaT
+
     required_numeric = [
         "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado",
         "Productividad Total", "Recorridos", "Número de Piezas",
@@ -374,14 +383,37 @@ ss=store_summary(op,co,only_registered=False)
 ss_reg=store_summary(op,co,only_registered=True)
 
 def meta_recorridos_periodo(opdf):
-    if opdf.empty: return metas['recorridos_semanales']
+    if opdf is None or opdf.empty:
+        return metas.get("recorridos_semanales", 47)
+    temp = opdf.copy()
+    if "Fecha Día" not in temp.columns:
+        if "Fecha" in temp.columns:
+            temp["Fecha Día"] = pd.to_datetime(temp["Fecha"], errors="coerce").dt.date
+        elif "Día" in temp.columns:
+            temp["Fecha Día"] = pd.to_datetime(temp["Día"], errors="coerce").dt.date
+        else:
+            temp["Fecha Día"] = pd.NaT
+    days = max(1, temp["Fecha Día"].dropna().drop_duplicates().shape[0])
+    # Meta dinámica por día consultado; si son 7 días equivale a 47
+    return (metas.get("recorridos_semanales", 47) / 7) * days
     days=opdf[['Fecha Día']].dropna().drop_duplicates().shape[0]
     weeks=max(1, len(opdf['Semana ISO'].dropna().unique()))
     if days<=7: return metas['recorridos_semanales']
     return metas['recorridos_semanales']*weeks
 
 def meta_prod_periodo(opdf):
-    if opdf.empty: return metas['productividad_diaria']
+    if opdf is None or opdf.empty:
+        return 784
+    temp = opdf.copy()
+    if "Fecha Día" not in temp.columns:
+        if "Fecha" in temp.columns:
+            temp["Fecha Día"] = pd.to_datetime(temp["Fecha"], errors="coerce").dt.date
+        elif "Día" in temp.columns:
+            temp["Fecha Día"] = pd.to_datetime(temp["Día"], errors="coerce").dt.date
+        else:
+            temp["Fecha Día"] = pd.NaT
+    days = max(1, temp["Fecha Día"].dropna().drop_duplicates().shape[0])
+    return metas.get("productividad_diaria", 784) * days
     days=max(1, opdf[['Fecha Día']].dropna().drop_duplicates().shape[0])
     return metas['productividad_diaria']*days
 
