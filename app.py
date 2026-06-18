@@ -9,7 +9,7 @@ from io import BytesIO
 from datetime import datetime
 import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION V5.1 HOTFIX", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "orion_v5.db"
@@ -249,7 +249,7 @@ def load_saved():
 ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
 now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
 st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
+<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.1 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
 """,unsafe_allow_html=True)
 
 # Sidebar
@@ -318,6 +318,7 @@ def commercial_store(df):
     return df.groupby('Tienda',as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Vta_Imp=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'),Valor_Pendiente=('Valor Pendiente','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Dev_Pzs','Vta_Pzs','Vta_Imp','Costo_Dev','Valor_Pendiente'])
 
 def operation_store(df):
+    df = ensure_dashboard_columns(df)
     return df.groupby('Tienda',as_index=False).agg(Muertos=('Muertos','sum'),Cajas=('Cajas','sum'),Probador=('Probador','sum'),Recoleccion=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Muertos','Cajas','Probador','Recoleccion','Habilitado','Ubicado','Productividad','Recorridos'])
 
 def store_summary(opdf,codf, only_registered=False):
