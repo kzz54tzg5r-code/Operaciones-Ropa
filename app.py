@@ -1,618 +1,1208 @@
 
-def force_orion_columns(df):
-    """Blindaje definitivo de columnas operativas ORION."""
-    if df is None:
-        return pd.DataFrame()
-    df = df.copy()
-
-    text_defaults = {
-        "Tienda": "Sin registros",
-        "Nombre": "Sin registros",
-        "Ocurrencia": "Sin registros",
-        "Actividad Realizada": "Sin registros",
-        "Área": "Sin registros",
-    }
-    for col, default in text_defaults.items():
-        if col not in df.columns:
-            df[col] = default
-        df[col] = df[col].fillna(default).astype(str)
-
-    if "Fecha Día" not in df.columns:
-        if "Fecha" in df.columns:
-            df["Fecha Día"] = pd.to_datetime(df["Fecha"], errors="coerce").dt.date
-        elif "Día" in df.columns:
-            df["Fecha Día"] = pd.to_datetime(df["Día"], errors="coerce").dt.date
-        else:
-            df["Fecha Día"] = pd.NaT
-
-    numeric_cols = [
-        "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado",
-        "Recorridos", "Número de Piezas", "Dev_Pzs", "Vta_Pzs",
-        "Vta_Imp", "Costo_Dev"
-    ]
-    for col in numeric_cols:
-        if col not in df.columns:
-            df[col] = 0
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
-    df["Recoleccion"] = df["Recolección de Muertos"]
-    df["Ingresos"] = df["Recolección de Muertos"]
-
-    if "Productividad Total" not in df.columns:
-        df["Productividad Total"] = 0
-    df["Productividad Total"] = pd.to_numeric(df["Productividad Total"], errors="coerce").fillna(0)
-    df["Productividad Total"] = np.where(
-        df["Productividad Total"] > 0,
-        df["Productividad Total"],
-        df["Recolección de Muertos"] + df["Habilitado"] + df["Ubicado"]
-    )
-
-    return df
-
-# Alias por compatibilidad con hotfix anteriores
-ensure_dashboard_columns = force_orion_columns
-
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
+import sqlite3
+import json
+import re
 from pathlib import Path
 from io import BytesIO
 from datetime import datetime
-import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5.6 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
+# ==========================================================
+# ORION PRO v1.0 LIMPIO
+# PRICE SHOES | OPERACIONES ROPA
+# Plataforma Indicadores de Recuperación de Mercancía
+# ==========================================================
 
-DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
-DB_PATH = DATA_DIR / "orion_v5.db"
-OP_PATH = DATA_DIR / "operacion.parquet"
-CO_PATH = DATA_DIR / "comercial.parquet"
+st.set_page_config(page_title="ORION PRO v1.0", page_icon="🚀", layout="wide")
 
-AZUL = "#3366CC"; ROSA = "#FF99FF"; AZUL_OSCURO = "#003366"; FONDO = "#F5F5F5"
-TIENDAS = ["Iztapalapa","Vallejo","Ecatepec","Toluca","Arco Norte","Ixtapaluca","Querétaro","Centro","Olivar","León","Puebla","Puebla Sur","Aguascalientes","Veracruz","Naucalpan","Miravalle","Atemajac"]
-METAS_DEFAULT = {"productividad_diaria":784.0,"conversion":80.0,"recuperacion":80.0,"habilitado_ingresos":85.0,"ubicado_ingresos":80.0,"recorridos_semanales":47.0,"recorridos_lunes":5.0,"recorridos_martes":5.0,"recorridos_miercoles":5.0,"recorridos_jueves":8.0,"recorridos_viernes":8.0,"recorridos_sabado":8.0,"recorridos_domingo":8.0}
+DATA_DIR = Path("orion_data")
+DATA_DIR.mkdir(exist_ok=True)
 
-st.markdown(f"""
+DB_PATH = DATA_DIR / "orion_config.db"
+OPERACION_FILE = DATA_DIR / "operacion.parquet"
+COMERCIAL_FILE = DATA_DIR / "comercial.parquet"
+DIARIO_COMERCIAL_FILE = DATA_DIR / "comercial_diario.parquet"
+
+TIENDAS_OFICIALES = [
+    "Iztapalapa", "Vallejo", "Ecatepec", "Toluca", "Arco Norte",
+    "Ixtapaluca", "Querétaro", "Centro", "Olivar", "León",
+    "Puebla", "Puebla Sur", "Aguascalientes", "Veracruz",
+    "Naucalpan", "Miravalle", "Atemajac"
+]
+
+DEFAULT_METAS = {
+    "productividad_diaria": 784.0,
+    "conversion": 80.0,
+    "recuperacion": 80.0,
+    "habilitado_ingresos": 85.0,
+    "ubicado_ingresos": 80.0,
+    "recorridos_lunes": 5.0,
+    "recorridos_martes": 5.0,
+    "recorridos_miercoles": 5.0,
+    "recorridos_jueves": 8.0,
+    "recorridos_viernes": 8.0,
+    "recorridos_sabado": 8.0,
+    "recorridos_domingo": 8.0,
+    "recorridos_semanales": 47.0,
+}
+
+# ==========================================================
+# ESTILO CORPORATIVO
+# ==========================================================
+st.markdown("""
 <style>
-.stApp {{background:{FONDO};}}
-.block-container {{padding-top:1rem;}}
-.orion-header {{background:linear-gradient(90deg,{AZUL_OSCURO},{AZUL}); color:white; padding:22px 28px; border-radius:24px; margin-bottom:16px; box-shadow:0 8px 26px rgba(0,0,0,.18);}}
-.orion-title {{font-size:40px; font-weight:900; margin:0;}}
-.orion-sub {{font-size:18px; margin-top:4px;}}
-.orion-mini {{font-size:13px; margin-top:10px; opacity:.95;}}
-div[data-testid="stMetric"] {{background:white; border:1px solid #E2E8F0; border-radius:18px; padding:15px; box-shadow:0 5px 18px rgba(15,23,42,.07);}}
-.ps-card {{background:white; border-top:5px solid {ROSA}; padding:16px; border-radius:18px; box-shadow:0 5px 18px rgba(15,23,42,.06); margin-bottom:12px;}}
-.confidencial {{background:white; border-left:7px solid {ROSA}; padding:12px 16px; border-radius:14px; color:#334155; font-size:12px; margin-top:20px;}}
+.stApp {background-color:#F5F5F5;}
+.block-container {padding-top:1rem; padding-bottom:2rem;}
+.orion-header {
+    background: linear-gradient(90deg, #003366 0%, #3366CC 70%, #FF99FF 130%);
+    color:white;
+    padding:24px 30px;
+    border-radius:24px;
+    box-shadow:0 8px 26px rgba(0,0,0,.18);
+    margin-bottom:18px;
+}
+.orion-title {font-size:40px;font-weight:900;margin:0;}
+.orion-sub {font-size:17px;margin-top:4px;}
+.orion-mini {font-size:13px;margin-top:10px;opacity:.95;}
+div[data-testid="stMetric"] {
+    background:#FFFFFF;
+    border:1px solid #DDE7F7;
+    border-top:5px solid #3366CC;
+    border-radius:18px;
+    padding:15px;
+    box-shadow:0 6px 18px rgba(0,51,102,.08);
+}
+.card {
+    background:#FFFFFF;
+    border:1px solid #DDE7F7;
+    border-radius:18px;
+    padding:16px;
+    box-shadow:0 5px 16px rgba(0,51,102,.06);
+}
+.confidencial {
+    background:white;
+    border-left:7px solid #FF99FF;
+    padding:12px 16px;
+    border-radius:14px;
+    color:#334155;
+    font-size:12px;
+    margin-top:20px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- DB ----------------
+# ==========================================================
+# DB
+# ==========================================================
 def init_db():
-    con=sqlite3.connect(DB_PATH); cur=con.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS metas(clave TEXT PRIMARY KEY, valor REAL, actualizado TEXT)")
-    cur.execute("CREATE TABLE IF NOT EXISTS historial_metas(id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, hora TEXT, usuario TEXT, meta TEXT, anterior REAL, nueva REAL)")
-    cur.execute("CREATE TABLE IF NOT EXISTS estado(clave TEXT PRIMARY KEY, valor TEXT)")
-    cur.execute("CREATE TABLE IF NOT EXISTS nombres(occurrence TEXT PRIMARY KEY, nombre_final TEXT)")
-    for k,v in METAS_DEFAULT.items(): cur.execute("INSERT OR IGNORE INTO metas VALUES(?,?,?)",(k,float(v),datetime.now().isoformat()))
-    con.commit(); con.close()
-
-def sql_df(q, params=()):
-    con=sqlite3.connect(DB_PATH); df=pd.read_sql_query(q,con,params=params); con.close(); return df
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("""CREATE TABLE IF NOT EXISTS metas (
+        clave TEXT PRIMARY KEY,
+        valor REAL,
+        actualizado TEXT
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS historial_metas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT,
+        hora TEXT,
+        usuario TEXT,
+        meta TEXT,
+        anterior REAL,
+        nueva REAL
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS estado (
+        clave TEXT PRIMARY KEY,
+        valor TEXT
+    )""")
+    cur.execute("""CREATE TABLE IF NOT EXISTS nombres_empleado (
+        ocurrencia TEXT PRIMARY KEY,
+        nombre_correcto TEXT,
+        actualizado TEXT
+    )""")
+    for k, v in DEFAULT_METAS.items():
+        cur.execute(
+            "INSERT OR IGNORE INTO metas(clave, valor, actualizado) VALUES (?, ?, ?)",
+            (k, float(v), datetime.now().isoformat())
+        )
+    conn.commit()
+    conn.close()
 
 def get_metas():
-    init_db(); df=sql_df("SELECT clave, valor FROM metas"); m=METAS_DEFAULT.copy(); m.update(dict(zip(df.clave,df.valor))); return m
+    init_db()
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT clave, valor FROM metas", conn)
+    conn.close()
+    metas = DEFAULT_METAS.copy()
+    if not df.empty:
+        metas.update(dict(zip(df["clave"], df["valor"])))
+    return metas
 
-def update_meta(k,v):
-    m=get_metas(); old=float(m.get(k,0)); con=sqlite3.connect(DB_PATH); cur=con.cursor(); now=datetime.now()
-    cur.execute("UPDATE metas SET valor=?, actualizado=? WHERE clave=?",(float(v),now.isoformat(),k))
-    cur.execute("INSERT INTO historial_metas(fecha,hora,usuario,meta,anterior,nueva) VALUES(?,?,?,?,?,?)",(str(now.date()),now.strftime('%H:%M:%S'),'Administrador',k,old,float(v)))
-    con.commit(); con.close()
+def update_meta(clave, valor, usuario="Administrador"):
+    metas = get_metas()
+    anterior = float(metas.get(clave, 0))
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("UPDATE metas SET valor=?, actualizado=? WHERE clave=?", (float(valor), datetime.now().isoformat(), clave))
+    now = datetime.now()
+    cur.execute(
+        "INSERT INTO historial_metas(fecha,hora,usuario,meta,anterior,nueva) VALUES (?,?,?,?,?,?)",
+        (str(now.date()), now.strftime("%H:%M:%S"), usuario, clave, anterior, float(valor))
+    )
+    conn.commit()
+    conn.close()
 
-def set_estado(k,v):
-    con=sqlite3.connect(DB_PATH); cur=con.cursor(); cur.execute("INSERT OR REPLACE INTO estado VALUES(?,?)",(k,str(v))); con.commit(); con.close()
+def get_historial_metas():
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        df = pd.read_sql_query("SELECT * FROM historial_metas ORDER BY id DESC", conn)
+    except Exception:
+        df = pd.DataFrame()
+    conn.close()
+    return df
 
-def get_estado(k,default=""):
-    con=sqlite3.connect(DB_PATH); cur=con.cursor(); cur.execute("SELECT valor FROM estado WHERE clave=?",(k,)); row=cur.fetchone(); con.close(); return row[0] if row else default
+def set_estado(clave, valor):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("INSERT OR REPLACE INTO estado(clave, valor) VALUES (?, ?)", (clave, str(valor)))
+    conn.commit()
+    conn.close()
 
-def get_name_map():
-    init_db(); df=sql_df("SELECT occurrence, nombre_final FROM nombres"); return dict(zip(df.occurrence.astype(str), df.nombre_final.astype(str))) if not df.empty else {}
+def get_estado(clave, default=""):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT valor FROM estado WHERE clave=?", (clave,))
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else default
 
-def save_name_map(occ,nombre):
-    con=sqlite3.connect(DB_PATH); cur=con.cursor(); cur.execute("INSERT OR REPLACE INTO nombres VALUES(?,?)",(str(occ),str(nombre).strip())); con.commit(); con.close()
+def get_nombre_map():
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        df = pd.read_sql_query("SELECT ocurrencia, nombre_correcto FROM nombres_empleado", conn)
+    except Exception:
+        df = pd.DataFrame()
+    conn.close()
+    if df.empty:
+        return {}
+    return dict(zip(df["ocurrencia"].astype(str), df["nombre_correcto"].astype(str)))
+
+def save_nombre_map(mapping):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    now = datetime.now().isoformat()
+    for k, v in mapping.items():
+        if str(k).strip() and str(v).strip():
+            cur.execute(
+                "INSERT OR REPLACE INTO nombres_empleado(ocurrencia,nombre_correcto,actualizado) VALUES (?,?,?)",
+                (str(k), str(v), now)
+            )
+    conn.commit()
+    conn.close()
 
 init_db()
 
-# ---------------- Helpers ----------------
-def norm(x):
-    if pd.isna(x): return "Sin registros"
-    s=str(x).strip(); return s if s else "Sin registros"
+# ==========================================================
+# UTILIDADES
+# ==========================================================
+def n0(x):
+    try:
+        return f"{float(x):,.0f}"
+    except Exception:
+        return "0"
+
+def p1(x):
+    try:
+        return f"{float(x):,.1f}%"
+    except Exception:
+        return "0.0%"
+
+def money(x):
+    try:
+        return f"${float(x):,.0f}"
+    except Exception:
+        return "$0"
 
 def to_num(x):
-    if pd.isna(x): return 0.0
-    if isinstance(x,str): x=x.replace('$','').replace(',','').replace(' ','').strip()
+    if pd.isna(x):
+        return 0.0
+    if isinstance(x, str):
+        x = x.replace("$", "").replace(",", "").replace(" ", "").strip()
+        if x in ["", "-", "nan", "None"]:
+            return 0.0
     try:
-        y=pd.to_numeric(x, errors='coerce')
+        y = pd.to_numeric(x, errors="coerce")
         return 0.0 if pd.isna(y) else float(y)
-    except Exception: return 0.0
+    except Exception:
+        return 0.0
 
-def fmt_int(x):
-    try: return f"{float(x):,.0f}"
-    except Exception: return "0"
+def clean_text(x):
+    if pd.isna(x):
+        return "Sin dato"
+    s = str(x).strip()
+    if s.lower() in ["nan", "none", ""]:
+        return "Sin dato"
+    return s
 
-def fmt_pct(x):
-    try: return f"{float(x):,.0f}%"
-    except Exception: return "0%"
+def pct(a, b):
+    try:
+        a = float(a)
+        b = float(b)
+        return (a / b * 100) if b else 0.0
+    except Exception:
+        return 0.0
 
-def pct(a,b):
-    try: return (float(a)/float(b)*100) if float(b)!=0 else 0.0
-    except Exception: return 0.0
+def sdiv(a, b):
+    a = pd.to_numeric(a, errors="coerce").fillna(0)
+    b = pd.to_numeric(b, errors="coerce").fillna(0)
+    return np.where(b != 0, a / b, 0)
 
-def sdiv(a,b):
-    a=pd.to_numeric(a, errors='coerce').fillna(0); b=pd.to_numeric(b, errors='coerce').fillna(0)
-    return np.where(b!=0, a/b, 0)
+def normalize_store(x):
+    s = clean_text(x).upper()
+    replacements = {
+        "GUADALAJARA MIRAVALLE": "Miravalle",
+        "MIRAVALLE": "Miravalle",
+        "PUEBLA SUR": "Puebla Sur",
+        "PUEBLA": "Puebla",
+        "ARCO NORTE": "Arco Norte",
+        "IZTAPALAPA": "Iztapalapa",
+        "VALLEJO": "Vallejo",
+        "ECATEPEC": "Ecatepec",
+        "TOLUCA": "Toluca",
+        "IXTAPALUCA": "Ixtapaluca",
+        "QUERETARO": "Querétaro",
+        "QUERÉTARO": "Querétaro",
+        "CENTRO": "Centro",
+        "OLIVAR": "Olivar",
+        "LEON": "León",
+        "LEÓN": "León",
+        "AGUASCALIENTES": "Aguascalientes",
+        "VERACRUZ": "Veracruz",
+        "NAUCALPAN": "Naucalpan",
+        "ATEMAJAC": "Atemajac",
+    }
+    for key, val in replacements.items():
+        if key in s:
+            return val
+    return clean_text(x).title()
 
-def style_df(df):
-    if df is None or df.empty: return df
-    num_cols=df.select_dtypes(include='number').columns
-    fmt={c:"{:,.0f}" for c in num_cols}
-    pct_cols=[c for c in df.columns if '%' in str(c)]
-    for c in pct_cols: fmt[c]="{:,.0f}%"
-    return df.style.format(fmt).set_table_styles([
-        {'selector':'th','props':f'background-color:{AZUL_OSCURO}; color:white; font-weight:bold;'},
-        {'selector':'tbody tr:nth-child(even)','props':'background-color:#F8FAFC;'},
-        {'selector':'tbody tr:hover','props':f'background-color:{ROSA}33;'}
-    ])
+def style_dataframe(df):
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        return df
+    return df.style.set_table_styles([
+        {"selector": "th", "props": [("background-color", "#003366"), ("color", "white"), ("font-weight", "bold")]},
+        {"selector": "td", "props": [("border", "1px solid #DDE7F7")]},
+    ]).format(precision=0, thousands=",")
 
-def export_excel(sheets):
-    bio=BytesIO()
-    with pd.ExcelWriter(bio, engine='openpyxl') as writer:
-        for name,df in sheets.items():
-            if isinstance(df,pd.DataFrame): df.to_excel(writer, sheet_name=name[:31], index=False)
+def excel_export(sheets):
+    bio = BytesIO()
+    with pd.ExcelWriter(bio, engine="openpyxl") as writer:
+        for name, df in sheets.items():
+            if isinstance(df, pd.DataFrame):
+                df.to_excel(writer, sheet_name=name[:31], index=False)
     return bio.getvalue()
 
-def exportar(nombre, sheets):
-    st.download_button(f"⬇️ Exportar {nombre} Excel", data=export_excel(sheets), file_name=f"{nombre}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+def export_buttons(name, sheets):
+    st.download_button(
+        f"⬇️ Exportar {name} Excel",
+        data=excel_export(sheets),
+        file_name=f"{name}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    if sheets:
+        first = list(sheets.values())[0]
+        if isinstance(first, pd.DataFrame):
+            st.download_button(
+                f"⬇️ Exportar {name} CSV",
+                data=first.to_csv(index=False).encode("utf-8-sig"),
+                file_name=f"{name}.csv",
+                mime="text/csv"
+            )
 
-# ---------------- Excel parser ----------------
-def detect_oper_sheet(hojas):
+def current_or_latest_week(df):
+    if df.empty or "Semana ISO" not in df.columns:
+        return []
+    weeks = sorted([int(x) for x in df["Semana ISO"].dropna().unique()])
+    return [max(weeks)] if weeks else []
+
+# ==========================================================
+# PROCESAMIENTO DE EXCEL REAL
+# ==========================================================
+def detectar_hoja_operativa(hojas):
     for h in hojas:
-        if 'productividad' in h.lower(): return h
+        h2 = h.lower().replace(" ", "")
+        if "resultados" in h2 and "productividad" in h2:
+            return h
+    for h in hojas:
+        if "productividad" in h.lower():
+            return h
     return None
 
-def detect_month_sheets(hojas):
-    meses='enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre'
-    return [h for h in hojas if re.search(meses,h.lower()) and re.search(r'26|2026',h.lower())]
+def detectar_hojas_mensuales(hojas):
+    meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"]
+    return [h for h in hojas if any(m in h.lower() for m in meses) and ("26" in h or "2026" in h)]
 
-def load_oper(file, hoja):
-    df=pd.read_excel(file, sheet_name=hoja)
-    df.columns=[str(c).strip() for c in df.columns]
-    rename={}
+def cargar_operacion(file, hoja):
+    df = pd.read_excel(file, sheet_name=hoja)
+    df.columns = [str(c).strip() for c in df.columns]
+
+    # Renombrar columnas reales
+    rename = {}
     for c in df.columns:
-        cl=str(c).strip().lower()
-        if cl in ['ubicación','ubicacion','tienda','sucursal']: rename[c]='Tienda'
-        elif cl in ['occurrence','ocurrencia']: rename[c]='Ocurrencia'
-        elif cl=='fecha': rename[c]='Fecha'
-        elif cl in ['nombre','usuario','colaborador']: rename[c]='Nombre'
-        elif cl in ['actividad realizada','actividad']: rename[c]='Actividad Realizada'
-        elif cl in ['número de piezas','numero de piezas','piezas','pzas']: rename[c]='Número de Piezas'
-        elif 'recorrido' in cl: rename[c]='Recorridos'
-        elif cl in ['motivo de ingreso','motivo']: rename[c]='Motivo de ingreso'
-        elif cl=='área' or cl=='area': rename[c]='Área'
-    df=df.rename(columns=rename)
-    for c in ['Fecha','Tienda','Ocurrencia','Nombre','Actividad Realizada','Motivo de ingreso','Área','Número de Piezas','Recorridos']:
-        if c not in df.columns: df[c]=np.nan
-    # si hay columnas duplicadas por renombre, tomar primera o combinar
-    df=df.loc[:,~df.columns.duplicated()].copy()
-    df['Fecha']=pd.to_datetime(df['Fecha'], errors='coerce')
-    df['Fecha Día']=df['Fecha'].dt.date
-    df['Semana ISO']=df['Fecha'].dt.isocalendar().week.astype('Int64')
-    df['Año ISO']=df['Fecha'].dt.isocalendar().year.astype('Int64')
-    df['Mes']=df['Fecha'].dt.month_name()
-    for c in ['Tienda','Ocurrencia','Nombre','Actividad Realizada','Motivo de ingreso','Área']:
-        df[c]=df[c].apply(norm)
-    df['Número de Piezas']=df['Número de Piezas'].apply(to_num)
-    rec_num=df['Recorridos'].apply(to_num)
-    df['Recorridos']=np.where(rec_num==1,1,0)  # solo cuenta registros con 1
-    act=(df['Actividad Realizada'].astype(str)+' '+df['Motivo de ingreso'].astype(str)).str.lower()
-    df['Muertos']=np.where(act.str.contains('muerto', regex=False), df['Número de Piezas'], 0)
-    df['Cajas']=np.where(act.str.contains('caja', regex=False), df['Número de Piezas'], 0)
-    df['Probador']=np.where(act.str.contains('probado|probador', regex=True), df['Número de Piezas'], 0)
-    df['Habilitado']=np.where(act.str.contains('habilitado|habilitar', regex=True), df['Número de Piezas'], 0)
-    df['Ubicado']=np.where(act.str.contains('ubicado|ubicar', regex=True), df['Número de Piezas'], 0)
-    df['Recolección de Muertos']=df['Muertos']+df['Cajas']+df['Probador']
-    df['Productividad Total']=df['Recolección de Muertos']+df['Habilitado']+df['Ubicado']
+        cl = str(c).strip().lower()
+        if cl in ["occurrence", "ocurrencia"]:
+            rename[c] = "Ocurrencia"
+        elif cl in ["ubicación", "ubicacion", "tienda", "sucursal"]:
+            rename[c] = "Tienda"
+        elif cl in ["fecha"]:
+            rename[c] = "Fecha"
+        elif cl in ["fecha s", "fechas"]:
+            rename[c] = "Fecha Base"
+        elif cl in ["actividad realizada", "actividad"]:
+            rename[c] = "Actividad Realizada"
+        elif cl in ["área", "area"]:
+            rename[c] = "Área"
+        elif cl in ["número de piezas", "numero de piezas", "piezas", "pzas"]:
+            rename[c] = "Número de Piezas"
+        elif "recorrido" in cl:
+            rename[c] = "Recorridos"
+        elif cl in ["nombre", "usuario", "colaborador"]:
+            if "Nombre" not in rename.values():
+                rename[c] = "Nombre"
+        elif cl in ["motivo de ingreso", "motivo"]:
+            rename[c] = "Motivo de ingreso"
+
+    df = df.rename(columns=rename)
+
+    # Si hay columna nombre duplicada minúscula, llenar nombre
+    nombre_cols = [c for c in df.columns if str(c).lower() == "nombre"]
+    if len(nombre_cols) > 1:
+        base = df[nombre_cols[0]]
+        for c in nombre_cols[1:]:
+            base = base.fillna(df[c])
+        df["Nombre"] = base
+        df = df.loc[:, ~df.columns.duplicated()]
+
+    required = ["Fecha", "Fecha Base", "Ocurrencia", "Tienda", "Actividad Realizada", "Área", "Número de Piezas", "Nombre", "Motivo de ingreso", "Recorridos"]
+    for c in required:
+        if c not in df.columns:
+            df[c] = np.nan
+
+    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+    df["Fecha Base"] = pd.to_datetime(df["Fecha Base"], errors="coerce")
+    df["Fecha Día"] = df["Fecha"].fillna(df["Fecha Base"]).dt.date
+    df["Semana ISO"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.isocalendar().week.astype("Int64")
+    df["Año ISO"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.isocalendar().year.astype("Int64")
+    df["Mes"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.month_name()
+
+    for c in ["Ocurrencia", "Nombre", "Actividad Realizada", "Área", "Motivo de ingreso"]:
+        df[c] = df[c].apply(clean_text)
+
+    df["Tienda"] = df["Tienda"].apply(normalize_store)
+    df["Número de Piezas"] = df["Número de Piezas"].apply(to_num)
+    # Recorridos: solo cuenta registros con 1
+    df["Recorridos"] = pd.to_numeric(df["Recorridos"], errors="coerce").fillna(0)
+    df["Recorridos"] = np.where(df["Recorridos"] == 1, 1, 0)
+
+    act = (df["Actividad Realizada"].astype(str) + " " + df["Motivo de ingreso"].astype(str)).str.lower()
+
+    df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
+    df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
+    df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
+    df["Habilitado"] = np.where(act.str.contains("habilitado|habilitar", regex=True), df["Número de Piezas"], 0)
+    df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
+
+    df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
+    df["Ingresos Operativos"] = df["Recolección de Muertos"]
+    df["Productividad Total"] = df["Recolección de Muertos"] + df["Habilitado"] + df["Ubicado"]
+
+    # Nombre real agrupado por Ocurrencia
+    nombre_map = get_nombre_map()
+    df["Nombre Real"] = df["Ocurrencia"].astype(str).map(nombre_map).fillna(df["Nombre"])
+
     return df
 
-def find_col(df, opts):
-    lookup={str(c).strip().lower():c for c in df.columns}
-    for o in opts:
-        if o.lower() in lookup: return lookup[o.lower()]
-    return None
+def cargar_comercial(file, hoja):
+    raw = pd.read_excel(file, sheet_name=hoja, header=None)
+    # Fila 1 trae encabezados reales en el archivo actual
+    header_row = 1
+    rows = []
+    daily_rows = []
 
-def load_month(file, sheet):
-    df=pd.read_excel(file, sheet_name=sheet, header=1)
-    df.columns=[str(c).strip() for c in df.columns]
-    df=df.dropna(how='all')
-    df=df.loc[:,~df.columns.duplicated()].copy()
-    c_t=find_col(df,['Tiendas','Tienda','Sucursal','Ubicación'])
-    c_mod=find_col(df,['Modelo','Modelo Proveedor'])
-    c_cat=find_col(df,['Categoria','Categoría'])
-    c_sub=find_col(df,['Sub Categoria','Sub Categoría','Subcategoria','Subcategoría'])
-    c_id=find_col(df,['Id Art','ID','Id'])
-    c_color=find_col(df,['Color'])
-    c_prec=find_col(df,['Precio Menudeo','precio Mayoreo','Precio Mayoreo'])
-    out=pd.DataFrame()
-    out['Mes_Origen']=sheet
-    out['Tienda']=df[c_t].apply(norm) if c_t else 'Sin registros'
-    out['Modelo']=df[c_mod].apply(norm) if c_mod else 'Sin registros'
-    out['Categoria']=df[c_cat].apply(norm) if c_cat else 'Sin registros'
-    out['Subcategoria']=df[c_sub].apply(norm) if c_sub else 'Sin registros'
-    out['Id Art']=df[c_id].apply(norm) if c_id else 'Sin registros'
-    out['Color']=df[c_color].apply(norm) if c_color else 'Sin registros'
-    precio=df[c_prec].apply(to_num) if c_prec else pd.Series([0]*len(df))
-    vta_cols=[c for c in df.columns if str(c).lower().startswith('ventas netas pzs')]
-    dev_cols=[c for c in df.columns if str(c).lower().startswith('dev pzs')]
-    imp_cols=[c for c in df.columns if str(c).lower().startswith('venta neta en') or str(c).lower().startswith('venta neta $')]
-    out['Vta_Pzs']=df[vta_cols].apply(lambda r: sum(to_num(x) for x in r), axis=1) if vta_cols else 0
-    out['Dev_Pzs']=df[dev_cols].apply(lambda r: sum(to_num(x) for x in r), axis=1) if dev_cols else 0
-    out['Vta_Imp']=df[imp_cols].apply(lambda r: sum(to_num(x) for x in r), axis=1) if imp_cols else 0
-    out['Costo_Dev']=out['Dev_Pzs']*precio
-    out['Piezas Vendidas Validadas']=np.minimum(out['Vta_Pzs'], out['Dev_Pzs'])
-    out['Conversión %']=sdiv(out['Piezas Vendidas Validadas'], out['Dev_Pzs'])*100
-    out['Valor Recuperado']=out['Vta_Imp']
-    out['Valor Pendiente']=out['Costo_Dev']-out['Vta_Imp']
-    out['Recuperación %']=sdiv(out['Valor Recuperado'], out['Costo_Dev'])*100
-    return out, list(df.columns), {'vta_cols':vta_cols,'dev_cols':dev_cols,'imp_cols':imp_cols}
+    # posiciones reales
+    meta_cols = {
+        "Art Padre": 0, "Id Art": 1, "Marca": 2, "Marca Price": 3, "Modelo": 4,
+        "Modelo Proveedor": 5, "Color": 7, "Categoria": 19, "Subcategoria": 20,
+        "Precio Mayoreo": 23, "Precio Menudeo": 24, "Tienda": 25,
+        "Vta_Pzs": 26, "Dev_Pzs": 27, "Vta_Imp": 28
+    }
 
-def process_excel(file):
-    xls=pd.ExcelFile(file); hojas=xls.sheet_names
-    op_sheet=detect_oper_sheet(hojas); month_sheets=detect_month_sheets(hojas)
-    diag={'hojas':hojas,'hoja_operacion':op_sheet,'hojas_mensuales':month_sheets,'columnas_mensuales':{},'metric_cols':{},'errores':[]}
-    op=load_oper(file, op_sheet) if op_sheet else pd.DataFrame()
-    diag['columnas_operacion']=list(op.columns) if not op.empty else []
-    frames=[]
-    for s in month_sheets:
+    data = raw.iloc[2:].copy()
+    data = data.dropna(how="all")
+    if data.empty:
+        return pd.DataFrame(), pd.DataFrame(), header_row, []
+
+    def col(i):
+        return data.iloc[:, i] if i < data.shape[1] else pd.Series([np.nan] * len(data), index=data.index)
+
+    df = pd.DataFrame()
+    df["Mes_Origen"] = hoja
+    df["Id Art"] = col(meta_cols["Id Art"]).apply(clean_text)
+    df["Modelo"] = col(meta_cols["Modelo"]).apply(clean_text)
+    df["Color"] = col(meta_cols["Color"]).apply(clean_text)
+    df["Categoria"] = col(meta_cols["Categoria"]).apply(clean_text)
+    df["Subcategoria"] = col(meta_cols["Subcategoria"]).apply(clean_text)
+    df["Tienda"] = col(meta_cols["Tienda"]).apply(normalize_store)
+    df["Precio Mayoreo"] = col(meta_cols["Precio Mayoreo"]).apply(to_num)
+    df["Precio Menudeo"] = col(meta_cols["Precio Menudeo"]).apply(to_num)
+    df["Vta_Pzs"] = col(meta_cols["Vta_Pzs"]).apply(to_num)
+    df["Dev_Pzs"] = col(meta_cols["Dev_Pzs"]).apply(to_num)
+    df["Vta_Imp"] = col(meta_cols["Vta_Imp"]).apply(to_num)
+
+    # Si no hay costo dev, usar precio menudeo * devoluciones; si no hay dev, usar venta como base para no romper.
+    df["Costo_Dev"] = df["Precio Menudeo"] * df["Dev_Pzs"]
+    df["Costo_Dev"] = np.where(df["Costo_Dev"] > 0, df["Costo_Dev"], df["Vta_Imp"])
+    df["Piezas Vendidas Validadas"] = np.minimum(df["Vta_Pzs"], df["Dev_Pzs"])
+    df["Conversión %"] = sdiv(df["Piezas Vendidas Validadas"], df["Dev_Pzs"]) * 100
+    df["Valor Recuperado"] = df["Vta_Imp"]
+    df["Valor Pendiente"] = df["Costo_Dev"] - df["Vta_Imp"]
+    df["Recuperación %"] = sdiv(df["Valor Recuperado"], df["Costo_Dev"]) * 100
+
+    # Daily long: columnas 29 en adelante vienen en bloques de 3 con fechas en fila 0
+    for idx in range(29, raw.shape[1], 3):
+        if idx + 2 >= raw.shape[1]:
+            continue
+        fecha = pd.to_datetime(raw.iloc[0, idx], errors="coerce", dayfirst=True)
+        if pd.isna(fecha):
+            continue
+        temp = df[["Mes_Origen", "Id Art", "Modelo", "Color", "Categoria", "Subcategoria", "Tienda", "Precio Menudeo"]].copy()
+        temp["Fecha Día"] = fecha.date()
+        temp["Semana ISO"] = fecha.isocalendar().week
+        temp["Vta_Pzs"] = col(idx).apply(to_num)
+        temp["Dev_Pzs"] = col(idx+1).apply(to_num)
+        temp["Vta_Imp"] = col(idx+2).apply(to_num)
+        temp["Costo_Dev"] = temp["Precio Menudeo"] * temp["Dev_Pzs"]
+        temp["Costo_Dev"] = np.where(temp["Costo_Dev"] > 0, temp["Costo_Dev"], temp["Vta_Imp"])
+        temp["Piezas Vendidas Validadas"] = np.minimum(temp["Vta_Pzs"], temp["Dev_Pzs"])
+        temp = temp[(temp["Vta_Pzs"] != 0) | (temp["Dev_Pzs"] != 0) | (temp["Vta_Imp"] != 0)]
+        daily_rows.append(temp)
+
+    daily = pd.concat(daily_rows, ignore_index=True) if daily_rows else pd.DataFrame()
+    return df, daily, header_row, [str(x) for x in raw.iloc[header_row].tolist()]
+
+def procesar_excel(file):
+    xls = pd.ExcelFile(file)
+    hojas = xls.sheet_names
+    hoja_op = detectar_hoja_operativa(hojas)
+    hojas_mensuales = detectar_hojas_mensuales(hojas)
+
+    diag = {
+        "hojas_detectadas": hojas,
+        "hoja_operativa": hoja_op,
+        "hojas_mensuales": hojas_mensuales,
+        "errores": [],
+        "encabezados": {},
+        "columnas": {}
+    }
+
+    op = pd.DataFrame()
+    co_list = []
+    daily_list = []
+
+    if hoja_op:
         try:
-            temp, cols, metric_cols=load_month(file,s); frames.append(temp); diag['columnas_mensuales'][s]=cols; diag['metric_cols'][s]=metric_cols
+            op = cargar_operacion(file, hoja_op)
+            diag["columnas"]["operacion"] = list(op.columns)
         except Exception as e:
-            diag['errores'].append(f'{s}: {e}')
-    co=pd.concat(frames,ignore_index=True) if frames else pd.DataFrame()
-    return op,co,diag
-
-def save_data(op,co,diag,filename):
-    if not op.empty: op.to_parquet(OP_PATH,index=False)
-    if not co.empty: co.to_parquet(CO_PATH,index=False)
-    set_estado('ultima_actualizacion',datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    set_estado('archivo',filename)
-    set_estado('diagnostico',json.dumps(diag,ensure_ascii=False,default=str))
-
-def load_saved():
-    op=pd.read_parquet(OP_PATH) if OP_PATH.exists() else pd.DataFrame()
-    co=pd.read_parquet(CO_PATH) if CO_PATH.exists() else pd.DataFrame()
-    # aplicar nombres corregidos por Ocurrencia
-    if not op.empty:
-        mp=get_name_map()
-        if mp:
-            op['Nombre Original']=op['Nombre']
-            op['Nombre']=op['Ocurrencia'].astype(str).map(mp).fillna(op['Nombre'])
-    return op,co
-
-# Header
-ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
-now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
-st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.6 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
-""",unsafe_allow_html=True)
-
-# Sidebar
-with st.sidebar:
-    st.header('🔐 Acceso')
-    rol=st.radio('Rol',['Consulta','Administrador'],horizontal=True)
-    is_admin=rol=='Administrador'
-    if is_admin:
-        clave=st.text_input('Clave administrador',type='password')
-        is_admin=clave==st.secrets.get('ADMIN_PASSWORD','orion_admin')
-    st.divider(); st.header('📂 Datos')
-    if is_admin:
-        up=st.file_uploader('Cargar/Reemplazar Excel',type=['xlsx'])
-        if up is not None:
-            st.info('Archivo listo. Presiona el botón solo una vez.')
-            if st.button('🚀 Procesar archivo',type='primary'):
-                with st.spinner('Procesando Excel...'):
-                    try:
-                        op_new,co_new,diag=process_excel(up); save_data(op_new,co_new,diag,up.name)
-                        st.success('Archivo procesado y guardado. Cambia a Consulta para visualizar.')
-                    except Exception as e: st.error(f'No se pudo procesar el archivo: {e}')
+            diag["errores"].append(f"Operación: {e}")
     else:
-        st.caption('Modo consulta: visualiza sin cargar archivo.')
+        diag["errores"].append("No se detectó hoja de productividad.")
 
-op_all, co_all = load_saved()
-if op_all.empty and co_all.empty:
-    st.warning('No hay datos persistidos. Un administrador debe cargar el Excel por primera vez.')
-    st.stop()
-metas=get_metas()
+    for h in hojas_mensuales:
+        try:
+            co, daily, header, cols = cargar_comercial(file, h)
+            diag["encabezados"][h] = header
+            diag["columnas"][h] = cols
+            if not co.empty:
+                co_list.append(co)
+            if not daily.empty:
+                daily_list.append(daily)
+        except Exception as e:
+            diag["errores"].append(f"{h}: {e}")
 
-# Defaults week current/max
-available_weeks=sorted([int(x) for x in op_all['Semana ISO'].dropna().unique()]) if not op_all.empty and 'Semana ISO' in op_all else []
-current_iso=datetime.now().isocalendar().week
-default_week=[current_iso] if current_iso in available_weeks else ([max(available_weeks)] if available_weeks else [])
+    co = pd.concat(co_list, ignore_index=True) if co_list else pd.DataFrame()
+    daily = pd.concat(daily_list, ignore_index=True) if daily_list else pd.DataFrame()
 
+    return op, co, daily, diag
+
+def guardar_datos(op, co, daily, diag, filename):
+    if not op.empty:
+        op.to_parquet(OPERACION_FILE, index=False)
+    if not co.empty:
+        co.to_parquet(COMERCIAL_FILE, index=False)
+    if not daily.empty:
+        daily.to_parquet(DIARIO_COMERCIAL_FILE, index=False)
+    set_estado("archivo", filename)
+    set_estado("ultima_actualizacion", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    set_estado("diagnostico", json.dumps(diag, ensure_ascii=False, default=str))
+
+def cargar_datos():
+    op = pd.read_parquet(OPERACION_FILE) if OPERACION_FILE.exists() else pd.DataFrame()
+    co = pd.read_parquet(COMERCIAL_FILE) if COMERCIAL_FILE.exists() else pd.DataFrame()
+    daily = pd.read_parquet(DIARIO_COMERCIAL_FILE) if DIARIO_COMERCIAL_FILE.exists() else pd.DataFrame()
+    # Aplicar nombres corregidos si ya hay mapa
+    if not op.empty and "Ocurrencia" in op.columns:
+        nombre_map = get_nombre_map()
+        op["Nombre Real"] = op["Ocurrencia"].astype(str).map(nombre_map).fillna(op.get("Nombre", "Sin dato"))
+    return op, co, daily
+
+# ==========================================================
+# HEADER
+# ==========================================================
+ultima = get_estado("ultima_actualizacion", "Sin actualización")
+archivo_cargado = get_estado("archivo", "Sin archivo cargado")
+estado = "Disponible" if OPERACION_FILE.exists() or COMERCIAL_FILE.exists() else "Sin datos"
+now = datetime.now()
+
+st.markdown(f"""
+<div class="orion-header">
+    <div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div>
+    <div class="orion-title">🚀 ORION PRO v1.0</div>
+    <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
+    <div class="orion-mini">
+        Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
+        Fecha actual: {now.strftime('%Y-%m-%d')} | Hora actual: {now.strftime('%H:%M:%S')} |
+        Última actualización: {ultima} | Estado de información: {estado}
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ==========================================================
+# SIDEBAR ACCESO / CARGA
+# ==========================================================
 with st.sidebar:
-    st.divider(); st.header('🎛️ Filtros globales')
-    f_sem=st.multiselect('Semana ISO',available_weeks,default=default_week)
-    months=sorted(set(op_all.get('Mes',pd.Series(dtype=str)).dropna().astype(str).tolist()+co_all.get('Mes_Origen',pd.Series(dtype=str)).dropna().astype(str).tolist()))
-    f_mes=st.multiselect('Mes',months)
-    f_tienda=st.multiselect('Tienda',TIENDAS)
-    f_act=st.multiselect('Actividad',sorted(op_all.get('Actividad Realizada',pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else [])
-    f_cat=st.multiselect('Categoría',sorted(co_all.get('Categoria',pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else [])
-    f_sub=st.multiselect('Subcategoría',sorted(co_all.get('Subcategoria',pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else [])
-    f_mod=st.multiselect('Modelo',sorted(co_all.get('Modelo',pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else [])
-    f_col=st.multiselect('Colaborador',sorted(op_all.get('Nombre',pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else [])
-    f_occ=st.multiselect('ID de empleado / Ocurrencia',sorted(op_all.get('Ocurrencia',pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else [])
+    st.header("🔐 Acceso")
+    rol = st.radio("Rol", ["Consulta", "Administrador"], horizontal=True)
+    is_admin = rol == "Administrador"
+    if is_admin:
+        clave = st.text_input("Clave administrador", type="password")
+        is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "orion_admin")
+        if not is_admin and clave:
+            st.warning("Clave incorrecta.")
 
-op=op_all.copy(); co=co_all.copy()
-if f_sem and not op.empty: op=op[op['Semana ISO'].isin(f_sem)]
+    st.divider()
+    st.header("📂 Fuente de datos")
+    if is_admin:
+        uploaded = st.file_uploader("Cargar/Reemplazar Excel", type=["xlsx"])
+        if uploaded is not None:
+            st.info("Archivo listo. Presiona el botón para procesarlo una sola vez.")
+            if st.button("🚀 Procesar archivo", type="primary"):
+                with st.spinner("Procesando archivo completo. Puede tardar por el tamaño del Excel..."):
+                    try:
+                        op_new, co_new, daily_new, diag = procesar_excel(uploaded)
+                        guardar_datos(op_new, co_new, daily_new, diag, uploaded.name)
+                        st.success("Archivo procesado y guardado correctamente.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"No se pudo procesar el archivo: {e}")
+    else:
+        st.caption("Modo consulta: visualización sin carga de archivo.")
+
+op_all, co_all, daily_all = cargar_datos()
+
+if op_all.empty and co_all.empty:
+    st.warning("No hay datos cargados. Un administrador debe cargar el Excel por primera vez.")
+    st.stop()
+
+metas = get_metas()
+
+# ==========================================================
+# FILTROS GLOBALES
+# ==========================================================
+with st.sidebar:
+    st.divider()
+    st.header("🎛️ Filtros globales")
+
+    # Semana default: última semana disponible
+    semanas_disponibles = sorted([int(x) for x in op_all.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if not op_all.empty else []
+    default_semana = [max(semanas_disponibles)] if semanas_disponibles else []
+
+    meses = sorted(set(op_all.get("Mes", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Mes_Origen", pd.Series(dtype=str)).dropna().astype(str).tolist()))
+    tiendas = sorted(set(TIENDAS_OFICIALES + op_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist()))
+    actividades = sorted(op_all.get("Actividad Realizada", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
+    categorias = sorted(co_all.get("Categoria", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
+    subcats = sorted(co_all.get("Subcategoria", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
+    modelos = sorted(co_all.get("Modelo", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
+    colaboradores = sorted(op_all.get("Nombre Real", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
+    ocurrencias = sorted(op_all.get("Ocurrencia", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
+
+    f_semana = st.multiselect("Semana ISO", semanas_disponibles, default=default_semana)
+    f_mes = st.multiselect("Mes", meses)
+    f_tienda = st.multiselect("Tienda", tiendas)
+    f_actividad = st.multiselect("Actividad", actividades)
+    f_categoria = st.multiselect("Categoría", categorias)
+    f_subcat = st.multiselect("Subcategoría", subcats)
+    f_modelo = st.multiselect("Modelo", modelos)
+    f_colab = st.multiselect("Colaborador", colaboradores)
+    f_ocurrencia = st.multiselect("ID empleado / Ocurrencia", ocurrencias)
+
+op = op_all.copy()
+co = co_all.copy()
+daily = daily_all.copy()
+
+if f_semana:
+    if not op.empty:
+        op = op[op["Semana ISO"].isin(f_semana)]
+    if not daily.empty and "Semana ISO" in daily.columns:
+        daily = daily[daily["Semana ISO"].isin(f_semana)]
 if f_mes:
-    if not op.empty: op=op[op['Mes'].isin(f_mes)]
-    if not co.empty: co=co[co['Mes_Origen'].isin(f_mes)]
+    if not op.empty:
+        op = op[op["Mes"].isin(f_mes)]
+    if not co.empty:
+        co = co[co["Mes_Origen"].isin(f_mes)]
+    if not daily.empty:
+        daily = daily[daily["Mes_Origen"].isin(f_mes)]
 if f_tienda:
-    if not op.empty: op=op[op['Tienda'].isin(f_tienda)]
-    if not co.empty: co=co[co['Tienda'].isin(f_tienda)]
-if f_act and not op.empty: op=op[op['Actividad Realizada'].isin(f_act)]
-if f_cat and not co.empty: co=co[co['Categoria'].isin(f_cat)]
-if f_sub and not co.empty: co=co[co['Subcategoria'].isin(f_sub)]
-if f_mod and not co.empty: co=co[co['Modelo'].isin(f_mod)]
-if f_col and not op.empty: op=op[op['Nombre'].isin(f_col)]
-if f_occ and not op.empty: op=op[op['Ocurrencia'].isin(f_occ)]
+    if not op.empty:
+        op = op[op["Tienda"].isin(f_tienda)]
+    if not co.empty:
+        co = co[co["Tienda"].isin(f_tienda)]
+    if not daily.empty:
+        daily = daily[daily["Tienda"].isin(f_tienda)]
+if f_actividad and not op.empty:
+    op = op[op["Actividad Realizada"].isin(f_actividad)]
+if f_categoria and not co.empty:
+    co = co[co["Categoria"].isin(f_categoria)]
+if f_categoria and not daily.empty:
+    daily = daily[daily["Categoria"].isin(f_categoria)]
+if f_subcat and not co.empty:
+    co = co[co["Subcategoria"].isin(f_subcat)]
+if f_subcat and not daily.empty:
+    daily = daily[daily["Subcategoria"].isin(f_subcat)]
+if f_modelo and not co.empty:
+    co = co[co["Modelo"].isin(f_modelo)]
+if f_modelo and not daily.empty:
+    daily = daily[daily["Modelo"].isin(f_modelo)]
+if f_colab and not op.empty:
+    op = op[op["Nombre Real"].isin(f_colab)]
+if f_ocurrencia and not op.empty:
+    op = op[op["Ocurrencia"].isin(f_ocurrencia)]
 
-# Summaries
-def commercial_store(df):
-    return df.groupby('Tienda',as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Vta_Imp=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'),Valor_Pendiente=('Valor Pendiente','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Dev_Pzs','Vta_Pzs','Vta_Imp','Costo_Dev','Valor_Pendiente'])
-
-
-
-def operation_store(df):
-    df = ensure_dashboard_columns(df)
-    return df.groupby('Tienda',as_index=False).agg(Muertos=('Muertos','sum'),Cajas=('Cajas','sum'),Probador=('Probador','sum'),Recoleccion=('Recoleccion','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Muertos','Cajas','Probador','Recoleccion','Habilitado','Ubicado','Productividad','Recorridos'])
-
-def store_summary(opdf,codf, only_registered=False):
-    base=pd.DataFrame({'Tienda':TIENDAS})
-    out=base.merge(operation_store(opdf),on='Tienda',how='left').merge(commercial_store(codf),on='Tienda',how='left').fillna(0)
-    for c in out.columns:
-        if c!='Tienda': out[c]=pd.to_numeric(out[c],errors='coerce').fillna(0)
-    out['Total Ingresos']=out['Dev_Pzs']+out['Muertos']+out['Cajas']+out['Probador']
-    out['% Habilitado']=sdiv(out['Habilitado'],out['Total Ingresos'])*100
-    out['% Ubicado']=sdiv(out['Ubicado'],out['Total Ingresos'])*100
-    out['Conversión %']=sdiv(out['Vta_Pzs'],out['Dev_Pzs'])*100
-    out['Recuperación %']=sdiv(out['Vta_Imp'],out['Costo_Dev'])*100
-    out['Con Registro']=out[['Productividad','Dev_Pzs','Vta_Imp','Recorridos']].sum(axis=1)>0
-    if only_registered: out=out[out['Con Registro']].copy()
-    return out
-
-ss=store_summary(op,co,only_registered=False)
-ss_reg=store_summary(op,co,only_registered=True)
-
-def meta_recorridos_periodo(opdf):
-    if opdf is None or opdf.empty:
-        return metas.get("recorridos_semanales", 47)
-    temp = opdf.copy()
-    if "Fecha Día" not in temp.columns:
-        if "Fecha" in temp.columns:
-            temp["Fecha Día"] = pd.to_datetime(temp["Fecha"], errors="coerce").dt.date
-        elif "Día" in temp.columns:
-            temp["Fecha Día"] = pd.to_datetime(temp["Día"], errors="coerce").dt.date
-        else:
-            temp["Fecha Día"] = pd.NaT
-    days = max(1, temp["Fecha Día"].dropna().drop_duplicates().shape[0])
-    # Meta dinámica por día consultado; si son 7 días equivale a 47
-    return (metas.get("recorridos_semanales", 47) / 7) * days
-    days=opdf[['Fecha Día']].dropna().drop_duplicates().shape[0]
-    weeks=max(1, len(opdf['Semana ISO'].dropna().unique()))
-    if days<=7: return metas['recorridos_semanales']
-    return metas['recorridos_semanales']*weeks
+# ==========================================================
+# AGREGADOS CENTRALES
+# ==========================================================
+def days_in_period(opdf):
+    if opdf.empty or "Fecha Día" not in opdf.columns:
+        return 1
+    return max(1, opdf["Fecha Día"].dropna().drop_duplicates().shape[0])
 
 def meta_prod_periodo(opdf):
-    if opdf is None or opdf.empty:
-        return 784
-    temp = opdf.copy()
-    if "Fecha Día" not in temp.columns:
-        if "Fecha" in temp.columns:
-            temp["Fecha Día"] = pd.to_datetime(temp["Fecha"], errors="coerce").dt.date
-        elif "Día" in temp.columns:
-            temp["Fecha Día"] = pd.to_datetime(temp["Día"], errors="coerce").dt.date
-        else:
-            temp["Fecha Día"] = pd.NaT
-    days = max(1, temp["Fecha Día"].dropna().drop_duplicates().shape[0])
-    return metas.get("productividad_diaria", 784) * days
-    days=max(1, opdf[['Fecha Día']].dropna().drop_duplicates().shape[0])
-    return metas['productividad_diaria']*days
+    return metas["productividad_diaria"] * days_in_period(opdf)
 
-# KPIs top
-k1,k2,k3,k4,k5=st.columns(5)
-k1.metric('Total Ingresos', fmt_int(ss_reg['Total Ingresos'].sum()))
-k2.metric('% Habilitado', fmt_pct(pct(ss_reg['Habilitado'].sum(),ss_reg['Total Ingresos'].sum())))
-k3.metric('% Ubicado', fmt_pct(pct(ss_reg['Ubicado'].sum(),ss_reg['Total Ingresos'].sum())))
-k4.metric('Conversión', fmt_pct(pct(ss_reg['Vta_Pzs'].sum(),ss_reg['Dev_Pzs'].sum())))
-score=round(min(pct(ss_reg['Productividad'].sum(), meta_prod_periodo(op)*max(op['Nombre'].nunique() if not op.empty else 1,1)),100)*.40 + min(pct(ss_reg['Habilitado'].sum(),ss_reg['Total Ingresos'].sum()),100)*.25 + min(pct(ss_reg['Ubicado'].sum(),ss_reg['Total Ingresos'].sum()),100)*.15 + min(pct(ss_reg['Vta_Pzs'].sum(),ss_reg['Dev_Pzs'].sum()),100)*.10 + min(pct(ss_reg['Recorridos'].sum(),meta_recorridos_periodo(op)*max(ss_reg['Tienda'].nunique(),1)),100)*.10,1)
-k5.metric('Score Integral', f'{score:,.0f}/100')
+def meta_recorridos_periodo(opdf):
+    return (metas["recorridos_semanales"] / 7) * days_in_period(opdf)
 
-# Tabs
-tab_names=['Panel Ejecutivo','Macro','Conversión','Recuperación Económica','Productividad por Colaborador','Productividad por Actividad','Eficiencia Operativa','Cumplimiento de Recorridos','Indicadores Diarios','Top 30 Modelos','Análisis por Categoría','Análisis por Subcategoría','Ranking de Tiendas','Ranking de Colaboradores','Índice Integral','Alertas Inteligentes','Configuración de Metas','Diagnóstico de Datos','Compartir ORION']
+def total_dev_system(codf):
+    return float(codf["Dev_Pzs"].sum()) if not codf.empty and "Dev_Pzs" in codf else 0
+
+def store_summary(opdf, codf, only_registered=True):
+    op_store = pd.DataFrame(columns=["Tienda"])
+    if not opdf.empty:
+        op_store = opdf.groupby("Tienda", as_index=False).agg(
+            Muertos=("Muertos","sum"),
+            Cajas=("Cajas","sum"),
+            Probador=("Probador","sum"),
+            Recoleccion=("Recolección de Muertos","sum"),
+            Habilitado=("Habilitado","sum"),
+            Ubicado=("Ubicado","sum"),
+            Productividad=("Productividad Total","sum"),
+            Recorridos=("Recorridos","sum")
+        )
+    co_store = pd.DataFrame(columns=["Tienda"])
+    if not codf.empty:
+        co_store = codf.groupby("Tienda", as_index=False).agg(
+            Dev_Pzs=("Dev_Pzs","sum"),
+            Vta_Pzs=("Piezas Vendidas Validadas","sum"),
+            Recuperacion=("Vta_Imp","sum"),
+            Costo_Dev=("Costo_Dev","sum")
+        )
+
+    base = pd.DataFrame({"Tienda": TIENDAS_OFICIALES}) if not only_registered else pd.DataFrame({"Tienda": sorted(set(op_store.get("Tienda", [])) | set(co_store.get("Tienda", [])))})
+    out = base.merge(op_store, on="Tienda", how="left").merge(co_store, on="Tienda", how="left").fillna(0)
+
+    for c in ["Muertos","Cajas","Probador","Recoleccion","Habilitado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperacion","Costo_Dev"]:
+        if c not in out.columns:
+            out[c] = 0
+        out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
+
+    out["Total Ingresos"] = out["Dev_Pzs"] + out["Muertos"] + out["Cajas"] + out["Probador"]
+    out["% Habilitado"] = sdiv(out["Habilitado"], out["Total Ingresos"]) * 100
+    out["% Ubicado"] = sdiv(out["Ubicado"], out["Total Ingresos"]) * 100
+    out["Conversión %"] = sdiv(out["Vta_Pzs"], out["Dev_Pzs"]) * 100
+    out["Recuperación %"] = sdiv(out["Recuperacion"], out["Costo_Dev"]) * 100
+    out["Meta Recorridos"] = meta_recorridos_periodo(opdf)
+    out["% Recorridos"] = sdiv(out["Recorridos"], out["Meta Recorridos"]) * 100
+    out["Estado"] = np.select(
+        [
+            (out["Productividad"] > 0) & (out["Recuperacion"] > 0),
+            (out["Productividad"] > 0) & (out["Recuperacion"] == 0),
+            (out["Productividad"] == 0) & (out["Recuperacion"] > 0),
+        ],
+        [
+            "🟢 Productividad + Recuperación",
+            "🟡 Productividad sin Recuperación",
+            "🟠 Recuperación sin Productividad",
+        ],
+        default="🔴 Sin registros"
+    )
+    return out
+
+ss = store_summary(op, co, only_registered=True)
+ss_all = store_summary(op, co, only_registered=False)
+
+total_ingresos = ss["Total Ingresos"].sum() if not ss.empty else 0
+productividad = ss["Productividad"].sum() if not ss.empty else 0
+habilitado = ss["Habilitado"].sum() if not ss.empty else 0
+ubicado = ss["Ubicado"].sum() if not ss.empty else 0
+recorridos = ss["Recorridos"].sum() if not ss.empty else 0
+dev_pzs = ss["Dev_Pzs"].sum() if not ss.empty else 0
+vta_pzs = ss["Vta_Pzs"].sum() if not ss.empty else 0
+recuperacion = ss["Recuperacion"].sum() if not ss.empty else 0
+costo_dev = ss["Costo_Dev"].sum() if not ss.empty else 0
+
+conv_pct = pct(vta_pzs, dev_pzs)
+rec_pct = pct(recuperacion, costo_dev)
+hab_pct = pct(habilitado, total_ingresos)
+ubi_pct = pct(ubicado, total_ingresos)
+recorr_pct = pct(recorridos, meta_recorridos_periodo(op) * max(ss["Tienda"].nunique(), 1)) if not ss.empty else 0
+prod_pct = pct(productividad, meta_prod_periodo(op) * max(op["Ocurrencia"].nunique() if not op.empty else 1, 1))
+
+score_integral = round(
+    min(prod_pct,100)*.40 +
+    min(hab_pct,100)*.25 +
+    min(ubi_pct,100)*.15 +
+    min(conv_pct,100)*.10 +
+    min(recorr_pct,100)*.10,
+    1
+)
+
+# ==========================================================
+# SCORE CARDS
+# ==========================================================
+c1,c2,c3,c4,c5 = st.columns(5)
+c1.metric("Total Ingresos", n0(total_ingresos))
+c2.metric("% Habilitado", p1(hab_pct))
+c3.metric("% Ubicado", p1(ubi_pct))
+c4.metric("Recuperación $", money(recuperacion))
+c5.metric("Score Integral", f"{score_integral:,.1f}/100")
+
+# ==========================================================
+# PESTAÑAS
+# ==========================================================
+tabs_names = [
+    "1. Panel Ejecutivo",
+    "2. Macro",
+    "3. Conversión",
+    "4. Recuperación Económica",
+    "5. Productividad por Colaborador",
+    "6. Productividad por Actividad",
+    "7. Eficiencia Operativa",
+    "8. Cumplimiento de Recorridos",
+    "9. Indicadores Diarios",
+    "10. Top 30 Modelos",
+    "11. Análisis por Categoría",
+    "12. Análisis por Subcategoría",
+    "13. Ranking de Tiendas",
+    "14. Ranking de Colaboradores",
+    "15. Índice Integral",
+    "16. Alertas Inteligentes",
+    "17. Configuración de Metas",
+    "18. Diagnóstico de Datos",
+    "19. Compartir ORION"
+]
 if not is_admin:
-    tab_names.remove('Configuración de Metas'); tab_names.remove('Diagnóstico de Datos')
-tabs=st.tabs(tab_names); T=dict(zip(tab_names,tabs))
+    tabs_names.remove("17. Configuración de Metas")
+    tabs_names.remove("18. Diagnóstico de Datos")
+tabs = st.tabs(tabs_names)
+tab = dict(zip(tabs_names, tabs))
 
-with T['Panel Ejecutivo']:
-    st.subheader('Panel Ejecutivo')
-    st.caption('Top y bottom muestran únicamente tiendas con registro. Se excluyen nombres no coherentes agrupando por ID de empleado / Ocurrencia.')
-    panel=ss_reg.copy()
-    panel['Score']=(panel['Productividad'].rank(pct=True)*40 + panel['Vta_Imp'].rank(pct=True)*25 + panel['Recorridos'].rank(pct=True)*20 + panel['Conversión %'].rank(pct=True)*15).round(0)
-    c1,c2=st.columns(2)
-    with c1:
-        st.write('Top 2 Tiendas'); st.dataframe(style_df(panel.sort_values('Score',ascending=False).head(2)),width='stretch')
-    with c2:
-        st.write('Bottom 2 Tiendas'); st.dataframe(style_df(panel.sort_values('Score').head(2)),width='stretch')
-    colab=op.groupby(['Ocurrencia','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum')) if not op.empty else pd.DataFrame()
-    colab=colab[colab['Nombre'].astype(str).str.len()>2].sort_values('Productividad',ascending=False) if not colab.empty else colab
-    c1,c2=st.columns(2)
-    with c1: st.write('Top 3 Colaboradores'); st.dataframe(style_df(colab.head(3)),width='stretch')
-    with c2: st.write('Bottom 3 Colaboradores'); st.dataframe(style_df(colab[colab['Productividad']>0].tail(3) if not colab.empty else colab),width='stretch')
-    st.plotly_chart(px.bar(panel.sort_values('Score',ascending=False),x='Tienda',y='Score',color='Score',color_continuous_scale=[ROSA,AZUL],title='Score card por tienda'),width='stretch')
+# 1 Panel Ejecutivo
+with tab["1. Panel Ejecutivo"]:
+    st.subheader("Panel Ejecutivo")
+    st.caption("Top y Bottom solo consideran tiendas con registros. Se descartan registros no coherentes mediante agrupación por ID empleado / Ocurrencia.")
 
-with T['Macro']:
-    st.subheader('Macro | Comparativo últimas 4 semanas')
-    macro=store_summary(op_all,co_all,False)
-    if not op_all.empty:
-        sem=op_all.groupby('Semana ISO',as_index=False).agg(Muertos=('Muertos','sum'),Cajas=('Cajas','sum'),Probador=('Probador','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Recorridos=('Recorridos','sum')).sort_values('Semana ISO').tail(4)
-        co_sem = pd.DataFrame()
-        # Comercial no trae fecha diaria confiable, se presenta operacional por semana
-        sem['Total Ingresos']=sem['Muertos']+sem['Cajas']+sem['Probador']
-        sem['% Habilitado']=sdiv(sem['Habilitado'],sem['Total Ingresos'])*100
-        sem['% Ubicado']=sdiv(sem['Ubicado'],sem['Total Ingresos'])*100
-        st.dataframe(style_df(sem[['Semana ISO','Total Ingresos','Habilitado','Ubicado','% Habilitado','% Ubicado','Recorridos']]),width='stretch')
-        fig=go.Figure(); fig.add_bar(x=sem['Semana ISO'].astype(str),y=sem['Total Ingresos'],name='Total Ingresos',marker_color=AZUL); fig.add_scatter(x=sem['Semana ISO'].astype(str),y=sem['% Habilitado'],name='% Habilitado',mode='lines+markers',line=dict(color=ROSA,width=3)); fig.add_scatter(x=sem['Semana ISO'].astype(str),y=sem['% Ubicado'],name='% Ubicado',mode='lines+markers',line=dict(color=AZUL_OSCURO,width=3)); fig.update_layout(title='Comparativo por Semana ISO',yaxis_title='Ingresos / %')
-        st.plotly_chart(fig,width='stretch')
+    score_df = ss.copy()
+    if not score_df.empty:
+        score_df["Score"] = (
+            score_df["Productividad"].rank(pct=True)*40 +
+            score_df["% Habilitado"].rank(pct=True)*25 +
+            score_df["% Ubicado"].rank(pct=True)*15 +
+            score_df["Conversión %"].rank(pct=True)*10 +
+            score_df["% Recorridos"].rank(pct=True)*10
+        ).round(1)
 
-with T['Conversión']:
-    st.subheader('Conversión')
-    c1,c2,c3=st.columns(3); c1.metric('Dev_Pzs',fmt_int(ss_reg['Dev_Pzs'].sum())); c2.metric('Vta_Pzs validada',fmt_int(ss_reg['Vta_Pzs'].sum())); c3.metric('Conversión',fmt_pct(pct(ss_reg['Vta_Pzs'].sum(),ss_reg['Dev_Pzs'].sum())))
-    df=ss_reg[['Tienda','Dev_Pzs','Vta_Pzs','Conversión %']].sort_values('Conversión %',ascending=False)
-    st.dataframe(style_df(df),width='stretch'); st.plotly_chart(px.bar(df,x='Tienda',y='Conversión %',color='Conversión %',color_continuous_scale=[ROSA,AZUL]),width='stretch')
+    a,b = st.columns(2)
+    with a:
+        st.write("🏆 Top 2 Tiendas")
+        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=False).head(2)), width="stretch")
+    with b:
+        st.write("⚠️ Bottom 2 Tiendas")
+        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=True).head(2)), width="stretch")
 
-with T['Recuperación Económica']:
-    st.subheader('Recuperación Económica')
-    c1,c2,c3=st.columns(3); c1.metric('Valor Recuperado',f"${fmt_int(ss_reg['Vta_Imp'].sum())}"); c2.metric('Costo Dev',f"${fmt_int(ss_reg['Costo_Dev'].sum())}"); c3.metric('Valor Pendiente',f"${fmt_int(ss_reg['Valor_Pendiente'].sum())}")
-    df=ss_reg[['Tienda','Vta_Imp','Costo_Dev','Valor_Pendiente','Recuperación %']].sort_values('Vta_Imp',ascending=False)
-    st.dataframe(style_df(df),width='stretch'); st.plotly_chart(px.bar(df,x='Tienda',y='Vta_Imp',color='Recuperación %',color_continuous_scale=[ROSA,AZUL]),width='stretch')
+    valid = op.copy()
+    if not valid.empty:
+        valid = valid[~valid["Nombre Real"].str.lower().isin(["sin dato", "nan", "0", "-", ""])]
+        colab = valid.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"))
+        colab = colab.sort_values("Productividad", ascending=False)
+    else:
+        colab = pd.DataFrame()
 
-with T['Productividad por Colaborador']:
-    st.subheader('Ranking de Productividad por Colaborador')
-    if not op.empty:
-        area=op.groupby(['Ocurrencia','Nombre','Tienda','Área'],as_index=False).agg(Piezas=('Productividad Total','sum'))
-        idx=area.groupby(['Ocurrencia','Nombre','Tienda'])['Piezas'].idxmax(); area_max=area.loc[idx].rename(columns={'Área':'Área mayor productividad','Piezas':'Piezas área mayor'})
-        op = force_orion_columns(op)
-df=op.groupby(['Ocurrencia','Nombre','Tienda'],as_index=False).agg(Recoleccion=('Recoleccion','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'))
-        df=df.merge(area_max[['Ocurrencia','Nombre','Tienda','Área mayor productividad','Piezas área mayor']],on=['Ocurrencia','Nombre','Tienda'],how='left')
-        df['Meta']=meta_prod_periodo(op); df['Cumplimiento %']=sdiv(df['Productividad'],df['Meta'])*100; df['Ranking']=df['Productividad'].rank(method='first',ascending=False).astype(int)
-        df=df.sort_values('Ranking')[['Ranking','Ocurrencia','Nombre','Tienda','Recoleccion','Habilitado','Ubicado','Productividad','Meta','Cumplimiento %','Área mayor productividad','Piezas área mayor']]
-        st.dataframe(style_df(df),width='stretch'); st.plotly_chart(px.bar(df.head(30),x='Nombre',y='Productividad',color='Cumplimiento %',color_continuous_scale=[ROSA,AZUL]),width='stretch')
+    a,b = st.columns(2)
+    with a:
+        st.write("👤 Top 3 Colaboradores")
+        st.dataframe(style_dataframe(colab.head(3)), width="stretch")
+    with b:
+        st.write("👤 Bottom 3 Colaboradores")
+        st.dataframe(style_dataframe(colab[colab["Productividad"] > 0].tail(3) if not colab.empty else colab), width="stretch")
 
-with T['Productividad por Actividad']:
-    st.subheader('Productividad por Actividad')
-    c1,c2=st.columns(2)
-    act_df=pd.DataFrame({'Actividad':['Recolección de muertos','Habilitado','Ubicado'],'Piezas':[op['Recolección de Muertos'].sum() if not op.empty else 0, op['Habilitado'].sum() if not op.empty else 0, op['Ubicado'].sum() if not op.empty else 0]})
-    ing_df=pd.DataFrame({'Ingreso':['Sistema Dev_Pzs','Piso de venta / Muertos','Recolección cajas','Recolección probador'],'Piezas':[co['Dev_Pzs'].sum() if not co.empty else 0, op['Muertos'].sum() if not op.empty else 0, op['Cajas'].sum() if not op.empty else 0, op['Probador'].sum() if not op.empty else 0]})
-    with c1: st.write('Por actividad'); st.dataframe(style_df(act_df),width='stretch'); st.plotly_chart(px.pie(act_df,names='Actividad',values='Piezas',hole=.45,color_discrete_sequence=[AZUL,ROSA,AZUL_OSCURO]),width='stretch')
-    with c2: st.write('Por ingresos'); st.dataframe(style_df(ing_df),width='stretch'); st.plotly_chart(px.bar(ing_df,x='Ingreso',y='Piezas',color='Ingreso',color_discrete_sequence=[AZUL,ROSA,AZUL_OSCURO,'#94A3B8']),width='stretch')
+    st.plotly_chart(px.bar(score_df.sort_values("Score", ascending=False), x="Tienda", y="Score", color="Estado",
+                           title="Score Card por Tienda", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
+                    width="stretch")
+    export_buttons("panel_ejecutivo", {"score_tiendas": score_df, "colaboradores": colab})
 
-with T['Eficiencia Operativa']:
-    st.subheader('Eficiencia Operativa | Solo tiendas con registro')
-    df=ss_reg.copy(); df['Ranking']=df['% Habilitado'].rank(method='first',ascending=False).astype(int); df=df.sort_values('Ranking')
-    c1,c2,c3,c4,c5=st.columns(5); c1.metric('Total Ingresos',fmt_int(df['Total Ingresos'].sum())); c2.metric('Habilitado',fmt_int(df['Habilitado'].sum())); c3.metric('Ubicado',fmt_int(df['Ubicado'].sum())); c4.metric('% Habilitado',fmt_pct(pct(df['Habilitado'].sum(),df['Total Ingresos'].sum()))); c5.metric('% Ubicado',fmt_pct(pct(df['Ubicado'].sum(),df['Total Ingresos'].sum())))
-    cols=['Ranking','Tienda','Total Ingresos','Habilitado','Ubicado','% Habilitado','% Ubicado']; st.dataframe(style_df(df[cols]),width='stretch')
+# 2 Macro
+with tab["2. Macro"]:
+    st.subheader("Macro | Últimas 4 semanas")
+    if op_all.empty:
+        st.warning("Sin datos operativos.")
+    else:
+        macro = op_all.groupby("Semana ISO", as_index=False).agg(
+            Muertos=("Muertos","sum"),
+            Cajas=("Cajas","sum"),
+            Probador=("Probador","sum"),
+            Habilitado=("Habilitado","sum"),
+            Ubicado=("Ubicado","sum")
+        )
+        sys_week = daily_all.groupby("Semana ISO", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum")) if not daily_all.empty else pd.DataFrame(columns=["Semana ISO","Dev_Pzs"])
+        macro = macro.merge(sys_week, on="Semana ISO", how="left").fillna(0)
+        macro["Total Ingresos"] = macro["Dev_Pzs"] + macro["Muertos"] + macro["Cajas"] + macro["Probador"]
+        macro["% Habilitado"] = sdiv(macro["Habilitado"], macro["Total Ingresos"]) * 100
+        macro["% Ubicado"] = sdiv(macro["Ubicado"], macro["Total Ingresos"]) * 100
+        macro["Semana ISO"] = macro["Semana ISO"].astype(int)
+        macro = macro.sort_values("Semana ISO").tail(4)
+        st.dataframe(style_dataframe(macro), width="stretch")
+        st.plotly_chart(px.bar(macro, x="Semana ISO", y="Total Ingresos", text_auto=True,
+                               title="Total de ingresos por semana", color_discrete_sequence=["#3366CC"]),
+                        width="stretch")
+        st.plotly_chart(px.line(macro, x="Semana ISO", y=["% Habilitado","% Ubicado"], markers=True,
+                                title="% Habilitado vs % Ubicado", color_discrete_sequence=["#3366CC","#FF99FF"]),
+                        width="stretch")
 
-with T['Cumplimiento de Recorridos']:
-    st.subheader('Cumplimiento de Recorridos')
-    df=ss_reg[['Tienda','Recorridos']].copy(); df['Meta semanal']=meta_recorridos_periodo(op); df['% Cumplimiento']=sdiv(df['Recorridos'],df['Meta semanal'])*100; df['Estatus']=np.where(df['% Cumplimiento']>=100,'🟢 Cumple',np.where(df['% Cumplimiento']>=80,'🟡 Atención','🔴 Bajo')); df['Ranking']=df['% Cumplimiento'].rank(method='first',ascending=False).astype(int); df=df.sort_values('Ranking')
-    st.dataframe(style_df(df[['Ranking','Tienda','Estatus','Meta semanal','Recorridos','% Cumplimiento']]),width='stretch')
-    fig=go.Figure(); fig.add_bar(x=df['Tienda'],y=df['Recorridos'],name='Recorridos',marker_color=AZUL); fig.add_scatter(x=df['Tienda'],y=df['Meta semanal'],name='Meta',mode='lines+markers',line=dict(color=ROSA,width=4)); st.plotly_chart(fig,width='stretch')
+# 3 Conversión
+with tab["3. Conversión"]:
+    st.subheader("Conversión | Dev_Pzs a Venta")
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Dev_Pzs", n0(dev_pzs))
+    c2.metric("Vta_Pzs validada", n0(vta_pzs))
+    c3.metric("Conversión", p1(conv_pct))
+    conv = ss[["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"]].copy()
+    st.dataframe(style_dataframe(conv.sort_values("Conversión %", ascending=False)), width="stretch")
+    st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False), x="Tienda", y="Conversión %",
+                           color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
+                           title="Conversión por tienda"), width="stretch")
 
-with T['Indicadores Diarios']:
-    st.subheader('Indicadores Diarios')
-    if not op.empty:
-        df=op.groupby(['Fecha Día','Tienda','Ocurrencia','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum'),Ingresos=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Recorridos=('Recorridos','sum'))
-        df['Meta']=metas['productividad_diaria']; df['Cumplimiento %']=sdiv(df['Productividad'],df['Meta'])*100; df['% Habilitado']=sdiv(df['Habilitado'],df['Ingresos'])*100; df['% Ubicado']=sdiv(df['Ubicado'],df['Ingresos'])*100
-        df=df.rename(columns={'Ocurrencia':'ID de empleado','Fecha Día':'Fecha'})
-        st.dataframe(style_df(df),width='stretch')
-        if is_admin:
-            st.write('Modificar nombre por ID de empleado')
-            ids=sorted(op_all['Ocurrencia'].astype(str).unique())
-            occ=st.selectbox('ID de empleado',ids)
-            current=op_all.loc[op_all['Ocurrencia'].astype(str)==occ,'Nombre'].mode()
-            suggested=current.iloc[0] if not current.empty else ''
-            new_name=st.text_input('Nombre correcto',value=suggested)
-            if st.button('Guardar nombre corregido'):
-                save_name_map(occ,new_name); st.success('Nombre guardado. Actualiza la app para reagrupar.')
+# 4 Recuperación Económica
+with tab["4. Recuperación Económica"]:
+    st.subheader("Recuperación Económica")
+    c1,c2,c3 = st.columns(3)
+    c1.metric("Valor Recuperado", money(recuperacion))
+    c2.metric("Costo Dev", money(costo_dev))
+    c3.metric("Valor Pendiente", money(costo_dev - recuperacion))
+    eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy()
+    eco["Valor Pendiente"] = eco["Costo_Dev"] - eco["Recuperacion"]
+    st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
+    st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
+                           color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
+                           title="Recuperación $ por tienda"), width="stretch")
 
-with T['Top 30 Modelos']:
-    st.subheader('Top 30 Modelos')
-    if not co.empty:
-        df=co.groupby(['Modelo','Categoria','Subcategoria'],as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Recuperacion_Dinero=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'),Valor_Pendiente=('Valor Pendiente','sum'))
-        df['Recuperación %']=sdiv(df['Recuperacion_Dinero'],df['Costo_Dev'])*100
-        crit=st.selectbox('Ranking',['Mayor recuperación económica','Mayor recuperación %','Mayor venta','Mayor pendiente'])
-        col={'Mayor recuperación económica':'Recuperacion_Dinero','Mayor recuperación %':'Recuperación %','Mayor venta':'Vta_Pzs','Mayor pendiente':'Valor_Pendiente'}[crit]
-        top=df.sort_values(col,ascending=False).head(30)
-        st.dataframe(style_df(top),width='stretch'); st.plotly_chart(px.bar(top,x='Modelo',y=col,color='Categoria',color_discrete_sequence=[AZUL,ROSA,AZUL_OSCURO]),width='stretch')
+# 5 Productividad Colaborador
+with tab["5. Productividad por Colaborador"]:
+    st.subheader("Ranking de Productividad por Colaborador")
+    if op.empty:
+        st.warning("Sin datos operativos.")
+    else:
+        base_colab = op.groupby(["Ocurrencia","Nombre Real","Tienda"], as_index=False).agg(
+            Recoleccion=("Recolección de Muertos","sum"),
+            Habilitado=("Habilitado","sum"),
+            Ubicado=("Ubicado","sum"),
+            Productividad=("Productividad Total","sum")
+        )
+        area = op.groupby(["Ocurrencia","Nombre Real","Tienda","Área"], as_index=False).agg(Piezas=("Productividad Total","sum"))
+        if not area.empty:
+            idx = area.groupby(["Ocurrencia","Nombre Real","Tienda"])["Piezas"].idxmax()
+            area_max = area.loc[idx].rename(columns={"Área":"Área mayor productividad","Piezas":"Piezas área mayor"})
+            base_colab = base_colab.merge(
+                area_max[["Ocurrencia","Nombre Real","Tienda","Área mayor productividad","Piezas área mayor"]],
+                on=["Ocurrencia","Nombre Real","Tienda"],
+                how="left"
+            )
+        base_colab["Meta"] = meta_prod_periodo(op)
+        base_colab["Cumplimiento %"] = sdiv(base_colab["Productividad"], base_colab["Meta"]) * 100
+        base_colab["Ranking"] = base_colab["Productividad"].rank(method="dense", ascending=False).astype(int)
+        base_colab = base_colab.sort_values("Ranking")
+        st.dataframe(style_dataframe(base_colab), width="stretch")
+        st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
+                               color_discrete_sequence=["#3366CC","#FF99FF","#003366"],
+                               title="Top colaboradores por productividad"), width="stretch")
 
-with T['Análisis por Categoría']:
-    st.subheader('Análisis por Categoría')
-    if not co.empty:
-        df=co.groupby('Categoria',as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Recuperacion=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'))
-        df['Conversión %']=sdiv(df['Vta_Pzs'],df['Dev_Pzs'])*100; df['Recuperación %']=sdiv(df['Recuperacion'],df['Costo_Dev'])*100
-        st.dataframe(style_df(df.sort_values('Recuperacion',ascending=False)),width='stretch'); st.plotly_chart(px.bar(df,x='Categoria',y='Recuperacion',color='Recuperación %',color_continuous_scale=[ROSA,AZUL]),width='stretch')
+# 6 Productividad Actividad
+with tab["6. Productividad por Actividad"]:
+    st.subheader("Productividad por Actividad")
+    if op.empty:
+        st.warning("Sin operación.")
+    else:
+        act_df = pd.DataFrame({
+            "Actividad": ["Recolección de muertos", "Habilitado", "Ubicado"],
+            "Piezas": [op["Recolección de Muertos"].sum(), op["Habilitado"].sum(), op["Ubicado"].sum()]
+        })
+        st.write("Por actividad")
+        st.dataframe(style_dataframe(act_df), width="stretch")
+        st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
+                               color="Actividad", color_discrete_sequence=["#3366CC","#FF99FF","#003366"]),
+                        width="stretch")
 
-with T['Análisis por Subcategoría']:
-    st.subheader('Análisis por Subcategoría')
-    if not co.empty:
-        df=co.groupby('Subcategoria',as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Recuperacion=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'))
-        df['Conversión %']=sdiv(df['Vta_Pzs'],df['Dev_Pzs'])*100; df['Recuperación %']=sdiv(df['Recuperacion'],df['Costo_Dev'])*100
-        st.dataframe(style_df(df.sort_values('Recuperacion',ascending=False)),width='stretch'); st.plotly_chart(px.bar(df.head(30),x='Subcategoria',y='Recuperacion',color='Recuperación %',color_continuous_scale=[ROSA,AZUL]),width='stretch')
+        ingresos_df = pd.DataFrame({
+            "Concepto": ["Sistema Dev_Pzs", "Piso de venta", "Recolección Cajas", "Recolección Probador"],
+            "Piezas": [total_dev_system(co), op["Muertos"].sum(), op["Cajas"].sum(), op["Probador"].sum()]
+        })
+        st.write("Por ingresos")
+        st.dataframe(style_dataframe(ingresos_df), width="stretch")
+        st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
+                               color="Concepto", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
+                        width="stretch")
 
-with T['Ranking de Tiendas']:
-    st.subheader('Ranking de Tiendas')
-    df=ss.copy(); df['Score']=(df['Productividad'].rank(pct=True)*40+df['Habilitado'].rank(pct=True)*25+df['Ubicado'].rank(pct=True)*15+df['Conversión %'].rank(pct=True)*10+df['Recorridos'].rank(pct=True)*10).round(0); df['Ranking']=df['Score'].rank(method='first',ascending=False).astype(int)
-    cols=['Ranking','Tienda','Productividad','Dev_Pzs','Vta_Pzs','Vta_Imp','Recuperación %','Conversión %','Recorridos','Score']; st.dataframe(style_df(df.sort_values('Ranking')[cols]),width='stretch')
+# 7 Eficiencia Operativa
+with tab["7. Eficiencia Operativa"]:
+    st.subheader("Eficiencia Operativa | Solo tiendas con registro")
+    c1,c2,c3,c4,c5 = st.columns(5)
+    c1.metric("Total Ingresos", n0(total_ingresos))
+    c2.metric("Habilitado", n0(habilitado))
+    c3.metric("Ubicado", n0(ubicado))
+    c4.metric("% Habilitado", p1(hab_pct))
+    c5.metric("% Ubicado", p1(ubi_pct))
+    ef = ss.copy()
+    ef["Ranking"] = ef["% Ubicado"].rank(method="dense", ascending=False).astype(int)
+    ef = ef[["Ranking","Tienda","Total Ingresos","Habilitado","Ubicado","% Habilitado","% Ubicado","Estado"]].sort_values("Ranking")
+    st.dataframe(style_dataframe(ef), width="stretch")
 
-with T['Ranking de Colaboradores']:
-    st.subheader('Ranking de Colaboradores')
-    if not op.empty:
-        df=op.groupby(['Ocurrencia','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum'))
-        df['Score']=(df['Productividad'].rank(pct=True)*85+df['Recorridos'].rank(pct=True)*15).round(0); df['Ranking']=df['Score'].rank(method='first',ascending=False).astype(int)
-        st.dataframe(style_df(df.sort_values('Ranking')),width='stretch')
+# 8 Cumplimiento Recorridos
+with tab["8. Cumplimiento de Recorridos"]:
+    st.subheader("Cumplimiento de Recorridos")
+    rec = ss[["Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos"]].copy()
+    rec["Estatus"] = np.where(rec["% Recorridos"] >= 100, "🟢 Cumple", np.where(rec["% Recorridos"] >= 80, "🟡 Atención", "🔴 Bajo"))
+    rec["Ranking"] = rec["% Recorridos"].rank(method="dense", ascending=False).astype(int)
+    rec = rec[["Ranking","Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos","Estatus"]].sort_values("Ranking")
+    st.dataframe(style_dataframe(rec), width="stretch")
+    fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
+                 color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
+    fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
+    st.plotly_chart(fig, width="stretch")
 
-with T['Índice Integral']:
-    st.subheader('Índice Integral')
-    st.metric('Score Integral',f'{score:,.0f}/100'); st.progress(min(score/100,1)); st.write('40% Productividad | 25% Habilitado | 15% Ubicado | 10% Conversión | 10% Recorridos')
+# 9 Indicadores Diarios
+with tab["9. Indicadores Diarios"]:
+    st.subheader("Indicadores Diarios")
+    if op.empty:
+        st.warning("Sin datos.")
+    else:
+        diaria = op.groupby(["Fecha Día","Tienda","Ocurrencia","Nombre Real"], as_index=False).agg(
+            Recoleccion=("Recolección de Muertos","sum"),
+            Habilitado=("Habilitado","sum"),
+            Ubicado=("Ubicado","sum"),
+            Recorridos=("Recorridos","sum")
+        )
+        sys_day = daily.groupby(["Fecha Día","Tienda"], as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum")) if not daily.empty else pd.DataFrame(columns=["Fecha Día","Tienda","Dev_Pzs"])
+        diaria = diaria.merge(sys_day, on=["Fecha Día","Tienda"], how="left").fillna(0)
+        diaria["Total Ingresos"] = diaria["Dev_Pzs"] + diaria["Recoleccion"]
+        diaria["% Habilitado"] = sdiv(diaria["Habilitado"], diaria["Total Ingresos"]) * 100
+        diaria["% Ubicado"] = sdiv(diaria["Ubicado"], diaria["Total Ingresos"]) * 100
+        diaria["Meta"] = metas["productividad_diaria"]
+        diaria["Productividad"] = diaria["Recoleccion"] + diaria["Habilitado"] + diaria["Ubicado"]
+        diaria["Cumplimiento %"] = sdiv(diaria["Productividad"], diaria["Meta"]) * 100
+        diaria = diaria.rename(columns={"Ocurrencia":"ID de empleado"})
+        st.dataframe(style_dataframe(diaria), width="stretch")
 
-with T['Alertas Inteligentes']:
-    st.subheader('Alertas Inteligentes')
-    alerts=[]
-    if pct(ss_reg['Vta_Pzs'].sum(),ss_reg['Dev_Pzs'].sum())<metas['conversion']: alerts.append(['Conversión','Alta','Conversión menor a meta'])
-    if pct(ss_reg['Vta_Imp'].sum(),ss_reg['Costo_Dev'].sum())<metas['recuperacion']: alerts.append(['Recuperación','Alta','Recuperación menor a meta'])
-    for _,r in ss.iterrows():
-        if r['Con Registro']==False: alerts.append(['Tienda sin registros','Media',f"{r['Tienda']} sin registros"])
-        elif r['Productividad']>0 and r['Vta_Imp']==0: alerts.append(['Productividad sin recuperación','Media',f"{r['Tienda']} tiene productividad sin recuperación"])
-    st.dataframe(style_df(pd.DataFrame(alerts,columns=['Tipo','Prioridad','Alerta'])),width='stretch') if alerts else st.success('Sin alertas críticas.')
+# 10 Top Modelos
+with tab["10. Top 30 Modelos"]:
+    st.subheader("Top 30 Modelos")
+    if co.empty:
+        st.warning("Sin información comercial.")
+    else:
+        top = co.groupby(["Modelo","Categoria","Subcategoria"], as_index=False).agg(
+            Dev_Pzs=("Dev_Pzs","sum"),
+            Vta_Pzs=("Piezas Vendidas Validadas","sum"),
+            Recuperacion_Dinero=("Vta_Imp","sum"),
+            Costo_Dev=("Costo_Dev","sum")
+        )
+        top["Recuperación %"] = sdiv(top["Recuperacion_Dinero"], top["Costo_Dev"]) * 100
+        top["Valor Pendiente"] = top["Costo_Dev"] - top["Recuperacion_Dinero"]
+        criterio = st.selectbox("Ranking", ["Mayor recuperación económica","Mayor recuperación %","Mayor venta","Mayor pendiente"])
+        col = {"Mayor recuperación económica":"Recuperacion_Dinero","Mayor recuperación %":"Recuperación %","Mayor venta":"Vta_Pzs","Mayor pendiente":"Valor Pendiente"}[criterio]
+        top = top.sort_values(col, ascending=False).head(30)
+        st.dataframe(style_dataframe(top), width="stretch")
+        st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
+                               color_discrete_sequence=["#3366CC","#FF99FF","#003366"], title=criterio),
+                        width="stretch")
 
-if 'Configuración de Metas' in T:
-    with T['Configuración de Metas']:
-        st.subheader('Configuración de Metas')
-        cols=st.columns(3); nuevos={}
-        for i,(k,v) in enumerate(metas.items()):
-            with cols[i%3]: nuevos[k]=st.number_input(k,value=float(v),step=1.0)
-        if st.button('Guardar metas'):
-            for k,v in nuevos.items():
-                if float(v)!=float(metas[k]): update_meta(k,v)
-            st.success('Metas actualizadas.'); st.rerun()
-        st.dataframe(style_df(sql_df('SELECT * FROM historial_metas ORDER BY id DESC')),width='stretch')
+# 11 Categoría
+with tab["11. Análisis por Categoría"]:
+    st.subheader("Análisis por Categoría")
+    if co.empty:
+        st.warning("Sin información comercial.")
+    else:
+        cat = co.groupby("Categoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
+        cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
+        st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
+        st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
+                               color_discrete_sequence=["#3366CC"]), width="stretch")
 
-if 'Diagnóstico de Datos' in T:
-    with T['Diagnóstico de Datos']:
-        st.subheader('Diagnóstico de Datos')
-        try: diag=json.loads(get_estado('diagnostico','{}'))
-        except Exception: diag={}
-        st.json(diag); c1,c2,c3=st.columns(3); c1.metric('Registros operación',fmt_int(len(op_all))); c2.metric('Registros comercial',fmt_int(len(co_all))); c3.metric('Duplicados operación',fmt_int(op_all.duplicated().sum() if not op_all.empty else 0))
-        if not op_all.empty: st.dataframe(style_df(op_all.isna().sum().reset_index().rename(columns={'index':'Columna',0:'Nulos'})),width='stretch')
+# 12 Subcategoría
+with tab["12. Análisis por Subcategoría"]:
+    st.subheader("Análisis por Subcategoría")
+    if co.empty:
+        st.warning("Sin información comercial.")
+    else:
+        sub = co.groupby("Subcategoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
+        sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
+        st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
+        st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
+                               color_discrete_sequence=["#FF99FF"]), width="stretch")
 
-with T['Compartir ORION']:
-    st.subheader('Compartir ORION')
-    app_url = st.text_input('URL pública de la aplicación', value='https://operaciones-ropa-vjmsxlqrzqrmm3fhdgvcpt.streamlit.app')
-    st.code(app_url)
-    st.write(f'Última actualización: {ultima}')
-    st.write(f'Archivo cargado: {archivo}')
-    st.info('Una vez cargado el archivo por administrador, los usuarios en rol Consulta pueden ver la información sin cargar Excel.')
+# 13 Ranking Tiendas
+with tab["13. Ranking de Tiendas"]:
+    st.subheader("Ranking de Tiendas")
+    rank = ss_all.copy()
+    rank["Score"] = (
+        rank["Productividad"].rank(pct=True)*40 +
+        rank["% Habilitado"].rank(pct=True)*25 +
+        rank["% Ubicado"].rank(pct=True)*15 +
+        rank["Conversión %"].rank(pct=True)*10 +
+        rank["% Recorridos"].rank(pct=True)*10
+    ).round(1)
+    rank["Ranking"] = rank["Score"].rank(method="dense", ascending=False).astype(int)
+    rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
+    st.dataframe(style_dataframe(rank), width="stretch")
 
-st.markdown("""<div class="confidencial"><b>CONFIDENCIAL</b><br>La información contenida en esta plataforma es propiedad de Price Shoes y está destinada exclusivamente para uso interno de Operaciones Ropa. Queda prohibida su reproducción, distribución o divulgación sin autorización expresa de la Dirección correspondiente.<br>© Price Shoes | Operaciones Ropa</div>""", unsafe_allow_html=True)
+# 14 Ranking Colaboradores
+with tab["14. Ranking de Colaboradores"]:
+    st.subheader("Ranking de Colaboradores")
+    if op.empty:
+        st.warning("Sin datos.")
+    else:
+        rc = op.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"), Recorridos=("Recorridos","sum"))
+        rc["Score"] = (rc["Productividad"].rank(pct=True)*85 + rc["Recorridos"].rank(pct=True)*15).round(1)
+        rc["Ranking"] = rc["Score"].rank(method="dense", ascending=False).astype(int)
+        st.dataframe(style_dataframe(rc.sort_values("Ranking")), width="stretch")
+
+# 15 Índice Integral
+with tab["15. Índice Integral"]:
+    st.subheader("Índice Integral ORION")
+    st.metric("Score Integral", f"{score_integral:,.1f}/100")
+    st.progress(min(score_integral/100, 1.0))
+    score_break = pd.DataFrame({
+        "Componente": ["Productividad", "Habilitado", "Ubicado", "Conversión", "Recorridos"],
+        "Peso": ["40%", "25%", "15%", "10%", "10%"],
+        "Cumplimiento": [prod_pct, hab_pct, ubi_pct, conv_pct, recorr_pct]
+    })
+    st.dataframe(style_dataframe(score_break), width="stretch")
+
+# 16 Alertas
+with tab["16. Alertas Inteligentes"]:
+    st.subheader("Alertas Inteligentes")
+    alerts = []
+    if conv_pct < metas["conversion"]:
+        alerts.append(["Conversión", "Alta", f"Conversión menor a meta: {p1(conv_pct)} vs {p1(metas['conversion'])}"])
+    if rec_pct < metas["recuperacion"]:
+        alerts.append(["Recuperación", "Alta", f"Recuperación menor a meta: {p1(rec_pct)} vs {p1(metas['recuperacion'])}"])
+    if prod_pct < 80:
+        alerts.append(["Productividad", "Media", f"Productividad debajo de 80%: {p1(prod_pct)}"])
+    if recorr_pct < 80:
+        alerts.append(["Recorridos", "Media", f"Recorridos debajo de 80%: {p1(recorr_pct)}"])
+
+    for _, r in ss_all.iterrows():
+        if r["Estado"] == "🔴 Sin registros":
+            alerts.append(["Tienda sin registros", "Alta", f"{r['Tienda']} no tiene registros."])
+        if r["Estado"] == "🟡 Productividad sin Recuperación":
+            alerts.append(["Productividad sin recuperación", "Media", f"{r['Tienda']} tiene productividad sin recuperación."])
+
+    alert_df = pd.DataFrame(alerts, columns=["Tipo","Prioridad","Alerta"])
+    if alert_df.empty:
+        st.success("Sin alertas críticas.")
+    else:
+        st.dataframe(style_dataframe(alert_df), width="stretch")
+
+# 17 Configuración
+if "17. Configuración de Metas" in tab:
+    with tab["17. Configuración de Metas"]:
+        st.subheader("⚙️ Configuración de Metas")
+        cols = st.columns(3)
+        nuevos = {}
+        for i, (k, v) in enumerate(metas.items()):
+            with cols[i % 3]:
+                nuevos[k] = st.number_input(k, value=float(v), step=1.0)
+        if st.button("Guardar metas"):
+            for k, v in nuevos.items():
+                if float(v) != float(metas[k]):
+                    update_meta(k, v)
+            st.success("Metas actualizadas.")
+            st.rerun()
+
+        st.write("Corrección de nombres por ID empleado / Ocurrencia")
+        if not op_all.empty:
+            empleados = op_all.groupby("Ocurrencia", as_index=False).agg(Nombre_actual=("Nombre","first"))
+            edit = st.data_editor(empleados, width="stretch", num_rows="fixed")
+            if st.button("Guardar nombres corregidos"):
+                mapping = dict(zip(edit["Ocurrencia"].astype(str), edit["Nombre_actual"].astype(str)))
+                save_nombre_map(mapping)
+                st.success("Nombres actualizados.")
+                st.rerun()
+
+        st.write("Historial de metas")
+        st.dataframe(style_dataframe(get_historial_metas()), width="stretch")
+
+# 18 Diagnóstico
+if "18. Diagnóstico de Datos" in tab:
+    with tab["18. Diagnóstico de Datos"]:
+        st.subheader("Diagnóstico de Datos")
+        try:
+            diag = json.loads(get_estado("diagnostico", "{}"))
+        except Exception:
+            diag = {}
+        st.json(diag)
+        c1,c2,c3 = st.columns(3)
+        c1.metric("Registros operación", n0(len(op_all)))
+        c2.metric("Registros comercial", n0(len(co_all)))
+        c3.metric("Registros comercial diario", n0(len(daily_all)))
+        if not op_all.empty:
+            st.write("Valores nulos operación")
+            st.dataframe(op_all.isna().sum().reset_index().rename(columns={"index":"Columna",0:"Nulos"}), width="stretch")
+
+# 19 Compartir
+with tab["19. Compartir ORION"]:
+    st.subheader("Compartir ORION")
+    url = st.text_input("URL pública de ORION", value="https://operaciones-ropa.streamlit.app")
+    st.code(url)
+    st.write(f"Fecha de actualización: {ultima}")
+    st.write(f"Archivo cargado: {archivo_cargado}")
+    st.info("Una vez cargado el archivo por administrador, los usuarios Consulta pueden visualizar la información sin cargar Excel.")
+
+st.markdown("""
+<div class="confidencial">
+<b>CONFIDENCIAL</b><br>
+La información contenida en esta plataforma es propiedad de Price Shoes y está destinada exclusivamente para uso interno de Operaciones Ropa.
+Queda prohibida su reproducción, distribución o divulgación sin autorización expresa de la Dirección correspondiente.<br>
+© Price Shoes | Operaciones Ropa
+</div>
+""", unsafe_allow_html=True)
