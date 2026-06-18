@@ -9,7 +9,7 @@ from io import BytesIO
 from datetime import datetime
 import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5.3 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION V5.4 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "orion_v5.db"
@@ -249,7 +249,7 @@ def load_saved():
 ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
 now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
 st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.3 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
+<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.4 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
 """,unsafe_allow_html=True)
 
 # Sidebar
@@ -331,7 +331,13 @@ def ensure_dashboard_columns(df):
     if "Actividad Realizada" not in df.columns:
         df["Actividad Realizada"] = "Sin registros"
     if "Ocurrencia" not in df.columns:
-        df["Ocurrencia"] = "Sin registros"
+        if "Occurrence" in df.columns:
+            df["Ocurrencia"] = df["Occurrence"]
+        else:
+            df["Ocurrencia"] = "Sin registros"
+
+    if "Occurrence" not in df.columns:
+        df["Occurrence"] = df["Ocurrencia"]
 
     # Fecha Día para metas por periodo
     if "Fecha Día" not in df.columns:
