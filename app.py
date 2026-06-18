@@ -9,7 +9,7 @@ from io import BytesIO
 from datetime import datetime
 import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5.4 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION V5.5 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "orion_v5.db"
@@ -138,7 +138,7 @@ def load_oper(file, hoja):
     for c in df.columns:
         cl=str(c).strip().lower()
         if cl in ['ubicación','ubicacion','tienda','sucursal']: rename[c]='Tienda'
-        elif cl in ['occurrence','ocurrencia']: rename[c]='Occurrence'
+        elif cl in ['occurrence','ocurrencia']: rename[c]='Ocurrencia'
         elif cl=='fecha': rename[c]='Fecha'
         elif cl in ['nombre','usuario','colaborador']: rename[c]='Nombre'
         elif cl in ['actividad realizada','actividad']: rename[c]='Actividad Realizada'
@@ -147,7 +147,7 @@ def load_oper(file, hoja):
         elif cl in ['motivo de ingreso','motivo']: rename[c]='Motivo de ingreso'
         elif cl=='área' or cl=='area': rename[c]='Área'
     df=df.rename(columns=rename)
-    for c in ['Fecha','Tienda','Occurrence','Nombre','Actividad Realizada','Motivo de ingreso','Área','Número de Piezas','Recorridos']:
+    for c in ['Fecha','Tienda','Ocurrencia','Nombre','Actividad Realizada','Motivo de ingreso','Área','Número de Piezas','Recorridos']:
         if c not in df.columns: df[c]=np.nan
     # si hay columnas duplicadas por renombre, tomar primera o combinar
     df=df.loc[:,~df.columns.duplicated()].copy()
@@ -156,7 +156,7 @@ def load_oper(file, hoja):
     df['Semana ISO']=df['Fecha'].dt.isocalendar().week.astype('Int64')
     df['Año ISO']=df['Fecha'].dt.isocalendar().year.astype('Int64')
     df['Mes']=df['Fecha'].dt.month_name()
-    for c in ['Tienda','Occurrence','Nombre','Actividad Realizada','Motivo de ingreso','Área']:
+    for c in ['Tienda','Ocurrencia','Nombre','Actividad Realizada','Motivo de ingreso','Área']:
         df[c]=df[c].apply(norm)
     df['Número de Piezas']=df['Número de Piezas'].apply(to_num)
     rec_num=df['Recorridos'].apply(to_num)
@@ -237,19 +237,19 @@ def save_data(op,co,diag,filename):
 def load_saved():
     op=pd.read_parquet(OP_PATH) if OP_PATH.exists() else pd.DataFrame()
     co=pd.read_parquet(CO_PATH) if CO_PATH.exists() else pd.DataFrame()
-    # aplicar nombres corregidos por Occurrence
+    # aplicar nombres corregidos por Ocurrencia
     if not op.empty:
         mp=get_name_map()
         if mp:
             op['Nombre Original']=op['Nombre']
-            op['Nombre']=op['Occurrence'].astype(str).map(mp).fillna(op['Nombre'])
+            op['Nombre']=op['Ocurrencia'].astype(str).map(mp).fillna(op['Nombre'])
     return op,co
 
 # Header
 ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
 now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
 st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.4 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
+<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.5 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
 """,unsafe_allow_html=True)
 
 # Sidebar
@@ -296,7 +296,7 @@ with st.sidebar:
     f_sub=st.multiselect('Subcategoría',sorted(co_all.get('Subcategoria',pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else [])
     f_mod=st.multiselect('Modelo',sorted(co_all.get('Modelo',pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else [])
     f_col=st.multiselect('Colaborador',sorted(op_all.get('Nombre',pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else [])
-    f_occ=st.multiselect('ID de empleado / Occurrence',sorted(op_all.get('Occurrence',pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else [])
+    f_occ=st.multiselect('ID de empleado / Ocurrencia',sorted(op_all.get('Ocurrencia',pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else [])
 
 op=op_all.copy(); co=co_all.copy()
 if f_sem and not op.empty: op=op[op['Semana ISO'].isin(f_sem)]
@@ -311,7 +311,7 @@ if f_cat and not co.empty: co=co[co['Categoria'].isin(f_cat)]
 if f_sub and not co.empty: co=co[co['Subcategoria'].isin(f_sub)]
 if f_mod and not co.empty: co=co[co['Modelo'].isin(f_mod)]
 if f_col and not op.empty: op=op[op['Nombre'].isin(f_col)]
-if f_occ and not op.empty: op=op[op['Occurrence'].isin(f_occ)]
+if f_occ and not op.empty: op=op[op['Ocurrencia'].isin(f_occ)]
 
 # Summaries
 def commercial_store(df):
@@ -331,13 +331,13 @@ def ensure_dashboard_columns(df):
     if "Actividad Realizada" not in df.columns:
         df["Actividad Realizada"] = "Sin registros"
     if "Ocurrencia" not in df.columns:
-        if "Occurrence" in df.columns:
-            df["Ocurrencia"] = df["Occurrence"]
+        if "Ocurrencia" in df.columns:
+            df["Ocurrencia"] = df["Ocurrencia"]
         else:
-            df["Ocurrencia"] = "Sin registros"
+            df["Ocurrencia"] = df["Ocurrencia"] if "Ocurrencia" in df.columns else "Sin registros"
 
-    if "Occurrence" not in df.columns:
-        df["Occurrence"] = df["Ocurrencia"]
+    if "Ocurrencia" not in df.columns:
+        df["Ocurrencia"] = df["Ocurrencia"]
 
     # Fecha Día para metas por periodo
     if "Fecha Día" not in df.columns:
@@ -440,7 +440,7 @@ tabs=st.tabs(tab_names); T=dict(zip(tab_names,tabs))
 
 with T['Panel Ejecutivo']:
     st.subheader('Panel Ejecutivo')
-    st.caption('Top y bottom muestran únicamente tiendas con registro. Se excluyen nombres no coherentes agrupando por ID de empleado / Occurrence.')
+    st.caption('Top y bottom muestran únicamente tiendas con registro. Se excluyen nombres no coherentes agrupando por ID de empleado / Ocurrencia.')
     panel=ss_reg.copy()
     panel['Score']=(panel['Productividad'].rank(pct=True)*40 + panel['Vta_Imp'].rank(pct=True)*25 + panel['Recorridos'].rank(pct=True)*20 + panel['Conversión %'].rank(pct=True)*15).round(0)
     c1,c2=st.columns(2)
@@ -448,7 +448,7 @@ with T['Panel Ejecutivo']:
         st.write('Top 2 Tiendas'); st.dataframe(style_df(panel.sort_values('Score',ascending=False).head(2)),width='stretch')
     with c2:
         st.write('Bottom 2 Tiendas'); st.dataframe(style_df(panel.sort_values('Score').head(2)),width='stretch')
-    colab=op.groupby(['Occurrence','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum')) if not op.empty else pd.DataFrame()
+    colab=op.groupby(['Ocurrencia','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum')) if not op.empty else pd.DataFrame()
     colab=colab[colab['Nombre'].astype(str).str.len()>2].sort_values('Productividad',ascending=False) if not colab.empty else colab
     c1,c2=st.columns(2)
     with c1: st.write('Top 3 Colaboradores'); st.dataframe(style_df(colab.head(3)),width='stretch')
@@ -484,12 +484,12 @@ with T['Recuperación Económica']:
 with T['Productividad por Colaborador']:
     st.subheader('Ranking de Productividad por Colaborador')
     if not op.empty:
-        area=op.groupby(['Occurrence','Nombre','Tienda','Área'],as_index=False).agg(Piezas=('Productividad Total','sum'))
-        idx=area.groupby(['Occurrence','Nombre','Tienda'])['Piezas'].idxmax(); area_max=area.loc[idx].rename(columns={'Área':'Área mayor productividad','Piezas':'Piezas área mayor'})
-        df=op.groupby(['Occurrence','Nombre','Tienda'],as_index=False).agg(Recoleccion=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'))
-        df=df.merge(area_max[['Occurrence','Nombre','Tienda','Área mayor productividad','Piezas área mayor']],on=['Occurrence','Nombre','Tienda'],how='left')
+        area=op.groupby(['Ocurrencia','Nombre','Tienda','Área'],as_index=False).agg(Piezas=('Productividad Total','sum'))
+        idx=area.groupby(['Ocurrencia','Nombre','Tienda'])['Piezas'].idxmax(); area_max=area.loc[idx].rename(columns={'Área':'Área mayor productividad','Piezas':'Piezas área mayor'})
+        df=op.groupby(['Ocurrencia','Nombre','Tienda'],as_index=False).agg(Recoleccion=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'))
+        df=df.merge(area_max[['Ocurrencia','Nombre','Tienda','Área mayor productividad','Piezas área mayor']],on=['Ocurrencia','Nombre','Tienda'],how='left')
         df['Meta']=meta_prod_periodo(op); df['Cumplimiento %']=sdiv(df['Productividad'],df['Meta'])*100; df['Ranking']=df['Productividad'].rank(method='first',ascending=False).astype(int)
-        df=df.sort_values('Ranking')[['Ranking','Occurrence','Nombre','Tienda','Recoleccion','Habilitado','Ubicado','Productividad','Meta','Cumplimiento %','Área mayor productividad','Piezas área mayor']]
+        df=df.sort_values('Ranking')[['Ranking','Ocurrencia','Nombre','Tienda','Recoleccion','Habilitado','Ubicado','Productividad','Meta','Cumplimiento %','Área mayor productividad','Piezas área mayor']]
         st.dataframe(style_df(df),width='stretch'); st.plotly_chart(px.bar(df.head(30),x='Nombre',y='Productividad',color='Cumplimiento %',color_continuous_scale=[ROSA,AZUL]),width='stretch')
 
 with T['Productividad por Actividad']:
@@ -515,15 +515,15 @@ with T['Cumplimiento de Recorridos']:
 with T['Indicadores Diarios']:
     st.subheader('Indicadores Diarios')
     if not op.empty:
-        df=op.groupby(['Fecha Día','Tienda','Occurrence','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum'),Ingresos=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Recorridos=('Recorridos','sum'))
+        df=op.groupby(['Fecha Día','Tienda','Ocurrencia','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum'),Ingresos=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Recorridos=('Recorridos','sum'))
         df['Meta']=metas['productividad_diaria']; df['Cumplimiento %']=sdiv(df['Productividad'],df['Meta'])*100; df['% Habilitado']=sdiv(df['Habilitado'],df['Ingresos'])*100; df['% Ubicado']=sdiv(df['Ubicado'],df['Ingresos'])*100
-        df=df.rename(columns={'Occurrence':'ID de empleado','Fecha Día':'Fecha'})
+        df=df.rename(columns={'Ocurrencia':'ID de empleado','Fecha Día':'Fecha'})
         st.dataframe(style_df(df),width='stretch')
         if is_admin:
             st.write('Modificar nombre por ID de empleado')
-            ids=sorted(op_all['Occurrence'].astype(str).unique())
+            ids=sorted(op_all['Ocurrencia'].astype(str).unique())
             occ=st.selectbox('ID de empleado',ids)
-            current=op_all.loc[op_all['Occurrence'].astype(str)==occ,'Nombre'].mode()
+            current=op_all.loc[op_all['Ocurrencia'].astype(str)==occ,'Nombre'].mode()
             suggested=current.iloc[0] if not current.empty else ''
             new_name=st.text_input('Nombre correcto',value=suggested)
             if st.button('Guardar nombre corregido'):
@@ -561,7 +561,7 @@ with T['Ranking de Tiendas']:
 with T['Ranking de Colaboradores']:
     st.subheader('Ranking de Colaboradores')
     if not op.empty:
-        df=op.groupby(['Occurrence','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum'))
+        df=op.groupby(['Ocurrencia','Nombre'],as_index=False).agg(Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum'))
         df['Score']=(df['Productividad'].rank(pct=True)*85+df['Recorridos'].rank(pct=True)*15).round(0); df['Ranking']=df['Score'].rank(method='first',ascending=False).astype(int)
         st.dataframe(style_df(df.sort_values('Ranking')),width='stretch')
 
