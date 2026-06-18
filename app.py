@@ -11,12 +11,12 @@ from io import BytesIO
 from datetime import datetime
 
 # ==========================================================
-# ORION PRO v1.0 LIMPIO
+# ORION PRO v1.1 LIMPIO
 # PRICE SHOES | OPERACIONES ROPA
 # Plataforma Indicadores de Recuperación de Mercancía
 # ==========================================================
 
-st.set_page_config(page_title="ORION PRO v1.0", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION PRO v1.1", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -559,6 +559,85 @@ def cargar_datos():
         op["Nombre Real"] = op["Ocurrencia"].astype(str).map(nombre_map).fillna(op.get("Nombre", "Sin dato"))
     return op, co, daily
 
+
+def normalizar_operacion(df):
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.copy()
+
+    text_cols = ["Tienda", "Ocurrencia", "Nombre", "Nombre Real", "Actividad Realizada", "Área", "Motivo de ingreso"]
+    for c in text_cols:
+        if c not in df.columns:
+            df[c] = "Sin dato"
+        df[c] = df[c].fillna("Sin dato").astype(str)
+
+    if "Fecha Día" not in df.columns:
+        if "Fecha" in df.columns:
+            df["Fecha Día"] = pd.to_datetime(df["Fecha"], errors="coerce").dt.date
+        elif "Fecha Base" in df.columns:
+            df["Fecha Día"] = pd.to_datetime(df["Fecha Base"], errors="coerce").dt.date
+        else:
+            df["Fecha Día"] = pd.NaT
+
+    if "Semana ISO" not in df.columns:
+        df["Semana ISO"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.isocalendar().week.astype("Int64")
+
+    if "Mes" not in df.columns:
+        df["Mes"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.month_name()
+
+    num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado"]
+    for c in num_cols:
+        if c not in df.columns:
+            df[c] = 0
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+
+    # Recorridos solo cuenta valor 1
+    df["Recorridos"] = np.where(df["Recorridos"] == 1, 1, 0)
+
+    df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
+    df["Ingresos Operativos"] = df["Recolección de Muertos"]
+    df["Productividad Total"] = df["Recolección de Muertos"] + df["Habilitado"] + df["Ubicado"]
+
+    nombre_map = get_nombre_map()
+    df["Nombre Real"] = df["Ocurrencia"].astype(str).map(nombre_map).fillna(df["Nombre Real"]).fillna(df["Nombre"])
+
+    return df
+
+def normalizar_comercial(df):
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.copy()
+
+    text_cols = ["Mes_Origen", "Tienda", "Modelo", "Categoria", "Subcategoria", "Id Art", "Color"]
+    for c in text_cols:
+        if c not in df.columns:
+            df[c] = "Sin dato"
+        df[c] = df[c].fillna("Sin dato").astype(str)
+
+    num_cols = ["Dev_Pzs", "Vta_Pzs", "Vta_Imp", "Costo_Dev", "Piezas Vendidas Validadas", "Valor Recuperado", "Valor Pendiente"]
+    for c in num_cols:
+        if c not in df.columns:
+            df[c] = 0
+        df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0)
+
+    df["Piezas Vendidas Validadas"] = np.minimum(df["Vta_Pzs"], df["Dev_Pzs"])
+    df["Valor Recuperado"] = df["Vta_Imp"]
+    df["Valor Pendiente"] = df["Costo_Dev"] - df["Vta_Imp"]
+    df["Conversión %"] = sdiv(df["Piezas Vendidas Validadas"], df["Dev_Pzs"]) * 100
+    df["Recuperación %"] = sdiv(df["Valor Recuperado"], df["Costo_Dev"]) * 100
+
+    return df
+
+def normalizar_diario_comercial(df):
+    df = normalizar_comercial(df)
+    if df.empty:
+        return df
+    if "Fecha Día" not in df.columns:
+        df["Fecha Día"] = pd.NaT
+    if "Semana ISO" not in df.columns:
+        df["Semana ISO"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.isocalendar().week.astype("Int64")
+    return df
+
 # ==========================================================
 # HEADER
 # ==========================================================
@@ -570,7 +649,7 @@ now = datetime.now()
 st.markdown(f"""
 <div class="orion-header">
     <div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div>
-    <div class="orion-title">🚀 ORION PRO v1.0</div>
+    <div class="orion-title">🚀 ORION PRO v1.1</div>
     <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
     <div class="orion-mini">
         Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
@@ -608,10 +687,26 @@ with st.sidebar:
                         st.rerun()
                     except Exception as e:
                         st.error(f"No se pudo procesar el archivo: {e}")
+            st.caption("Si cambiaste de versión y la app conserva datos viejos, borra la persistencia y vuelve a cargar el Excel.")
+        if st.button("🧹 Borrar datos persistidos"):
+            for f in [OPERACION_FILE, COMERCIAL_FILE, DIARIO_COMERCIAL_FILE]:
+                try:
+                    if f.exists():
+                        f.unlink()
+                except Exception:
+                    pass
+            set_estado("archivo", "Sin archivo cargado")
+            set_estado("ultima_actualizacion", "Sin actualización")
+            st.success("Datos persistidos borrados. Vuelve a cargar el Excel.")
+            st.rerun()
+
     else:
         st.caption("Modo consulta: visualización sin carga de archivo.")
 
 op_all, co_all, daily_all = cargar_datos()
+op_all = normalizar_operacion(op_all)
+co_all = normalizar_comercial(co_all)
+daily_all = normalizar_diario_comercial(daily_all)
 
 if op_all.empty and co_all.empty:
     st.warning("No hay datos cargados. Un administrador debe cargar el Excel por primera vez.")
@@ -690,6 +785,10 @@ if f_colab and not op.empty:
     op = op[op["Nombre Real"].isin(f_colab)]
 if f_ocurrencia and not op.empty:
     op = op[op["Ocurrencia"].isin(f_ocurrencia)]
+
+op = normalizar_operacion(op)
+co = normalizar_comercial(co)
+daily = normalizar_diario_comercial(daily)
 
 # ==========================================================
 # AGREGADOS CENTRALES
