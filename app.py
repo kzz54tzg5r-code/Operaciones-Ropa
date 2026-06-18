@@ -1,4 +1,59 @@
 
+def force_orion_columns(df):
+    """Blindaje definitivo de columnas operativas ORION."""
+    if df is None:
+        return pd.DataFrame()
+    df = df.copy()
+
+    text_defaults = {
+        "Tienda": "Sin registros",
+        "Nombre": "Sin registros",
+        "Ocurrencia": "Sin registros",
+        "Actividad Realizada": "Sin registros",
+        "Área": "Sin registros",
+    }
+    for col, default in text_defaults.items():
+        if col not in df.columns:
+            df[col] = default
+        df[col] = df[col].fillna(default).astype(str)
+
+    if "Fecha Día" not in df.columns:
+        if "Fecha" in df.columns:
+            df["Fecha Día"] = pd.to_datetime(df["Fecha"], errors="coerce").dt.date
+        elif "Día" in df.columns:
+            df["Fecha Día"] = pd.to_datetime(df["Día"], errors="coerce").dt.date
+        else:
+            df["Fecha Día"] = pd.NaT
+
+    numeric_cols = [
+        "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado",
+        "Recorridos", "Número de Piezas", "Dev_Pzs", "Vta_Pzs",
+        "Vta_Imp", "Costo_Dev"
+    ]
+    for col in numeric_cols:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
+    df["Recoleccion"] = df["Recolección de Muertos"]
+    df["Ingresos"] = df["Recolección de Muertos"]
+
+    if "Productividad Total" not in df.columns:
+        df["Productividad Total"] = 0
+    df["Productividad Total"] = pd.to_numeric(df["Productividad Total"], errors="coerce").fillna(0)
+    df["Productividad Total"] = np.where(
+        df["Productividad Total"] > 0,
+        df["Productividad Total"],
+        df["Recolección de Muertos"] + df["Habilitado"] + df["Ubicado"]
+    )
+
+    return df
+
+# Alias por compatibilidad con hotfix anteriores
+ensure_dashboard_columns = force_orion_columns
+
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,7 +64,7 @@ from io import BytesIO
 from datetime import datetime
 import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5.5 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION V5.6 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "orion_v5.db"
@@ -249,7 +304,7 @@ def load_saved():
 ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
 now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
 st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.5 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
+<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.6 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
 """,unsafe_allow_html=True)
 
 # Sidebar
@@ -318,58 +373,10 @@ def commercial_store(df):
     return df.groupby('Tienda',as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Vta_Imp=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'),Valor_Pendiente=('Valor Pendiente','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Dev_Pzs','Vta_Pzs','Vta_Imp','Costo_Dev','Valor_Pendiente'])
 
 
-def ensure_dashboard_columns(df):
-    """Asegura columnas numéricas requeridas para rankings y KPIs sin KeyError."""
-    if df is None:
-        return pd.DataFrame()
-    df = df.copy()
-
-    if "Tienda" not in df.columns:
-        df["Tienda"] = "Sin registros"
-    if "Nombre" not in df.columns:
-        df["Nombre"] = "Sin registros"
-    if "Actividad Realizada" not in df.columns:
-        df["Actividad Realizada"] = "Sin registros"
-    if "Ocurrencia" not in df.columns:
-        if "Ocurrencia" in df.columns:
-            df["Ocurrencia"] = df["Ocurrencia"]
-        else:
-            df["Ocurrencia"] = df["Ocurrencia"] if "Ocurrencia" in df.columns else "Sin registros"
-
-    if "Ocurrencia" not in df.columns:
-        df["Ocurrencia"] = df["Ocurrencia"]
-
-    # Fecha Día para metas por periodo
-    if "Fecha Día" not in df.columns:
-        if "Fecha" in df.columns:
-            df["Fecha Día"] = pd.to_datetime(df["Fecha"], errors="coerce").dt.date
-        elif "Día" in df.columns:
-            df["Fecha Día"] = pd.to_datetime(df["Día"], errors="coerce").dt.date
-        else:
-            df["Fecha Día"] = pd.NaT
-
-    required_numeric = [
-        "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado",
-        "Productividad Total", "Recorridos", "Número de Piezas",
-        "Ingresos", "Recolección de Muertos"
-    ]
-
-    for col in required_numeric:
-        if col not in df.columns:
-            df[col] = 0
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
-    df["Ingresos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
-
-    if df["Productividad Total"].sum() == 0:
-        df["Productividad Total"] = df["Recolección de Muertos"] + df["Habilitado"] + df["Ubicado"]
-
-    return df
 
 def operation_store(df):
     df = ensure_dashboard_columns(df)
-    return df.groupby('Tienda',as_index=False).agg(Muertos=('Muertos','sum'),Cajas=('Cajas','sum'),Probador=('Probador','sum'),Recoleccion=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Muertos','Cajas','Probador','Recoleccion','Habilitado','Ubicado','Productividad','Recorridos'])
+    return df.groupby('Tienda',as_index=False).agg(Muertos=('Muertos','sum'),Cajas=('Cajas','sum'),Probador=('Probador','sum'),Recoleccion=('Recoleccion','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'),Recorridos=('Recorridos','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Muertos','Cajas','Probador','Recoleccion','Habilitado','Ubicado','Productividad','Recorridos'])
 
 def store_summary(opdf,codf, only_registered=False):
     base=pd.DataFrame({'Tienda':TIENDAS})
@@ -486,7 +493,8 @@ with T['Productividad por Colaborador']:
     if not op.empty:
         area=op.groupby(['Ocurrencia','Nombre','Tienda','Área'],as_index=False).agg(Piezas=('Productividad Total','sum'))
         idx=area.groupby(['Ocurrencia','Nombre','Tienda'])['Piezas'].idxmax(); area_max=area.loc[idx].rename(columns={'Área':'Área mayor productividad','Piezas':'Piezas área mayor'})
-        df=op.groupby(['Ocurrencia','Nombre','Tienda'],as_index=False).agg(Recoleccion=('Recolección de Muertos','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'))
+        op = force_orion_columns(op)
+df=op.groupby(['Ocurrencia','Nombre','Tienda'],as_index=False).agg(Recoleccion=('Recoleccion','sum'),Habilitado=('Habilitado','sum'),Ubicado=('Ubicado','sum'),Productividad=('Productividad Total','sum'))
         df=df.merge(area_max[['Ocurrencia','Nombre','Tienda','Área mayor productividad','Piezas área mayor']],on=['Ocurrencia','Nombre','Tienda'],how='left')
         df['Meta']=meta_prod_periodo(op); df['Cumplimiento %']=sdiv(df['Productividad'],df['Meta'])*100; df['Ranking']=df['Productividad'].rank(method='first',ascending=False).astype(int)
         df=df.sort_values('Ranking')[['Ranking','Ocurrencia','Nombre','Tienda','Recoleccion','Habilitado','Ubicado','Productividad','Meta','Cumplimiento %','Área mayor productividad','Piezas área mayor']]
