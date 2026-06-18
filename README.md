@@ -1,33 +1,22 @@
-# ORION CORPORATIVO
+# ORION V2
 
-Plataforma Indicadores de Recuperación de Mercancía  
-PRICE SHOES | OPERACIONES ROPA
+Versión acoplada específicamente al archivo:
+
+`Base de datos muertos y cambios.xlsx`
 
 ## Archivos
-- `app.py`
-- `requirements.txt`
+- app.py
+- requirements.txt
 
-## Deploy en Streamlit Cloud
+## Clave administrador
+orion_admin
+
+## Instrucciones
 1. Sube `app.py` y `requirements.txt` a GitHub.
-2. En Streamlit Cloud crea una app nueva.
-3. Repository: tu repositorio.
-4. Branch: `main`.
-5. Main file path: `app.py`.
-6. Deploy.
-
-## Acceso administrador
-Clave por defecto:
-`orion_admin`
-
-Para cambiarla en Streamlit Cloud:
-Settings > Secrets
-
-```toml
-ADMIN_PASSWORD = "tu_clave"
-```
-
-## Uso
-1. Entra como Administrador.
-2. Carga el Excel.
-3. ORION guarda los datos en SQLite/Parquet.
-4. Usuarios Consulta ya pueden ver dashboards sin cargar Excel.
+2. En Streamlit Cloud usa:
+   - Branch: main
+   - Main file path: app.py
+3. Entra como Administrador.
+4. Carga el Excel.
+5. ORION guardará la información en Parquet y SQLite.
+6. Los usuarios Consulta ya podrán visualizar sin cargar archivo.
