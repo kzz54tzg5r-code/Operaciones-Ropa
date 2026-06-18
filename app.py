@@ -9,7 +9,7 @@ from io import BytesIO
 from datetime import datetime
 import sqlite3, json, re
 
-st.set_page_config(page_title="ORION V5.1 HOTFIX", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION V5.2 HOTFIX.2 HOTFIX", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data"); DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "orion_v5.db"
@@ -249,7 +249,7 @@ def load_saved():
 ultima=get_estado('ultima_actualizacion','Sin actualización'); archivo=get_estado('archivo','Sin archivo cargado')
 now=datetime.now(); estado='Disponible' if OP_PATH.exists() or CO_PATH.exists() else 'Sin datos'
 st.markdown(f"""
-<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.1 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
+<div class="orion-header"><div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div><div class="orion-title">🚀 ORION V5.2 HOTFIX.2 HOTFIX</div><div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div><div class="orion-mini">Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>Fecha actual: {now:%Y-%m-%d} | Hora actual: {now:%H:%M:%S} | Última actualización: {ultima} | Estado de información: {estado}</div></div>
 """,unsafe_allow_html=True)
 
 # Sidebar
@@ -316,6 +316,41 @@ if f_occ and not op.empty: op=op[op['Occurrence'].isin(f_occ)]
 # Summaries
 def commercial_store(df):
     return df.groupby('Tienda',as_index=False).agg(Dev_Pzs=('Dev_Pzs','sum'),Vta_Pzs=('Piezas Vendidas Validadas','sum'),Vta_Imp=('Vta_Imp','sum'),Costo_Dev=('Costo_Dev','sum'),Valor_Pendiente=('Valor Pendiente','sum')) if not df.empty else pd.DataFrame(columns=['Tienda','Dev_Pzs','Vta_Pzs','Vta_Imp','Costo_Dev','Valor_Pendiente'])
+
+
+def ensure_dashboard_columns(df):
+    """Asegura columnas numéricas requeridas para rankings y KPIs sin KeyError."""
+    if df is None:
+        return pd.DataFrame()
+    df = df.copy()
+
+    if "Tienda" not in df.columns:
+        df["Tienda"] = "Sin registros"
+    if "Nombre" not in df.columns:
+        df["Nombre"] = "Sin registros"
+    if "Actividad Realizada" not in df.columns:
+        df["Actividad Realizada"] = "Sin registros"
+    if "Ocurrencia" not in df.columns:
+        df["Ocurrencia"] = "Sin registros"
+
+    required_numeric = [
+        "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado",
+        "Productividad Total", "Recorridos", "Número de Piezas",
+        "Ingresos", "Recolección de Muertos"
+    ]
+
+    for col in required_numeric:
+        if col not in df.columns:
+            df[col] = 0
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
+    df["Ingresos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
+
+    if df["Productividad Total"].sum() == 0:
+        df["Productividad Total"] = df["Recolección de Muertos"] + df["Habilitado"] + df["Ubicado"]
+
+    return df
 
 def operation_store(df):
     df = ensure_dashboard_columns(df)
