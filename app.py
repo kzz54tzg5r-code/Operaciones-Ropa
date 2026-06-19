@@ -11,12 +11,12 @@ from io import BytesIO
 from datetime import datetime
 
 # ==========================================================
-# ORION PRO v1.2 LIMPIO
+# ORION PRO v1.3 LIMPIO
 # PRICE SHOES | OPERACIONES ROPA
 # Plataforma Indicadores de Recuperación de Mercancía
 # ==========================================================
 
-st.set_page_config(page_title="ORION PRO v1.2", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION PRO v1.3", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -292,10 +292,48 @@ def normalize_store(x):
 def style_dataframe(df):
     if not isinstance(df, pd.DataFrame) or df.empty:
         return df
-    return df.style.set_table_styles([
-        {"selector": "th", "props": [("background-color", "#003366"), ("color", "white"), ("font-weight", "bold")]},
-        {"selector": "td", "props": [("border", "1px solid #DDE7F7")]},
-    ]).format(precision=0, thousands=",")
+
+    currency_cols = [
+        c for c in df.columns
+        if any(k in str(c).lower() for k in [
+            "recuperacion", "recuperación", "costo", "valor", "importe", "$", "pendiente $"
+        ])
+    ]
+    percent_cols = [
+        c for c in df.columns
+        if "%" in str(c) or "porcentaje" in str(c).lower() or "cumplimiento" in str(c).lower()
+    ]
+
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    fmt = {}
+    for c in numeric_cols:
+        if c in currency_cols:
+            fmt[c] = "${:,.0f}"
+        elif c in percent_cols:
+            fmt[c] = "{:,.1f}%"
+        else:
+            fmt[c] = "{:,.0f}"
+
+    return (
+        df.style
+        .set_table_styles([
+            {"selector": "th", "props": [
+                ("background-color", "#003366"),
+                ("color", "white"),
+                ("font-weight", "bold"),
+                ("border", "1px solid #003366")
+            ]},
+            {"selector": "td", "props": [
+                ("border", "1px solid #DDE7F7"),
+                ("background-color", "#FFFFFF")
+            ]},
+            {"selector": "tbody tr:nth-child(even) td", "props": [
+                ("background-color", "#F4F7FF")
+            ]},
+        ])
+        .format(fmt)
+    )
 
 def excel_export(sheets):
     bio = BytesIO()
@@ -649,7 +687,7 @@ now = datetime.now()
 st.markdown(f"""
 <div class="orion-header">
     <div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div>
-    <div class="orion-title">🚀 ORION PRO v1.2</div>
+    <div class="orion-title">🚀 ORION PRO v1.3</div>
     <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
     <div class="orion-mini">
         Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
@@ -832,7 +870,7 @@ def store_summary(opdf, codf, only_registered=True):
     base = pd.DataFrame({"Tienda": TIENDAS_OFICIALES}) if not only_registered else pd.DataFrame({"Tienda": sorted(set(op_store.get("Tienda", [])) | set(co_store.get("Tienda", [])))})
     out = base.merge(op_store, on="Tienda", how="left").merge(co_store, on="Tienda", how="left").fillna(0)
 
-    for c in ["Muertos","Cajas","Probador","Recoleccion","Habilitado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperacion","Costo_Dev"]:
+    for c in ["Muertos","Cajas","Probador","Recoleccion","Habilitado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperación $","Costo_Dev"]:
         if c not in out.columns:
             out[c] = 0
         out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
@@ -841,14 +879,14 @@ def store_summary(opdf, codf, only_registered=True):
     out["% Habilitado"] = sdiv(out["Habilitado"], out["Total Ingresos"]) * 100
     out["% Ubicado"] = sdiv(out["Ubicado"], out["Total Ingresos"]) * 100
     out["Conversión %"] = sdiv(out["Vta_Pzs"], out["Dev_Pzs"]) * 100
-    out["Recuperación %"] = sdiv(out["Recuperacion"], out["Costo_Dev"]) * 100
+    out["Recuperación %"] = sdiv(out["Recuperación $"], out["Costo_Dev"]) * 100
     out["Meta Recorridos"] = meta_recorridos_periodo(opdf)
     out["% Recorridos"] = sdiv(out["Recorridos"], out["Meta Recorridos"]) * 100
     out["Estado"] = np.select(
         [
-            (out["Productividad"] > 0) & (out["Recuperacion"] > 0),
-            (out["Productividad"] > 0) & (out["Recuperacion"] == 0),
-            (out["Productividad"] == 0) & (out["Recuperacion"] > 0),
+            (out["Productividad"] > 0) & (out["Recuperación $"] > 0),
+            (out["Productividad"] > 0) & (out["Recuperación $"] == 0),
+            (out["Productividad"] == 0) & (out["Recuperación $"] > 0),
         ],
         [
             "🟢 Productividad + Recuperación",
@@ -933,7 +971,7 @@ tab = dict(zip(tabs_names, tabs))
 # 0 Día Anterior / Pendiente
 with tab["0. Día Anterior / Pendiente"]:
     st.subheader("Día Anterior | Ingresos y Pendiente por Procesar")
-    st.caption("Muestra los ingresos del día anterior y lo pendiente por procesar en habilitado y ubicado.")
+    st.caption("Muestra únicamente tiendas con productividad registrada. Formato: piezas con coma, pesos con $, porcentajes con %.")
 
     if op_all.empty:
         st.warning("Sin datos operativos.")
@@ -981,10 +1019,19 @@ with tab["0. Día Anterior / Pendiente"]:
             else:
                 sys_resumen = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
 
-            tiendas_dia = sorted(
-                set(op_resumen["Tienda"].astype(str).tolist()) |
-                set(sys_resumen["Tienda"].astype(str).tolist())
-            )
+            # Solo tiendas con registro de productividad operativa en el día.
+            # No se incluyen tiendas que solo traen sistema/dev sin productividad.
+            if not op_resumen.empty:
+                op_resumen["Productividad Registrada"] = (
+                    pd.to_numeric(op_resumen["Muertos"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Cajas"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Probador"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Habilitado"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Ubicado"], errors="coerce").fillna(0)
+                )
+                op_resumen = op_resumen[op_resumen["Productividad Registrada"] > 0]
+
+            tiendas_dia = sorted(set(op_resumen["Tienda"].astype(str).tolist()))
 
             if not tiendas_dia:
                 st.info("No hay registros para la fecha seleccionada.")
@@ -1143,10 +1190,11 @@ with tab["4. Recuperación Económica"]:
     c1.metric("Valor Recuperado", money(recuperacion))
     c2.metric("Costo Dev", money(costo_dev))
     c3.metric("Valor Pendiente", money(costo_dev - recuperacion))
-    eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy()
-    eco["Valor Pendiente"] = eco["Costo_Dev"] - eco["Recuperacion"]
-    st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
-    st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
+    eco = ss[["Tienda","Recuperación $","Costo_Dev","Recuperación %","Estado"]].copy()
+    eco = eco.rename(columns={"Recuperación $":"Recuperación $", "Costo_Dev":"Costo Dev $"})
+    eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperación $"]
+    st.dataframe(style_dataframe(eco.sort_values("Recuperación $", ascending=False)), width="stretch")
+    st.plotly_chart(px.bar(eco.sort_values("Recuperación $", ascending=False), x="Tienda", y="Recuperación $",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Recuperación $ por tienda"), width="stretch")
 
@@ -1286,8 +1334,8 @@ with tab["11. Análisis por Categoría"]:
     else:
         cat = co.groupby("Categoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
-        st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
+        st.dataframe(style_dataframe(cat.sort_values("Recuperación $", ascending=False)), width="stretch")
+        st.plotly_chart(px.bar(cat.sort_values("Recuperación $", ascending=False), x="Categoria", y="Recuperación $",
                                color_discrete_sequence=["#3366CC"]), width="stretch")
 
 # 12 Subcategoría
@@ -1298,8 +1346,8 @@ with tab["12. Análisis por Subcategoría"]:
     else:
         sub = co.groupby("Subcategoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
-        st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
+        st.dataframe(style_dataframe(sub.sort_values("Recuperación $", ascending=False)), width="stretch")
+        st.plotly_chart(px.bar(sub.sort_values("Recuperación $", ascending=False).head(30), x="Subcategoria", y="Recuperación $",
                                color_discrete_sequence=["#FF99FF"]), width="stretch")
 
 # 13 Ranking Tiendas
@@ -1314,7 +1362,8 @@ with tab["13. Ranking de Tiendas"]:
         rank["% Recorridos"].rank(pct=True)*10
     ).round(1)
     rank["Ranking"] = rank["Score"].rank(method="dense", ascending=False).astype(int)
-    rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
+    rank = rank.rename(columns={"Recuperacion":"Recuperación $"})
+    rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperación $","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rank), width="stretch")
 
 # 14 Ranking Colaboradores
