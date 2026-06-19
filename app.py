@@ -11,12 +11,12 @@ from io import BytesIO
 from datetime import datetime
 
 # ==========================================================
-# ORION PRO v1.1 LIMPIO
+# ORION PRO v1.2 LIMPIO
 # PRICE SHOES | OPERACIONES ROPA
 # Plataforma Indicadores de Recuperación de Mercancía
 # ==========================================================
 
-st.set_page_config(page_title="ORION PRO v1.1", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION PRO v1.2", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -649,7 +649,7 @@ now = datetime.now()
 st.markdown(f"""
 <div class="orion-header">
     <div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div>
-    <div class="orion-title">🚀 ORION PRO v1.1</div>
+    <div class="orion-title">🚀 ORION PRO v1.2</div>
     <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
     <div class="orion-mini">
         Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
@@ -902,6 +902,7 @@ c5.metric("Score Integral", f"{score_integral:,.1f}/100")
 # PESTAÑAS
 # ==========================================================
 tabs_names = [
+    "0. Día Anterior / Pendiente",
     "1. Panel Ejecutivo",
     "2. Macro",
     "3. Conversión",
@@ -927,6 +928,128 @@ if not is_admin:
     tabs_names.remove("18. Diagnóstico de Datos")
 tabs = st.tabs(tabs_names)
 tab = dict(zip(tabs_names, tabs))
+
+
+# 0 Día Anterior / Pendiente
+with tab["0. Día Anterior / Pendiente"]:
+    st.subheader("Día Anterior | Ingresos y Pendiente por Procesar")
+    st.caption("Muestra los ingresos del día anterior y lo pendiente por procesar en habilitado y ubicado.")
+
+    if op_all.empty:
+        st.warning("Sin datos operativos.")
+    else:
+        temp_op = op_all.copy()
+        temp_daily = daily_all.copy()
+
+        fechas_validas = pd.to_datetime(temp_op["Fecha Día"], errors="coerce").dropna()
+
+        if fechas_validas.empty:
+            st.warning("No hay fechas válidas para calcular día anterior.")
+        else:
+            ultima_fecha = fechas_validas.max().date()
+            dia_anterior = ultima_fecha - pd.Timedelta(days=1)
+
+            fecha_consulta = st.date_input(
+                "Fecha a consultar",
+                value=dia_anterior,
+                help="Por default se toma el día anterior al último día con registro en la base."
+            )
+
+            op_dia = temp_op[pd.to_datetime(temp_op["Fecha Día"], errors="coerce").dt.date == fecha_consulta].copy()
+
+            if not temp_daily.empty and "Fecha Día" in temp_daily.columns:
+                daily_dia = temp_daily[pd.to_datetime(temp_daily["Fecha Día"], errors="coerce").dt.date == fecha_consulta].copy()
+            else:
+                daily_dia = pd.DataFrame()
+
+            if not op_dia.empty:
+                op_resumen = op_dia.groupby("Tienda", as_index=False).agg(
+                    Muertos=("Muertos", "sum"),
+                    Cajas=("Cajas", "sum"),
+                    Probador=("Probador", "sum"),
+                    Habilitado=("Habilitado", "sum"),
+                    Ubicado=("Ubicado", "sum"),
+                    Recorridos=("Recorridos", "sum"),
+                )
+            else:
+                op_resumen = pd.DataFrame(columns=["Tienda", "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado", "Recorridos"])
+
+            if not daily_dia.empty:
+                sys_resumen = daily_dia.groupby("Tienda", as_index=False).agg(
+                    Dev_Pzs=("Dev_Pzs", "sum")
+                )
+            else:
+                sys_resumen = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
+
+            tiendas_dia = sorted(
+                set(op_resumen["Tienda"].astype(str).tolist()) |
+                set(sys_resumen["Tienda"].astype(str).tolist())
+            )
+
+            if not tiendas_dia:
+                st.info("No hay registros para la fecha seleccionada.")
+            else:
+                resumen = pd.DataFrame({"Tienda": tiendas_dia})
+                resumen = resumen.merge(op_resumen, on="Tienda", how="left")
+                resumen = resumen.merge(sys_resumen, on="Tienda", how="left")
+                resumen = resumen.fillna(0)
+
+                for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado", "Recorridos"]:
+                    resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
+
+                resumen["Ingresos Día Anterior"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+                resumen["Pendiente Habilitar"] = (resumen["Ingresos Día Anterior"] - resumen["Habilitado"]).clip(lower=0)
+                resumen["Pendiente Ubicar"] = (resumen["Ingresos Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
+                resumen["% Habilitado"] = sdiv(resumen["Habilitado"], resumen["Ingresos Día Anterior"]) * 100
+                resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Ingresos Día Anterior"]) * 100
+
+                resumen["Estatus"] = np.where(
+                    resumen["Pendiente Ubicar"] <= 0,
+                    "🟢 Completo",
+                    np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente")
+                )
+
+                resumen["Ranking Pendiente"] = resumen["Pendiente Ubicar"].rank(method="dense", ascending=False).astype(int)
+                resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Habilitar"], ascending=False)
+
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("Ingresos", n0(resumen["Ingresos Día Anterior"].sum()))
+                c2.metric("Habilitado", n0(resumen["Habilitado"].sum()))
+                c3.metric("Ubicado", n0(resumen["Ubicado"].sum()))
+                c4.metric("Pend. Habilitar", n0(resumen["Pendiente Habilitar"].sum()))
+                c5.metric("Pend. Ubicar", n0(resumen["Pendiente Ubicar"].sum()))
+
+                columnas = [
+                    "Ranking Pendiente", "Tienda", "Estatus",
+                    "Ingresos Día Anterior", "Dev_Pzs", "Muertos", "Cajas", "Probador",
+                    "Habilitado", "Pendiente Habilitar", "% Habilitado",
+                    "Ubicado", "Pendiente Ubicar", "% Ubicado", "Recorridos"
+                ]
+
+                st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
+
+                fig = px.bar(
+                    resumen,
+                    x="Tienda",
+                    y=["Ingresos Día Anterior", "Habilitado", "Ubicado"],
+                    barmode="group",
+                    title="Ingresos vs Habilitado vs Ubicado por tienda",
+                    color_discrete_sequence=["#3366CC", "#FF99FF", "#003366"]
+                )
+                st.plotly_chart(fig, width="stretch")
+
+                fig2 = px.bar(
+                    resumen,
+                    x="Tienda",
+                    y=["Pendiente Habilitar", "Pendiente Ubicar"],
+                    barmode="group",
+                    title="Pendiente por procesar",
+                    color_discrete_sequence=["#FF99FF", "#003366"]
+                )
+                st.plotly_chart(fig2, width="stretch")
+
+                export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
+
 
 # 1 Panel Ejecutivo
 with tab["1. Panel Ejecutivo"]:
