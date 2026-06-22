@@ -1,13 +1,14 @@
-# ORION PRO v1.4 - Diseño ES Check List Evidencia
+# ORION - Diseño Boceto Exacto
 
-Incluye:
-- Fondo rosa corporativo.
-- Encabezado tipo Operaciones Ropa.
-- Soporte para logo en `assets/logo.png`.
-- Si no existe logo, muestra emblema textual `OR`.
-- Tarjetas, tabs y tablas con estética azul/rosa corporativa.
+Diseño basado en el boceto:
+- Header blanco con logo Price Shoes.
+- Título: Recuperación Cambios y Muertos.
+- Subtítulo: Matriz de Operaciones.
+- Barra magenta: Operaciones Ropa.
+- Navegación horizontal.
+- KPI cards estilo boceto.
+- Tablas limpias con encabezado gris claro.
 
-Para agregar el logo:
-1. Crea carpeta `assets` en GitHub.
-2. Sube el logo como `logo.png`.
-3. Reboot app.
+Logo:
+- Coloca tu logo en `assets/logo.png`.
+- Si no existe, se muestra texto Price Shoes.

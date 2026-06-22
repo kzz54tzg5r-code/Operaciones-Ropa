@@ -11,12 +11,12 @@ from io import BytesIO
 from datetime import datetime
 
 # ==========================================================
-# ORION PRO v1.4 LIMPIO
+# Recuperación Cambios y Muertos LIMPIO
 # PRICE SHOES | OPERACIONES ROPA
 # Plataforma Indicadores de Recuperación de Mercancía
 # ==========================================================
 
-st.set_page_config(page_title="ORION PRO v1.4", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Recuperación Cambios y Muertos", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -56,125 +56,41 @@ DEFAULT_METAS = {
 # ==========================================================
 st.markdown("""
 <style>
-:root {
-    --azul: #3366CC;
-    --azul-oscuro: #003366;
-    --rosa: #FF99FF;
-    --rosa-fuerte: #E91E82;
-    --fondo-rosa: #FFE6F4;
-    --borde: #F6B8DC;
-}
-.stApp {
-    background:
-        radial-gradient(circle at 12% 5%, rgba(255,153,255,.35), transparent 30%),
-        radial-gradient(circle at 92% 18%, rgba(51,102,204,.14), transparent 32%),
-        linear-gradient(180deg, #FFE6F4 0%, #FFF6FB 48%, #FFFFFF 100%);
-}
-.block-container {padding-top:1rem; padding-bottom:2rem; max-width:1500px;}
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, rgba(255,153,255,.38), rgba(255,255,255,.96));
-    border-right:1px solid var(--borde);
-}
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3,
-section[data-testid="stSidebar"] label {
-    color:var(--azul-oscuro) !important;
-}
-.orion-header {
-    background:
-        linear-gradient(135deg, rgba(255,153,255,.96) 0%, rgba(255,230,244,.98) 45%, rgba(51,102,204,.94) 120%);
-    color:var(--azul-oscuro);
-    padding:24px 30px;
-    border-radius:28px;
-    box-shadow:0 12px 35px rgba(233,30,130,.18);
-    margin-bottom:18px;
-    border:1px solid rgba(255,255,255,.9);
-    position:relative;
-    overflow:hidden;
-}
-.orion-header:before {
-    content:"";
-    position:absolute;
-    inset:0;
-    background:
-        radial-gradient(circle at 20% 10%, rgba(255,255,255,.65), transparent 18%),
-        radial-gradient(circle at 85% 15%, rgba(255,255,255,.35), transparent 20%);
-    pointer-events:none;
-}
-.orion-header-inner {
-    position:relative;
-    z-index:1;
-    display:flex;
-    align-items:center;
-    gap:18px;
-}
-.orion-logo-box {
-    width:104px;
-    height:104px;
-    border-radius:26px;
-    background:rgba(255,255,255,.78);
-    border:1px solid rgba(255,255,255,.95);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 8px 24px rgba(0,51,102,.12);
-    font-weight:950;
-    font-size:34px;
-    color:var(--azul-oscuro);
-}
-.orion-title {font-size:42px;font-weight:950;margin:0;letter-spacing:.03em;color:var(--azul-oscuro);}
-.orion-sub {font-size:18px;margin-top:4px;color:var(--azul-oscuro);font-weight:800;}
-.orion-mini {font-size:13px;margin-top:10px;color:#102A56;font-weight:650;}
-div[data-testid="stMetric"] {
-    background:rgba(255,255,255,.94);
-    border:1px solid var(--borde);
-    border-top:6px solid var(--rosa-fuerte);
-    border-radius:22px;
-    padding:16px;
-    box-shadow:0 8px 22px rgba(233,30,130,.10);
-}
-div[data-testid="stMetric"] label {color:var(--azul-oscuro) !important;font-weight:850 !important;}
-div[data-testid="stMetricValue"] {color:var(--azul) !important;font-weight:950 !important;}
-.stTabs [data-baseweb="tab-list"] {
-    gap:8px;
-    background:rgba(255,255,255,.72);
-    border-radius:18px;
-    padding:8px;
-    border:1px solid var(--borde);
-}
-.stTabs [data-baseweb="tab"] {
-    border-radius:14px;
-    color:var(--azul-oscuro);
-    font-weight:850;
-}
-.stTabs [aria-selected="true"] {
-    background:linear-gradient(90deg, var(--azul-oscuro), var(--azul));
-    color:white !important;
-}
-.card {
-    background:rgba(255,255,255,.95);
-    border:1px solid var(--borde);
-    border-radius:20px;
-    padding:16px;
-    box-shadow:0 8px 20px rgba(0,51,102,.07);
-}
-.confidencial {
-    background:rgba(255,255,255,.94);
-    border-left:7px solid var(--rosa-fuerte);
-    padding:12px 16px;
-    border-radius:16px;
-    color:var(--azul-oscuro);
-    font-size:12px;
-    margin-top:20px;
-    box-shadow:0 4px 14px rgba(233,30,130,.08);
-}
-button[kind="primary"] {
-    background:linear-gradient(90deg, var(--rosa-fuerte), var(--rosa)) !important;
-    border:none !important;
-    color:white !important;
-    font-weight:900 !important;
-}
+:root{--magenta:#EC007C;--blue:#0047B3;--blue-dark:#14172F;--green:#00A651;--orange:#F39800;--purple:#6F35B5;--border:#E5E7EB;--muted:#6B7280;}
+.stApp{background:#FFFFFF!important;color:var(--blue-dark);}
+.block-container{padding-top:.8rem;padding-left:2.2rem;padding-right:2.2rem;padding-bottom:2rem;max-width:1600px;}
+section[data-testid="stSidebar"]{background:#FAFAFC;border-right:1px solid #ECEEF3;}
+section[data-testid="stSidebar"] h1,section[data-testid="stSidebar"] h2,section[data-testid="stSidebar"] h3,section[data-testid="stSidebar"] label{color:var(--blue-dark)!important;font-weight:800!important;}
+.orion-top{background:#FFFFFF;padding:18px 4px 20px 4px;}
+.orion-top-inner{display:grid;grid-template-columns:150px 1fr 660px;gap:18px;align-items:center;}
+.orion-logo{width:130px;min-height:82px;display:flex;align-items:center;justify-content:center;}
+.orion-logo-fallback{color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;}
+.orion-title-main{font-size:42px;font-weight:950;color:var(--blue-dark);margin:0;letter-spacing:-.02em;}
+.orion-sub-main{font-size:21px;color:var(--muted);font-weight:600;margin-top:4px;}
+.orion-top-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.orion-mini-kpi{display:flex;align-items:center;gap:12px;}
+.orion-mini-icon{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;}
+.icon-rec{background:#FCE2EF;color:var(--magenta)}.icon-cam{background:#E8EEF9;color:var(--blue)}.icon-mue{background:#EFE8FB;color:var(--purple)}
+.orion-mini-label{font-size:14px;color:var(--blue-dark);font-weight:800}.orion-mini-value{font-size:24px;font-weight:950;margin-top:3px}.value-rec{color:var(--magenta)}.value-cam{color:var(--blue)}.value-mue{color:var(--purple)}
+.orion-pink-bar{background:var(--magenta);color:white;padding:20px 28px;margin-left:-2.2rem;margin-right:-2.2rem;margin-bottom:18px;font-size:30px;line-height:1;font-weight:950;}
+.stTabs [data-baseweb="tab-list"]{gap:0;background:#FFFFFF;border-bottom:1px solid #D7DAE2;padding:0;overflow-x:auto;}
+.stTabs [data-baseweb="tab"]{min-width:190px;height:62px;padding:0 18px;color:#2E3248;font-weight:850;border-bottom:4px solid transparent;}
+.stTabs [data-baseweb="tab"]:hover{color:var(--magenta);background:#FFF4FA;}
+.stTabs [aria-selected="true"]{color:var(--magenta)!important;border-bottom:4px solid var(--magenta);background:#FFFFFF!important;}
+h1,h2,h3{color:var(--blue-dark)!important;letter-spacing:-.01em;} h2{font-weight:950!important;}
+div[data-testid="stMetric"]{background:#FFFFFF;border:1px solid var(--border);border-radius:9px;padding:18px;box-shadow:0 2px 10px rgba(18,24,40,.04);}
+div[data-testid="stMetric"] label{color:var(--blue-dark)!important;font-weight:850!important;} div[data-testid="stMetricValue"]{color:var(--blue)!important;font-weight:950!important;}
+.boceto-card-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0 18px 0;}
+.boceto-kpi-card{background:#FFFFFF;border:1px solid var(--border);border-radius:8px;min-height:128px;padding:22px;display:flex;align-items:center;gap:22px;box-shadow:0 1px 8px rgba(17,24,39,.04);}
+.boceto-big-icon{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:34px;font-weight:950;}
+.big-magenta{background:var(--magenta)}.big-blue{background:var(--blue)}.big-orange{background:var(--orange)}.big-green{background:var(--green)}
+.boceto-card-title{color:var(--blue-dark);font-size:15px;font-weight:900;margin-bottom:10px}.boceto-card-value{font-size:25px;font-weight:950;margin-bottom:12px}.boceto-card-foot{color:var(--blue-dark);font-size:14px;text-align:center;}
+div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.boceto-section{background:#FFFFFF;border:1px solid var(--border);border-radius:8px;padding:16px;box-shadow:0 1px 8px rgba(17,24,39,.04);margin-bottom:14px;}
+.confidencial{background:#FFFFFF;border-top:1px solid var(--border);color:var(--muted);font-size:12px;margin-top:24px;padding-top:12px;}
+button[kind="primary"]{background:var(--magenta)!important;border:none!important;color:white!important;font-weight:900!important;}
+.stDownloadButton button{border-color:var(--magenta)!important;color:var(--magenta)!important;font-weight:800!important;}
+@media(max-width:1100px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -376,20 +292,9 @@ def normalize_store(x):
 def style_dataframe(df):
     if not isinstance(df, pd.DataFrame) or df.empty:
         return df
-
-    currency_cols = [
-        c for c in df.columns
-        if any(k in str(c).lower() for k in [
-            "recuperacion", "recuperación", "costo", "valor", "importe", "$", "pendiente $"
-        ])
-    ]
-    percent_cols = [
-        c for c in df.columns
-        if "%" in str(c) or "porcentaje" in str(c).lower() or "cumplimiento" in str(c).lower()
-    ]
-
+    currency_cols = [c for c in df.columns if any(k in str(c).lower() for k in ["recuperacion","recuperación","costo","valor","importe","$","pendiente $"])]
+    percent_cols = [c for c in df.columns if "%" in str(c) or "porcentaje" in str(c).lower() or "cumplimiento" in str(c).lower()]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-
     fmt = {}
     for c in numeric_cols:
         if c in currency_cols:
@@ -398,23 +303,11 @@ def style_dataframe(df):
             fmt[c] = "{:,.1f}%"
         else:
             fmt[c] = "{:,.0f}"
-
-    return (
-        df.style
+    return (df.style
         .set_table_styles([
-            {"selector": "th", "props": [
-                ("background-color", "#003366"),
-                ("color", "white"),
-                ("font-weight", "bold"),
-                ("border", "1px solid #003366")
-            ]},
-            {"selector": "td", "props": [
-                ("border", "1px solid #DDE7F7"),
-                ("background-color", "#FFFFFF")
-            ]},
-            {"selector": "tbody tr:nth-child(even) td", "props": [
-                ("background-color", "#F4F7FF")
-            ]},
+            {"selector":"th","props":[("background-color","#F3F4F6"),("color","#14172F"),("font-weight","900"),("border","1px solid #E5E7EB"),("text-align","center")]},
+            {"selector":"td","props":[("border","1px solid #E5E7EB"),("background-color","#FFFFFF"),("color","#14172F")]},
+            {"selector":"tbody tr:nth-child(even) td","props":[("background-color","#FCFCFD")]}
         ])
         .format(fmt)
     )
@@ -770,33 +663,35 @@ now = datetime.now()
 
 
 logo_html = """
-<div class="orion-logo-box">OR</div>
+<div class="orion-logo">
+    <div class="orion-logo-fallback">Price<br>Shoes</div>
+</div>
 """
 if LOGO_PATH.exists():
     import base64
     logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
     logo_html = f"""
-    <div class="orion-logo-box">
-        <img src="data:image/png;base64,{logo_b64}" style="max-width:88px;max-height:88px;border-radius:18px;">
+    <div class="orion-logo">
+        <img src="data:image/png;base64,{logo_b64}" style="max-width:130px;max-height:86px;">
     </div>
     """
 
 st.markdown(f"""
-<div class="orion-header">
-    <div class="orion-header-inner">
+<div class="orion-top">
+    <div class="orion-top-inner">
         {logo_html}
         <div>
-            <div style="font-weight:900;letter-spacing:.10em;color:#003366;">PRICE SHOES | OPERACIONES ROPA</div>
-            <div class="orion-title">🚀 ORION PRO v1.4</div>
-            <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
-            <div class="orion-mini">
-                Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
-                Fecha actual: {now.strftime('%Y-%m-%d')} | Hora actual: {now.strftime('%H:%M:%S')} |
-                Última actualización: {ultima} | Estado de información: {estado}
-            </div>
+            <div class="orion-title-main">Recuperación Cambios y Muertos</div>
+            <div class="orion-sub-main">Matriz de Operaciones</div>
+        </div>
+        <div class="orion-top-kpis">
+            <div class="orion-mini-kpi"><div class="orion-mini-icon icon-rec">↻</div><div><div class="orion-mini-label">Recuperación</div><div class="orion-mini-value value-rec">Operaciones</div></div></div>
+            <div class="orion-mini-kpi"><div class="orion-mini-icon icon-cam">↔</div><div><div class="orion-mini-label">Cambios</div><div class="orion-mini-value value-cam">Ropa</div></div></div>
+            <div class="orion-mini-kpi"><div class="orion-mini-icon icon-mue">♙</div><div><div class="orion-mini-label">Muertos</div><div class="orion-mini-value value-mue">Nacional</div></div></div>
         </div>
     </div>
 </div>
+<div class="orion-pink-bar">Operaciones Ropa</div>
 """, unsafe_allow_html=True)
 
 # ==========================================================
@@ -1161,12 +1056,34 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["Ranking Pendiente"] = resumen["Pendiente Ubicar"].rank(method="dense", ascending=False).astype(int)
                 resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Habilitar"], ascending=False)
 
-                c1, c2, c3, c4, c5 = st.columns(5)
-                c1.metric("Ingresos", n0(resumen["Ingresos Día Anterior"].sum()))
-                c2.metric("Habilitado", n0(resumen["Habilitado"].sum()))
-                c3.metric("Ubicado", n0(resumen["Ubicado"].sum()))
-                c4.metric("Pend. Habilitar", n0(resumen["Pendiente Habilitar"].sum()))
-                c5.metric("Pend. Ubicar", n0(resumen["Pendiente Ubicar"].sum()))
+                total_ing_dia = resumen["Ingresos Día Anterior"].sum()
+                total_hab_dia = resumen["Habilitado"].sum()
+                total_ubi_dia = resumen["Ubicado"].sum()
+                total_proc_dia = total_hab_dia + total_ubi_dia
+                total_pend_dia = resumen["Pendiente Ubicar"].sum()
+                pct_proc_dia = pct(total_proc_dia, total_ing_dia)
+
+                st.markdown(f"""
+                <div class="boceto-card-row">
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">🛒</div><div><div class="boceto-card-title">Ingresos Día Anterior</div><div class="boceto-card-value" style="color:#EC007C;">{money(total_ing_dia)}</div><div class="boceto-card-foot">Total pesos</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Procesado (Habilitado + Ubicado)</div><div class="boceto-card-value" style="color:#0047B3;">{money(total_proc_dia)}</div><div class="boceto-card-foot">Total pesos</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⏳</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#F39800;">{money(total_pend_dia)}</div><div class="boceto-card-foot">Total pesos</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">%</div><div><div class="boceto-card-title">% Procesado</div><div class="boceto-card-value" style="color:#00A651;">{p1(pct_proc_dia)}</div><div class="boceto-card-foot">Del ingreso total</div></div></div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                resumen_general = pd.DataFrame([{
+                    "Tiendas con Productividad": resumen["Tienda"].nunique(),
+                    "Ingresos Día Anterior": total_ing_dia,
+                    "Habilitado": total_hab_dia,
+                    "Ubicado": total_ubi_dia,
+                    "Procesado": total_proc_dia,
+                    "Pendiente por Procesar": total_pend_dia,
+                    "% Procesado": pct_proc_dia
+                }])
+                st.markdown("<div class='boceto-section'><h3>RESUMEN GENERAL – DÍA ANTERIOR</h3>", unsafe_allow_html=True)
+                st.dataframe(style_dataframe(resumen_general), width="stretch")
+                st.markdown("</div>", unsafe_allow_html=True)
 
                 columnas = [
                     "Ranking Pendiente", "Tienda", "Estatus",
@@ -1175,7 +1092,9 @@ with tab["0. Día Anterior / Pendiente"]:
                     "Ubicado", "Pendiente Ubicar", "% Ubicado", "Recorridos"
                 ]
 
+                st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA – DÍA ANTERIOR</h3>", unsafe_allow_html=True)
                 st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
+                st.markdown("</div>", unsafe_allow_html=True)
 
                 fig = px.bar(
                     resumen,
