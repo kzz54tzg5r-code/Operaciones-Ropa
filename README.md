@@ -1,14 +1,14 @@
-# ORION - Diseño Boceto Exacto
+# ORION - Diseño Boceto + Roles + Fix Parquet
 
-Diseño basado en el boceto:
-- Header blanco con logo Price Shoes.
-- Título: Recuperación Cambios y Muertos.
-- Subtítulo: Matriz de Operaciones.
-- Barra magenta: Operaciones Ropa.
-- Navegación horizontal.
-- KPI cards estilo boceto.
-- Tablas limpias con encabezado gris claro.
+Corrige:
+- Error al procesar archivo:
+  Expected bytes, got int object
+  Conversion failed for column Hora Inicio
 
-Logo:
-- Coloca tu logo en `assets/logo.png`.
-- Si no existe, se muestra texto Price Shoes.
+Solución:
+- Convierte columnas mixtas/horas a texto antes de guardar Parquet.
+- Mantiene roles Administrador, Gerente y Consulta.
+
+Claves:
+- Administrador: orion_admin
+- Gerente: orion_gerente

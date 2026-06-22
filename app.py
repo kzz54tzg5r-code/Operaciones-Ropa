@@ -364,6 +364,11 @@ def cargar_operacion(file, hoja):
     df = pd.read_excel(file, sheet_name=hoja)
     df.columns = [str(c).strip() for c in df.columns]
 
+    for _hora_col in ["Hora Inicio", "Hora Fin"]:
+        if _hora_col in df.columns:
+            df[_hora_col] = df[_hora_col].apply(lambda x: "" if pd.isna(x) else str(x))
+
+
     # Renombrar columnas reales
     rename = {}
     for c in df.columns:
@@ -553,12 +558,34 @@ def procesar_excel(file):
 
     return op, co, daily, diag
 
+
+def preparar_para_parquet(df):
+    """Convierte columnas mixtas a tipos seguros para evitar errores de PyArrow."""
+    if df is None or df.empty:
+        return df
+    df = df.copy()
+
+    for col in df.columns:
+        # Columnas de hora o columnas tipo objeto con valores mixtos se guardan como texto
+        if (
+            str(col).lower() in ["hora inicio", "hora fin", "hora_inicio", "hora_fin"]
+            or df[col].dtype == "object"
+        ):
+            df[col] = df[col].apply(lambda x: "" if pd.isna(x) else str(x))
+
+    return df
+
+
 def guardar_datos(op, co, daily, diag, filename):
-    if not op.empty:
+    op = preparar_para_parquet(op)
+    co = preparar_para_parquet(co)
+    daily = preparar_para_parquet(daily)
+
+    if op is not None and not op.empty:
         op.to_parquet(OPERACION_FILE, index=False)
-    if not co.empty:
+    if co is not None and not co.empty:
         co.to_parquet(COMERCIAL_FILE, index=False)
-    if not daily.empty:
+    if daily is not None and not daily.empty:
         daily.to_parquet(DIARIO_COMERCIAL_FILE, index=False)
     set_estado("archivo", filename)
     set_estado("ultima_actualizacion", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -699,17 +726,49 @@ st.markdown(f"""
 # ==========================================================
 with st.sidebar:
     st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Administrador"], horizontal=True)
-    is_admin = rol == "Administrador"
-    if is_admin:
+    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
+
+    is_admin = False
+    is_manager = False
+    can_upload = False
+    can_config = False
+    can_edit_names = False
+    can_view_diagnostics = False
+
+    if rol == "Administrador":
         clave = st.text_input("Clave administrador", type="password")
         is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "orion_admin")
-        if not is_admin and clave:
+        if is_admin:
+            can_upload = True
+            can_config = True
+            can_edit_names = True
+            can_view_diagnostics = True
+        elif clave:
             st.warning("Clave incorrecta.")
+
+    elif rol == "Gerente":
+        clave_gerente = st.text_input("Clave gerente", type="password")
+        is_manager = clave_gerente == st.secrets.get("GERENTE_PASSWORD", "orion_gerente")
+        if is_manager:
+            can_edit_names = True
+            can_view_diagnostics = True
+        elif clave_gerente:
+            st.warning("Clave de gerente incorrecta.")
+
+    else:
+        st.caption("Modo consulta: solo visualización.")
+
+    st.caption(f"Rol activo: {rol}")
+    if is_admin:
+        st.success("Permisos: carga, metas, nombres y diagnóstico.")
+    elif is_manager:
+        st.success("Permisos: consulta, corrección de nombres y diagnóstico.")
+    elif rol == "Consulta":
+        st.info("Permisos: solo consulta.")
 
     st.divider()
     st.header("📂 Fuente de datos")
-    if is_admin:
+    if can_upload:
         uploaded = st.file_uploader("Cargar/Reemplazar Excel", type=["xlsx"])
         if uploaded is not None:
             st.info("Archivo listo. Presiona el botón para procesarlo una sola vez.")
@@ -736,7 +795,7 @@ with st.sidebar:
             st.rerun()
 
     else:
-        st.caption("Modo consulta: visualización sin carga de archivo.")
+        st.caption("Este rol no puede cargar ni reemplazar archivos.")
 
 op_all, co_all, daily_all = cargar_datos()
 op_all = normalizar_operacion(op_all)
@@ -954,13 +1013,15 @@ tabs_names = [
     "14. Ranking de Colaboradores",
     "15. Índice Integral",
     "16. Alertas Inteligentes",
-    "17. Configuración de Metas",
-    "18. Diagnóstico de Datos",
-    "19. Compartir ORION"
+    "17. Corrección de Nombres",
+    "18. Configuración de Metas",
+    "19. Diagnóstico de Datos",
+    "20. Compartir ORION"
 ]
-if not is_admin:
-    tabs_names.remove("17. Configuración de Metas")
-    tabs_names.remove("18. Diagnóstico de Datos")
+if not can_config and "18. Configuración de Metas" in tabs_names:
+    tabs_names.remove("18. Configuración de Metas")
+if not can_view_diagnostics and "19. Diagnóstico de Datos" in tabs_names:
+    tabs_names.remove("19. Diagnóstico de Datos")
 tabs = st.tabs(tabs_names)
 tab = dict(zip(tabs_names, tabs))
 
@@ -1435,9 +1496,30 @@ with tab["16. Alertas Inteligentes"]:
     else:
         st.dataframe(style_dataframe(alert_df), width="stretch")
 
+
+# 17 Corrección de Nombres
+if "17. Corrección de Nombres" in tab:
+    with tab["17. Corrección de Nombres"]:
+        st.subheader("Corrección de Nombres por ID Empleado / Ocurrencia")
+        st.caption("Disponible para Administrador y Gerente. Permite unificar nombres mal capturados usando la Ocurrencia.")
+
+        if op_all.empty:
+            st.warning("Sin datos operativos.")
+        else:
+            empleados = op_all.groupby("Ocurrencia", as_index=False).agg(Nombre_actual=("Nombre","first"))
+            empleados = empleados.sort_values("Ocurrencia")
+            edit = st.data_editor(empleados, width="stretch", num_rows="fixed")
+
+            if st.button("Guardar nombres corregidos"):
+                mapping = dict(zip(edit["Ocurrencia"].astype(str), edit["Nombre_actual"].astype(str)))
+                save_nombre_map(mapping)
+                st.success("Nombres actualizados correctamente.")
+                st.rerun()
+
+
 # 17 Configuración
-if "17. Configuración de Metas" in tab:
-    with tab["17. Configuración de Metas"]:
+if "18. Configuración de Metas" in tab:
+    with tab["18. Configuración de Metas"]:
         st.subheader("⚙️ Configuración de Metas")
         cols = st.columns(3)
         nuevos = {}
@@ -1451,22 +1533,12 @@ if "17. Configuración de Metas" in tab:
             st.success("Metas actualizadas.")
             st.rerun()
 
-        st.write("Corrección de nombres por ID empleado / Ocurrencia")
-        if not op_all.empty:
-            empleados = op_all.groupby("Ocurrencia", as_index=False).agg(Nombre_actual=("Nombre","first"))
-            edit = st.data_editor(empleados, width="stretch", num_rows="fixed")
-            if st.button("Guardar nombres corregidos"):
-                mapping = dict(zip(edit["Ocurrencia"].astype(str), edit["Nombre_actual"].astype(str)))
-                save_nombre_map(mapping)
-                st.success("Nombres actualizados.")
-                st.rerun()
-
         st.write("Historial de metas")
         st.dataframe(style_dataframe(get_historial_metas()), width="stretch")
 
 # 18 Diagnóstico
-if "18. Diagnóstico de Datos" in tab:
-    with tab["18. Diagnóstico de Datos"]:
+if "19. Diagnóstico de Datos" in tab:
+    with tab["19. Diagnóstico de Datos"]:
         st.subheader("Diagnóstico de Datos")
         try:
             diag = json.loads(get_estado("diagnostico", "{}"))
@@ -1482,7 +1554,7 @@ if "18. Diagnóstico de Datos" in tab:
             st.dataframe(op_all.isna().sum().reset_index().rename(columns={"index":"Columna",0:"Nulos"}), width="stretch")
 
 # 19 Compartir
-with tab["19. Compartir ORION"]:
+with tab["20. Compartir ORION"]:
     st.subheader("Compartir ORION")
     url = st.text_input("URL pública de ORION", value="https://operaciones-ropa.streamlit.app")
     st.code(url)
