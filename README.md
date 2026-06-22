@@ -1,22 +1,13 @@
-# ORION V2
+# ORION PRO v1.4 - Diseño ES Check List Evidencia
 
-Versión acoplada específicamente al archivo:
+Incluye:
+- Fondo rosa corporativo.
+- Encabezado tipo Operaciones Ropa.
+- Soporte para logo en `assets/logo.png`.
+- Si no existe logo, muestra emblema textual `OR`.
+- Tarjetas, tabs y tablas con estética azul/rosa corporativa.
 
-`Base de datos muertos y cambios.xlsx`
-
-## Archivos
-- app.py
-- requirements.txt
-
-## Clave administrador
-orion_admin
-
-## Instrucciones
-1. Sube `app.py` y `requirements.txt` a GitHub.
-2. En Streamlit Cloud usa:
-   - Branch: main
-   - Main file path: app.py
-3. Entra como Administrador.
-4. Carga el Excel.
-5. ORION guardará la información en Parquet y SQLite.
-6. Los usuarios Consulta ya podrán visualizar sin cargar archivo.
+Para agregar el logo:
+1. Crea carpeta `assets` en GitHub.
+2. Sube el logo como `logo.png`.
+3. Reboot app.

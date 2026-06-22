@@ -11,15 +11,17 @@ from io import BytesIO
 from datetime import datetime
 
 # ==========================================================
-# ORION PRO v1.3 LIMPIO
+# ORION PRO v1.4 LIMPIO
 # PRICE SHOES | OPERACIONES ROPA
 # Plataforma Indicadores de Recuperación de Mercancía
 # ==========================================================
 
-st.set_page_config(page_title="ORION PRO v1.3", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="ORION PRO v1.4", page_icon="🚀", layout="wide")
 
 DATA_DIR = Path("orion_data")
 DATA_DIR.mkdir(exist_ok=True)
+ASSETS_DIR = Path("assets")
+LOGO_PATH = ASSETS_DIR / "logo.png"
 
 DB_PATH = DATA_DIR / "orion_config.db"
 OPERACION_FILE = DATA_DIR / "operacion.parquet"
@@ -54,42 +56,124 @@ DEFAULT_METAS = {
 # ==========================================================
 st.markdown("""
 <style>
-.stApp {background-color:#F5F5F5;}
-.block-container {padding-top:1rem; padding-bottom:2rem;}
-.orion-header {
-    background: linear-gradient(90deg, #003366 0%, #3366CC 70%, #FF99FF 130%);
-    color:white;
-    padding:24px 30px;
-    border-radius:24px;
-    box-shadow:0 8px 26px rgba(0,0,0,.18);
-    margin-bottom:18px;
+:root {
+    --azul: #3366CC;
+    --azul-oscuro: #003366;
+    --rosa: #FF99FF;
+    --rosa-fuerte: #E91E82;
+    --fondo-rosa: #FFE6F4;
+    --borde: #F6B8DC;
 }
-.orion-title {font-size:40px;font-weight:900;margin:0;}
-.orion-sub {font-size:17px;margin-top:4px;}
-.orion-mini {font-size:13px;margin-top:10px;opacity:.95;}
+.stApp {
+    background:
+        radial-gradient(circle at 12% 5%, rgba(255,153,255,.35), transparent 30%),
+        radial-gradient(circle at 92% 18%, rgba(51,102,204,.14), transparent 32%),
+        linear-gradient(180deg, #FFE6F4 0%, #FFF6FB 48%, #FFFFFF 100%);
+}
+.block-container {padding-top:1rem; padding-bottom:2rem; max-width:1500px;}
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, rgba(255,153,255,.38), rgba(255,255,255,.96));
+    border-right:1px solid var(--borde);
+}
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] label {
+    color:var(--azul-oscuro) !important;
+}
+.orion-header {
+    background:
+        linear-gradient(135deg, rgba(255,153,255,.96) 0%, rgba(255,230,244,.98) 45%, rgba(51,102,204,.94) 120%);
+    color:var(--azul-oscuro);
+    padding:24px 30px;
+    border-radius:28px;
+    box-shadow:0 12px 35px rgba(233,30,130,.18);
+    margin-bottom:18px;
+    border:1px solid rgba(255,255,255,.9);
+    position:relative;
+    overflow:hidden;
+}
+.orion-header:before {
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,.65), transparent 18%),
+        radial-gradient(circle at 85% 15%, rgba(255,255,255,.35), transparent 20%);
+    pointer-events:none;
+}
+.orion-header-inner {
+    position:relative;
+    z-index:1;
+    display:flex;
+    align-items:center;
+    gap:18px;
+}
+.orion-logo-box {
+    width:104px;
+    height:104px;
+    border-radius:26px;
+    background:rgba(255,255,255,.78);
+    border:1px solid rgba(255,255,255,.95);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 8px 24px rgba(0,51,102,.12);
+    font-weight:950;
+    font-size:34px;
+    color:var(--azul-oscuro);
+}
+.orion-title {font-size:42px;font-weight:950;margin:0;letter-spacing:.03em;color:var(--azul-oscuro);}
+.orion-sub {font-size:18px;margin-top:4px;color:var(--azul-oscuro);font-weight:800;}
+.orion-mini {font-size:13px;margin-top:10px;color:#102A56;font-weight:650;}
 div[data-testid="stMetric"] {
-    background:#FFFFFF;
-    border:1px solid #DDE7F7;
-    border-top:5px solid #3366CC;
+    background:rgba(255,255,255,.94);
+    border:1px solid var(--borde);
+    border-top:6px solid var(--rosa-fuerte);
+    border-radius:22px;
+    padding:16px;
+    box-shadow:0 8px 22px rgba(233,30,130,.10);
+}
+div[data-testid="stMetric"] label {color:var(--azul-oscuro) !important;font-weight:850 !important;}
+div[data-testid="stMetricValue"] {color:var(--azul) !important;font-weight:950 !important;}
+.stTabs [data-baseweb="tab-list"] {
+    gap:8px;
+    background:rgba(255,255,255,.72);
     border-radius:18px;
-    padding:15px;
-    box-shadow:0 6px 18px rgba(0,51,102,.08);
+    padding:8px;
+    border:1px solid var(--borde);
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius:14px;
+    color:var(--azul-oscuro);
+    font-weight:850;
+}
+.stTabs [aria-selected="true"] {
+    background:linear-gradient(90deg, var(--azul-oscuro), var(--azul));
+    color:white !important;
 }
 .card {
-    background:#FFFFFF;
-    border:1px solid #DDE7F7;
-    border-radius:18px;
+    background:rgba(255,255,255,.95);
+    border:1px solid var(--borde);
+    border-radius:20px;
     padding:16px;
-    box-shadow:0 5px 16px rgba(0,51,102,.06);
+    box-shadow:0 8px 20px rgba(0,51,102,.07);
 }
 .confidencial {
-    background:white;
-    border-left:7px solid #FF99FF;
+    background:rgba(255,255,255,.94);
+    border-left:7px solid var(--rosa-fuerte);
     padding:12px 16px;
-    border-radius:14px;
-    color:#334155;
+    border-radius:16px;
+    color:var(--azul-oscuro);
     font-size:12px;
     margin-top:20px;
+    box-shadow:0 4px 14px rgba(233,30,130,.08);
+}
+button[kind="primary"] {
+    background:linear-gradient(90deg, var(--rosa-fuerte), var(--rosa)) !important;
+    border:none !important;
+    color:white !important;
+    font-weight:900 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -684,15 +768,33 @@ archivo_cargado = get_estado("archivo", "Sin archivo cargado")
 estado = "Disponible" if OPERACION_FILE.exists() or COMERCIAL_FILE.exists() else "Sin datos"
 now = datetime.now()
 
+
+logo_html = """
+<div class="orion-logo-box">OR</div>
+"""
+if LOGO_PATH.exists():
+    import base64
+    logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
+    logo_html = f"""
+    <div class="orion-logo-box">
+        <img src="data:image/png;base64,{logo_b64}" style="max-width:88px;max-height:88px;border-radius:18px;">
+    </div>
+    """
+
 st.markdown(f"""
 <div class="orion-header">
-    <div style="font-weight:800;letter-spacing:.08em;">PRICE SHOES | OPERACIONES ROPA</div>
-    <div class="orion-title">🚀 ORION PRO v1.3</div>
-    <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
-    <div class="orion-mini">
-        Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
-        Fecha actual: {now.strftime('%Y-%m-%d')} | Hora actual: {now.strftime('%H:%M:%S')} |
-        Última actualización: {ultima} | Estado de información: {estado}
+    <div class="orion-header-inner">
+        {logo_html}
+        <div>
+            <div style="font-weight:900;letter-spacing:.10em;color:#003366;">PRICE SHOES | OPERACIONES ROPA</div>
+            <div class="orion-title">🚀 ORION PRO v1.4</div>
+            <div class="orion-sub">Plataforma Indicadores de Recuperación de Mercancía</div>
+            <div class="orion-mini">
+                Productividad | Conversión | Recuperación Económica | Eficiencia Operativa<br>
+                Fecha actual: {now.strftime('%Y-%m-%d')} | Hora actual: {now.strftime('%H:%M:%S')} |
+                Última actualización: {ultima} | Estado de información: {estado}
+            </div>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
