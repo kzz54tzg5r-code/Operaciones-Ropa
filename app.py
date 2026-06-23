@@ -96,50 +96,72 @@ button[kind="primary"]{background:var(--magenta)!important;border:none!important
 div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 @media(max-width:1200px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}.wow-row{grid-template-columns:1fr}.orion-title-main{white-space:normal;}}
 
-/* ORION FIXED DESKTOP VIEW EN MÓVIL */
+/* ==========================================================
+   ORION RESPONSIVE VIEW
+   En móvil se ajusta a pantalla; no se enciman header, tarjetas, tablas ni gráficas.
+   ========================================================== */
 html, body, .stApp {
-    min-width: 1500px !important;
-    overflow-x: auto !important;
-}
-div[data-testid="stAppViewContainer"],
-section.main,
-.main {
-    min-width: 1500px !important;
-    overflow-x: auto !important;
+    overflow-x: hidden !important;
 }
 .block-container {
-    min-width: 1450px !important;
+    width: 100% !important;
     max-width: 1680px !important;
-}
-div[data-testid="stHorizontalBlock"] {
-    flex-wrap: nowrap !important;
-}
-.stTabs [data-baseweb="tab-list"] {
-    min-width: 1450px !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
+    padding-left: 1.2rem !important;
+    padding-right: 1.2rem !important;
 }
 div[data-testid="stDataFrame"] {
-    min-width: 900px !important;
+    width: 100% !important;
     overflow-x: auto !important;
 }
 .js-plotly-plot, .plotly, .plot-container {
-    min-width: 720px !important;
+    width: 100% !important;
 }
 .boceto-card-row {
-    grid-template-columns: repeat(4, 1fr) !important;
-    min-width: 1200px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
 .wow-row {
-    grid-template-columns: repeat(4, 1fr) !important;
-    min-width: 1200px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
-@media(max-width:1200px){
-    .orion-top-inner{grid-template-columns:150px 440px 760px !important;}
-    .orion-top-kpis{grid-template-columns:repeat(3,1fr) !important;}
-    .boceto-card-row{grid-template-columns:repeat(4,1fr) !important;}
-    .wow-row{grid-template-columns:repeat(4,1fr) !important;}
-    .orion-title-main{white-space:normal !important;}
+
+@media(max-width:900px){
+    .block-container {
+        padding-left: .7rem !important;
+        padding-right: .7rem !important;
+    }
+    .boceto-card-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+        gap: 10px !important;
+    }
+    .boceto-kpi-card {
+        min-height: 105px !important;
+        padding: 14px !important;
+        gap: 12px !important;
+    }
+    .boceto-big-icon {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        font-size: 24px !important;
+    }
+    .boceto-card-value {
+        font-size: 20px !important;
+    }
+    .wow-row {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+    }
+    .wow-card {
+        width: 100% !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        min-width: 150px !important;
+        font-size: 13px !important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -768,9 +790,9 @@ def render_orion_header():
         logo_src = f"data:image/png;base64,{logo_b64}"
 
     logo_html = (
-        f'<img src="{logo_src}" style="max-width:125px;max-height:82px;object-fit:contain;">'
+        f'<img src="{logo_src}" style="max-width:110px;max-height:74px;object-fit:contain;">'
         if logo_src else
-        '<div style="color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;">Price<br>Shoes</div>'
+        '<div class="logo-fallback">Price<br>Shoes</div>'
     )
 
     header_html = f"""
@@ -778,70 +800,82 @@ def render_orion_header():
     <html>
     <head>
     <style>
-        body {{
+        html, body {{
             margin:0;
             padding:0;
             font-family:Arial, Helvetica, sans-serif;
             background:#FFFFFF;
             overflow:hidden;
-            min-width:1450px;
+            width:100%;
         }}
         .wrap {{
-            width:1450px;
-            height:320px;
+            width:100%;
             box-sizing:border-box;
-            padding:22px 24px 10px 24px;
+            padding:16px 12px 8px 12px;
             background:#FFFFFF;
         }}
         .top {{
             display:grid;
-            grid-template-columns:150px 460px 760px;
-            gap:28px;
+            grid-template-columns:110px minmax(260px, 1fr) minmax(520px, 1.15fr);
+            gap:18px;
             align-items:center;
-            height:150px;
+            width:100%;
+            box-sizing:border-box;
         }}
         .logo {{
-            width:140px;
-            height:100px;
+            width:110px;
+            height:82px;
             display:flex;
             align-items:center;
             justify-content:center;
         }}
+        .logo-fallback {{
+            color:#0D4A9C;
+            font-size:22px;
+            font-weight:950;
+            line-height:.9;
+            text-align:center;
+            border:2px solid #0D4A9C;
+            border-radius:50%;
+            padding:10px 7px;
+            background:#F6FBFF;
+        }}
         .title {{
-            font-size:56px;
+            font-size:clamp(32px, 3.1vw, 48px);
             font-weight:950;
             color:#14172F;
-            line-height:.98;
-            letter-spacing:-0.04em;
+            line-height:1.02;
+            letter-spacing:-0.035em;
             white-space:normal;
         }}
         .subtitle {{
-            font-size:22px;
+            font-size:clamp(14px, 1.25vw, 20px);
             color:#6B7280;
             font-weight:750;
-            margin-top:12px;
+            margin-top:8px;
         }}
         .kpis {{
             display:grid;
-            grid-template-columns:repeat(3, 1fr);
-            gap:28px;
+            grid-template-columns:repeat(3, minmax(0, 1fr));
+            gap:16px;
             align-items:center;
+            width:100%;
         }}
         .kpi {{
             display:flex;
             align-items:center;
-            gap:14px;
+            gap:10px;
             min-width:0;
         }}
         .icon {{
-            width:74px;
-            height:74px;
-            min-width:74px;
+            width:58px;
+            height:58px;
+            min-width:58px;
             border-radius:50%;
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:35px;
+            font-size:28px;
             font-weight:900;
         }}
         .rec {{ background:#FCE2EF; color:#EC007C; }}
@@ -849,49 +883,119 @@ def render_orion_header():
         .mue {{ background:#EFE8FB; color:#6F35B5; }}
         .label {{
             color:#14172F;
-            font-size:16px;
+            font-size:14px;
             font-weight:900;
             line-height:1.1;
+            white-space:nowrap;
         }}
         .value {{
-            font-size:30px;
+            font-size:clamp(20px, 1.9vw, 30px);
             font-weight:950;
             line-height:1.05;
-            margin-top:6px;
+            margin-top:4px;
             white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
         }}
         .vrec {{ color:#EC007C; }}
         .vcam {{ color:#0047B3; }}
         .vmue {{ color:#6F35B5; }}
         .cards {{
             display:grid;
-            grid-template-columns:repeat(5, 1fr);
-            gap:18px;
-            margin-top:28px;
+            grid-template-columns:repeat(5, minmax(0, 1fr));
+            gap:16px;
+            margin-top:22px;
+            width:100%;
         }}
         .card {{
-            height:108px;
+            height:106px;
             border:1px solid #E5E7EB;
             border-radius:10px;
             box-shadow:0 2px 12px rgba(17,24,39,.05);
-            padding:20px 22px;
+            padding:18px 18px;
             box-sizing:border-box;
             background:#FFFFFF;
+            min-width:0;
         }}
         .card-label {{
-            font-size:16px;
+            font-size:15px;
             color:#14172F;
             font-weight:500;
-            margin-bottom:16px;
+            margin-bottom:15px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
         }}
         .card-value {{
-            font-size:36px;
+            font-size:clamp(22px, 2.5vw, 36px);
             color:#3520B8;
             font-weight:950;
             line-height:1;
             white-space:nowrap;
             overflow:hidden;
             text-overflow:ellipsis;
+        }}
+        @media(max-width:900px) {{
+            .wrap {{
+                padding:10px 6px 6px 6px;
+            }}
+            .top {{
+                grid-template-columns:70px 1fr;
+                gap:10px;
+            }}
+            .logo {{
+                width:70px;
+                height:58px;
+            }}
+            .logo img {{
+                max-width:70px !important;
+                max-height:52px !important;
+            }}
+            .title {{
+                font-size:28px;
+                line-height:1.02;
+            }}
+            .subtitle {{
+                font-size:14px;
+                margin-top:4px;
+            }}
+            .kpis {{
+                grid-column:1 / -1;
+                grid-template-columns:repeat(3, minmax(0, 1fr));
+                gap:8px;
+                margin-top:12px;
+            }}
+            .kpi {{
+                gap:6px;
+            }}
+            .icon {{
+                width:40px;
+                height:40px;
+                min-width:40px;
+                font-size:20px;
+            }}
+            .label {{
+                font-size:11px;
+            }}
+            .value {{
+                font-size:17px;
+            }}
+            .cards {{
+                grid-template-columns:repeat(2, minmax(0, 1fr));
+                gap:8px;
+                margin-top:14px;
+            }}
+            .card {{
+                height:82px;
+                padding:12px;
+            }}
+            .card-label {{
+                font-size:12px;
+                margin-bottom:9px;
+            }}
+            .card-value {{
+                font-size:22px;
+            }}
         }}
     </style>
     </head>
@@ -900,7 +1004,7 @@ def render_orion_header():
             <div class="top">
                 <div class="logo">{logo_html}</div>
                 <div>
-                    <div class="title">Recuperación<br>Cambios y<br>Muertos</div>
+                    <div class="title">Recuperación<br>Cambios y Muertos</div>
                     <div class="subtitle">Matriz de Operaciones</div>
                 </div>
                 <div class="kpis">
@@ -920,7 +1024,7 @@ def render_orion_header():
     </body>
     </html>
     """
-    components.html(header_html, height=335, scrolling=False)
+    components.html(header_html, height=285, scrolling=False)
 
 # Header se renderiza después de calcular KPIs
 
@@ -1422,7 +1526,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_combo, width="stretch", config={"responsive": False, "displayModeBar": True})
+                    st.plotly_chart(fig_combo, width="stretch", config={"responsive": True, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1431,7 +1535,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_pend, width="stretch", config={"responsive": False, "displayModeBar": True})
+                    st.plotly_chart(fig_pend, width="stretch", config={"responsive": True, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
@@ -1622,7 +1726,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch", config={"responsive": False, "displayModeBar": True})
+    st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:

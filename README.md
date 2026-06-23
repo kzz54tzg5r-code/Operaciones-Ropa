@@ -1,11 +1,11 @@
-# ORION - Layout fijo móvil
+# ORION - Responsive Móvil
 
 Cambios:
 - Header corregido para que no se encime.
-- Tarjetas superiores integradas como boceto.
-- Tablas, gráficos y tarjetas con ancho fijo en móvil.
-- En móvil se usa scroll horizontal en lugar de reacomodar.
-- Plotly con responsive=False.
+- Tarjetas superiores visibles como el boceto.
+- En móvil se ajusta al ancho de pantalla.
+- Tablas mantienen scroll horizontal si no caben.
+- Gráficas Plotly responsive=True.
 - Resumen Ejecutivo sin WoW Dinámico.
 - Muertos: Compañía.
 
