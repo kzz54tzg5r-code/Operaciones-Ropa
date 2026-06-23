@@ -62,7 +62,7 @@ st.markdown("""
 html,body,.stApp{background:#FFFFFF!important;color:var(--blue-dark);}
 .block-container{padding-top:.6rem;padding-left:1.8rem;padding-right:1.8rem;padding-bottom:2rem;max-width:1680px;}
 section[data-testid="stSidebar"]{background:#FAFAFC;border-right:1px solid #ECEEF3;}
-.orion-top{background:#FFFFFF;padding:12px 4px 14px 4px;}
+.orion-top{display:none;}
 .orion-top-inner{display:grid;grid-template-columns:140px minmax(470px,1fr) 720px;gap:16px;align-items:center;}
 .orion-logo{width:132px;height:82px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .orion-logo-fallback{color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;}
@@ -709,42 +709,10 @@ archivo_cargado = get_estado("archivo", "Sin archivo cargado")
 estado = "Disponible" if OPERACION_FILE.exists() or COMERCIAL_FILE.exists() else "Sin datos"
 now = datetime.now()
 
-
-
-
-def render_orion_header():
-    logo_html_local = """
-    <div class="orion-logo">
-        <div class="orion-logo-fallback">Price<br>Shoes</div>
-    </div>
-    """
-    if LOGO_PATH.exists():
-        import base64
-        logo_b64_local = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
-        logo_html_local = f"""
-        <div class="orion-logo">
-            <img src="data:image/png;base64,{logo_b64_local}" style="max-width:132px;max-height:82px;">
-        </div>
-        """
-    st.markdown(textwrap.dedent(f"""
-    <div class="orion-top">
-        <div class="orion-top-inner">
-            {logo_html_local}
-            <div>
-                <div class="orion-title-main">Recuperación Cambios y Muertos</div>
-                <div class="orion-sub-main">Matriz de Operaciones</div>
-            </div>
-            <div class="orion-top-kpis">
-                <div class="orion-mini-kpi"><div class="orion-mini-icon icon-rec">↻</div><div><div class="orion-mini-label">Recuperación</div><div class="orion-mini-value value-rec">Operaciones</div></div></div>
-                <div class="orion-mini-kpi"><div class="orion-mini-icon icon-cam">↔</div><div><div class="orion-mini-label">Cambios</div><div class="orion-mini-value value-cam">Ropa</div></div></div>
-                <div class="orion-mini-kpi"><div class="orion-mini-icon icon-mue">♟</div><div><div class="orion-mini-label">Muertos</div><div class="orion-mini-value value-mue">Compañía</div></div></div>
-            </div>
-        </div>
-    </div>
-    <div class="orion-pink-bar">Operaciones Ropa</div>
-    """), unsafe_allow_html=True)
-
-render_orion_header()
+st.markdown(
+    '<div class="orion-pink-bar">Operaciones Ropa</div>',
+    unsafe_allow_html=True
+)
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1032,7 +1000,7 @@ def render_wow_cards(op_source):
     sem = tmp.groupby("Semana ISO", as_index=False).agg(Piezas=("Productividad Total","sum"), Acondicionado=("Acondicionado","sum"), Ubicado=("Ubicado","sum"), Recorridos=("Recorridos","sum")).sort_values("Semana ISO").tail(4)
     if sem.empty:
         return
-    html = '<div class="wow-title">📊 Resumen Ejecutivo WoW (Dinámico)</div><div class="wow-row">'
+    html = '<div class="wow-title">📊 Resumen Ejecutivo</div><div class="wow-row">'
     prev = None
     for _, r in sem.iterrows():
         def v(col):
@@ -1249,12 +1217,6 @@ with tab["0. Día Anterior / Pendiente"]:
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
-
-                export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
-                pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
-                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
-
-
 # 1 Panel Ejecutivo
 with tab["1. Panel Ejecutivo"]:
     st.subheader("Panel Ejecutivo")

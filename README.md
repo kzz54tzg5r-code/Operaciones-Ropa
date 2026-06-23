@@ -1,12 +1,11 @@
-# ORION Header + WoW corregido
+# ORION - Solo Resumen Ejecutivo
 
-Corrige:
-- HTML del encabezado mostrado como texto.
-- Header sin corte y con Compañía.
-- Tarjetas WoW tipo referencia.
-- Piezas Ingresadas.
-- Acondicionado.
-- Gráficas combinadas y PDF.
+Cambios:
+- Eliminado el encabezado superior que mostraba HTML como texto.
+- Se deja únicamente la barra magenta "Operaciones Ropa".
+- El título queda como "📊 Resumen Ejecutivo".
+- Se mantiene el dashboard y pestañas existentes.
+- Mantiene roles Administrador, Gerente y Consulta.
 
 Claves:
 - Administrador: orion_admin
