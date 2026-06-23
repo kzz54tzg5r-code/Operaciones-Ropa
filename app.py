@@ -95,74 +95,6 @@ button[kind="primary"]{background:var(--magenta)!important;border:none!important
 .boceto-section h3{font-size:18px!important;margin:0 0 10px 0!important;color:#14172F!important;}
 div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 @media(max-width:1200px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}.wow-row{grid-template-columns:1fr}.orion-title-main{white-space:normal;}}
-
-/* ==========================================================
-   ORION RESPONSIVE VIEW
-   En móvil se ajusta a pantalla; no se enciman header, tarjetas, tablas ni gráficas.
-   ========================================================== */
-html, body, .stApp {
-    overflow-x: hidden !important;
-}
-.block-container {
-    width: 100% !important;
-    max-width: 1680px !important;
-    padding-left: 1.2rem !important;
-    padding-right: 1.2rem !important;
-}
-div[data-testid="stDataFrame"] {
-    width: 100% !important;
-    overflow-x: auto !important;
-}
-.js-plotly-plot, .plotly, .plot-container {
-    width: 100% !important;
-}
-.boceto-card-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
-.wow-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-}
-
-@media(max-width:900px){
-    .block-container {
-        padding-left: .7rem !important;
-        padding-right: .7rem !important;
-    }
-    .boceto-card-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        min-width: 0 !important;
-        gap: 10px !important;
-    }
-    .boceto-kpi-card {
-        min-height: 105px !important;
-        padding: 14px !important;
-        gap: 12px !important;
-    }
-    .boceto-big-icon {
-        width: 48px !important;
-        height: 48px !important;
-        min-width: 48px !important;
-        font-size: 24px !important;
-    }
-    .boceto-card-value {
-        font-size: 20px !important;
-    }
-    .wow-row {
-        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
-        min-width: 0 !important;
-    }
-    .wow-card {
-        width: 100% !important;
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        overflow-x: auto !important;
-        flex-wrap: nowrap !important;
-    }
-    .stTabs [data-baseweb="tab"] {
-        min-width: 150px !important;
-        font-size: 13px !important;
-    }
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -781,7 +713,6 @@ now = datetime.now()
 
 
 
-
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -789,245 +720,56 @@ def render_orion_header():
         logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
         logo_src = f"data:image/png;base64,{logo_b64}"
 
-    logo_html = (
-        f'<img src="{logo_src}" style="max-width:110px;max-height:74px;object-fit:contain;">'
-        if logo_src else
-        '<div class="logo-fallback">Price<br>Shoes</div>'
-    )
+    if logo_src:
+        logo_html = f'<img src="{logo_src}" style="max-width:120px;max-height:78px;object-fit:contain;">'
+    else:
+        logo_html = '<div class="logo-fallback">Price<br>Shoes</div>'
 
     header_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
     <style>
-        html, body {{
-            margin:0;
-            padding:0;
-            font-family:Arial, Helvetica, sans-serif;
-            background:#FFFFFF;
-            overflow:hidden;
-            width:100%;
-        }}
-        .wrap {{
-            width:100%;
-            box-sizing:border-box;
-            padding:16px 12px 8px 12px;
-            background:#FFFFFF;
-        }}
-        .top {{
-            display:grid;
-            grid-template-columns:110px minmax(260px, 1fr) minmax(520px, 1.15fr);
-            gap:18px;
-            align-items:center;
-            width:100%;
-            box-sizing:border-box;
-        }}
-        .logo {{
-            width:110px;
-            height:82px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-        }}
-        .logo-fallback {{
-            color:#0D4A9C;
-            font-size:22px;
-            font-weight:950;
-            line-height:.9;
-            text-align:center;
-            border:2px solid #0D4A9C;
-            border-radius:50%;
-            padding:10px 7px;
-            background:#F6FBFF;
-        }}
-        .title {{
-            font-size:clamp(32px, 3.1vw, 48px);
-            font-weight:950;
-            color:#14172F;
-            line-height:1.02;
-            letter-spacing:-0.035em;
-            white-space:normal;
-        }}
-        .subtitle {{
-            font-size:clamp(14px, 1.25vw, 20px);
-            color:#6B7280;
-            font-weight:750;
-            margin-top:8px;
-        }}
-        .kpis {{
-            display:grid;
-            grid-template-columns:repeat(3, minmax(0, 1fr));
-            gap:16px;
-            align-items:center;
-            width:100%;
-        }}
-        .kpi {{
-            display:flex;
-            align-items:center;
-            gap:10px;
-            min-width:0;
-        }}
-        .icon {{
-            width:58px;
-            height:58px;
-            min-width:58px;
-            border-radius:50%;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:28px;
-            font-weight:900;
-        }}
+        body {{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#FFFFFF; overflow:hidden; }}
+        .top {{ width:100%; height:156px; display:grid; grid-template-columns:145px minmax(420px,1fr) 720px; gap:18px; align-items:center; box-sizing:border-box; padding:8px 8px 10px 8px; }}
+        .logo {{ width:132px; height:86px; display:flex; align-items:center; justify-content:center; }}
+        .logo-fallback {{ color:#0D4A9C; font-size:27px; font-weight:950; line-height:.9; text-align:center; border:2px solid #0D4A9C; border-radius:50%; padding:12px 8px; background:#F6FBFF; }}
+        .title {{ font-size:42px; font-weight:950; color:#14172F; margin:0; line-height:1.05; letter-spacing:-0.03em; white-space:nowrap; }}
+        .subtitle {{ font-size:18px; color:#6B7280; font-weight:700; margin-top:8px; white-space:nowrap; }}
+        .kpis {{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:center; }}
+        .kpi {{ display:flex; align-items:center; gap:12px; min-width:0; }}
+        .icon {{ width:64px; height:64px; min-width:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:31px; font-weight:900; }}
         .rec {{ background:#FCE2EF; color:#EC007C; }}
         .cam {{ background:#E8EEF9; color:#0047B3; }}
         .mue {{ background:#EFE8FB; color:#6F35B5; }}
-        .label {{
-            color:#14172F;
-            font-size:14px;
-            font-weight:900;
-            line-height:1.1;
-            white-space:nowrap;
-        }}
-        .value {{
-            font-size:clamp(20px, 1.9vw, 30px);
-            font-weight:950;
-            line-height:1.05;
-            margin-top:4px;
-            white-space:nowrap;
-            overflow:hidden;
-            text-overflow:ellipsis;
-        }}
+        .label {{ color:#14172F; font-size:14px; font-weight:900; line-height:1.1; }}
+        .value {{ font-size:24px; font-weight:950; line-height:1.05; margin-top:5px; white-space:nowrap; }}
         .vrec {{ color:#EC007C; }}
         .vcam {{ color:#0047B3; }}
         .vmue {{ color:#6F35B5; }}
-        .cards {{
-            display:grid;
-            grid-template-columns:repeat(5, minmax(0, 1fr));
-            gap:16px;
-            margin-top:22px;
-            width:100%;
-        }}
-        .card {{
-            height:106px;
-            border:1px solid #E5E7EB;
-            border-radius:10px;
-            box-shadow:0 2px 12px rgba(17,24,39,.05);
-            padding:18px 18px;
-            box-sizing:border-box;
-            background:#FFFFFF;
-            min-width:0;
-        }}
-        .card-label {{
-            font-size:15px;
-            color:#14172F;
-            font-weight:500;
-            margin-bottom:15px;
-            white-space:nowrap;
-            overflow:hidden;
-            text-overflow:ellipsis;
-        }}
-        .card-value {{
-            font-size:clamp(22px, 2.5vw, 36px);
-            color:#3520B8;
-            font-weight:950;
-            line-height:1;
-            white-space:nowrap;
-            overflow:hidden;
-            text-overflow:ellipsis;
-        }}
-        @media(max-width:900px) {{
-            .wrap {{
-                padding:10px 6px 6px 6px;
-            }}
-            .top {{
-                grid-template-columns:70px 1fr;
-                gap:10px;
-            }}
-            .logo {{
-                width:70px;
-                height:58px;
-            }}
-            .logo img {{
-                max-width:70px !important;
-                max-height:52px !important;
-            }}
-            .title {{
-                font-size:28px;
-                line-height:1.02;
-            }}
-            .subtitle {{
-                font-size:14px;
-                margin-top:4px;
-            }}
-            .kpis {{
-                grid-column:1 / -1;
-                grid-template-columns:repeat(3, minmax(0, 1fr));
-                gap:8px;
-                margin-top:12px;
-            }}
-            .kpi {{
-                gap:6px;
-            }}
-            .icon {{
-                width:40px;
-                height:40px;
-                min-width:40px;
-                font-size:20px;
-            }}
-            .label {{
-                font-size:11px;
-            }}
-            .value {{
-                font-size:17px;
-            }}
-            .cards {{
-                grid-template-columns:repeat(2, minmax(0, 1fr));
-                gap:8px;
-                margin-top:14px;
-            }}
-            .card {{
-                height:82px;
-                padding:12px;
-            }}
-            .card-label {{
-                font-size:12px;
-                margin-bottom:9px;
-            }}
-            .card-value {{
-                font-size:22px;
-            }}
-        }}
     </style>
     </head>
     <body>
-        <div class="wrap">
-            <div class="top">
-                <div class="logo">{logo_html}</div>
-                <div>
-                    <div class="title">Recuperación<br>Cambios y Muertos</div>
-                    <div class="subtitle">Matriz de Operaciones</div>
-                </div>
-                <div class="kpis">
-                    <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
-                    <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
-                    <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
-                </div>
+        <div class="top">
+            <div class="logo">{logo_html}</div>
+            <div>
+                <div class="title">Recuperación Cambios y Muertos</div>
+                <div class="subtitle">Matriz de Operaciones</div>
             </div>
-            <div class="cards">
-                <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
-                <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
-                <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
+            <div class="kpis">
+                <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
+                <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
+                <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
             </div>
         </div>
     </body>
     </html>
     """
-    components.html(header_html, height=285, scrolling=False)
+    components.html(header_html, height=170, scrolling=False)
 
-# Header se renderiza después de calcular KPIs
+render_orion_header()
 
+st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1306,13 +1048,6 @@ score_integral = round(
 )
 
 # ==========================================================
-# HEADER + SCORE CARDS SUPERIORES
-# ==========================================================
-render_orion_header()
-st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
-
-
-# ==========================================================
 # SCORE CARDS
 # ==========================================================
 def render_wow_cards(op_source):
@@ -1344,13 +1079,170 @@ def render_wow_cards(op_source):
 
 render_wow_cards(op_all)
 
+
+def construir_reporte_periodo(periodo="semanal"):
+    """Construye resumen operativo con la misma lógica del indicador Día Anterior."""
+    if op_all.empty:
+        return pd.DataFrame()
+
+    base_op = op_all.copy()
+    base_daily = daily_all.copy()
+
+    if periodo == "semanal":
+        if "Semana ISO" not in base_op.columns or base_op["Semana ISO"].dropna().empty:
+            return pd.DataFrame()
+        semana_ref = int(base_op["Semana ISO"].dropna().max())
+        base_op = base_op[base_op["Semana ISO"] == semana_ref]
+        if not base_daily.empty and "Semana ISO" in base_daily.columns:
+            base_daily = base_daily[base_daily["Semana ISO"] == semana_ref]
+        etiqueta = f"Semana {semana_ref}"
+    else:
+        fechas = pd.to_datetime(base_op["Fecha Día"], errors="coerce").dropna()
+        if fechas.empty:
+            return pd.DataFrame()
+        mes_ref = fechas.max().month
+        anio_ref = fechas.max().year
+        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.month == mes_ref]
+        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.year == anio_ref]
+        if not base_daily.empty and "Fecha Día" in base_daily.columns:
+            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.month == mes_ref]
+            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.year == anio_ref]
+        etiqueta = f"Mes {mes_ref}/{anio_ref}"
+
+    if base_op.empty:
+        return pd.DataFrame()
+
+    op_resumen = base_op.groupby("Tienda", as_index=False).agg(
+        Muertos=("Muertos", "sum"),
+        Cajas=("Cajas", "sum"),
+        Probador=("Probador", "sum"),
+        Acondicionado=("Acondicionado", "sum"),
+        Ubicado=("Ubicado", "sum"),
+        Recorridos=("Recorridos", "sum"),
+        Productividad=("Productividad Total", "sum")
+    )
+
+    # Sólo tiendas con productividad registrada
+    op_resumen["Productividad Registrada"] = (
+        pd.to_numeric(op_resumen["Muertos"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Cajas"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Probador"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Acondicionado"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Ubicado"], errors="coerce").fillna(0)
+    )
+    op_resumen = op_resumen[op_resumen["Productividad Registrada"] > 0]
+
+    if base_daily is not None and not base_daily.empty and "Tienda" in base_daily.columns:
+        sys_resumen = base_daily.groupby("Tienda", as_index=False).agg(Dev_Pzs=("Dev_Pzs", "sum"))
+    else:
+        sys_resumen = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
+
+    resumen = op_resumen.merge(sys_resumen, on="Tienda", how="left").fillna(0)
+    for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos", "Productividad"]:
+        resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
+
+    resumen["Periodo"] = etiqueta
+    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+    resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
+    resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
+    resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["% Procesado"] = sdiv(resumen["Acondicionado"] + resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["Estatus"] = np.where(
+        resumen["Pendiente Ubicar"] <= 0,
+        "🟢 Completo",
+        np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente")
+    )
+    resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Acondicionar"], ascending=False)
+    return resumen
+
+def render_reporte_periodo(resumen, titulo, periodo_nombre):
+    if resumen is None or resumen.empty:
+        st.info(f"No hay información para {periodo_nombre}.")
+        return
+
+    total_pzas = resumen["Piezas Ingresadas"].sum()
+    total_aco = resumen["Acondicionado"].sum()
+    total_ubi = resumen["Ubicado"].sum()
+    total_pend_aco = resumen["Pendiente Acondicionar"].sum()
+    total_pend_ubi = resumen["Pendiente Ubicar"].sum()
+    pct_aco = pct(total_aco, total_pzas)
+    pct_ubi = pct(total_ubi, total_pzas)
+
+    st.subheader(titulo)
+    st.caption("Construido con la misma lógica del indicador Día Anterior / Pendiente: piezas ingresadas, acondicionado, ubicado y pendientes por procesar.")
+
+    st.markdown(f"""
+    <div class="boceto-card-row">
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_pzas)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Acondicionado</div><div class="boceto-card-value" style="color:#0047B3;">{n0(total_aco)}</div><div class="boceto-card-foot">{p1(pct_aco)}</div></div></div>
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⌖</div><div><div class="boceto-card-title">Ubicado</div><div class="boceto-card-value" style="color:#F39800;">{n0(total_ubi)}</div><div class="boceto-card-foot">{p1(pct_ubi)}</div></div></div>
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">⏳</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#00A651;">{n0(total_pend_ubi)}</div><div class="boceto-card-foot">Pendiente ubicar</div></div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    resumen_general = pd.DataFrame([{
+        "Tiendas con Productividad": resumen["Tienda"].nunique(),
+        "Piezas Ingresadas": total_pzas,
+        "Acondicionado": total_aco,
+        "% Acondicionado": pct_aco,
+        "Ubicado": total_ubi,
+        "% Ubicado": pct_ubi,
+        "Pendiente Acondicionar": total_pend_aco,
+        "Pendiente Ubicar": total_pend_ubi
+    }])
+
+    st.markdown("<div class='boceto-section'><h3>RESUMEN GENERAL</h3>", unsafe_allow_html=True)
+    st.dataframe(style_dataframe(resumen_general), width="stretch")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    columnas = [
+        "Tienda",
+        "Piezas Ingresadas",
+        "Acondicionado",
+        "% Acondicionado",
+        "Ubicado",
+        "% Ubicado",
+        "Pendiente Acondicionar",
+        "Pendiente Ubicar",
+        "Recorridos",
+        "Estatus"
+    ]
+
+    st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA</h3>", unsafe_allow_html=True)
+    st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("<div class='boceto-section'><h3>INGRESO vs ACONDICIONADO vs UBICADO</h3>", unsafe_allow_html=True)
+        fig = go.Figure()
+        fig.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
+        fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
+        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
+        fig.update_layout(barmode="group", height=430, margin=dict(l=20, r=20, t=40, b=20), legend=dict(orientation="h"))
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with c2:
+        st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
+        fig2 = go.Figure()
+        fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
+        fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
+        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
+        fig2.update_layout(barmode="group", height=430, margin=dict(l=20, r=20, t=40, b=20), legend=dict(orientation="h"))
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
+
 # ==========================================================
 # PESTAÑAS
 # ==========================================================
 tabs_names = [
     "0. Día Anterior / Pendiente",
-    "1. Panel Ejecutivo",
-    "2. Macro",
+    "1. Reporte Semanal",
+    "2. Reporte Mensual",
     "3. Conversión",
     "4. Recuperación Económica",
     "5. Productividad por Colaborador",
@@ -1526,7 +1418,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_combo, width="stretch", config={"responsive": True, "displayModeBar": True})
+                    st.plotly_chart(fig_combo, width="stretch")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1535,7 +1427,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_pend, width="stretch", config={"responsive": True, "displayModeBar": True})
+                    st.plotly_chart(fig_pend, width="stretch")
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
@@ -1545,77 +1437,17 @@ with tab["0. Día Anterior / Pendiente"]:
                 st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
 
 
-# 1 Panel Ejecutivo
-with tab["1. Panel Ejecutivo"]:
-    st.subheader("Panel Ejecutivo")
-    st.caption("Top y Bottom solo consideran tiendas con registros. Se descartan registros no coherentes mediante agrupación por ID empleado / Ocurrencia.")
 
-    score_df = ss.copy()
-    if not score_df.empty:
-        score_df["Score"] = (
-            score_df["Productividad"].rank(pct=True)*40 +
-            score_df["% Acondicionado"].rank(pct=True)*25 +
-            score_df["% Ubicado"].rank(pct=True)*15 +
-            score_df["Conversión %"].rank(pct=True)*10 +
-            score_df["% Recorridos"].rank(pct=True)*10
-        ).round(1)
+# 1 Reporte Semanal
+with tab["1. Reporte Semanal"]:
+    reporte_semanal = construir_reporte_periodo("semanal")
+    render_reporte_periodo(reporte_semanal, "Reporte Semanal", "Reporte Semanal")
 
-    a,b = st.columns(2)
-    with a:
-        st.write("🏆 Top 2 Tiendas")
-        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=False).head(2)), width="stretch")
-    with b:
-        st.write("⚠️ Bottom 2 Tiendas")
-        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=True).head(2)), width="stretch")
 
-    valid = op.copy()
-    if not valid.empty:
-        valid = valid[~valid["Nombre Real"].str.lower().isin(["sin dato", "nan", "0", "-", ""])]
-        colab = valid.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"))
-        colab = colab.sort_values("Productividad", ascending=False)
-    else:
-        colab = pd.DataFrame()
-
-    a,b = st.columns(2)
-    with a:
-        st.write("👤 Top 3 Colaboradores")
-        st.dataframe(style_dataframe(colab.head(3)), width="stretch")
-    with b:
-        st.write("👤 Bottom 3 Colaboradores")
-        st.dataframe(style_dataframe(colab[colab["Productividad"] > 0].tail(3) if not colab.empty else colab), width="stretch")
-
-    st.plotly_chart(px.bar(score_df.sort_values("Score", ascending=False), x="Tienda", y="Score", color="Estado",
-                           title="Score Card por Tienda", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
-                    width="stretch")
-    export_buttons("panel_ejecutivo", {"score_tiendas": score_df, "colaboradores": colab})
-
-# 2 Macro
-with tab["2. Macro"]:
-    st.subheader("Macro | Últimas 4 semanas")
-    if op_all.empty:
-        st.warning("Sin datos operativos.")
-    else:
-        macro = op_all.groupby("Semana ISO", as_index=False).agg(
-            Muertos=("Muertos","sum"),
-            Cajas=("Cajas","sum"),
-            Probador=("Probador","sum"),
-            Acondicionado=("Acondicionado","sum"),
-            Ubicado=("Ubicado","sum")
-        )
-        sys_week = daily_all.groupby("Semana ISO", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum")) if not daily_all.empty else pd.DataFrame(columns=["Semana ISO","Dev_Pzs"])
-        macro = macro.merge(sys_week, on="Semana ISO", how="left").fillna(0)
-        macro["Piezas Ingresadas"] = macro["Dev_Pzs"] + macro["Muertos"] + macro["Cajas"] + macro["Probador"]
-        macro["% Acondicionado"] = sdiv(macro["Acondicionado"], macro["Piezas Ingresadas"]) * 100
-        macro["% Ubicado"] = sdiv(macro["Ubicado"], macro["Piezas Ingresadas"]) * 100
-        macro["Semana ISO"] = macro["Semana ISO"].astype(int)
-        macro = macro.sort_values("Semana ISO").tail(4)
-        st.dataframe(style_dataframe(macro), width="stretch")
-        st.plotly_chart(px.bar(macro, x="Semana ISO", y="Piezas Ingresadas", text_auto=True,
-                               title="Total de ingresos por semana", color_discrete_sequence=["#3366CC"]),
-                        width="stretch")
-        st.plotly_chart(px.line(macro, x="Semana ISO", y=["% Acondicionado","% Ubicado"], markers=True,
-                                title="% Acondicionado vs % Ubicado", color_discrete_sequence=["#3366CC","#FF99FF"]),
-                        width="stretch")
+# 2 Reporte Mensual
+with tab["2. Reporte Mensual"]:
+    reporte_mensual = construir_reporte_periodo("mensual")
+    render_reporte_periodo(reporte_mensual, "Reporte Mensual", "Reporte Mensual")
 
 # 3 Conversión
 with tab["3. Conversión"]:
@@ -1726,7 +1558,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+    st.plotly_chart(fig, width="stretch")
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:

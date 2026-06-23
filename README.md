@@ -1,13 +1,12 @@
-# ORION - Responsive Móvil
+# ORION - Reporte Semanal y Mensual
 
 Cambios:
-- Header corregido para que no se encime.
-- Tarjetas superiores visibles como el boceto.
-- En móvil se ajusta al ancho de pantalla.
-- Tablas mantienen scroll horizontal si no caben.
-- Gráficas Plotly responsive=True.
-- Resumen Ejecutivo sin WoW Dinámico.
-- Muertos: Compañía.
+- Pestaña 1: Reporte Semanal.
+- Pestaña 2: Reporte Mensual.
+- Ambas pestañas usan como referencia la lógica de Día Anterior / Pendiente:
+  piezas ingresadas, acondicionado, ubicado, pendiente por acondicionar y pendiente por ubicar.
+- Incluye tarjetas, resumen general, detalle por tienda, gráficas combinadas y exportación.
+- Mantiene diseño responsive móvil.
 
 Claves:
 - Administrador: orion_admin
