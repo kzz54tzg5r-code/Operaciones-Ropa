@@ -1,7 +1,6 @@
-# ORION - Fix NameError op_all
+# ORION - Fix permisos NameError
 
 Corrige:
-- NameError en render_wow_cards(op_all)
-- Mantiene header compacto
-- Mantiene PDF por pestañas
-- Mantiene Reporte Semanal/Mensual con selector
+- NameError: can_config no definido.
+- Mantiene corrección anterior de op_all.
+- Mantiene PDF por pestañas y selectores semanal/mensual.

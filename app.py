@@ -1341,6 +1341,15 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
 # ==========================================================
 # PESTAÑAS
 # ==========================================================
+
+# Permisos seguros por si el sidebar aún no inicializó estas variables
+can_config = globals().get("can_config", False)
+can_view_diagnostics = globals().get("can_view_diagnostics", False)
+can_edit_names = globals().get("can_edit_names", False)
+is_admin = globals().get("is_admin", False)
+is_manager = globals().get("is_manager", False)
+can_upload = globals().get("can_upload", False)
+
 tabs_names = [
     "0. Día Anterior / Pendiente",
     "1. Reporte Semanal",
@@ -1364,6 +1373,8 @@ tabs_names = [
     "19. Diagnóstico de Datos",
     "20. Compartir ORION"
 ]
+if not can_edit_names and "17. Corrección de Nombres" in tabs_names:
+    tabs_names.remove("17. Corrección de Nombres")
 if not can_config and "18. Configuración de Metas" in tabs_names:
     tabs_names.remove("18. Configuración de Metas")
 if not can_view_diagnostics and "19. Diagnóstico de Datos" in tabs_names:
