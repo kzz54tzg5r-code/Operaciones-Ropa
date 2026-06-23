@@ -95,6 +95,67 @@ button[kind="primary"]{background:var(--magenta)!important;border:none!important
 .boceto-section h3{font-size:18px!important;margin:0 0 10px 0!important;color:#14172F!important;}
 div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 @media(max-width:1200px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}.wow-row{grid-template-columns:1fr}.orion-title-main{white-space:normal;}}
+
+/* ORION RESPONSIVE LIMPIO */
+html, body, .stApp {
+    overflow-x: hidden !important;
+}
+.block-container {
+    width: 100% !important;
+    max-width: 1680px !important;
+    padding-left: 1.2rem !important;
+    padding-right: 1.2rem !important;
+}
+div[data-testid="stDataFrame"] {
+    width: 100% !important;
+    overflow-x: auto !important;
+}
+.js-plotly-plot, .plotly, .plot-container {
+    width: 100% !important;
+}
+.boceto-card-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.wow-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+@media(max-width:900px){
+    .block-container {
+        padding-left: .7rem !important;
+        padding-right: .7rem !important;
+    }
+    .boceto-card-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+        gap: 10px !important;
+    }
+    .boceto-kpi-card {
+        min-height: 105px !important;
+        padding: 14px !important;
+        gap: 12px !important;
+    }
+    .boceto-big-icon {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        font-size: 24px !important;
+    }
+    .boceto-card-value {
+        font-size: 20px !important;
+    }
+    .wow-row {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        min-width: 150px !important;
+        font-size: 13px !important;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -713,6 +774,7 @@ now = datetime.now()
 
 
 
+
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -720,56 +782,245 @@ def render_orion_header():
         logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
         logo_src = f"data:image/png;base64,{logo_b64}"
 
-    if logo_src:
-        logo_html = f'<img src="{logo_src}" style="max-width:120px;max-height:78px;object-fit:contain;">'
-    else:
-        logo_html = '<div class="logo-fallback">Price<br>Shoes</div>'
+    logo_html = (
+        f'<img src="{logo_src}" style="max-width:110px;max-height:74px;object-fit:contain;">'
+        if logo_src else
+        '<div class="logo-fallback">Price<br>Shoes</div>'
+    )
 
     header_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
     <style>
-        body {{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#FFFFFF; overflow:hidden; }}
-        .top {{ width:100%; height:156px; display:grid; grid-template-columns:145px minmax(420px,1fr) 720px; gap:18px; align-items:center; box-sizing:border-box; padding:8px 8px 10px 8px; }}
-        .logo {{ width:132px; height:86px; display:flex; align-items:center; justify-content:center; }}
-        .logo-fallback {{ color:#0D4A9C; font-size:27px; font-weight:950; line-height:.9; text-align:center; border:2px solid #0D4A9C; border-radius:50%; padding:12px 8px; background:#F6FBFF; }}
-        .title {{ font-size:42px; font-weight:950; color:#14172F; margin:0; line-height:1.05; letter-spacing:-0.03em; white-space:nowrap; }}
-        .subtitle {{ font-size:18px; color:#6B7280; font-weight:700; margin-top:8px; white-space:nowrap; }}
-        .kpis {{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:center; }}
-        .kpi {{ display:flex; align-items:center; gap:12px; min-width:0; }}
-        .icon {{ width:64px; height:64px; min-width:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:31px; font-weight:900; }}
+        html, body {{
+            margin:0;
+            padding:0;
+            font-family:Arial, Helvetica, sans-serif;
+            background:#FFFFFF;
+            width:100%;
+            overflow:hidden;
+        }}
+        .wrap {{
+            width:100%;
+            box-sizing:border-box;
+            padding:18px 10px 10px 10px;
+            background:#FFFFFF;
+        }}
+        .top {{
+            display:grid;
+            grid-template-columns:120px minmax(360px, 520px) minmax(560px, 1fr);
+            gap:26px;
+            align-items:center;
+            width:100%;
+            box-sizing:border-box;
+        }}
+        .logo {{
+            width:110px;
+            height:84px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }}
+        .logo-fallback {{
+            color:#0D4A9C;
+            font-size:22px;
+            font-weight:950;
+            line-height:.9;
+            text-align:center;
+            border:2px solid #0D4A9C;
+            border-radius:50%;
+            padding:10px 7px;
+            background:#F6FBFF;
+        }}
+        .title {{
+            font-size:48px;
+            font-weight:950;
+            color:#14172F;
+            line-height:1.02;
+            letter-spacing:-0.035em;
+            white-space:normal;
+        }}
+        .subtitle {{
+            font-size:20px;
+            color:#6B7280;
+            font-weight:750;
+            margin-top:8px;
+        }}
+        .kpis {{
+            display:grid;
+            grid-template-columns:repeat(3, minmax(0, 1fr));
+            gap:20px;
+            align-items:center;
+            width:100%;
+        }}
+        .kpi {{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            min-width:0;
+        }}
+        .icon {{
+            width:62px;
+            height:62px;
+            min-width:62px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:30px;
+            font-weight:900;
+        }}
         .rec {{ background:#FCE2EF; color:#EC007C; }}
         .cam {{ background:#E8EEF9; color:#0047B3; }}
         .mue {{ background:#EFE8FB; color:#6F35B5; }}
-        .label {{ color:#14172F; font-size:14px; font-weight:900; line-height:1.1; }}
-        .value {{ font-size:24px; font-weight:950; line-height:1.05; margin-top:5px; white-space:nowrap; }}
+        .label {{
+            color:#14172F;
+            font-size:14px;
+            font-weight:900;
+            line-height:1.1;
+            white-space:nowrap;
+        }}
+        .value {{
+            font-size:28px;
+            font-weight:950;
+            line-height:1.05;
+            margin-top:4px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }}
         .vrec {{ color:#EC007C; }}
         .vcam {{ color:#0047B3; }}
         .vmue {{ color:#6F35B5; }}
+        .cards {{
+            display:grid;
+            grid-template-columns:repeat(5, minmax(0, 1fr));
+            gap:16px;
+            margin-top:24px;
+            width:100%;
+        }}
+        .card {{
+            height:104px;
+            border:1px solid #E5E7EB;
+            border-radius:10px;
+            box-shadow:0 2px 12px rgba(17,24,39,.05);
+            padding:18px 18px;
+            box-sizing:border-box;
+            background:#FFFFFF;
+            min-width:0;
+        }}
+        .card-label {{
+            font-size:15px;
+            color:#14172F;
+            font-weight:500;
+            margin-bottom:14px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }}
+        .card-value {{
+            font-size:34px;
+            color:#3520B8;
+            font-weight:950;
+            line-height:1;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }}
+        @media(max-width:900px) {{
+            .wrap {{
+                padding:10px 6px 6px 6px;
+            }}
+            .top {{
+                grid-template-columns:70px 1fr;
+                gap:10px;
+            }}
+            .logo {{
+                width:70px;
+                height:58px;
+            }}
+            .logo img {{
+                max-width:70px !important;
+                max-height:52px !important;
+            }}
+            .title {{
+                font-size:28px;
+                line-height:1.02;
+            }}
+            .subtitle {{
+                font-size:14px;
+                margin-top:4px;
+            }}
+            .kpis {{
+                grid-column:1 / -1;
+                grid-template-columns:repeat(3, minmax(0, 1fr));
+                gap:8px;
+                margin-top:12px;
+            }}
+            .kpi {{
+                gap:6px;
+            }}
+            .icon {{
+                width:40px;
+                height:40px;
+                min-width:40px;
+                font-size:20px;
+            }}
+            .label {{
+                font-size:11px;
+            }}
+            .value {{
+                font-size:17px;
+            }}
+            .cards {{
+                grid-template-columns:repeat(2, minmax(0, 1fr));
+                gap:8px;
+                margin-top:14px;
+            }}
+            .card {{
+                height:82px;
+                padding:12px;
+            }}
+            .card-label {{
+                font-size:12px;
+                margin-bottom:9px;
+            }}
+            .card-value {{
+                font-size:22px;
+            }}
+        }}
     </style>
     </head>
     <body>
-        <div class="top">
-            <div class="logo">{logo_html}</div>
-            <div>
-                <div class="title">Recuperación Cambios y Muertos</div>
-                <div class="subtitle">Matriz de Operaciones</div>
+        <div class="wrap">
+            <div class="top">
+                <div class="logo">{logo_html}</div>
+                <div>
+                    <div class="title">Recuperación<br>Cambios y Muertos</div>
+                    <div class="subtitle">Matriz de Operaciones</div>
+                </div>
+                <div class="kpis">
+                    <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
+                    <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
+                    <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+                </div>
             </div>
-            <div class="kpis">
-                <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
-                <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
-                <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+            <div class="cards">
+                <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
+                <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
+                <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
+                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
+                <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
             </div>
         </div>
     </body>
     </html>
     """
-    components.html(header_html, height=170, scrolling=False)
+    components.html(header_html, height=310, scrolling=False)
 
-render_orion_header()
+# Header se renderiza después de calcular KPIs
 
-st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1048,6 +1299,13 @@ score_integral = round(
 )
 
 # ==========================================================
+# HEADER + SCORE CARDS SUPERIORES
+# ==========================================================
+render_orion_header()
+st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
+
+
+# ==========================================================
 # SCORE CARDS
 # ==========================================================
 def render_wow_cards(op_source):
@@ -1080,37 +1338,38 @@ def render_wow_cards(op_source):
 render_wow_cards(op_all)
 
 
-def construir_reporte_periodo(periodo="semanal"):
+def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Construye resumen operativo con la misma lógica del indicador Día Anterior."""
     if op_all.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(), ""
 
     base_op = op_all.copy()
     base_daily = daily_all.copy()
 
     if periodo == "semanal":
         if "Semana ISO" not in base_op.columns or base_op["Semana ISO"].dropna().empty:
-            return pd.DataFrame()
-        semana_ref = int(base_op["Semana ISO"].dropna().max())
-        base_op = base_op[base_op["Semana ISO"] == semana_ref]
+            return pd.DataFrame(), ""
+        if semana_sel is None:
+            semana_sel = int(base_op["Semana ISO"].dropna().max())
+        base_op = base_op[base_op["Semana ISO"] == int(semana_sel)]
         if not base_daily.empty and "Semana ISO" in base_daily.columns:
-            base_daily = base_daily[base_daily["Semana ISO"] == semana_ref]
-        etiqueta = f"Semana {semana_ref}"
+            base_daily = base_daily[base_daily["Semana ISO"] == int(semana_sel)]
+        etiqueta = f"Semana {int(semana_sel)}"
     else:
         fechas = pd.to_datetime(base_op["Fecha Día"], errors="coerce").dropna()
         if fechas.empty:
-            return pd.DataFrame()
-        mes_ref = fechas.max().month
-        anio_ref = fechas.max().year
-        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.month == mes_ref]
-        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.year == anio_ref]
+            return pd.DataFrame(), ""
+        if mes_sel is None:
+            mes_periodo = fechas.max().to_period("M")
+        else:
+            mes_periodo = pd.Period(str(mes_sel), freq="M")
+        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
         if not base_daily.empty and "Fecha Día" in base_daily.columns:
-            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.month == mes_ref]
-            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.year == anio_ref]
-        etiqueta = f"Mes {mes_ref}/{anio_ref}"
+            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
+        etiqueta = f"Mes {mes_periodo}"
 
     if base_op.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(), etiqueta
 
     op_resumen = base_op.groupby("Tienda", as_index=False).agg(
         Muertos=("Muertos", "sum"),
@@ -1122,7 +1381,6 @@ def construir_reporte_periodo(periodo="semanal"):
         Productividad=("Productividad Total", "sum")
     )
 
-    # Sólo tiendas con productividad registrada
     op_resumen["Productividad Registrada"] = (
         pd.to_numeric(op_resumen["Muertos"], errors="coerce").fillna(0) +
         pd.to_numeric(op_resumen["Cajas"], errors="coerce").fillna(0) +
@@ -1154,9 +1412,9 @@ def construir_reporte_periodo(periodo="semanal"):
         np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente")
     )
     resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Acondicionar"], ascending=False)
-    return resumen
+    return resumen, etiqueta
 
-def render_reporte_periodo(resumen, titulo, periodo_nombre):
+def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
     if resumen is None or resumen.empty:
         st.info(f"No hay información para {periodo_nombre}.")
         return
@@ -1169,7 +1427,7 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre):
     pct_aco = pct(total_aco, total_pzas)
     pct_ubi = pct(total_ubi, total_pzas)
 
-    st.subheader(titulo)
+    st.subheader(f"{titulo} {etiqueta}")
     st.caption("Construido con la misma lógica del indicador Día Anterior / Pendiente: piezas ingresadas, acondicionado, ubicado y pendientes por procesar.")
 
     st.markdown(f"""
@@ -1196,18 +1454,7 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre):
     st.dataframe(style_dataframe(resumen_general), width="stretch")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    columnas = [
-        "Tienda",
-        "Piezas Ingresadas",
-        "Acondicionado",
-        "% Acondicionado",
-        "Ubicado",
-        "% Ubicado",
-        "Pendiente Acondicionar",
-        "Pendiente Ubicar",
-        "Recorridos",
-        "Estatus"
-    ]
+    columnas = ["Tienda", "Piezas Ingresadas", "Acondicionado", "% Acondicionado", "Ubicado", "% Ubicado", "Pendiente Acondicionar", "Pendiente Ubicar", "Recorridos", "Estatus"]
 
     st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA</h3>", unsafe_allow_html=True)
     st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
@@ -1418,7 +1665,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_combo, width="stretch")
+                    st.plotly_chart(fig_combo, width="stretch", config={"responsive": True, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1427,7 +1674,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_pend, width="stretch")
+                    st.plotly_chart(fig_pend, width="stretch", config={"responsive": True, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
@@ -1440,14 +1687,21 @@ with tab["0. Día Anterior / Pendiente"]:
 
 # 1 Reporte Semanal
 with tab["1. Reporte Semanal"]:
-    reporte_semanal = construir_reporte_periodo("semanal")
-    render_reporte_periodo(reporte_semanal, "Reporte Semanal", "Reporte Semanal")
+    semanas_disp_reporte = sorted([int(x) for x in op_all.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()])
+    semana_default = max(semanas_disp_reporte) if semanas_disp_reporte else None
+    semana_sel = st.selectbox("Semana a consultar", semanas_disp_reporte, index=semanas_disp_reporte.index(semana_default) if semana_default in semanas_disp_reporte else 0)
+    reporte_semanal, etiqueta_sem = construir_reporte_periodo("semanal", semana_sel=semana_sel)
+    render_reporte_periodo(reporte_semanal, "Reporte Semanal", "Reporte Semanal", etiqueta_sem)
 
 
 # 2 Reporte Mensual
 with tab["2. Reporte Mensual"]:
-    reporte_mensual = construir_reporte_periodo("mensual")
-    render_reporte_periodo(reporte_mensual, "Reporte Mensual", "Reporte Mensual")
+    fechas_mes = pd.to_datetime(op_all.get("Fecha Día", pd.Series(dtype=str)), errors="coerce").dropna()
+    meses_disp = sorted(fechas_mes.dt.to_period("M").astype(str).unique().tolist()) if not fechas_mes.empty else []
+    mes_default = meses_disp[-1] if meses_disp else None
+    mes_sel = st.selectbox("Mes a consultar", meses_disp, index=meses_disp.index(mes_default) if mes_default in meses_disp else 0)
+    reporte_mensual, etiqueta_mes = construir_reporte_periodo("mensual", mes_sel=mes_sel)
+    render_reporte_periodo(reporte_mensual, "Reporte Mensual", "Reporte Mensual", etiqueta_mes)
 
 # 3 Conversión
 with tab["3. Conversión"]:
@@ -1558,7 +1812,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:

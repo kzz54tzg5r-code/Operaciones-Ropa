@@ -1,12 +1,13 @@
-# ORION - Reporte Semanal y Mensual
+# ORION - Semanal/Mensual con Consulta
 
 Cambios:
-- Pestaña 1: Reporte Semanal.
-- Pestaña 2: Reporte Mensual.
-- Ambas pestañas usan como referencia la lógica de Día Anterior / Pendiente:
-  piezas ingresadas, acondicionado, ubicado, pendiente por acondicionar y pendiente por ubicar.
-- Incluye tarjetas, resumen general, detalle por tienda, gráficas combinadas y exportación.
-- Mantiene diseño responsive móvil.
+- Corrige header para que no se encime.
+- Reporte Semanal permite elegir la semana.
+- Reporte Mensual permite elegir el mes.
+- Ambos usan la lógica del indicador Día Anterior / Pendiente.
+- Móvil responsive, ajusta al ancho de pantalla.
+- Gráficas responsive.
+- Muertos: Compañía.
 
 Claves:
 - Administrador: orion_admin
