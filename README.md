@@ -1,10 +1,11 @@
-# ORION - Solo Resumen Ejecutivo
+# ORION Header + Resumen Ejecutivo
 
 Cambios:
-- Eliminado el encabezado superior que mostraba HTML como texto.
-- Se deja únicamente la barra magenta "Operaciones Ropa".
-- El título queda como "📊 Resumen Ejecutivo".
-- Se mantiene el dashboard y pestañas existentes.
+- Se conserva el header superior.
+- Se corrige para que no aparezca HTML como texto.
+- Título completo: Recuperación Cambios y Muertos.
+- Muertos: Compañía.
+- Título de tarjetas: Resumen Ejecutivo.
 - Mantiene roles Administrador, Gerente y Consulta.
 
 Claves:

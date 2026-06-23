@@ -62,7 +62,7 @@ st.markdown("""
 html,body,.stApp{background:#FFFFFF!important;color:var(--blue-dark);}
 .block-container{padding-top:.6rem;padding-left:1.8rem;padding-right:1.8rem;padding-bottom:2rem;max-width:1680px;}
 section[data-testid="stSidebar"]{background:#FAFAFC;border-right:1px solid #ECEEF3;}
-.orion-top{display:none;}
+.orion-top{background:#FFFFFF;padding:12px 4px 14px 4px;}
 .orion-top-inner{display:grid;grid-template-columns:140px minmax(470px,1fr) 720px;gap:16px;align-items:center;}
 .orion-logo{width:132px;height:82px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .orion-logo-fallback{color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;}
@@ -709,10 +709,67 @@ archivo_cargado = get_estado("archivo", "Sin archivo cargado")
 estado = "Disponible" if OPERACION_FILE.exists() or COMERCIAL_FILE.exists() else "Sin datos"
 now = datetime.now()
 
-st.markdown(
-    '<div class="orion-pink-bar">Operaciones Ropa</div>',
-    unsafe_allow_html=True
-)
+
+
+
+
+def render_orion_header():
+    logo_src = ""
+    if LOGO_PATH.exists():
+        import base64
+        logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
+        logo_src = f"data:image/png;base64,{logo_b64}"
+
+    if logo_src:
+        logo_html = f'<img src="{logo_src}" style="max-width:120px;max-height:78px;object-fit:contain;">'
+    else:
+        logo_html = '<div class="logo-fallback">Price<br>Shoes</div>'
+
+    header_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body {{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#FFFFFF; overflow:hidden; }}
+        .top {{ width:100%; height:156px; display:grid; grid-template-columns:145px minmax(420px,1fr) 720px; gap:18px; align-items:center; box-sizing:border-box; padding:8px 8px 10px 8px; }}
+        .logo {{ width:132px; height:86px; display:flex; align-items:center; justify-content:center; }}
+        .logo-fallback {{ color:#0D4A9C; font-size:27px; font-weight:950; line-height:.9; text-align:center; border:2px solid #0D4A9C; border-radius:50%; padding:12px 8px; background:#F6FBFF; }}
+        .title {{ font-size:42px; font-weight:950; color:#14172F; margin:0; line-height:1.05; letter-spacing:-0.03em; white-space:nowrap; }}
+        .subtitle {{ font-size:18px; color:#6B7280; font-weight:700; margin-top:8px; white-space:nowrap; }}
+        .kpis {{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:center; }}
+        .kpi {{ display:flex; align-items:center; gap:12px; min-width:0; }}
+        .icon {{ width:64px; height:64px; min-width:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:31px; font-weight:900; }}
+        .rec {{ background:#FCE2EF; color:#EC007C; }}
+        .cam {{ background:#E8EEF9; color:#0047B3; }}
+        .mue {{ background:#EFE8FB; color:#6F35B5; }}
+        .label {{ color:#14172F; font-size:14px; font-weight:900; line-height:1.1; }}
+        .value {{ font-size:24px; font-weight:950; line-height:1.05; margin-top:5px; white-space:nowrap; }}
+        .vrec {{ color:#EC007C; }}
+        .vcam {{ color:#0047B3; }}
+        .vmue {{ color:#6F35B5; }}
+    </style>
+    </head>
+    <body>
+        <div class="top">
+            <div class="logo">{logo_html}</div>
+            <div>
+                <div class="title">Recuperación Cambios y Muertos</div>
+                <div class="subtitle">Matriz de Operaciones</div>
+            </div>
+            <div class="kpis">
+                <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
+                <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
+                <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    components.html(header_html, height=170, scrolling=False)
+
+render_orion_header()
+
+st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1217,6 +1274,12 @@ with tab["0. Día Anterior / Pendiente"]:
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
+
+                export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
+                pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
+                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
+
+
 # 1 Panel Ejecutivo
 with tab["1. Panel Ejecutivo"]:
     st.subheader("Panel Ejecutivo")
