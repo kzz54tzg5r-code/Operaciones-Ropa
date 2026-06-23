@@ -96,16 +96,119 @@ button[kind="primary"]{background:var(--magenta)!important;border:none!important
 div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 @media(max-width:1200px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}.wow-row{grid-template-columns:1fr}.orion-title-main{white-space:normal;}}
 
-/* ORION SAFE FIX */
-div[data-testid="stSelectbox"]{max-width:330px!important;}
-div[data-testid="stSelectbox"] > div{max-width:330px!important;}
-div[data-testid="stDateInput"]{max-width:330px!important;}
+/* ORION RESPONSIVE LIMPIO */
+html, body, .stApp {
+    overflow-x: hidden !important;
+}
+.block-container {
+    width: 100% !important;
+    max-width: 1680px !important;
+    padding-left: 1.2rem !important;
+    padding-right: 1.2rem !important;
+}
+div[data-testid="stDataFrame"] {
+    width: 100% !important;
+    overflow-x: auto !important;
+}
+.js-plotly-plot, .plotly, .plot-container {
+    width: 100% !important;
+}
+.boceto-card-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.wow-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
 @media(max-width:900px){
-    .block-container{padding-left:.6rem!important;padding-right:.6rem!important;}
-    div[data-testid="stSelectbox"], div[data-testid="stSelectbox"] > div, div[data-testid="stDateInput"]{max-width:100%!important;}
-    .boceto-card-row{grid-template-columns:1fr!important;min-width:0!important;}
-    .wow-row{grid-template-columns:1fr!important;min-width:0!important;}
-    .boceto-kpi-card{width:100%!important;}
+    .block-container {
+        padding-left: .7rem !important;
+        padding-right: .7rem !important;
+    }
+    .boceto-card-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+        gap: 10px !important;
+    }
+    .boceto-kpi-card {
+        min-height: 105px !important;
+        padding: 14px !important;
+        gap: 12px !important;
+    }
+    .boceto-big-icon {
+        width: 48px !important;
+        height: 48px !important;
+        min-width: 48px !important;
+        font-size: 24px !important;
+    }
+    .boceto-card-value {
+        font-size: 20px !important;
+    }
+    .wow-row {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+        min-width: 0 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        min-width: 150px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* ==========================================================
+   ORION AJUSTE FINAL HEADER + MÓVIL + SELECTORES CORTOS
+   ========================================================== */
+.block-container{
+    max-width:1680px!important;
+    padding-left:1rem!important;
+    padding-right:1rem!important;
+}
+div[data-testid="stSelectbox"]{
+    max-width:330px!important;
+}
+div[data-testid="stSelectbox"] > div{
+    max-width:330px!important;
+}
+div[data-testid="stDateInput"]{
+    max-width:330px!important;
+}
+@media(max-width:900px){
+    .block-container{
+        padding-left:.55rem!important;
+        padding-right:.55rem!important;
+    }
+    div[data-testid="stSelectbox"],
+    div[data-testid="stSelectbox"] > div,
+    div[data-testid="stDateInput"]{
+        max-width:100%!important;
+    }
+    .boceto-card-row{
+        grid-template-columns:1fr!important;
+        min-width:0!important;
+    }
+    .boceto-kpi-card{
+        width:100%!important;
+        min-height:96px!important;
+        padding:12px!important;
+        gap:10px!important;
+    }
+    .boceto-big-icon{
+        width:46px!important;
+        height:46px!important;
+        min-width:46px!important;
+        font-size:22px!important;
+    }
+    .boceto-card-title{
+        font-size:13px!important;
+    }
+    .boceto-card-value{
+        font-size:21px!important;
+        white-space:normal!important;
+        overflow:visible!important;
+        text-overflow:clip!important;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -351,37 +454,64 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     doc.build(story); bio.seek(0); return bio.getvalue()
 
 
-def pdf_generico_bytes(titulo, sheets):
+def pdf_generico_bytes(titulo, hojas):
+    """Genera un PDF simple y uniforme con las tablas principales de la pestaña."""
     from reportlab.lib.pagesizes import letter, landscape
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
     bio = BytesIO()
-    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
+    doc = SimpleDocTemplate(
+        bio, pagesize=landscape(letter),
+        rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24
+    )
     styles = getSampleStyleSheet()
-    story = [Paragraph("Recuperación Cambios y Muertos", styles["Title"]), Paragraph(f"Operaciones Ropa | {titulo}", styles["Heading2"]), Spacer(1, 10)]
-    for nombre, df in sheets.items():
-        if not isinstance(df, pd.DataFrame) or df.empty:
-            continue
-        d = df.copy().head(35).iloc[:, :12]
+    story = [
+        Paragraph("Recuperación Cambios y Muertos", styles["Title"]),
+        Paragraph(f"Operaciones Ropa | {titulo}", styles["Heading2"]),
+        Spacer(1, 10)
+    ]
+
+    def prep(df, max_rows=35, max_cols=12):
+        d = df.copy()
+        d = d.iloc[:max_rows, :max_cols]
         for col in d.columns:
             if pd.api.types.is_numeric_dtype(d[col]):
-                d[col] = d[col].apply(lambda x: f"{x:,.1f}%" if "%" in str(col) else f"{x:,.0f}")
-        data = [list(d.columns)] + d.astype(str).values.tolist()
+                if "%" in str(col):
+                    d[col] = d[col].apply(lambda x: f"{x:,.1f}%")
+                elif any(k in str(col).lower() for k in ["recuperacion", "recuperación", "valor", "costo", "$"]):
+                    d[col] = d[col].apply(lambda x: f"${x:,.0f}")
+                else:
+                    d[col] = d[col].apply(lambda x: f"{x:,.0f}")
+        return [list(d.columns)] + d.astype(str).values.tolist()
+
+    for nombre, df in hojas.items():
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            continue
         story.append(Paragraph(str(nombre), styles["Heading3"]))
-        table = Table(data, repeatRows=1)
+        table = Table(prep(df), repeatRows=1)
         table.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-            ("FONTSIZE",(0,0),(-1,-1),7),
-            ("GRID",(0,0),(-1,-1),.25,colors.HexColor("#D1D5DB")),
-            ("ALIGN",(0,0),(-1,-1),"CENTER"),
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2F4A8A")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTSIZE", (0,0), (-1,-1), 7),
+            ("GRID", (0,0), (-1,-1), .25, colors.HexColor("#D1D5DB")),
+            ("ALIGN", (0,0), (-1,-1), "CENTER"),
         ]))
-        story.append(table); story.append(Spacer(1, 12))
+        story.append(table)
+        story.append(Spacer(1, 12))
+
     doc.build(story)
     bio.seek(0)
     return bio.getvalue()
+
+def exportar_pestana_pdf(nombre, hojas):
+    st.download_button(
+        "⬇️ Descargar PDF",
+        data=pdf_generico_bytes(nombre, hojas),
+        file_name=f"{nombre.lower().replace(' ', '_').replace('/', '_')}.pdf",
+        mime="application/pdf"
+    )
 
 def export_buttons(name, sheets):
     st.download_button(
@@ -399,15 +529,6 @@ def export_buttons(name, sheets):
                 file_name=f"{name}.csv",
                 mime="text/csv"
             )
-    try:
-        st.download_button(
-            f"⬇️ Exportar {name} PDF",
-            data=pdf_generico_bytes(name, sheets),
-            file_name=f"{name}.pdf",
-            mime="application/pdf"
-        )
-    except Exception:
-        pass
 
 def current_or_latest_week(df):
     if df.empty or "Semana ISO" not in df.columns:
@@ -504,7 +625,7 @@ def cargar_operacion(file, hoja):
     df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
     df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
     df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
-    df["Acondicionado"] = np.where(act.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True, na=False), df["Número de Piezas"], 0)
+    df["Acondicionado"] = np.where(act.str.contains("acondicionado|habilitar", regex=True), df["Número de Piezas"], 0)
     df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
 
     df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
@@ -702,22 +823,6 @@ def normalizar_operacion(df):
     if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
         df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
 
-
-    # Recalcular Acondicionado si el parquet anterior lo guardó en cero
-    if all(c in df.columns for c in ["Actividad Realizada", "Motivo de ingreso", "Área", "Número de Piezas"]):
-        _texto_acond = (
-            df["Actividad Realizada"].astype(str) + " " +
-            df["Motivo de ingreso"].astype(str) + " " +
-            df["Área"].astype(str)
-        ).str.lower()
-        _calc_acond = np.where(
-            _texto_acond.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True, na=False),
-            pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
-            0
-        )
-        _actual_acond = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0) if "Acondicionado" in df.columns else pd.Series(0, index=df.index)
-        df["Acondicionado"] = np.where(_actual_acond > 0, _actual_acond, _calc_acond)
-
     num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado"]
     for c in num_cols:
         if c not in df.columns:
@@ -783,6 +888,8 @@ now = datetime.now()
 
 
 
+
+
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -790,332 +897,266 @@ def render_orion_header():
         logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
         logo_src = f"data:image/png;base64,{logo_b64}"
 
-    if logo_src:
-        logo_html = f'<img src="{logo_src}" style="max-width:120px;max-height:78px;object-fit:contain;">'
-    else:
-        logo_html = '<div class="logo-fallback">Price<br>Shoes</div>'
+    logo_html = (
+        f'<img src="{logo_src}" style="max-width:104px;max-height:68px;object-fit:contain;">'
+        if logo_src else
+        '<div class="logo-fallback">Price<br>Shoes</div>'
+    )
 
     header_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
     <style>
-        body {{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#FFFFFF; overflow:hidden; }}
-        .top {{ width:100%; height:156px; display:grid; grid-template-columns:145px minmax(420px,1fr) 720px; gap:18px; align-items:center; box-sizing:border-box; padding:8px 8px 10px 8px; }}
-        .logo {{ width:132px; height:86px; display:flex; align-items:center; justify-content:center; }}
-        .logo-fallback {{ color:#0D4A9C; font-size:27px; font-weight:950; line-height:.9; text-align:center; border:2px solid #0D4A9C; border-radius:50%; padding:12px 8px; background:#F6FBFF; }}
-        .title {{ font-size:42px; font-weight:950; color:#14172F; margin:0; line-height:1.05; letter-spacing:-0.03em; white-space:nowrap; }}
-        .subtitle {{ font-size:18px; color:#6B7280; font-weight:700; margin-top:8px; white-space:nowrap; }}
-        .kpis {{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:center; }}
-        .kpi {{ display:flex; align-items:center; gap:12px; min-width:0; }}
-        .icon {{ width:64px; height:64px; min-width:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:31px; font-weight:900; }}
+        html, body {{
+            margin:0;
+            padding:0;
+            font-family:Arial, Helvetica, sans-serif;
+            background:#FFFFFF;
+            width:100%;
+            overflow:hidden;
+        }}
+        .wrap {{
+            width:100%;
+            box-sizing:border-box;
+            padding:12px 10px 8px 10px;
+            background:#FFFFFF;
+        }}
+        .top {{
+            display:grid;
+            grid-template-columns:105px minmax(310px, 500px) minmax(500px, 1fr);
+            gap:22px;
+            align-items:center;
+            width:100%;
+            box-sizing:border-box;
+        }}
+        .logo {{
+            width:104px;
+            height:74px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }}
+        .logo-fallback {{
+            color:#0D4A9C;
+            font-size:20px;
+            font-weight:950;
+            line-height:.9;
+            text-align:center;
+            border:2px solid #0D4A9C;
+            border-radius:50%;
+            padding:9px 6px;
+            background:#F6FBFF;
+        }}
+        .title {{
+            font-size:42px;
+            font-weight:950;
+            color:#14172F;
+            line-height:1.0;
+            letter-spacing:-0.035em;
+            white-space:normal;
+        }}
+        .subtitle {{
+            font-size:18px;
+            color:#6B7280;
+            font-weight:750;
+            margin-top:7px;
+        }}
+        .kpis {{
+            display:grid;
+            grid-template-columns:repeat(3, minmax(0, 1fr));
+            gap:16px;
+            align-items:center;
+            width:100%;
+        }}
+        .kpi {{
+            display:flex;
+            align-items:center;
+            gap:9px;
+            min-width:0;
+        }}
+        .icon {{
+            width:54px;
+            height:54px;
+            min-width:54px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:26px;
+            font-weight:900;
+        }}
         .rec {{ background:#FCE2EF; color:#EC007C; }}
         .cam {{ background:#E8EEF9; color:#0047B3; }}
         .mue {{ background:#EFE8FB; color:#6F35B5; }}
-        .label {{ color:#14172F; font-size:14px; font-weight:900; line-height:1.1; }}
-        .value {{ font-size:24px; font-weight:950; line-height:1.05; margin-top:5px; white-space:nowrap; }}
+        .label {{
+            color:#14172F;
+            font-size:13px;
+            font-weight:900;
+            line-height:1.1;
+            white-space:nowrap;
+        }}
+        .value {{
+            font-size:22px;
+            font-weight:950;
+            line-height:1.05;
+            margin-top:4px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            max-width:165px;
+        }}
         .vrec {{ color:#EC007C; }}
         .vcam {{ color:#0047B3; }}
         .vmue {{ color:#6F35B5; }}
+        .cards {{
+            display:grid;
+            grid-template-columns:repeat(5, minmax(0, 1fr));
+            gap:14px;
+            margin-top:18px;
+            width:100%;
+        }}
+        .card {{
+            height:96px;
+            border:1px solid #E5E7EB;
+            border-radius:10px;
+            box-shadow:0 2px 12px rgba(17,24,39,.05);
+            padding:16px 16px;
+            box-sizing:border-box;
+            background:#FFFFFF;
+            min-width:0;
+        }}
+        .card-label {{
+            font-size:14px;
+            color:#14172F;
+            font-weight:500;
+            margin-bottom:11px;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }}
+        .card-value {{
+            font-size:30px;
+            color:#3520B8;
+            font-weight:950;
+            line-height:1;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }}
+        @media(max-width:900px) {{
+            .wrap {{
+                padding:8px 4px 6px 4px;
+            }}
+            .top {{
+                grid-template-columns:62px 1fr;
+                gap:8px;
+            }}
+            .logo {{
+                width:62px;
+                height:50px;
+            }}
+            .logo img {{
+                max-width:62px !important;
+                max-height:48px !important;
+            }}
+            .title {{
+                font-size:24px;
+                line-height:1.02;
+                letter-spacing:-0.02em;
+            }}
+            .subtitle {{
+                font-size:13px;
+                margin-top:3px;
+            }}
+            .kpis {{
+                grid-column:1 / -1;
+                grid-template-columns:1fr;
+                gap:6px;
+                margin-top:10px;
+            }}
+            .kpi {{
+                gap:7px;
+                min-height:38px;
+            }}
+            .icon {{
+                width:34px;
+                height:34px;
+                min-width:34px;
+                font-size:18px;
+            }}
+            .label {{
+                font-size:11px;
+            }}
+            .value {{
+                font-size:16px;
+                max-width:100%;
+            }}
+            .cards {{
+                grid-template-columns:1fr;
+                gap:8px;
+                margin-top:12px;
+            }}
+            .card {{
+                height:auto;
+                min-height:72px;
+                padding:11px 12px;
+            }}
+            .card-label {{
+                font-size:12px;
+                margin-bottom:7px;
+            }}
+            .card-value {{
+                font-size:22px;
+                white-space:normal;
+                overflow:visible;
+                text-overflow:clip;
+            }}
+        }}
     </style>
     </head>
     <body>
-        <div class="top">
-            <div class="logo">{logo_html}</div>
-            <div>
-                <div class="title">Recuperación Cambios y Muertos</div>
-                <div class="subtitle">Matriz de Operaciones</div>
+        <div class="wrap">
+            <div class="top">
+                <div class="logo">{logo_html}</div>
+                <div>
+                    <div class="title">Recuperación<br>Cambios y Muertos</div>
+                    <div class="subtitle">Matriz de Operaciones</div>
+                </div>
+                <div class="kpis">
+                    <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
+                    <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
+                    <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+                </div>
             </div>
-            <div class="kpis">
-                <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
-                <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
-                <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+            <div class="cards">
+                <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
+                <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
+                <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
+                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
+                <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
             </div>
         </div>
     </body>
     </html>
     """
-    components.html(header_html, height=170, scrolling=False)
+    components.html(header_html, height=260, scrolling=False)
 
 render_orion_header()
 
 st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
 
-# ==========================================================
-# SIDEBAR ACCESO / CARGA
-# ==========================================================
-with st.sidebar:
-    st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
-
-    is_admin = False
-    is_manager = False
-    can_upload = False
-    can_config = False
-    can_edit_names = False
-    can_view_diagnostics = False
-
-    if rol == "Administrador":
-        clave = st.text_input("Clave administrador", type="password")
-        is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "orion_admin")
-        if is_admin:
-            can_upload = True
-            can_config = True
-            can_edit_names = True
-            can_view_diagnostics = True
-        elif clave:
-            st.warning("Clave incorrecta.")
-
-    elif rol == "Gerente":
-        clave_gerente = st.text_input("Clave gerente", type="password")
-        is_manager = clave_gerente == st.secrets.get("GERENTE_PASSWORD", "orion_gerente")
-        if is_manager:
-            can_edit_names = True
-            can_view_diagnostics = True
-        elif clave_gerente:
-            st.warning("Clave de gerente incorrecta.")
-
-    else:
-        st.caption("Modo consulta: solo visualización.")
-
-    st.caption(f"Rol activo: {rol}")
-    if is_admin:
-        st.success("Permisos: carga, metas, nombres y diagnóstico.")
-    elif is_manager:
-        st.success("Permisos: consulta, corrección de nombres y diagnóstico.")
-    elif rol == "Consulta":
-        st.info("Permisos: solo consulta.")
-
-    st.divider()
-    st.header("📂 Fuente de datos")
-    if can_upload:
-        uploaded = st.file_uploader("Cargar/Reemplazar Excel", type=["xlsx"])
-        if uploaded is not None:
-            st.info("Archivo listo. Presiona el botón para procesarlo una sola vez.")
-            if st.button("🚀 Procesar archivo", type="primary"):
-                with st.spinner("Procesando archivo completo. Puede tardar por el tamaño del Excel..."):
-                    try:
-                        op_new, co_new, daily_new, diag = procesar_excel(uploaded)
-                        guardar_datos(op_new, co_new, daily_new, diag, uploaded.name)
-                        st.success("Archivo procesado y guardado correctamente.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"No se pudo procesar el archivo: {e}")
-            st.caption("Si cambiaste de versión y la app conserva datos viejos, borra la persistencia y vuelve a cargar el Excel.")
-        if st.button("🧹 Borrar datos persistidos"):
-            for f in [OPERACION_FILE, COMERCIAL_FILE, DIARIO_COMERCIAL_FILE]:
-                try:
-                    if f.exists():
-                        f.unlink()
-                except Exception:
-                    pass
-            set_estado("archivo", "Sin archivo cargado")
-            set_estado("ultima_actualizacion", "Sin actualización")
-            st.success("Datos persistidos borrados. Vuelve a cargar el Excel.")
-            st.rerun()
-
-    else:
-        st.caption("Este rol no puede cargar ni reemplazar archivos.")
-
-op_all, co_all, daily_all = cargar_datos()
-op_all = normalizar_operacion(op_all)
-co_all = normalizar_comercial(co_all)
-daily_all = normalizar_diario_comercial(daily_all)
-
-if op_all.empty and co_all.empty:
-    st.warning("No hay datos cargados. Un administrador debe cargar el Excel por primera vez.")
-    st.stop()
-
-metas = get_metas()
-
-# ==========================================================
-# FILTROS GLOBALES
-# ==========================================================
-with st.sidebar:
-    st.divider()
-    st.header("🎛️ Filtros globales")
-
-    # Semana default: última semana disponible
-    semanas_disponibles = sorted([int(x) for x in op_all.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if not op_all.empty else []
-    default_semana = [max(semanas_disponibles)] if semanas_disponibles else []
-
-    meses = sorted(set(op_all.get("Mes", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Mes_Origen", pd.Series(dtype=str)).dropna().astype(str).tolist()))
-    tiendas = sorted(set(TIENDAS_OFICIALES + op_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist()))
-    actividades = sorted(op_all.get("Actividad Realizada", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
-    categorias = sorted(co_all.get("Categoria", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
-    subcats = sorted(co_all.get("Subcategoria", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
-    modelos = sorted(co_all.get("Modelo", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
-    colaboradores = sorted(op_all.get("Nombre Real", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
-    ocurrencias = sorted(op_all.get("Ocurrencia", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
-
-    f_semana = st.multiselect("Semana ISO", semanas_disponibles, default=default_semana)
-    f_mes = st.multiselect("Mes", meses)
-    f_tienda = st.multiselect("Tienda", tiendas)
-    f_actividad = st.multiselect("Actividad", actividades)
-    f_categoria = st.multiselect("Categoría", categorias)
-    f_subcat = st.multiselect("Subcategoría", subcats)
-    f_modelo = st.multiselect("Modelo", modelos)
-    f_colab = st.multiselect("Colaborador", colaboradores)
-    f_ocurrencia = st.multiselect("ID empleado / Ocurrencia", ocurrencias)
-
-op = op_all.copy()
-co = co_all.copy()
-daily = daily_all.copy()
-
-if f_semana:
-    if not op.empty:
-        op = op[op["Semana ISO"].isin(f_semana)]
-    if not daily.empty and "Semana ISO" in daily.columns:
-        daily = daily[daily["Semana ISO"].isin(f_semana)]
-if f_mes:
-    if not op.empty:
-        op = op[op["Mes"].isin(f_mes)]
-    if not co.empty:
-        co = co[co["Mes_Origen"].isin(f_mes)]
-    if not daily.empty:
-        daily = daily[daily["Mes_Origen"].isin(f_mes)]
-if f_tienda:
-    if not op.empty:
-        op = op[op["Tienda"].isin(f_tienda)]
-    if not co.empty:
-        co = co[co["Tienda"].isin(f_tienda)]
-    if not daily.empty:
-        daily = daily[daily["Tienda"].isin(f_tienda)]
-if f_actividad and not op.empty:
-    op = op[op["Actividad Realizada"].isin(f_actividad)]
-if f_categoria and not co.empty:
-    co = co[co["Categoria"].isin(f_categoria)]
-if f_categoria and not daily.empty:
-    daily = daily[daily["Categoria"].isin(f_categoria)]
-if f_subcat and not co.empty:
-    co = co[co["Subcategoria"].isin(f_subcat)]
-if f_subcat and not daily.empty:
-    daily = daily[daily["Subcategoria"].isin(f_subcat)]
-if f_modelo and not co.empty:
-    co = co[co["Modelo"].isin(f_modelo)]
-if f_modelo and not daily.empty:
-    daily = daily[daily["Modelo"].isin(f_modelo)]
-if f_colab and not op.empty:
-    op = op[op["Nombre Real"].isin(f_colab)]
-if f_ocurrencia and not op.empty:
-    op = op[op["Ocurrencia"].isin(f_ocurrencia)]
-
-op = normalizar_operacion(op)
-co = normalizar_comercial(co)
-daily = normalizar_diario_comercial(daily)
 
 
-def asegurar_acondicionado_alias(df):
-    if df is None or df.empty:
-        return df
-    df = df.copy()
-    if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
-        df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
-    if "Acondicionado" not in df.columns:
-        df["Acondicionado"] = 0
-    df["Acondicionado"] = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
-    return df
+def _pdf_auto_tab(nombre_tab, local_vars):
+    """Botón PDF estándar para pestañas que tengan DataFrames en variables locales."""
+    hojas = {}
+    for k, v in local_vars.items():
+        if isinstance(v, pd.DataFrame) and not v.empty:
+            hojas[k[:31]] = v
+    if hojas:
+        exportar_pestana_pdf(nombre_tab, hojas)
 
-op_all = asegurar_acondicionado_alias(op_all)
-op = asegurar_acondicionado_alias(op)
-
-# ==========================================================
-# AGREGADOS CENTRALES
-# ==========================================================
-def days_in_period(opdf):
-    if opdf.empty or "Fecha Día" not in opdf.columns:
-        return 1
-    return max(1, opdf["Fecha Día"].dropna().drop_duplicates().shape[0])
-
-def meta_prod_periodo(opdf):
-    return metas["productividad_diaria"] * days_in_period(opdf)
-
-def meta_recorridos_periodo(opdf):
-    return (metas["recorridos_semanales"] / 7) * days_in_period(opdf)
-
-def total_dev_system(codf):
-    return float(codf["Dev_Pzs"].sum()) if not codf.empty and "Dev_Pzs" in codf else 0
-
-def store_summary(opdf, codf, only_registered=True):
-    op_store = pd.DataFrame(columns=["Tienda"])
-    if not opdf.empty:
-        op_store = opdf.groupby("Tienda", as_index=False).agg(
-            Muertos=("Muertos","sum"),
-            Cajas=("Cajas","sum"),
-            Probador=("Probador","sum"),
-            Recoleccion=("Recolección de Muertos","sum"),
-            Acondicionado=("Acondicionado","sum"),
-            Ubicado=("Ubicado","sum"),
-            Productividad=("Productividad Total","sum"),
-            Recorridos=("Recorridos","sum")
-        )
-    co_store = pd.DataFrame(columns=["Tienda"])
-    if not codf.empty:
-        co_store = codf.groupby("Tienda", as_index=False).agg(
-            Dev_Pzs=("Dev_Pzs","sum"),
-            Vta_Pzs=("Piezas Vendidas Validadas","sum"),
-            Recuperacion=("Vta_Imp","sum"),
-            Costo_Dev=("Costo_Dev","sum")
-        )
-
-    base = pd.DataFrame({"Tienda": TIENDAS_OFICIALES}) if not only_registered else pd.DataFrame({"Tienda": sorted(set(op_store.get("Tienda", [])) | set(co_store.get("Tienda", [])))})
-    out = base.merge(op_store, on="Tienda", how="left").merge(co_store, on="Tienda", how="left").fillna(0)
-
-    for c in ["Muertos","Cajas","Probador","Recoleccion","Acondicionado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperacion","Costo_Dev"]:
-        if c not in out.columns:
-            out[c] = 0
-        out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
-
-    out["Piezas Ingresadas"] = out["Dev_Pzs"] + out["Muertos"] + out["Cajas"] + out["Probador"]
-    out["% Acondicionado"] = sdiv(out["Acondicionado"], out["Piezas Ingresadas"]) * 100
-    out["% Ubicado"] = sdiv(out["Ubicado"], out["Piezas Ingresadas"]) * 100
-    out["Conversión %"] = sdiv(out["Vta_Pzs"], out["Dev_Pzs"]) * 100
-    out["Recuperación %"] = sdiv(out["Recuperacion"], out["Costo_Dev"]) * 100
-    out["Meta Recorridos"] = meta_recorridos_periodo(opdf)
-    out["% Recorridos"] = sdiv(out["Recorridos"], out["Meta Recorridos"]) * 100
-    out["Estado"] = np.select(
-        [
-            (out["Productividad"] > 0) & (out["Recuperacion"] > 0),
-            (out["Productividad"] > 0) & (out["Recuperacion"] == 0),
-            (out["Productividad"] == 0) & (out["Recuperacion"] > 0),
-        ],
-        [
-            "🟢 Productividad + Recuperación",
-            "🟡 Productividad sin Recuperación",
-            "🟠 Recuperación sin Productividad",
-        ],
-        default="🔴 Sin registros"
-    )
-    return out
-
-ss = store_summary(op, co, only_registered=True)
-ss_all = store_summary(op, co, only_registered=False)
-
-total_ingresos = ss["Piezas Ingresadas"].sum() if not ss.empty else 0
-productividad = ss["Productividad"].sum() if not ss.empty else 0
-acondicionado = ss["Acondicionado"].sum() if not ss.empty else 0
-ubicado = ss["Ubicado"].sum() if not ss.empty else 0
-recorridos = ss["Recorridos"].sum() if not ss.empty else 0
-dev_pzs = ss["Dev_Pzs"].sum() if not ss.empty else 0
-vta_pzs = ss["Vta_Pzs"].sum() if not ss.empty else 0
-recuperacion = ss["Recuperacion"].sum() if not ss.empty else 0
-costo_dev = ss["Costo_Dev"].sum() if not ss.empty else 0
-
-conv_pct = pct(vta_pzs, dev_pzs)
-rec_pct = pct(recuperacion, costo_dev)
-hab_pct = pct(acondicionado, total_ingresos)
-ubi_pct = pct(ubicado, total_ingresos)
-recorr_pct = pct(recorridos, meta_recorridos_periodo(op) * max(ss["Tienda"].nunique(), 1)) if not ss.empty else 0
-prod_pct = pct(productividad, meta_prod_periodo(op) * max(op["Ocurrencia"].nunique() if not op.empty else 1, 1))
-
-score_integral = round(
-    min(prod_pct,100)*.40 +
-    min(hab_pct,100)*.25 +
-    min(ubi_pct,100)*.15 +
-    min(conv_pct,100)*.10 +
-    min(recorr_pct,100)*.10,
-    1
-)
 
 # ==========================================================
 # SCORE CARDS
@@ -1147,11 +1188,191 @@ def render_wow_cards(op_source):
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
-render_wow_cards(op_all)
+if "op_all" in globals():
+    render_wow_cards(op_all)
+
+
+def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
+    """Construye resumen operativo con la misma lógica del indicador Día Anterior."""
+    if "op_all" not in globals():
+        return pd.DataFrame(), ""
+    if op_all.empty:
+        return pd.DataFrame(), ""
+
+    base_op = op_all.copy()
+    base_daily = daily_all.copy()
+
+    if periodo == "semanal":
+        if "Semana ISO" not in base_op.columns or base_op["Semana ISO"].dropna().empty:
+            return pd.DataFrame(), ""
+        if semana_sel is None:
+            semana_sel = int(base_op["Semana ISO"].dropna().max())
+        base_op = base_op[base_op["Semana ISO"] == int(semana_sel)]
+        if not base_daily.empty and "Semana ISO" in base_daily.columns:
+            base_daily = base_daily[base_daily["Semana ISO"] == int(semana_sel)]
+        etiqueta = f"Semana {int(semana_sel)}"
+    else:
+        fechas = pd.to_datetime(base_op["Fecha Día"], errors="coerce").dropna()
+        if fechas.empty:
+            return pd.DataFrame(), ""
+        if mes_sel is None:
+            mes_periodo = fechas.max().to_period("M")
+        else:
+            mes_periodo = pd.Period(str(mes_sel), freq="M")
+        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
+        if not base_daily.empty and "Fecha Día" in base_daily.columns:
+            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
+        etiqueta = f"Mes {mes_periodo}"
+
+    if base_op.empty:
+        return pd.DataFrame(), etiqueta
+
+    op_resumen = base_op.groupby("Tienda", as_index=False).agg(
+        Muertos=("Muertos", "sum"),
+        Cajas=("Cajas", "sum"),
+        Probador=("Probador", "sum"),
+        Acondicionado=("Acondicionado", "sum"),
+        Ubicado=("Ubicado", "sum"),
+        Recorridos=("Recorridos", "sum"),
+        Productividad=("Productividad Total", "sum")
+    )
+
+    op_resumen["Productividad Registrada"] = (
+        pd.to_numeric(op_resumen["Muertos"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Cajas"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Probador"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Acondicionado"], errors="coerce").fillna(0) +
+        pd.to_numeric(op_resumen["Ubicado"], errors="coerce").fillna(0)
+    )
+    op_resumen = op_resumen[op_resumen["Productividad Registrada"] > 0]
+
+    if base_daily is not None and not base_daily.empty and "Tienda" in base_daily.columns:
+        sys_resumen = base_daily.groupby("Tienda", as_index=False).agg(Dev_Pzs=("Dev_Pzs", "sum"))
+    else:
+        sys_resumen = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
+
+    resumen = op_resumen.merge(sys_resumen, on="Tienda", how="left").fillna(0)
+    for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos", "Productividad"]:
+        resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
+
+    resumen["Periodo"] = etiqueta
+    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+    resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
+    resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
+    resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["% Procesado"] = sdiv(resumen["Acondicionado"] + resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["Estatus"] = np.where(
+        resumen["Pendiente Ubicar"] <= 0,
+        "🟢 Completo",
+        np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente")
+    )
+    resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Acondicionar"], ascending=False)
+    return resumen, etiqueta
+
+def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
+    if resumen is None or resumen.empty:
+        st.info(f"No hay información para {periodo_nombre}.")
+        return
+
+    total_pzas = resumen["Piezas Ingresadas"].sum()
+    total_aco = resumen["Acondicionado"].sum()
+    total_ubi = resumen["Ubicado"].sum()
+    total_pend_aco = resumen["Pendiente Acondicionar"].sum()
+    total_pend_ubi = resumen["Pendiente Ubicar"].sum()
+    pct_aco = pct(total_aco, total_pzas)
+    pct_ubi = pct(total_ubi, total_pzas)
+
+    st.subheader(f"{titulo} {etiqueta}")
+    st.caption("Construido con la misma lógica del indicador Día Anterior / Pendiente: piezas ingresadas, acondicionado, ubicado y pendientes por procesar.")
+
+    st.markdown(f"""
+    <div class="boceto-card-row">
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_pzas)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Acondicionado</div><div class="boceto-card-value" style="color:#0047B3;">{n0(total_aco)}</div><div class="boceto-card-foot">{p1(pct_aco)}</div></div></div>
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⌖</div><div><div class="boceto-card-title">Ubicado</div><div class="boceto-card-value" style="color:#F39800;">{n0(total_ubi)}</div><div class="boceto-card-foot">{p1(pct_ubi)}</div></div></div>
+        <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">⏳</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#00A651;">{n0(total_pend_ubi)}</div><div class="boceto-card-foot">Pendiente ubicar</div></div></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    resumen_general = pd.DataFrame([{
+        "Tiendas con Productividad": resumen["Tienda"].nunique(),
+        "Piezas Ingresadas": total_pzas,
+        "Acondicionado": total_aco,
+        "% Acondicionado": pct_aco,
+        "Ubicado": total_ubi,
+        "% Ubicado": pct_ubi,
+        "Pendiente Acondicionar": total_pend_aco,
+        "Pendiente Ubicar": total_pend_ubi
+    }])
+
+    st.markdown("<div class='boceto-section'><h3>RESUMEN GENERAL</h3>", unsafe_allow_html=True)
+    st.dataframe(style_dataframe(resumen_general), width="stretch")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    columnas = ["Tienda", "Piezas Ingresadas", "Acondicionado", "% Acondicionado", "Ubicado", "% Ubicado", "Pendiente Acondicionar", "Pendiente Ubicar", "Recorridos", "Estatus"]
+
+    st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA</h3>", unsafe_allow_html=True)
+    st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("<div class='boceto-section'><h3>INGRESO vs ACONDICIONADO vs UBICADO</h3>", unsafe_allow_html=True)
+        fig = go.Figure()
+        fig.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
+        fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
+        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
+        fig.update_layout(barmode="group", height=430, margin=dict(l=20, r=20, t=40, b=20), legend=dict(orientation="h"))
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with c2:
+        st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
+        fig2 = go.Figure()
+        fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
+        fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
+        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
+        fig2.update_layout(barmode="group", height=430, margin=dict(l=20, r=20, t=40, b=20), legend=dict(orientation="h"))
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
+    exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
 # ==========================================================
 # PESTAÑAS
 # ==========================================================
+
+# Permisos seguros por si el sidebar aún no inicializó estas variables
+can_config = globals().get("can_config", False)
+can_view_diagnostics = globals().get("can_view_diagnostics", False)
+can_edit_names = globals().get("can_edit_names", False)
+is_admin = globals().get("is_admin", False)
+is_manager = globals().get("is_manager", False)
+can_upload = globals().get("can_upload", False)
+
+
+# Defaults seguros antes de crear pestañas
+if "op_all" not in globals():
+    op_all = pd.DataFrame()
+if "co_all" not in globals():
+    co_all = pd.DataFrame()
+if "daily_all" not in globals():
+    daily_all = pd.DataFrame()
+if "op" not in globals():
+    op = op_all.copy()
+if "co" not in globals():
+    co = co_all.copy()
+if "daily" not in globals():
+    daily = daily_all.copy()
+if "can_config" not in globals():
+    can_config = False
+if "can_view_diagnostics" not in globals():
+    can_view_diagnostics = False
+if "can_edit_names" not in globals():
+    can_edit_names = False
+
 tabs_names = [
     "0. Día Anterior / Pendiente",
     "1. Reporte Semanal",
@@ -1175,6 +1396,8 @@ tabs_names = [
     "19. Diagnóstico de Datos",
     "20. Compartir ORION"
 ]
+if not can_edit_names and "17. Corrección de Nombres" in tabs_names:
+    tabs_names.remove("17. Corrección de Nombres")
 if not can_config and "18. Configuración de Metas" in tabs_names:
     tabs_names.remove("18. Configuración de Metas")
 if not can_view_diagnostics and "19. Diagnóstico de Datos" in tabs_names:
@@ -1331,7 +1554,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_combo, width="stretch")
+                    st.plotly_chart(fig_combo, width="stretch", config={"responsive": True, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1340,7 +1563,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_pend, width="stretch")
+                    st.plotly_chart(fig_pend, width="stretch", config={"responsive": True, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
@@ -1350,77 +1573,24 @@ with tab["0. Día Anterior / Pendiente"]:
                 st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
 
 
-# 1 Panel Ejecutivo
+
+# 1 Reporte Semanal
 with tab["1. Reporte Semanal"]:
-    st.subheader("Reporte Semanal")
-    st.caption("Top y Bottom solo consideran tiendas con registros. Se descartan registros no coherentes mediante agrupación por ID empleado / Ocurrencia.")
+    semanas_disp_reporte = sorted([int(x) for x in op_all.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()])
+    semana_default = max(semanas_disp_reporte) if semanas_disp_reporte else None
+    semana_sel = st.selectbox("Semana a consultar", semanas_disp_reporte, index=semanas_disp_reporte.index(semana_default) if semana_default in semanas_disp_reporte else 0)
+    reporte_semanal, etiqueta_sem = construir_reporte_periodo("semanal", semana_sel=semana_sel)
+    render_reporte_periodo(reporte_semanal, "Reporte Semanal", "Reporte Semanal", etiqueta_sem)
 
-    score_df = ss.copy()
-    if not score_df.empty:
-        score_df["Score"] = (
-            score_df["Productividad"].rank(pct=True)*40 +
-            score_df["% Acondicionado"].rank(pct=True)*25 +
-            score_df["% Ubicado"].rank(pct=True)*15 +
-            score_df["Conversión %"].rank(pct=True)*10 +
-            score_df["% Recorridos"].rank(pct=True)*10
-        ).round(1)
 
-    a,b = st.columns(2)
-    with a:
-        st.write("🏆 Top 2 Tiendas")
-        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=False).head(2)), width="stretch")
-    with b:
-        st.write("⚠️ Bottom 2 Tiendas")
-        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=True).head(2)), width="stretch")
-
-    valid = op.copy()
-    if not valid.empty:
-        valid = valid[~valid["Nombre Real"].str.lower().isin(["sin dato", "nan", "0", "-", ""])]
-        colab = valid.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"))
-        colab = colab.sort_values("Productividad", ascending=False)
-    else:
-        colab = pd.DataFrame()
-
-    a,b = st.columns(2)
-    with a:
-        st.write("👤 Top 3 Colaboradores")
-        st.dataframe(style_dataframe(colab.head(3)), width="stretch")
-    with b:
-        st.write("👤 Bottom 3 Colaboradores")
-        st.dataframe(style_dataframe(colab[colab["Productividad"] > 0].tail(3) if not colab.empty else colab), width="stretch")
-
-    st.plotly_chart(px.bar(score_df.sort_values("Score", ascending=False), x="Tienda", y="Score", color="Estado",
-                           title="Score Card por Tienda", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
-                    width="stretch")
-    export_buttons("panel_ejecutivo", {"score_tiendas": score_df, "colaboradores": colab})
-
-# 2 Macro
+# 2 Reporte Mensual
 with tab["2. Reporte Mensual"]:
-    st.subheader("Macro | Últimas 4 semanas")
-    if op_all.empty:
-        st.warning("Sin datos operativos.")
-    else:
-        macro = op_all.groupby("Semana ISO", as_index=False).agg(
-            Muertos=("Muertos","sum"),
-            Cajas=("Cajas","sum"),
-            Probador=("Probador","sum"),
-            Acondicionado=("Acondicionado","sum"),
-            Ubicado=("Ubicado","sum")
-        )
-        sys_week = daily_all.groupby("Semana ISO", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum")) if not daily_all.empty else pd.DataFrame(columns=["Semana ISO","Dev_Pzs"])
-        macro = macro.merge(sys_week, on="Semana ISO", how="left").fillna(0)
-        macro["Piezas Ingresadas"] = macro["Dev_Pzs"] + macro["Muertos"] + macro["Cajas"] + macro["Probador"]
-        macro["% Acondicionado"] = sdiv(macro["Acondicionado"], macro["Piezas Ingresadas"]) * 100
-        macro["% Ubicado"] = sdiv(macro["Ubicado"], macro["Piezas Ingresadas"]) * 100
-        macro["Semana ISO"] = macro["Semana ISO"].astype(int)
-        macro = macro.sort_values("Semana ISO").tail(4)
-        st.dataframe(style_dataframe(macro), width="stretch")
-        st.plotly_chart(px.bar(macro, x="Semana ISO", y="Piezas Ingresadas", text_auto=True,
-                               title="Total de ingresos por semana", color_discrete_sequence=["#3366CC"]),
-                        width="stretch")
-        st.plotly_chart(px.line(macro, x="Semana ISO", y=["% Acondicionado","% Ubicado"], markers=True,
-                                title="% Acondicionado vs % Ubicado", color_discrete_sequence=["#3366CC","#FF99FF"]),
-                        width="stretch")
+    fechas_mes = pd.to_datetime(op_all.get("Fecha Día", pd.Series(dtype=str)), errors="coerce").dropna()
+    meses_disp = sorted(fechas_mes.dt.to_period("M").astype(str).unique().tolist()) if not fechas_mes.empty else []
+    mes_default = meses_disp[-1] if meses_disp else None
+    mes_sel = st.selectbox("Mes a consultar", meses_disp, index=meses_disp.index(mes_default) if mes_default in meses_disp else 0)
+    reporte_mensual, etiqueta_mes = construir_reporte_periodo("mensual", mes_sel=mes_sel)
+    render_reporte_periodo(reporte_mensual, "Reporte Mensual", "Reporte Mensual", etiqueta_mes)
 
 # 3 Conversión
 with tab["3. Conversión"]:
@@ -1434,6 +1604,8 @@ with tab["3. Conversión"]:
     st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False), x="Tienda", y="Conversión %",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Conversión por tienda"), width="stretch")
+
+    _pdf_auto_tab("3. Conversión", locals())
 
 # 4 Recuperación Económica
 with tab["4. Recuperación Económica"]:
@@ -1449,6 +1621,8 @@ with tab["4. Recuperación Económica"]:
     st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Recuperación $ por tienda"), width="stretch")
+
+    _pdf_auto_tab("4. Recuperación Económica", locals())
 
 # 5 Productividad Colaborador
 with tab["5. Productividad por Colaborador"]:
@@ -1480,6 +1654,8 @@ with tab["5. Productividad por Colaborador"]:
                                color_discrete_sequence=["#3366CC","#FF99FF","#003366"],
                                title="Top colaboradores por productividad"), width="stretch")
 
+    _pdf_auto_tab("5. Productividad por Colaborador", locals())
+
 # 6 Productividad Actividad
 with tab["6. Productividad por Actividad"]:
     st.subheader("Productividad por Actividad")
@@ -1506,6 +1682,8 @@ with tab["6. Productividad por Actividad"]:
                                color="Concepto", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
                         width="stretch")
 
+    _pdf_auto_tab("6. Productividad por Actividad", locals())
+
 # 7 Eficiencia Operativa
 with tab["7. Eficiencia Operativa"]:
     st.subheader("Eficiencia Operativa | Solo tiendas con registro")
@@ -1520,6 +1698,8 @@ with tab["7. Eficiencia Operativa"]:
     ef = ef[["Ranking","Tienda","Piezas Ingresadas","Acondicionado","Ubicado","% Acondicionado","% Ubicado","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(ef), width="stretch")
 
+    _pdf_auto_tab("7. Eficiencia Operativa", locals())
+
 # 8 Cumplimiento Recorridos
 with tab["8. Cumplimiento de Recorridos"]:
     st.subheader("Cumplimiento de Recorridos")
@@ -1531,7 +1711,9 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+
+    _pdf_auto_tab("8. Cumplimiento de Recorridos", locals())
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:
@@ -1556,6 +1738,8 @@ with tab["9. Indicadores Diarios"]:
         diaria = diaria.rename(columns={"Ocurrencia":"ID de empleado"})
         st.dataframe(style_dataframe(diaria), width="stretch")
 
+    _pdf_auto_tab("9. Indicadores Diarios", locals())
+
 # 10 Top Modelos
 with tab["10. Top 30 Modelos"]:
     st.subheader("Top 30 Modelos")
@@ -1578,6 +1762,8 @@ with tab["10. Top 30 Modelos"]:
                                color_discrete_sequence=["#3366CC","#FF99FF","#003366"], title=criterio),
                         width="stretch")
 
+    _pdf_auto_tab("10. Top 30 Modelos", locals())
+
 # 11 Categoría
 with tab["11. Análisis por Categoría"]:
     st.subheader("Análisis por Categoría")
@@ -1590,6 +1776,8 @@ with tab["11. Análisis por Categoría"]:
         st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
                                color_discrete_sequence=["#3366CC"]), width="stretch")
 
+    _pdf_auto_tab("11. Análisis por Categoría", locals())
+
 # 12 Subcategoría
 with tab["12. Análisis por Subcategoría"]:
     st.subheader("Análisis por Subcategoría")
@@ -1601,6 +1789,8 @@ with tab["12. Análisis por Subcategoría"]:
         st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
         st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
                                color_discrete_sequence=["#FF99FF"]), width="stretch")
+
+    _pdf_auto_tab("12. Análisis por Subcategoría", locals())
 
 # 13 Ranking Tiendas
 with tab["13. Ranking de Tiendas"]:
@@ -1618,6 +1808,8 @@ with tab["13. Ranking de Tiendas"]:
     rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rank), width="stretch")
 
+    _pdf_auto_tab("13. Ranking de Tiendas", locals())
+
 # 14 Ranking Colaboradores
 with tab["14. Ranking de Colaboradores"]:
     st.subheader("Ranking de Colaboradores")
@@ -1628,6 +1820,8 @@ with tab["14. Ranking de Colaboradores"]:
         rc["Score"] = (rc["Productividad"].rank(pct=True)*85 + rc["Recorridos"].rank(pct=True)*15).round(1)
         rc["Ranking"] = rc["Score"].rank(method="dense", ascending=False).astype(int)
         st.dataframe(style_dataframe(rc.sort_values("Ranking")), width="stretch")
+
+    _pdf_auto_tab("14. Ranking de Colaboradores", locals())
 
 # 15 Índice Integral
 with tab["15. Índice Integral"]:
@@ -1640,6 +1834,8 @@ with tab["15. Índice Integral"]:
         "Cumplimiento": [prod_pct, hab_pct, ubi_pct, conv_pct, recorr_pct]
     })
     st.dataframe(style_dataframe(score_break), width="stretch")
+
+    _pdf_auto_tab("15. Índice Integral", locals())
 
 # 16 Alertas
 with tab["16. Alertas Inteligentes"]:
@@ -1666,6 +1862,8 @@ with tab["16. Alertas Inteligentes"]:
     else:
         st.dataframe(style_dataframe(alert_df), width="stretch")
 
+
+    _pdf_auto_tab("16. Alertas Inteligentes", locals())
 
 # 17 Corrección de Nombres
 if "17. Corrección de Nombres" in tab:
