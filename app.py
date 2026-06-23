@@ -1194,6 +1194,8 @@ if "op_all" in globals():
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Construye resumen operativo con la misma lógica del indicador Día Anterior."""
+    if "op_all" not in globals():
+        return pd.DataFrame(), ""
     if op_all.empty:
         return pd.DataFrame(), ""
 
@@ -1349,6 +1351,27 @@ can_edit_names = globals().get("can_edit_names", False)
 is_admin = globals().get("is_admin", False)
 is_manager = globals().get("is_manager", False)
 can_upload = globals().get("can_upload", False)
+
+
+# Defaults seguros antes de crear pestañas
+if "op_all" not in globals():
+    op_all = pd.DataFrame()
+if "co_all" not in globals():
+    co_all = pd.DataFrame()
+if "daily_all" not in globals():
+    daily_all = pd.DataFrame()
+if "op" not in globals():
+    op = op_all.copy()
+if "co" not in globals():
+    co = co_all.copy()
+if "daily" not in globals():
+    daily = daily_all.copy()
+if "can_config" not in globals():
+    can_config = False
+if "can_view_diagnostics" not in globals():
+    can_view_diagnostics = False
+if "can_edit_names" not in globals():
+    can_edit_names = False
 
 tabs_names = [
     "0. Día Anterior / Pendiente",
