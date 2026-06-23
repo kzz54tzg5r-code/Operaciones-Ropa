@@ -1,8 +1,10 @@
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 import sqlite3
 import json
 import re
@@ -57,40 +59,22 @@ DEFAULT_METAS = {
 st.markdown("""
 <style>
 :root{--magenta:#EC007C;--blue:#0047B3;--blue-dark:#14172F;--green:#00A651;--orange:#F39800;--purple:#6F35B5;--border:#E5E7EB;--muted:#6B7280;}
-.stApp{background:#FFFFFF!important;color:var(--blue-dark);}
-.block-container{padding-top:.8rem;padding-left:2.2rem;padding-right:2.2rem;padding-bottom:2rem;max-width:1600px;}
+html,body,.stApp{background:#FFFFFF!important;color:var(--blue-dark);}
+.block-container{padding-top:.55rem;padding-left:2.2rem;padding-right:2.2rem;padding-bottom:2rem;max-width:1600px;}
 section[data-testid="stSidebar"]{background:#FAFAFC;border-right:1px solid #ECEEF3;}
 section[data-testid="stSidebar"] h1,section[data-testid="stSidebar"] h2,section[data-testid="stSidebar"] h3,section[data-testid="stSidebar"] label{color:var(--blue-dark)!important;font-weight:800!important;}
-.orion-top{background:#FFFFFF;padding:18px 4px 20px 4px;}
-.orion-top-inner{display:grid;grid-template-columns:150px 1fr 660px;gap:18px;align-items:center;}
-.orion-logo{width:130px;min-height:82px;display:flex;align-items:center;justify-content:center;}
-.orion-logo-fallback{color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;}
-.orion-title-main{font-size:42px;font-weight:950;color:var(--blue-dark);margin:0;letter-spacing:-.02em;}
-.orion-sub-main{font-size:21px;color:var(--muted);font-weight:600;margin-top:4px;}
-.orion-top-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
-.orion-mini-kpi{display:flex;align-items:center;gap:12px;}
-.orion-mini-icon{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;}
-.icon-rec{background:#FCE2EF;color:var(--magenta)}.icon-cam{background:#E8EEF9;color:var(--blue)}.icon-mue{background:#EFE8FB;color:var(--purple)}
-.orion-mini-label{font-size:14px;color:var(--blue-dark);font-weight:800}.orion-mini-value{font-size:24px;font-weight:950;margin-top:3px}.value-rec{color:var(--magenta)}.value-cam{color:var(--blue)}.value-mue{color:var(--purple)}
-.orion-pink-bar{background:var(--magenta);color:white;padding:20px 28px;margin-left:-2.2rem;margin-right:-2.2rem;margin-bottom:18px;font-size:30px;line-height:1;font-weight:950;}
 .stTabs [data-baseweb="tab-list"]{gap:0;background:#FFFFFF;border-bottom:1px solid #D7DAE2;padding:0;overflow-x:auto;}
 .stTabs [data-baseweb="tab"]{min-width:190px;height:62px;padding:0 18px;color:#2E3248;font-weight:850;border-bottom:4px solid transparent;}
 .stTabs [data-baseweb="tab"]:hover{color:var(--magenta);background:#FFF4FA;}
 .stTabs [aria-selected="true"]{color:var(--magenta)!important;border-bottom:4px solid var(--magenta);background:#FFFFFF!important;}
-h1,h2,h3{color:var(--blue-dark)!important;letter-spacing:-.01em;} h2{font-weight:950!important;}
-div[data-testid="stMetric"]{background:#FFFFFF;border:1px solid var(--border);border-radius:9px;padding:18px;box-shadow:0 2px 10px rgba(18,24,40,.04);}
-div[data-testid="stMetric"] label{color:var(--blue-dark)!important;font-weight:850!important;} div[data-testid="stMetricValue"]{color:var(--blue)!important;font-weight:950!important;}
-.boceto-card-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0 18px 0;}
-.boceto-kpi-card{background:#FFFFFF;border:1px solid var(--border);border-radius:8px;min-height:128px;padding:22px;display:flex;align-items:center;gap:22px;box-shadow:0 1px 8px rgba(17,24,39,.04);}
-.boceto-big-icon{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:34px;font-weight:950;}
-.big-magenta{background:var(--magenta)}.big-blue{background:var(--blue)}.big-orange{background:var(--orange)}.big-green{background:var(--green)}
-.boceto-card-title{color:var(--blue-dark);font-size:15px;font-weight:900;margin-bottom:10px}.boceto-card-value{font-size:25px;font-weight:950;margin-bottom:12px}.boceto-card-foot{color:var(--blue-dark);font-size:14px;text-align:center;}
-div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.boceto-section{background:#FFFFFF;border:1px solid var(--border);border-radius:8px;padding:16px;box-shadow:0 1px 8px rgba(17,24,39,.04);margin-bottom:14px;}
-.confidencial{background:#FFFFFF;border-top:1px solid var(--border);color:var(--muted);font-size:12px;margin-top:24px;padding-top:12px;}
-button[kind="primary"]{background:var(--magenta)!important;border:none!important;color:white!important;font-weight:900!important;}
-.stDownloadButton button{border-color:var(--magenta)!important;color:var(--magenta)!important;font-weight:800!important;}
-@media(max-width:1100px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}}
+h1,h2,h3{color:var(--blue-dark)!important;letter-spacing:-.01em;}h2{font-weight:950!important;}
+div[data-testid="stDateInput"]{max-width:330px!important;} div[data-testid="stDateInput"] input{height:46px!important;border-radius:6px!important;}
+div[data-testid="stButton"]>button{height:46px;border-radius:6px;font-weight:900;} button[kind="primary"]{background:var(--magenta)!important;border:none!important;color:white!important;font-weight:900!important;}
+div[data-testid="stMetric"]{background:#FFFFFF;border:1px solid var(--border);border-radius:9px;padding:18px;box-shadow:0 2px 10px rgba(18,24,40,.04);} div[data-testid="stMetric"] label{color:var(--blue-dark)!important;font-weight:850!important;} div[data-testid="stMetricValue"]{color:var(--blue)!important;font-weight:950!important;}
+.boceto-card-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0 18px 0;}.boceto-kpi-card{background:#FFFFFF;border:1px solid #E5E7EB;border-radius:8px;min-height:128px;padding:22px;display:flex;align-items:center;gap:22px;box-shadow:0 1px 8px rgba(17,24,39,.04);}.boceto-big-icon{width:68px;height:68px;min-width:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:34px;font-weight:950;}.big-magenta{background:#EC007C}.big-blue{background:#0047B3}.big-orange{background:#F39800}.big-green{background:#00A651}.boceto-card-title{color:#14172F;font-size:15px;font-weight:900;margin-bottom:10px;line-height:1.15}.boceto-card-value{font-size:25px;font-weight:950;margin-bottom:12px}.boceto-card-foot{color:#14172F;font-size:14px;}
+.boceto-section{background:#FFFFFF;border:1px solid #E5E7EB;border-radius:8px;padding:12px;box-shadow:0 1px 8px rgba(17,24,39,.04);margin-bottom:14px;}.boceto-section h3{font-size:18px!important;margin:0 0 10px 0!important;color:#14172F!important;} div[data-testid="stDataFrame"]{border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;}
+.confidencial{background:#FFFFFF;border-top:1px solid #E5E7EB;color:#6B7280;font-size:12px;margin-top:24px;padding-top:12px;}.stDownloadButton button{border-color:#EC007C!important;color:#EC007C!important;font-weight:800!important;}
+@media(max-width:1100px){.boceto-card-row{grid-template-columns:1fr}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -292,21 +276,21 @@ def normalize_store(x):
 def style_dataframe(df):
     if not isinstance(df, pd.DataFrame) or df.empty:
         return df
-    currency_cols = [c for c in df.columns if any(k in str(c).lower() for k in ["recuperacion","recuperación","costo","valor","importe","$","pendiente $"])]
+    currency_cols = [c for c in df.columns if any(k in str(c).lower() for k in ["recuperacion","recuperación","costo","valor","importe","$","pendiente $","piezas ingresadas","acondicionado","ubicado","procesado"])]
     percent_cols = [c for c in df.columns if "%" in str(c) or "porcentaje" in str(c).lower() or "cumplimiento" in str(c).lower()]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     fmt = {}
     for c in numeric_cols:
-        if c in currency_cols:
-            fmt[c] = "${:,.0f}"
-        elif c in percent_cols:
+        if c in percent_cols:
             fmt[c] = "{:,.1f}%"
+        elif c in currency_cols:
+            fmt[c] = "{:,.0f}"
         else:
             fmt[c] = "{:,.0f}"
     return (df.style
         .set_table_styles([
-            {"selector":"th","props":[("background-color","#F3F4F6"),("color","#14172F"),("font-weight","900"),("border","1px solid #E5E7EB"),("text-align","center")]},
-            {"selector":"td","props":[("border","1px solid #E5E7EB"),("background-color","#FFFFFF"),("color","#14172F")]},
+            {"selector":"th","props":[("background-color","#2F4A8A"),("color","white"),("font-weight","900"),("border","1px solid #2F4A8A"),("text-align","center")]},
+            {"selector":"td","props":[("border","1px solid #E5E7EB"),("background-color","#FFFFFF"),("color","#14172F"),("text-align","center")]},
             {"selector":"tbody tr:nth-child(even) td","props":[("background-color","#FCFCFD")]}
         ])
         .format(fmt)
@@ -319,6 +303,30 @@ def excel_export(sheets):
             if isinstance(df, pd.DataFrame):
                 df.to_excel(writer, sheet_name=name[:31], index=False)
     return bio.getvalue()
+
+
+def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    bio = BytesIO()
+    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
+    styles = getSampleStyleSheet()
+    story = [Paragraph("Recuperación Cambios y Muertos", styles["Title"]), Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", styles["Normal"]), Spacer(1, 12)]
+    def prep(df, max_rows=28):
+        d = df.copy().head(max_rows)
+        for col in d.columns:
+            if pd.api.types.is_numeric_dtype(d[col]):
+                if "%" in str(col): d[col] = d[col].apply(lambda x: f"{x:,.1f}%")
+                else: d[col] = d[col].apply(lambda x: f"{x:,.0f}")
+        return [list(d.columns)] + d.astype(str).values.tolist()
+    for title, df in [("Resumen general", resumen_general), ("Detalle por tienda", detalle)]:
+        story.append(Paragraph(title, styles["Heading2"]))
+        table = Table(prep(df), repeatRows=1)
+        table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),7),("GRID",(0,0),(-1,-1),.25,colors.HexColor("#D1D5DB")),("ALIGN",(0,0),(-1,-1),"CENTER")]))
+        story += [table, Spacer(1, 12)]
+    doc.build(story); bio.seek(0); return bio.getvalue()
 
 def export_buttons(name, sheets):
     st.download_button(
@@ -689,37 +697,32 @@ estado = "Disponible" if OPERACION_FILE.exists() or COMERCIAL_FILE.exists() else
 now = datetime.now()
 
 
-logo_html = """
-<div class="orion-logo">
-    <div class="orion-logo-fallback">Price<br>Shoes</div>
-</div>
-"""
-if LOGO_PATH.exists():
-    import base64
-    logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
-    logo_html = f"""
-    <div class="orion-logo">
-        <img src="data:image/png;base64,{logo_b64}" style="max-width:130px;max-height:86px;">
-    </div>
-    """
 
-st.markdown(f"""
-<div class="orion-top">
-    <div class="orion-top-inner">
-        {logo_html}
+def render_orion_header():
+    logo_uri = ""
+    if LOGO_PATH.exists():
+        import base64
+        logo_uri = "data:image/png;base64," + base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
+    logo_html_local = f'<img src="{logo_uri}" style="max-width:130px;max-height:86px;">' if logo_uri else '<div style="color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;">Price<br>Shoes</div>'
+    components.html(f"""
+    <div style="font-family:Arial, sans-serif;background:#fff;">
+      <div style="display:grid;grid-template-columns:150px 1fr 660px;gap:18px;align-items:center;padding:10px 4px 18px 4px;">
+        <div style="width:130px;min-height:82px;display:flex;align-items:center;justify-content:center;">{logo_html_local}</div>
         <div>
-            <div class="orion-title-main">Recuperación Cambios y Muertos</div>
-            <div class="orion-sub-main">Matriz de Operaciones</div>
+          <div style="font-size:42px;font-weight:950;color:#14172F;letter-spacing:-.02em;">Recuperación Cambios y Muertos</div>
+          <div style="font-size:21px;color:#6B7280;font-weight:600;margin-top:4px;">Matriz de Operaciones</div>
         </div>
-        <div class="orion-top-kpis">
-            <div class="orion-mini-kpi"><div class="orion-mini-icon icon-rec">↻</div><div><div class="orion-mini-label">Recuperación</div><div class="orion-mini-value value-rec">Operaciones</div></div></div>
-            <div class="orion-mini-kpi"><div class="orion-mini-icon icon-cam">↔</div><div><div class="orion-mini-label">Cambios</div><div class="orion-mini-value value-cam">Ropa</div></div></div>
-            <div class="orion-mini-kpi"><div class="orion-mini-icon icon-mue">♙</div><div><div class="orion-mini-label">Muertos</div><div class="orion-mini-value value-mue">Nacional</div></div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:58px;border-radius:50%;background:#FCE2EF;color:#EC007C;display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;">↻</div><div><div style="font-size:14px;color:#14172F;font-weight:800;">Recuperación</div><div style="font-size:24px;font-weight:950;color:#EC007C;margin-top:3px;">Operaciones</div></div></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:58px;border-radius:50%;background:#E8EEF9;color:#0047B3;display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;">↔</div><div><div style="font-size:14px;color:#14172F;font-weight:800;">Cambios</div><div style="font-size:24px;font-weight:950;color:#0047B3;margin-top:3px;">Ropa</div></div></div>
+          <div style="display:flex;align-items:center;gap:12px;"><div style="width:58px;height:58px;border-radius:50%;background:#EFE8FB;color:#6F35B5;display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;">♙</div><div><div style="font-size:14px;color:#14172F;font-weight:800;">Muertos</div><div style="font-size:24px;font-weight:950;color:#6F35B5;margin-top:3px;">Nacional</div></div></div>
         </div>
+      </div>
+      <div style="background:#EC007C;color:white;padding:18px 28px;font-size:30px;line-height:1;font-weight:950;">Operaciones Ropa</div>
     </div>
-</div>
-<div class="orion-pink-bar">Operaciones Ropa</div>
-""", unsafe_allow_html=True)
+    """, height=168, scrolling=False)
+
+render_orion_header()
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1045,11 +1048,16 @@ with tab["0. Día Anterior / Pendiente"]:
             ultima_fecha = fechas_validas.max().date()
             dia_anterior = ultima_fecha - pd.Timedelta(days=1)
 
-            fecha_consulta = st.date_input(
-                "Fecha a consultar",
-                value=dia_anterior,
-                help="Por default se toma el día anterior al último día con registro en la base."
-            )
+            fecha_col, btn_col, spacer_col = st.columns([2.2, 1.0, 2.8])
+            with fecha_col:
+                fecha_consulta = st.date_input(
+                    "Fecha del día anterior:",
+                    value=dia_anterior,
+                    help="Por default se toma el día anterior al último día con registro en la base."
+                )
+            with btn_col:
+                st.write("")
+                st.button("↻ Actualizar", type="primary")
 
             op_dia = temp_op[pd.to_datetime(temp_op["Fecha Día"], errors="coerce").dt.date == fecha_consulta].copy()
 
@@ -1102,11 +1110,12 @@ with tab["0. Día Anterior / Pendiente"]:
                 for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Habilitado", "Ubicado", "Recorridos"]:
                     resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
 
-                resumen["Ingresos Día Anterior"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
-                resumen["Pendiente Habilitar"] = (resumen["Ingresos Día Anterior"] - resumen["Habilitado"]).clip(lower=0)
-                resumen["Pendiente Ubicar"] = (resumen["Ingresos Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
-                resumen["% Habilitado"] = sdiv(resumen["Habilitado"], resumen["Ingresos Día Anterior"]) * 100
-                resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Ingresos Día Anterior"]) * 100
+                resumen["Piezas Ingresadas Día Anterior"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+                resumen["Acondicionado"] = resumen["Habilitado"]
+                resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Acondicionado"]).clip(lower=0)
+                resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
+                resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
+                resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
 
                 resumen["Estatus"] = np.where(
                     resumen["Pendiente Ubicar"] <= 0,
@@ -1115,28 +1124,28 @@ with tab["0. Día Anterior / Pendiente"]:
                 )
 
                 resumen["Ranking Pendiente"] = resumen["Pendiente Ubicar"].rank(method="dense", ascending=False).astype(int)
-                resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Habilitar"], ascending=False)
+                resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Acondicionar"], ascending=False)
 
-                total_ing_dia = resumen["Ingresos Día Anterior"].sum()
-                total_hab_dia = resumen["Habilitado"].sum()
+                total_ing_dia = resumen["Piezas Ingresadas Día Anterior"].sum()
+                total_aco_dia = resumen["Acondicionado"].sum()
                 total_ubi_dia = resumen["Ubicado"].sum()
-                total_proc_dia = total_hab_dia + total_ubi_dia
+                total_proc_dia = total_aco_dia + total_ubi_dia
                 total_pend_dia = resumen["Pendiente Ubicar"].sum()
                 pct_proc_dia = pct(total_proc_dia, total_ing_dia)
 
                 st.markdown(f"""
                 <div class="boceto-card-row">
-                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">🛒</div><div><div class="boceto-card-title">Ingresos Día Anterior</div><div class="boceto-card-value" style="color:#EC007C;">{money(total_ing_dia)}</div><div class="boceto-card-foot">Total pesos</div></div></div>
-                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Procesado (Habilitado + Ubicado)</div><div class="boceto-card-value" style="color:#0047B3;">{money(total_proc_dia)}</div><div class="boceto-card-foot">Total pesos</div></div></div>
-                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⏳</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#F39800;">{money(total_pend_dia)}</div><div class="boceto-card-foot">Total pesos</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas Día Anterior<br>(Cambios y Devoluciones)</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_ing_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Procesado (Acondicionado + Ubicado)</div><div class="boceto-card-value" style="color:#0047B3;">{n0(total_proc_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⌛</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#F39800;">{n0(total_pend_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">%</div><div><div class="boceto-card-title">% Procesado</div><div class="boceto-card-value" style="color:#00A651;">{p1(pct_proc_dia)}</div><div class="boceto-card-foot">Del ingreso total</div></div></div>
                 </div>
                 """, unsafe_allow_html=True)
 
                 resumen_general = pd.DataFrame([{
                     "Tiendas con Productividad": resumen["Tienda"].nunique(),
-                    "Ingresos Día Anterior": total_ing_dia,
-                    "Habilitado": total_hab_dia,
+                    "Piezas Ingresadas Día Anterior (Cambios y Devoluciones)": total_ing_dia,
+                    "Acondicionado": total_aco_dia,
                     "Ubicado": total_ubi_dia,
                     "Procesado": total_proc_dia,
                     "Pendiente por Procesar": total_pend_dia,
@@ -1147,9 +1156,9 @@ with tab["0. Día Anterior / Pendiente"]:
                 st.markdown("</div>", unsafe_allow_html=True)
 
                 columnas = [
-                    "Ranking Pendiente", "Tienda", "Estatus",
-                    "Ingresos Día Anterior", "Dev_Pzs", "Muertos", "Cajas", "Probador",
-                    "Habilitado", "Pendiente Habilitar", "% Habilitado",
+                    "Ranking Pendiente", "Tienda", "Piezas Ingresadas Día Anterior", "Estatus",
+                    "Dev_Pzs", "Muertos", "Cajas", "Probador",
+                    "Acondicionado", "Pendiente Acondicionar", "% Acondicionado",
                     "Ubicado", "Pendiente Ubicar", "% Ubicado", "Recorridos"
                 ]
 
@@ -1157,27 +1166,27 @@ with tab["0. Día Anterior / Pendiente"]:
                 st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
                 st.markdown("</div>", unsafe_allow_html=True)
 
-                fig = px.bar(
-                    resumen,
-                    x="Tienda",
-                    y=["Ingresos Día Anterior", "Habilitado", "Ubicado"],
-                    barmode="group",
-                    title="Ingresos vs Habilitado vs Ubicado por tienda",
-                    color_discrete_sequence=["#3366CC", "#FF99FF", "#003366"]
-                )
-                st.plotly_chart(fig, width="stretch")
+                st.markdown("<div class='boceto-section'><h3>GRÁFICA COMBINADA: PIEZAS VS ACONDICIONADO VS UBICADO</h3>", unsafe_allow_html=True)
+                fig_combo = go.Figure()
+                fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=[f"{x:,.0f}" for x in resumen["Acondicionado"]], textposition="outside", marker_color="#0047B3")
+                fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=[f"{x:,.0f}" for x in resumen["Ubicado"]], textposition="outside", marker_color="#EC007C")
+                fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas Día Anterior"], name="Piezas Ingresadas Día Anterior", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas Día Anterior"]], textposition="top center", line=dict(color="#F39800", width=4))
+                fig_combo.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
+                st.plotly_chart(fig_combo, width="stretch")
+                st.markdown("</div>", unsafe_allow_html=True)
 
-                fig2 = px.bar(
-                    resumen,
-                    x="Tienda",
-                    y=["Pendiente Habilitar", "Pendiente Ubicar"],
-                    barmode="group",
-                    title="Pendiente por procesar",
-                    color_discrete_sequence=["#FF99FF", "#003366"]
-                )
-                st.plotly_chart(fig2, width="stretch")
+                st.markdown("<div class='boceto-section'><h3>GRÁFICA COMBINADA: PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
+                fig_pend = go.Figure()
+                fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=[f"{x:,.0f}" for x in resumen["Pendiente Acondicionar"]], textposition="outside", marker_color="#0047B3")
+                fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=[f"{x:,.0f}" for x in resumen["Pendiente Ubicar"]], textposition="outside", marker_color="#EC007C")
+                fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas Día Anterior"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas Día Anterior"]], textposition="top center", line=dict(color="#F39800", width=4))
+                fig_pend.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
+                st.plotly_chart(fig_pend, width="stretch")
+                st.markdown("</div>", unsafe_allow_html=True)
 
                 export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
+                pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
+                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
 
 
 # 1 Panel Ejecutivo

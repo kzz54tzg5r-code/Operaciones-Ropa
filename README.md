@@ -1,14 +1,7 @@
-# ORION - Diseño Boceto + Roles + Fix Parquet
+# ORION Boceto Final V2
 
-Corrige:
-- Error al procesar archivo:
-  Expected bytes, got int object
-  Conversion failed for column Hora Inicio
-
-Solución:
-- Convierte columnas mixtas/horas a texto antes de guardar Parquet.
-- Mantiene roles Administrador, Gerente y Consulta.
+Incluye logo, corrige HTML visible, fecha controlada, tarjetas tipo boceto, encabezados azules, acondicionado, gráficas combinadas y descarga PDF.
 
 Claves:
-- Administrador: orion_admin
-- Gerente: orion_gerente
+Administrador: orion_admin
+Gerente: orion_gerente
