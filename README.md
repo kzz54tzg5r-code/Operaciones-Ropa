@@ -1,9 +1,7 @@
-# ORION FINAL - Filtros + PDF
+# ORION - Fix Chart + Acondicionado
 
-Correcciones:
-- Soluciona NameError dev_pzs usando base estable.
-- Reporte Semanal y Mensual respetan filtros globales.
-- Selector de semana/mes compacto.
-- Header más compacto para evitar encimado.
-- Móvil: tarjetas verticales para no encimarse.
-- PDF uniforme para Reporte Semanal/Mensual.
+Corrige:
+- StreamlitDuplicateElementId en gráficas de Reporte Semanal/Mensual.
+- Acondicionado ahora detecta: acondicionamiento, acondicionado, habilitado, habilitada, habilitar.
+- Recalcula Acondicionado al cargar datos para corregir parquets guardados con cero.
+- Reportes semanal/mensual siguen respetando filtros globales.

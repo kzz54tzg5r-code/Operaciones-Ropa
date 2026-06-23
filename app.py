@@ -516,7 +516,7 @@ def cargar_operacion(file, hoja):
     df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
     df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
     df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
-    df["Acondicionado"] = np.where(act.str.contains("acondicionado|habilitar", regex=True), df["Número de Piezas"], 0)
+    df["Acondicionado"] = np.where(act.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True), df["Número de Piezas"], 0)
     df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
 
     df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
@@ -713,6 +713,26 @@ def normalizar_operacion(df):
 
     if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
         df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
+
+
+    # Recalcular Acondicionado desde texto cuando venga en cero o mal clasificado
+    if all(c in df.columns for c in ["Actividad Realizada", "Motivo de ingreso", "Área", "Número de Piezas"]):
+        _act_acond = (
+            df["Actividad Realizada"].astype(str) + " " +
+            df["Motivo de ingreso"].astype(str) + " " +
+            df["Área"].astype(str)
+        ).str.lower()
+        _acond_calc = np.where(
+            _act_acond.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True),
+            pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
+            0
+        )
+        # Si ya existe Acondicionado pero está en cero, usar el cálculo nuevo.
+        df["Acondicionado"] = np.where(
+            pd.to_numeric(df.get("Acondicionado", 0), errors="coerce").fillna(0) > 0,
+            pd.to_numeric(df.get("Acondicionado", 0), errors="coerce").fillna(0),
+            _acond_calc
+        )
 
     num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado"]
     for c in num_cols:
@@ -1173,7 +1193,7 @@ render_wow_cards(op_all)
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con lógica Día Anterior, respetando filtros globales."""
-    base_op = op.copy() if "op" in globals() else pd.DataFrame()
+    base_op = normalizar_operacion(op.copy()) if "op" in globals() and not op.empty else pd.DataFrame()
     base_daily = daily.copy() if "daily" in globals() else pd.DataFrame()
     if base_op.empty:
         return pd.DataFrame(), ""
@@ -1282,14 +1302,14 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
         fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}")
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
         fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}")
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
