@@ -1,12 +1,13 @@
-# ORION Header + Resumen Ejecutivo
+# ORION - Layout fijo móvil
 
 Cambios:
-- Se conserva el header superior.
-- Se corrige para que no aparezca HTML como texto.
-- Título completo: Recuperación Cambios y Muertos.
+- Header corregido para que no se encime.
+- Tarjetas superiores integradas como boceto.
+- Tablas, gráficos y tarjetas con ancho fijo en móvil.
+- En móvil se usa scroll horizontal en lugar de reacomodar.
+- Plotly con responsive=False.
+- Resumen Ejecutivo sin WoW Dinámico.
 - Muertos: Compañía.
-- Título de tarjetas: Resumen Ejecutivo.
-- Mantiene roles Administrador, Gerente y Consulta.
 
 Claves:
 - Administrador: orion_admin

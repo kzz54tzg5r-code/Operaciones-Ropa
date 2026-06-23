@@ -95,6 +95,52 @@ button[kind="primary"]{background:var(--magenta)!important;border:none!important
 .boceto-section h3{font-size:18px!important;margin:0 0 10px 0!important;color:#14172F!important;}
 div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 @media(max-width:1200px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}.wow-row{grid-template-columns:1fr}.orion-title-main{white-space:normal;}}
+
+/* ORION FIXED DESKTOP VIEW EN MÓVIL */
+html, body, .stApp {
+    min-width: 1500px !important;
+    overflow-x: auto !important;
+}
+div[data-testid="stAppViewContainer"],
+section.main,
+.main {
+    min-width: 1500px !important;
+    overflow-x: auto !important;
+}
+.block-container {
+    min-width: 1450px !important;
+    max-width: 1680px !important;
+}
+div[data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+}
+.stTabs [data-baseweb="tab-list"] {
+    min-width: 1450px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+}
+div[data-testid="stDataFrame"] {
+    min-width: 900px !important;
+    overflow-x: auto !important;
+}
+.js-plotly-plot, .plotly, .plot-container {
+    min-width: 720px !important;
+}
+.boceto-card-row {
+    grid-template-columns: repeat(4, 1fr) !important;
+    min-width: 1200px !important;
+}
+.wow-row {
+    grid-template-columns: repeat(4, 1fr) !important;
+    min-width: 1200px !important;
+}
+@media(max-width:1200px){
+    .orion-top-inner{grid-template-columns:150px 440px 760px !important;}
+    .orion-top-kpis{grid-template-columns:repeat(3,1fr) !important;}
+    .boceto-card-row{grid-template-columns:repeat(4,1fr) !important;}
+    .wow-row{grid-template-columns:repeat(4,1fr) !important;}
+    .orion-title-main{white-space:normal !important;}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -713,6 +759,7 @@ now = datetime.now()
 
 
 
+
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -720,56 +767,163 @@ def render_orion_header():
         logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
         logo_src = f"data:image/png;base64,{logo_b64}"
 
-    if logo_src:
-        logo_html = f'<img src="{logo_src}" style="max-width:120px;max-height:78px;object-fit:contain;">'
-    else:
-        logo_html = '<div class="logo-fallback">Price<br>Shoes</div>'
+    logo_html = (
+        f'<img src="{logo_src}" style="max-width:125px;max-height:82px;object-fit:contain;">'
+        if logo_src else
+        '<div style="color:#0D4A9C;font-size:27px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;">Price<br>Shoes</div>'
+    )
 
     header_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
     <style>
-        body {{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#FFFFFF; overflow:hidden; }}
-        .top {{ width:100%; height:156px; display:grid; grid-template-columns:145px minmax(420px,1fr) 720px; gap:18px; align-items:center; box-sizing:border-box; padding:8px 8px 10px 8px; }}
-        .logo {{ width:132px; height:86px; display:flex; align-items:center; justify-content:center; }}
-        .logo-fallback {{ color:#0D4A9C; font-size:27px; font-weight:950; line-height:.9; text-align:center; border:2px solid #0D4A9C; border-radius:50%; padding:12px 8px; background:#F6FBFF; }}
-        .title {{ font-size:42px; font-weight:950; color:#14172F; margin:0; line-height:1.05; letter-spacing:-0.03em; white-space:nowrap; }}
-        .subtitle {{ font-size:18px; color:#6B7280; font-weight:700; margin-top:8px; white-space:nowrap; }}
-        .kpis {{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:center; }}
-        .kpi {{ display:flex; align-items:center; gap:12px; min-width:0; }}
-        .icon {{ width:64px; height:64px; min-width:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:31px; font-weight:900; }}
+        body {{
+            margin:0;
+            padding:0;
+            font-family:Arial, Helvetica, sans-serif;
+            background:#FFFFFF;
+            overflow:hidden;
+            min-width:1450px;
+        }}
+        .wrap {{
+            width:1450px;
+            height:320px;
+            box-sizing:border-box;
+            padding:22px 24px 10px 24px;
+            background:#FFFFFF;
+        }}
+        .top {{
+            display:grid;
+            grid-template-columns:150px 460px 760px;
+            gap:28px;
+            align-items:center;
+            height:150px;
+        }}
+        .logo {{
+            width:140px;
+            height:100px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }}
+        .title {{
+            font-size:56px;
+            font-weight:950;
+            color:#14172F;
+            line-height:.98;
+            letter-spacing:-0.04em;
+            white-space:normal;
+        }}
+        .subtitle {{
+            font-size:22px;
+            color:#6B7280;
+            font-weight:750;
+            margin-top:12px;
+        }}
+        .kpis {{
+            display:grid;
+            grid-template-columns:repeat(3, 1fr);
+            gap:28px;
+            align-items:center;
+        }}
+        .kpi {{
+            display:flex;
+            align-items:center;
+            gap:14px;
+            min-width:0;
+        }}
+        .icon {{
+            width:74px;
+            height:74px;
+            min-width:74px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:35px;
+            font-weight:900;
+        }}
         .rec {{ background:#FCE2EF; color:#EC007C; }}
         .cam {{ background:#E8EEF9; color:#0047B3; }}
         .mue {{ background:#EFE8FB; color:#6F35B5; }}
-        .label {{ color:#14172F; font-size:14px; font-weight:900; line-height:1.1; }}
-        .value {{ font-size:24px; font-weight:950; line-height:1.05; margin-top:5px; white-space:nowrap; }}
+        .label {{
+            color:#14172F;
+            font-size:16px;
+            font-weight:900;
+            line-height:1.1;
+        }}
+        .value {{
+            font-size:30px;
+            font-weight:950;
+            line-height:1.05;
+            margin-top:6px;
+            white-space:nowrap;
+        }}
         .vrec {{ color:#EC007C; }}
         .vcam {{ color:#0047B3; }}
         .vmue {{ color:#6F35B5; }}
+        .cards {{
+            display:grid;
+            grid-template-columns:repeat(5, 1fr);
+            gap:18px;
+            margin-top:28px;
+        }}
+        .card {{
+            height:108px;
+            border:1px solid #E5E7EB;
+            border-radius:10px;
+            box-shadow:0 2px 12px rgba(17,24,39,.05);
+            padding:20px 22px;
+            box-sizing:border-box;
+            background:#FFFFFF;
+        }}
+        .card-label {{
+            font-size:16px;
+            color:#14172F;
+            font-weight:500;
+            margin-bottom:16px;
+        }}
+        .card-value {{
+            font-size:36px;
+            color:#3520B8;
+            font-weight:950;
+            line-height:1;
+            white-space:nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+        }}
     </style>
     </head>
     <body>
-        <div class="top">
-            <div class="logo">{logo_html}</div>
-            <div>
-                <div class="title">Recuperación Cambios y Muertos</div>
-                <div class="subtitle">Matriz de Operaciones</div>
+        <div class="wrap">
+            <div class="top">
+                <div class="logo">{logo_html}</div>
+                <div>
+                    <div class="title">Recuperación<br>Cambios y<br>Muertos</div>
+                    <div class="subtitle">Matriz de Operaciones</div>
+                </div>
+                <div class="kpis">
+                    <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
+                    <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
+                    <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+                </div>
             </div>
-            <div class="kpis">
-                <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
-                <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
-                <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
+            <div class="cards">
+                <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
+                <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
+                <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
+                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
+                <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
             </div>
         </div>
     </body>
     </html>
     """
-    components.html(header_html, height=170, scrolling=False)
+    components.html(header_html, height=335, scrolling=False)
 
-render_orion_header()
+# Header se renderiza después de calcular KPIs
 
-st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1048,6 +1202,13 @@ score_integral = round(
 )
 
 # ==========================================================
+# HEADER + SCORE CARDS SUPERIORES
+# ==========================================================
+render_orion_header()
+st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
+
+
+# ==========================================================
 # SCORE CARDS
 # ==========================================================
 def render_wow_cards(op_source):
@@ -1261,7 +1422,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_combo, width="stretch")
+                    st.plotly_chart(fig_combo, width="stretch", config={"responsive": False, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1270,7 +1431,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_pend, width="stretch")
+                    st.plotly_chart(fig_pend, width="stretch", config={"responsive": False, "displayModeBar": True})
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
@@ -1461,7 +1622,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch")
+    st.plotly_chart(fig, width="stretch", config={"responsive": False, "displayModeBar": True})
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:
