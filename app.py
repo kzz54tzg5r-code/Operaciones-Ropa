@@ -156,6 +156,60 @@ div[data-testid="stDataFrame"] {
         font-size: 13px !important;
     }
 }
+
+/* ==========================================================
+   ORION AJUSTE FINAL HEADER + MÓVIL + SELECTORES CORTOS
+   ========================================================== */
+.block-container{
+    max-width:1680px!important;
+    padding-left:1rem!important;
+    padding-right:1rem!important;
+}
+div[data-testid="stSelectbox"]{
+    max-width:330px!important;
+}
+div[data-testid="stSelectbox"] > div{
+    max-width:330px!important;
+}
+div[data-testid="stDateInput"]{
+    max-width:330px!important;
+}
+@media(max-width:900px){
+    .block-container{
+        padding-left:.55rem!important;
+        padding-right:.55rem!important;
+    }
+    div[data-testid="stSelectbox"],
+    div[data-testid="stSelectbox"] > div,
+    div[data-testid="stDateInput"]{
+        max-width:100%!important;
+    }
+    .boceto-card-row{
+        grid-template-columns:1fr!important;
+        min-width:0!important;
+    }
+    .boceto-kpi-card{
+        width:100%!important;
+        min-height:96px!important;
+        padding:12px!important;
+        gap:10px!important;
+    }
+    .boceto-big-icon{
+        width:46px!important;
+        height:46px!important;
+        min-width:46px!important;
+        font-size:22px!important;
+    }
+    .boceto-card-title{
+        font-size:13px!important;
+    }
+    .boceto-card-value{
+        font-size:21px!important;
+        white-space:normal!important;
+        overflow:visible!important;
+        text-overflow:clip!important;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -398,6 +452,66 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
         table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("FONTSIZE",(0,0),(-1,-1),7),("GRID",(0,0),(-1,-1),.25,colors.HexColor("#D1D5DB")),("ALIGN",(0,0),(-1,-1),"CENTER")]))
         story += [table, Spacer(1, 12)]
     doc.build(story); bio.seek(0); return bio.getvalue()
+
+
+def pdf_generico_bytes(titulo, hojas):
+    """Genera un PDF simple y uniforme con las tablas principales de la pestaña."""
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    bio = BytesIO()
+    doc = SimpleDocTemplate(
+        bio, pagesize=landscape(letter),
+        rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24
+    )
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("Recuperación Cambios y Muertos", styles["Title"]),
+        Paragraph(f"Operaciones Ropa | {titulo}", styles["Heading2"]),
+        Spacer(1, 10)
+    ]
+
+    def prep(df, max_rows=35, max_cols=12):
+        d = df.copy()
+        d = d.iloc[:max_rows, :max_cols]
+        for col in d.columns:
+            if pd.api.types.is_numeric_dtype(d[col]):
+                if "%" in str(col):
+                    d[col] = d[col].apply(lambda x: f"{x:,.1f}%")
+                elif any(k in str(col).lower() for k in ["recuperacion", "recuperación", "valor", "costo", "$"]):
+                    d[col] = d[col].apply(lambda x: f"${x:,.0f}")
+                else:
+                    d[col] = d[col].apply(lambda x: f"{x:,.0f}")
+        return [list(d.columns)] + d.astype(str).values.tolist()
+
+    for nombre, df in hojas.items():
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            continue
+        story.append(Paragraph(str(nombre), styles["Heading3"]))
+        table = Table(prep(df), repeatRows=1)
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2F4A8A")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTSIZE", (0,0), (-1,-1), 7),
+            ("GRID", (0,0), (-1,-1), .25, colors.HexColor("#D1D5DB")),
+            ("ALIGN", (0,0), (-1,-1), "CENTER"),
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 12))
+
+    doc.build(story)
+    bio.seek(0)
+    return bio.getvalue()
+
+def exportar_pestana_pdf(nombre, hojas):
+    st.download_button(
+        "⬇️ Descargar PDF",
+        data=pdf_generico_bytes(nombre, hojas),
+        file_name=f"{nombre.lower().replace(' ', '_').replace('/', '_')}.pdf",
+        mime="application/pdf"
+    )
 
 def export_buttons(name, sheets):
     st.download_button(
@@ -775,6 +889,7 @@ now = datetime.now()
 
 
 
+
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -783,7 +898,7 @@ def render_orion_header():
         logo_src = f"data:image/png;base64,{logo_b64}"
 
     logo_html = (
-        f'<img src="{logo_src}" style="max-width:110px;max-height:74px;object-fit:contain;">'
+        f'<img src="{logo_src}" style="max-width:104px;max-height:68px;object-fit:contain;">'
         if logo_src else
         '<div class="logo-fallback">Price<br>Shoes</div>'
     )
@@ -804,71 +919,71 @@ def render_orion_header():
         .wrap {{
             width:100%;
             box-sizing:border-box;
-            padding:18px 10px 10px 10px;
+            padding:12px 10px 8px 10px;
             background:#FFFFFF;
         }}
         .top {{
             display:grid;
-            grid-template-columns:120px minmax(360px, 520px) minmax(560px, 1fr);
-            gap:26px;
+            grid-template-columns:105px minmax(310px, 500px) minmax(500px, 1fr);
+            gap:22px;
             align-items:center;
             width:100%;
             box-sizing:border-box;
         }}
         .logo {{
-            width:110px;
-            height:84px;
+            width:104px;
+            height:74px;
             display:flex;
             align-items:center;
             justify-content:center;
         }}
         .logo-fallback {{
             color:#0D4A9C;
-            font-size:22px;
+            font-size:20px;
             font-weight:950;
             line-height:.9;
             text-align:center;
             border:2px solid #0D4A9C;
             border-radius:50%;
-            padding:10px 7px;
+            padding:9px 6px;
             background:#F6FBFF;
         }}
         .title {{
-            font-size:48px;
+            font-size:42px;
             font-weight:950;
             color:#14172F;
-            line-height:1.02;
+            line-height:1.0;
             letter-spacing:-0.035em;
             white-space:normal;
         }}
         .subtitle {{
-            font-size:20px;
+            font-size:18px;
             color:#6B7280;
             font-weight:750;
-            margin-top:8px;
+            margin-top:7px;
         }}
         .kpis {{
             display:grid;
             grid-template-columns:repeat(3, minmax(0, 1fr));
-            gap:20px;
+            gap:16px;
             align-items:center;
             width:100%;
         }}
         .kpi {{
             display:flex;
             align-items:center;
-            gap:10px;
+            gap:9px;
             min-width:0;
         }}
         .icon {{
-            width:62px;
-            height:62px;
-            min-width:62px;
+            width:54px;
+            height:54px;
+            min-width:54px;
             border-radius:50%;
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:30px;
+            font-size:26px;
             font-weight:900;
         }}
         .rec {{ background:#FCE2EF; color:#EC007C; }}
@@ -876,19 +991,20 @@ def render_orion_header():
         .mue {{ background:#EFE8FB; color:#6F35B5; }}
         .label {{
             color:#14172F;
-            font-size:14px;
+            font-size:13px;
             font-weight:900;
             line-height:1.1;
             white-space:nowrap;
         }}
         .value {{
-            font-size:28px;
+            font-size:22px;
             font-weight:950;
             line-height:1.05;
             margin-top:4px;
             white-space:nowrap;
             overflow:hidden;
             text-overflow:ellipsis;
+            max-width:165px;
         }}
         .vrec {{ color:#EC007C; }}
         .vcam {{ color:#0047B3; }}
@@ -896,31 +1012,31 @@ def render_orion_header():
         .cards {{
             display:grid;
             grid-template-columns:repeat(5, minmax(0, 1fr));
-            gap:16px;
-            margin-top:24px;
+            gap:14px;
+            margin-top:18px;
             width:100%;
         }}
         .card {{
-            height:104px;
+            height:96px;
             border:1px solid #E5E7EB;
             border-radius:10px;
             box-shadow:0 2px 12px rgba(17,24,39,.05);
-            padding:18px 18px;
+            padding:16px 16px;
             box-sizing:border-box;
             background:#FFFFFF;
             min-width:0;
         }}
         .card-label {{
-            font-size:15px;
+            font-size:14px;
             color:#14172F;
             font-weight:500;
-            margin-bottom:14px;
+            margin-bottom:11px;
             white-space:nowrap;
             overflow:hidden;
             text-overflow:ellipsis;
         }}
         .card-value {{
-            font-size:34px;
+            font-size:30px;
             color:#3520B8;
             font-weight:950;
             line-height:1;
@@ -930,64 +1046,71 @@ def render_orion_header():
         }}
         @media(max-width:900px) {{
             .wrap {{
-                padding:10px 6px 6px 6px;
+                padding:8px 4px 6px 4px;
             }}
             .top {{
-                grid-template-columns:70px 1fr;
-                gap:10px;
+                grid-template-columns:62px 1fr;
+                gap:8px;
             }}
             .logo {{
-                width:70px;
-                height:58px;
+                width:62px;
+                height:50px;
             }}
             .logo img {{
-                max-width:70px !important;
-                max-height:52px !important;
+                max-width:62px !important;
+                max-height:48px !important;
             }}
             .title {{
-                font-size:28px;
+                font-size:24px;
                 line-height:1.02;
+                letter-spacing:-0.02em;
             }}
             .subtitle {{
-                font-size:14px;
-                margin-top:4px;
+                font-size:13px;
+                margin-top:3px;
             }}
             .kpis {{
                 grid-column:1 / -1;
-                grid-template-columns:repeat(3, minmax(0, 1fr));
-                gap:8px;
-                margin-top:12px;
+                grid-template-columns:1fr;
+                gap:6px;
+                margin-top:10px;
             }}
             .kpi {{
-                gap:6px;
+                gap:7px;
+                min-height:38px;
             }}
             .icon {{
-                width:40px;
-                height:40px;
-                min-width:40px;
-                font-size:20px;
+                width:34px;
+                height:34px;
+                min-width:34px;
+                font-size:18px;
             }}
             .label {{
                 font-size:11px;
             }}
             .value {{
-                font-size:17px;
+                font-size:16px;
+                max-width:100%;
             }}
             .cards {{
-                grid-template-columns:repeat(2, minmax(0, 1fr));
+                grid-template-columns:1fr;
                 gap:8px;
-                margin-top:14px;
+                margin-top:12px;
             }}
             .card {{
-                height:82px;
-                padding:12px;
+                height:auto;
+                min-height:72px;
+                padding:11px 12px;
             }}
             .card-label {{
                 font-size:12px;
-                margin-bottom:9px;
+                margin-bottom:7px;
             }}
             .card-value {{
                 font-size:22px;
+                white-space:normal;
+                overflow:visible;
+                text-overflow:clip;
             }}
         }}
     </style>
@@ -1017,292 +1140,22 @@ def render_orion_header():
     </body>
     </html>
     """
-    components.html(header_html, height=310, scrolling=False)
+    components.html(header_html, height=260, scrolling=False)
 
-# Header se renderiza después de calcular KPIs
-
-
-# ==========================================================
-# SIDEBAR ACCESO / CARGA
-# ==========================================================
-with st.sidebar:
-    st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
-
-    is_admin = False
-    is_manager = False
-    can_upload = False
-    can_config = False
-    can_edit_names = False
-    can_view_diagnostics = False
-
-    if rol == "Administrador":
-        clave = st.text_input("Clave administrador", type="password")
-        is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "orion_admin")
-        if is_admin:
-            can_upload = True
-            can_config = True
-            can_edit_names = True
-            can_view_diagnostics = True
-        elif clave:
-            st.warning("Clave incorrecta.")
-
-    elif rol == "Gerente":
-        clave_gerente = st.text_input("Clave gerente", type="password")
-        is_manager = clave_gerente == st.secrets.get("GERENTE_PASSWORD", "orion_gerente")
-        if is_manager:
-            can_edit_names = True
-            can_view_diagnostics = True
-        elif clave_gerente:
-            st.warning("Clave de gerente incorrecta.")
-
-    else:
-        st.caption("Modo consulta: solo visualización.")
-
-    st.caption(f"Rol activo: {rol}")
-    if is_admin:
-        st.success("Permisos: carga, metas, nombres y diagnóstico.")
-    elif is_manager:
-        st.success("Permisos: consulta, corrección de nombres y diagnóstico.")
-    elif rol == "Consulta":
-        st.info("Permisos: solo consulta.")
-
-    st.divider()
-    st.header("📂 Fuente de datos")
-    if can_upload:
-        uploaded = st.file_uploader("Cargar/Reemplazar Excel", type=["xlsx"])
-        if uploaded is not None:
-            st.info("Archivo listo. Presiona el botón para procesarlo una sola vez.")
-            if st.button("🚀 Procesar archivo", type="primary"):
-                with st.spinner("Procesando archivo completo. Puede tardar por el tamaño del Excel..."):
-                    try:
-                        op_new, co_new, daily_new, diag = procesar_excel(uploaded)
-                        guardar_datos(op_new, co_new, daily_new, diag, uploaded.name)
-                        st.success("Archivo procesado y guardado correctamente.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"No se pudo procesar el archivo: {e}")
-            st.caption("Si cambiaste de versión y la app conserva datos viejos, borra la persistencia y vuelve a cargar el Excel.")
-        if st.button("🧹 Borrar datos persistidos"):
-            for f in [OPERACION_FILE, COMERCIAL_FILE, DIARIO_COMERCIAL_FILE]:
-                try:
-                    if f.exists():
-                        f.unlink()
-                except Exception:
-                    pass
-            set_estado("archivo", "Sin archivo cargado")
-            set_estado("ultima_actualizacion", "Sin actualización")
-            st.success("Datos persistidos borrados. Vuelve a cargar el Excel.")
-            st.rerun()
-
-    else:
-        st.caption("Este rol no puede cargar ni reemplazar archivos.")
-
-op_all, co_all, daily_all = cargar_datos()
-op_all = normalizar_operacion(op_all)
-co_all = normalizar_comercial(co_all)
-daily_all = normalizar_diario_comercial(daily_all)
-
-if op_all.empty and co_all.empty:
-    st.warning("No hay datos cargados. Un administrador debe cargar el Excel por primera vez.")
-    st.stop()
-
-metas = get_metas()
-
-# ==========================================================
-# FILTROS GLOBALES
-# ==========================================================
-with st.sidebar:
-    st.divider()
-    st.header("🎛️ Filtros globales")
-
-    # Semana default: última semana disponible
-    semanas_disponibles = sorted([int(x) for x in op_all.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if not op_all.empty else []
-    default_semana = [max(semanas_disponibles)] if semanas_disponibles else []
-
-    meses = sorted(set(op_all.get("Mes", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Mes_Origen", pd.Series(dtype=str)).dropna().astype(str).tolist()))
-    tiendas = sorted(set(TIENDAS_OFICIALES + op_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist()))
-    actividades = sorted(op_all.get("Actividad Realizada", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
-    categorias = sorted(co_all.get("Categoria", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
-    subcats = sorted(co_all.get("Subcategoria", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
-    modelos = sorted(co_all.get("Modelo", pd.Series(dtype=str)).dropna().astype(str).unique()) if not co_all.empty else []
-    colaboradores = sorted(op_all.get("Nombre Real", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
-    ocurrencias = sorted(op_all.get("Ocurrencia", pd.Series(dtype=str)).dropna().astype(str).unique()) if not op_all.empty else []
-
-    f_semana = st.multiselect("Semana ISO", semanas_disponibles, default=default_semana)
-    f_mes = st.multiselect("Mes", meses)
-    f_tienda = st.multiselect("Tienda", tiendas)
-    f_actividad = st.multiselect("Actividad", actividades)
-    f_categoria = st.multiselect("Categoría", categorias)
-    f_subcat = st.multiselect("Subcategoría", subcats)
-    f_modelo = st.multiselect("Modelo", modelos)
-    f_colab = st.multiselect("Colaborador", colaboradores)
-    f_ocurrencia = st.multiselect("ID empleado / Ocurrencia", ocurrencias)
-
-op = op_all.copy()
-co = co_all.copy()
-daily = daily_all.copy()
-
-if f_semana:
-    if not op.empty:
-        op = op[op["Semana ISO"].isin(f_semana)]
-    if not daily.empty and "Semana ISO" in daily.columns:
-        daily = daily[daily["Semana ISO"].isin(f_semana)]
-if f_mes:
-    if not op.empty:
-        op = op[op["Mes"].isin(f_mes)]
-    if not co.empty:
-        co = co[co["Mes_Origen"].isin(f_mes)]
-    if not daily.empty:
-        daily = daily[daily["Mes_Origen"].isin(f_mes)]
-if f_tienda:
-    if not op.empty:
-        op = op[op["Tienda"].isin(f_tienda)]
-    if not co.empty:
-        co = co[co["Tienda"].isin(f_tienda)]
-    if not daily.empty:
-        daily = daily[daily["Tienda"].isin(f_tienda)]
-if f_actividad and not op.empty:
-    op = op[op["Actividad Realizada"].isin(f_actividad)]
-if f_categoria and not co.empty:
-    co = co[co["Categoria"].isin(f_categoria)]
-if f_categoria and not daily.empty:
-    daily = daily[daily["Categoria"].isin(f_categoria)]
-if f_subcat and not co.empty:
-    co = co[co["Subcategoria"].isin(f_subcat)]
-if f_subcat and not daily.empty:
-    daily = daily[daily["Subcategoria"].isin(f_subcat)]
-if f_modelo and not co.empty:
-    co = co[co["Modelo"].isin(f_modelo)]
-if f_modelo and not daily.empty:
-    daily = daily[daily["Modelo"].isin(f_modelo)]
-if f_colab and not op.empty:
-    op = op[op["Nombre Real"].isin(f_colab)]
-if f_ocurrencia and not op.empty:
-    op = op[op["Ocurrencia"].isin(f_ocurrencia)]
-
-op = normalizar_operacion(op)
-co = normalizar_comercial(co)
-daily = normalizar_diario_comercial(daily)
-
-
-def asegurar_acondicionado_alias(df):
-    if df is None or df.empty:
-        return df
-    df = df.copy()
-    if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
-        df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
-    if "Acondicionado" not in df.columns:
-        df["Acondicionado"] = 0
-    df["Acondicionado"] = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
-    return df
-
-op_all = asegurar_acondicionado_alias(op_all)
-op = asegurar_acondicionado_alias(op)
-
-# ==========================================================
-# AGREGADOS CENTRALES
-# ==========================================================
-def days_in_period(opdf):
-    if opdf.empty or "Fecha Día" not in opdf.columns:
-        return 1
-    return max(1, opdf["Fecha Día"].dropna().drop_duplicates().shape[0])
-
-def meta_prod_periodo(opdf):
-    return metas["productividad_diaria"] * days_in_period(opdf)
-
-def meta_recorridos_periodo(opdf):
-    return (metas["recorridos_semanales"] / 7) * days_in_period(opdf)
-
-def total_dev_system(codf):
-    return float(codf["Dev_Pzs"].sum()) if not codf.empty and "Dev_Pzs" in codf else 0
-
-def store_summary(opdf, codf, only_registered=True):
-    op_store = pd.DataFrame(columns=["Tienda"])
-    if not opdf.empty:
-        op_store = opdf.groupby("Tienda", as_index=False).agg(
-            Muertos=("Muertos","sum"),
-            Cajas=("Cajas","sum"),
-            Probador=("Probador","sum"),
-            Recoleccion=("Recolección de Muertos","sum"),
-            Acondicionado=("Acondicionado","sum"),
-            Ubicado=("Ubicado","sum"),
-            Productividad=("Productividad Total","sum"),
-            Recorridos=("Recorridos","sum")
-        )
-    co_store = pd.DataFrame(columns=["Tienda"])
-    if not codf.empty:
-        co_store = codf.groupby("Tienda", as_index=False).agg(
-            Dev_Pzs=("Dev_Pzs","sum"),
-            Vta_Pzs=("Piezas Vendidas Validadas","sum"),
-            Recuperacion=("Vta_Imp","sum"),
-            Costo_Dev=("Costo_Dev","sum")
-        )
-
-    base = pd.DataFrame({"Tienda": TIENDAS_OFICIALES}) if not only_registered else pd.DataFrame({"Tienda": sorted(set(op_store.get("Tienda", [])) | set(co_store.get("Tienda", [])))})
-    out = base.merge(op_store, on="Tienda", how="left").merge(co_store, on="Tienda", how="left").fillna(0)
-
-    for c in ["Muertos","Cajas","Probador","Recoleccion","Acondicionado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperacion","Costo_Dev"]:
-        if c not in out.columns:
-            out[c] = 0
-        out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
-
-    out["Piezas Ingresadas"] = out["Dev_Pzs"] + out["Muertos"] + out["Cajas"] + out["Probador"]
-    out["% Acondicionado"] = sdiv(out["Acondicionado"], out["Piezas Ingresadas"]) * 100
-    out["% Ubicado"] = sdiv(out["Ubicado"], out["Piezas Ingresadas"]) * 100
-    out["Conversión %"] = sdiv(out["Vta_Pzs"], out["Dev_Pzs"]) * 100
-    out["Recuperación %"] = sdiv(out["Recuperacion"], out["Costo_Dev"]) * 100
-    out["Meta Recorridos"] = meta_recorridos_periodo(opdf)
-    out["% Recorridos"] = sdiv(out["Recorridos"], out["Meta Recorridos"]) * 100
-    out["Estado"] = np.select(
-        [
-            (out["Productividad"] > 0) & (out["Recuperacion"] > 0),
-            (out["Productividad"] > 0) & (out["Recuperacion"] == 0),
-            (out["Productividad"] == 0) & (out["Recuperacion"] > 0),
-        ],
-        [
-            "🟢 Productividad + Recuperación",
-            "🟡 Productividad sin Recuperación",
-            "🟠 Recuperación sin Productividad",
-        ],
-        default="🔴 Sin registros"
-    )
-    return out
-
-ss = store_summary(op, co, only_registered=True)
-ss_all = store_summary(op, co, only_registered=False)
-
-total_ingresos = ss["Piezas Ingresadas"].sum() if not ss.empty else 0
-productividad = ss["Productividad"].sum() if not ss.empty else 0
-acondicionado = ss["Acondicionado"].sum() if not ss.empty else 0
-ubicado = ss["Ubicado"].sum() if not ss.empty else 0
-recorridos = ss["Recorridos"].sum() if not ss.empty else 0
-dev_pzs = ss["Dev_Pzs"].sum() if not ss.empty else 0
-vta_pzs = ss["Vta_Pzs"].sum() if not ss.empty else 0
-recuperacion = ss["Recuperacion"].sum() if not ss.empty else 0
-costo_dev = ss["Costo_Dev"].sum() if not ss.empty else 0
-
-conv_pct = pct(vta_pzs, dev_pzs)
-rec_pct = pct(recuperacion, costo_dev)
-hab_pct = pct(acondicionado, total_ingresos)
-ubi_pct = pct(ubicado, total_ingresos)
-recorr_pct = pct(recorridos, meta_recorridos_periodo(op) * max(ss["Tienda"].nunique(), 1)) if not ss.empty else 0
-prod_pct = pct(productividad, meta_prod_periodo(op) * max(op["Ocurrencia"].nunique() if not op.empty else 1, 1))
-
-score_integral = round(
-    min(prod_pct,100)*.40 +
-    min(hab_pct,100)*.25 +
-    min(ubi_pct,100)*.15 +
-    min(conv_pct,100)*.10 +
-    min(recorr_pct,100)*.10,
-    1
-)
-
-# ==========================================================
-# HEADER + SCORE CARDS SUPERIORES
-# ==========================================================
 render_orion_header()
+
 st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
+
+
+
+def _pdf_auto_tab(nombre_tab, local_vars):
+    """Botón PDF estándar para pestañas que tengan DataFrames en variables locales."""
+    hojas = {}
+    for k, v in local_vars.items():
+        if isinstance(v, pd.DataFrame) and not v.empty:
+            hojas[k[:31]] = v
+    if hojas:
+        exportar_pestana_pdf(nombre_tab, hojas)
 
 
 # ==========================================================
@@ -1482,6 +1335,7 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         st.markdown("</div>", unsafe_allow_html=True)
 
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
+    exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
 # ==========================================================
 # PESTAÑAS
@@ -1716,6 +1570,8 @@ with tab["3. Conversión"]:
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Conversión por tienda"), width="stretch")
 
+    _pdf_auto_tab("3. Conversión", locals())
+
 # 4 Recuperación Económica
 with tab["4. Recuperación Económica"]:
     st.subheader("Recuperación Económica")
@@ -1730,6 +1586,8 @@ with tab["4. Recuperación Económica"]:
     st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Recuperación $ por tienda"), width="stretch")
+
+    _pdf_auto_tab("4. Recuperación Económica", locals())
 
 # 5 Productividad Colaborador
 with tab["5. Productividad por Colaborador"]:
@@ -1761,6 +1619,8 @@ with tab["5. Productividad por Colaborador"]:
                                color_discrete_sequence=["#3366CC","#FF99FF","#003366"],
                                title="Top colaboradores por productividad"), width="stretch")
 
+    _pdf_auto_tab("5. Productividad por Colaborador", locals())
+
 # 6 Productividad Actividad
 with tab["6. Productividad por Actividad"]:
     st.subheader("Productividad por Actividad")
@@ -1787,6 +1647,8 @@ with tab["6. Productividad por Actividad"]:
                                color="Concepto", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
                         width="stretch")
 
+    _pdf_auto_tab("6. Productividad por Actividad", locals())
+
 # 7 Eficiencia Operativa
 with tab["7. Eficiencia Operativa"]:
     st.subheader("Eficiencia Operativa | Solo tiendas con registro")
@@ -1801,6 +1663,8 @@ with tab["7. Eficiencia Operativa"]:
     ef = ef[["Ranking","Tienda","Piezas Ingresadas","Acondicionado","Ubicado","% Acondicionado","% Ubicado","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(ef), width="stretch")
 
+    _pdf_auto_tab("7. Eficiencia Operativa", locals())
+
 # 8 Cumplimiento Recorridos
 with tab["8. Cumplimiento de Recorridos"]:
     st.subheader("Cumplimiento de Recorridos")
@@ -1813,6 +1677,8 @@ with tab["8. Cumplimiento de Recorridos"]:
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
     st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+
+    _pdf_auto_tab("8. Cumplimiento de Recorridos", locals())
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:
@@ -1837,6 +1703,8 @@ with tab["9. Indicadores Diarios"]:
         diaria = diaria.rename(columns={"Ocurrencia":"ID de empleado"})
         st.dataframe(style_dataframe(diaria), width="stretch")
 
+    _pdf_auto_tab("9. Indicadores Diarios", locals())
+
 # 10 Top Modelos
 with tab["10. Top 30 Modelos"]:
     st.subheader("Top 30 Modelos")
@@ -1859,6 +1727,8 @@ with tab["10. Top 30 Modelos"]:
                                color_discrete_sequence=["#3366CC","#FF99FF","#003366"], title=criterio),
                         width="stretch")
 
+    _pdf_auto_tab("10. Top 30 Modelos", locals())
+
 # 11 Categoría
 with tab["11. Análisis por Categoría"]:
     st.subheader("Análisis por Categoría")
@@ -1871,6 +1741,8 @@ with tab["11. Análisis por Categoría"]:
         st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
                                color_discrete_sequence=["#3366CC"]), width="stretch")
 
+    _pdf_auto_tab("11. Análisis por Categoría", locals())
+
 # 12 Subcategoría
 with tab["12. Análisis por Subcategoría"]:
     st.subheader("Análisis por Subcategoría")
@@ -1882,6 +1754,8 @@ with tab["12. Análisis por Subcategoría"]:
         st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
         st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
                                color_discrete_sequence=["#FF99FF"]), width="stretch")
+
+    _pdf_auto_tab("12. Análisis por Subcategoría", locals())
 
 # 13 Ranking Tiendas
 with tab["13. Ranking de Tiendas"]:
@@ -1899,6 +1773,8 @@ with tab["13. Ranking de Tiendas"]:
     rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rank), width="stretch")
 
+    _pdf_auto_tab("13. Ranking de Tiendas", locals())
+
 # 14 Ranking Colaboradores
 with tab["14. Ranking de Colaboradores"]:
     st.subheader("Ranking de Colaboradores")
@@ -1909,6 +1785,8 @@ with tab["14. Ranking de Colaboradores"]:
         rc["Score"] = (rc["Productividad"].rank(pct=True)*85 + rc["Recorridos"].rank(pct=True)*15).round(1)
         rc["Ranking"] = rc["Score"].rank(method="dense", ascending=False).astype(int)
         st.dataframe(style_dataframe(rc.sort_values("Ranking")), width="stretch")
+
+    _pdf_auto_tab("14. Ranking de Colaboradores", locals())
 
 # 15 Índice Integral
 with tab["15. Índice Integral"]:
@@ -1921,6 +1799,8 @@ with tab["15. Índice Integral"]:
         "Cumplimiento": [prod_pct, hab_pct, ubi_pct, conv_pct, recorr_pct]
     })
     st.dataframe(style_dataframe(score_break), width="stretch")
+
+    _pdf_auto_tab("15. Índice Integral", locals())
 
 # 16 Alertas
 with tab["16. Alertas Inteligentes"]:
@@ -1947,6 +1827,8 @@ with tab["16. Alertas Inteligentes"]:
     else:
         st.dataframe(style_dataframe(alert_df), width="stretch")
 
+
+    _pdf_auto_tab("16. Alertas Inteligentes", locals())
 
 # 17 Corrección de Nombres
 if "17. Corrección de Nombres" in tab:

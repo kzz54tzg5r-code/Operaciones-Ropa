@@ -1,14 +1,10 @@
-# ORION - Semanal/Mensual con Consulta
+# ORION - Header corregido + PDF en pestañas
 
 Cambios:
-- Corrige header para que no se encime.
-- Reporte Semanal permite elegir la semana.
-- Reporte Mensual permite elegir el mes.
-- Ambos usan la lógica del indicador Día Anterior / Pendiente.
-- Móvil responsive, ajusta al ancho de pantalla.
-- Gráficas responsive.
+- Header más compacto para evitar encimado.
+- Selectores de semana/mes con ancho corto.
+- En móvil las tarjetas se acomodan verticalmente para evitar encimarse.
+- Reporte Semanal y Reporte Mensual conservan selector.
+- Descarga PDF con diseño uniforme.
+- PDF agregado para pestañas con tablas/DataFrames.
 - Muertos: Compañía.
-
-Claves:
-- Administrador: orion_admin
-- Gerente: orion_gerente
