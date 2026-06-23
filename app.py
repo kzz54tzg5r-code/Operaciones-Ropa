@@ -1,4 +1,3 @@
-
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -8,6 +7,7 @@ import plotly.graph_objects as go
 import sqlite3
 import json
 import re
+import textwrap
 from pathlib import Path
 from io import BytesIO
 from datetime import datetime
@@ -645,6 +645,9 @@ def normalizar_operacion(df):
     if "Mes" not in df.columns:
         df["Mes"] = pd.to_datetime(df["Fecha Día"], errors="coerce").dt.month_name()
 
+    if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
+        df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
+
     num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado"]
     for c in num_cols:
         if c not in df.columns:
@@ -723,7 +726,7 @@ def render_orion_header():
             <img src="data:image/png;base64,{logo_b64_local}" style="max-width:132px;max-height:82px;">
         </div>
         """
-    st.markdown(f"""
+    st.markdown(textwrap.dedent(f"""
     <div class="orion-top">
         <div class="orion-top-inner">
             {logo_html_local}
@@ -739,7 +742,7 @@ def render_orion_header():
         </div>
     </div>
     <div class="orion-pink-bar">Operaciones Ropa</div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
 render_orion_header()
 
@@ -911,10 +914,11 @@ def asegurar_acondicionado_alias(df):
     if df is None or df.empty:
         return df
     df = df.copy()
-    if "Acondicionado" not in df.columns and "Acondicionado" in df.columns:
-        df["Acondicionado"] = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
-    if "Acondicionado" not in df.columns and "Acondicionado" in df.columns:
-        df["Acondicionado"] = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
+    if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
+        df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
+    if "Acondicionado" not in df.columns:
+        df["Acondicionado"] = 0
+    df["Acondicionado"] = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
     return df
 
 op_all = asegurar_acondicionado_alias(op_all)
@@ -962,7 +966,7 @@ def store_summary(opdf, codf, only_registered=True):
     base = pd.DataFrame({"Tienda": TIENDAS_OFICIALES}) if not only_registered else pd.DataFrame({"Tienda": sorted(set(op_store.get("Tienda", [])) | set(co_store.get("Tienda", [])))})
     out = base.merge(op_store, on="Tienda", how="left").merge(co_store, on="Tienda", how="left").fillna(0)
 
-    for c in ["Muertos","Cajas","Probador","Recoleccion","Acondicionado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperación $","Costo_Dev"]:
+    for c in ["Muertos","Cajas","Probador","Recoleccion","Acondicionado","Ubicado","Productividad","Recorridos","Dev_Pzs","Vta_Pzs","Recuperacion","Costo_Dev"]:
         if c not in out.columns:
             out[c] = 0
         out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
@@ -971,14 +975,14 @@ def store_summary(opdf, codf, only_registered=True):
     out["% Acondicionado"] = sdiv(out["Acondicionado"], out["Piezas Ingresadas"]) * 100
     out["% Ubicado"] = sdiv(out["Ubicado"], out["Piezas Ingresadas"]) * 100
     out["Conversión %"] = sdiv(out["Vta_Pzs"], out["Dev_Pzs"]) * 100
-    out["Recuperación %"] = sdiv(out["Recuperación $"], out["Costo_Dev"]) * 100
+    out["Recuperación %"] = sdiv(out["Recuperacion"], out["Costo_Dev"]) * 100
     out["Meta Recorridos"] = meta_recorridos_periodo(opdf)
     out["% Recorridos"] = sdiv(out["Recorridos"], out["Meta Recorridos"]) * 100
     out["Estado"] = np.select(
         [
-            (out["Productividad"] > 0) & (out["Recuperación $"] > 0),
-            (out["Productividad"] > 0) & (out["Recuperación $"] == 0),
-            (out["Productividad"] == 0) & (out["Recuperación $"] > 0),
+            (out["Productividad"] > 0) & (out["Recuperacion"] > 0),
+            (out["Productividad"] > 0) & (out["Recuperacion"] == 0),
+            (out["Productividad"] == 0) & (out["Recuperacion"] > 0),
         ],
         [
             "🟢 Productividad + Recuperación",
@@ -1166,6 +1170,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
 
                 resumen["Piezas Ingresadas Día Anterior"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+                resumen["Piezas Ingresadas"] = resumen["Piezas Ingresadas Día Anterior"]
                 resumen["Acondicionado"] = resumen["Acondicionado"]
                 resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Acondicionado"]).clip(lower=0)
                 resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
@@ -1188,14 +1193,14 @@ with tab["0. Día Anterior / Pendiente"]:
                 total_pend_dia = resumen["Pendiente Ubicar"].sum()
                 pct_proc_dia = pct(total_proc_dia, total_ing_dia)
 
-                st.markdown(f"""
+                st.markdown(textwrap.dedent(f"""
                 <div class="boceto-card-row">
-                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas Día Anterior<br>(Cambios y Devoluciones)</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_ing_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_ing_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Procesado (Acondicionado + Ubicado)</div><div class="boceto-card-value" style="color:#0047B3;">{n0(total_proc_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⌛</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#F39800;">{n0(total_pend_dia)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">%</div><div><div class="boceto-card-title">% Procesado</div><div class="boceto-card-value" style="color:#00A651;">{p1(pct_proc_dia)}</div><div class="boceto-card-foot">Del ingreso total</div></div></div>
                 </div>
-                """, unsafe_allow_html=True)
+                """), unsafe_allow_html=True)
 
                 resumen_general = pd.DataFrame([{
                     "Tiendas con Productividad": resumen["Tienda"].nunique(),
@@ -1244,25 +1249,6 @@ with tab["0. Día Anterior / Pendiente"]:
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
-
-
-                st.markdown("<div class='boceto-section'><h3>GRÁFICA COMBINADA: PIEZAS VS ACONDICIONADO VS UBICADO</h3>", unsafe_allow_html=True)
-                fig_combo = go.Figure()
-                fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=[f"{x:,.0f}" for x in resumen["Acondicionado"]], textposition="outside", marker_color="#0047B3")
-                fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=[f"{x:,.0f}" for x in resumen["Ubicado"]], textposition="outside", marker_color="#EC007C")
-                fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas Día Anterior"], name="Piezas Ingresadas Día Anterior", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas Día Anterior"]], textposition="top center", line=dict(color="#F39800", width=4))
-                fig_combo.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                st.plotly_chart(fig_combo, width="stretch")
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                st.markdown("<div class='boceto-section'><h3>GRÁFICA COMBINADA: PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
-                fig_pend = go.Figure()
-                fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=[f"{x:,.0f}" for x in resumen["Pendiente Acondicionar"]], textposition="outside", marker_color="#0047B3")
-                fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=[f"{x:,.0f}" for x in resumen["Pendiente Ubicar"]], textposition="outside", marker_color="#EC007C")
-                fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas Día Anterior"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas Día Anterior"]], textposition="top center", line=dict(color="#F39800", width=4))
-                fig_pend.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                st.plotly_chart(fig_pend, width="stretch")
-                st.markdown("</div>", unsafe_allow_html=True)
 
                 export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
@@ -1361,11 +1347,11 @@ with tab["4. Recuperación Económica"]:
     c1.metric("Valor Recuperado", money(recuperacion))
     c2.metric("Costo Dev", money(costo_dev))
     c3.metric("Valor Pendiente", money(costo_dev - recuperacion))
-    eco = ss[["Tienda","Recuperación $","Costo_Dev","Recuperación %","Estado"]].copy()
-    eco = eco.rename(columns={"Recuperación $":"Recuperación $", "Costo_Dev":"Costo Dev $"})
-    eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperación $"]
-    st.dataframe(style_dataframe(eco.sort_values("Recuperación $", ascending=False)), width="stretch")
-    st.plotly_chart(px.bar(eco.sort_values("Recuperación $", ascending=False), x="Tienda", y="Recuperación $",
+    eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy()
+    eco = eco.rename(columns={"Recuperacion":"Recuperacion", "Costo_Dev":"Costo Dev $"})
+    eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperacion"]
+    st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
+    st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Recuperación $ por tienda"), width="stretch")
 
@@ -1505,8 +1491,8 @@ with tab["11. Análisis por Categoría"]:
     else:
         cat = co.groupby("Categoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(cat.sort_values("Recuperación $", ascending=False)), width="stretch")
-        st.plotly_chart(px.bar(cat.sort_values("Recuperación $", ascending=False), x="Categoria", y="Recuperación $",
+        st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
+        st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
                                color_discrete_sequence=["#3366CC"]), width="stretch")
 
 # 12 Subcategoría
@@ -1517,8 +1503,8 @@ with tab["12. Análisis por Subcategoría"]:
     else:
         sub = co.groupby("Subcategoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(sub.sort_values("Recuperación $", ascending=False)), width="stretch")
-        st.plotly_chart(px.bar(sub.sort_values("Recuperación $", ascending=False).head(30), x="Subcategoria", y="Recuperación $",
+        st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
+        st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
                                color_discrete_sequence=["#FF99FF"]), width="stretch")
 
 # 13 Ranking Tiendas
@@ -1533,8 +1519,8 @@ with tab["13. Ranking de Tiendas"]:
         rank["% Recorridos"].rank(pct=True)*10
     ).round(1)
     rank["Ranking"] = rank["Score"].rank(method="dense", ascending=False).astype(int)
-    rank = rank.rename(columns={"Recuperacion":"Recuperación $"})
-    rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperación $","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
+    rank = rank.rename(columns={"Recuperacion":"Recuperacion"})
+    rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rank), width="stretch")
 
 # 14 Ranking Colaboradores

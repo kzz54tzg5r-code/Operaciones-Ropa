@@ -1,17 +1,12 @@
-# ORION Boceto Compañía Final
+# ORION Header + WoW corregido
 
-Incluye:
-- Header sin texto cortado.
-- Muertos: Compañía.
-- Tarjetas semanales tipo referencia.
-- Tarjetas del Día Anterior estilo boceto.
+Corrige:
+- HTML del encabezado mostrado como texto.
+- Header sin corte y con Compañía.
+- Tarjetas WoW tipo referencia.
 - Piezas Ingresadas.
-- Acondicionado en lugar de Habilitado.
-- Encabezados azules.
-- Gráficas combinadas.
-- Descarga PDF.
-- Logo Price Shoes integrado.
-- Roles Administrador, Gerente y Consulta.
+- Acondicionado.
+- Gráficas combinadas y PDF.
 
 Claves:
 - Administrador: orion_admin
