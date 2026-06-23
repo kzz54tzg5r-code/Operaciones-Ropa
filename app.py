@@ -96,18 +96,16 @@ button[kind="primary"]{background:var(--magenta)!important;border:none!important
 div[data-testid="stDataFrame"]{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 @media(max-width:1200px){.orion-top-inner{grid-template-columns:1fr}.orion-top-kpis{grid-template-columns:1fr}.boceto-card-row{grid-template-columns:1fr}.wow-row{grid-template-columns:1fr}.orion-title-main{white-space:normal;}}
 
-/* ORION AJUSTE FINAL: selectores cortos, header estable y móvil */
+/* ORION SAFE FIX */
 div[data-testid="stSelectbox"]{max-width:330px!important;}
 div[data-testid="stSelectbox"] > div{max-width:330px!important;}
 div[data-testid="stDateInput"]{max-width:330px!important;}
 @media(max-width:900px){
     .block-container{padding-left:.6rem!important;padding-right:.6rem!important;}
     div[data-testid="stSelectbox"], div[data-testid="stSelectbox"] > div, div[data-testid="stDateInput"]{max-width:100%!important;}
-    .boceto-card-row{grid-template-columns:1fr!important;min-width:0!important;gap:10px!important;}
-    .boceto-kpi-card{width:100%!important;min-height:92px!important;padding:12px!important;gap:10px!important;}
-    .boceto-big-icon{width:44px!important;height:44px!important;min-width:44px!important;font-size:22px!important;}
-    .boceto-card-value{font-size:21px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;}
+    .boceto-card-row{grid-template-columns:1fr!important;min-width:0!important;}
     .wow-row{grid-template-columns:1fr!important;min-width:0!important;}
+    .boceto-kpi-card{width:100%!important;}
 }
 </style>
 """, unsafe_allow_html=True)
@@ -353,7 +351,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     doc.build(story); bio.seek(0); return bio.getvalue()
 
 
-def pdf_generico_bytes(titulo, hojas):
+def pdf_generico_bytes(titulo, sheets):
     from reportlab.lib.pagesizes import letter, landscape
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib import colors
@@ -361,27 +359,17 @@ def pdf_generico_bytes(titulo, hojas):
     bio = BytesIO()
     doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     styles = getSampleStyleSheet()
-    story = [
-        Paragraph("Recuperación Cambios y Muertos", styles["Title"]),
-        Paragraph(f"Operaciones Ropa | {titulo}", styles["Heading2"]),
-        Spacer(1, 10)
-    ]
-    def prep(df, max_rows=35, max_cols=12):
-        d = df.copy().iloc[:max_rows, :max_cols]
-        for col in d.columns:
-            if pd.api.types.is_numeric_dtype(d[col]):
-                if "%" in str(col):
-                    d[col] = d[col].apply(lambda x: f"{x:,.1f}%")
-                elif any(k in str(col).lower() for k in ["recuperacion","recuperación","valor","costo","$"]):
-                    d[col] = d[col].apply(lambda x: f"${x:,.0f}")
-                else:
-                    d[col] = d[col].apply(lambda x: f"{x:,.0f}")
-        return [list(d.columns)] + d.astype(str).values.tolist()
-    for nombre, df in hojas.items():
+    story = [Paragraph("Recuperación Cambios y Muertos", styles["Title"]), Paragraph(f"Operaciones Ropa | {titulo}", styles["Heading2"]), Spacer(1, 10)]
+    for nombre, df in sheets.items():
         if not isinstance(df, pd.DataFrame) or df.empty:
             continue
+        d = df.copy().head(35).iloc[:, :12]
+        for col in d.columns:
+            if pd.api.types.is_numeric_dtype(d[col]):
+                d[col] = d[col].apply(lambda x: f"{x:,.1f}%" if "%" in str(col) else f"{x:,.0f}")
+        data = [list(d.columns)] + d.astype(str).values.tolist()
         story.append(Paragraph(str(nombre), styles["Heading3"]))
-        table = Table(prep(df), repeatRows=1)
+        table = Table(data, repeatRows=1)
         table.setStyle(TableStyle([
             ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),
             ("TEXTCOLOR",(0,0),(-1,0),colors.white),
@@ -390,19 +378,10 @@ def pdf_generico_bytes(titulo, hojas):
             ("GRID",(0,0),(-1,-1),.25,colors.HexColor("#D1D5DB")),
             ("ALIGN",(0,0),(-1,-1),"CENTER"),
         ]))
-        story.append(table)
-        story.append(Spacer(1,12))
+        story.append(table); story.append(Spacer(1, 12))
     doc.build(story)
     bio.seek(0)
     return bio.getvalue()
-
-def exportar_pestana_pdf(nombre, hojas):
-    st.download_button(
-        "⬇️ Descargar PDF",
-        data=pdf_generico_bytes(nombre, hojas),
-        file_name=f"{nombre.lower().replace(' ', '_').replace('/', '_')}.pdf",
-        mime="application/pdf"
-    )
 
 def export_buttons(name, sheets):
     st.download_button(
@@ -420,6 +399,15 @@ def export_buttons(name, sheets):
                 file_name=f"{name}.csv",
                 mime="text/csv"
             )
+    try:
+        st.download_button(
+            f"⬇️ Exportar {name} PDF",
+            data=pdf_generico_bytes(name, sheets),
+            file_name=f"{name}.pdf",
+            mime="application/pdf"
+        )
+    except Exception:
+        pass
 
 def current_or_latest_week(df):
     if df.empty or "Semana ISO" not in df.columns:
@@ -516,7 +504,7 @@ def cargar_operacion(file, hoja):
     df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
     df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
     df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
-    df["Acondicionado"] = np.where(act.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True), df["Número de Piezas"], 0)
+    df["Acondicionado"] = np.where(act.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True, na=False), df["Número de Piezas"], 0)
     df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
 
     df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
@@ -715,31 +703,20 @@ def normalizar_operacion(df):
         df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
 
 
-    # Recalcular Acondicionado desde texto cuando venga en cero o mal clasificado
+    # Recalcular Acondicionado si el parquet anterior lo guardó en cero
     if all(c in df.columns for c in ["Actividad Realizada", "Motivo de ingreso", "Área", "Número de Piezas"]):
-        _act_acond = (
+        _texto_acond = (
             df["Actividad Realizada"].astype(str) + " " +
             df["Motivo de ingreso"].astype(str) + " " +
             df["Área"].astype(str)
         ).str.lower()
-
-        _acond_calc = pd.Series(
-            np.where(
-                _act_acond.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True, na=False),
-                pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
-                0
-            ),
-            index=df.index
+        _calc_acond = np.where(
+            _texto_acond.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True, na=False),
+            pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
+            0
         )
-
-        if "Acondicionado" in df.columns:
-            _acond_actual = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
-        elif "Habilitado" in df.columns:
-            _acond_actual = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
-        else:
-            _acond_actual = pd.Series(0, index=df.index)
-
-        df["Acondicionado"] = np.where(_acond_actual > 0, _acond_actual, _acond_calc)
+        _actual_acond = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0) if "Acondicionado" in df.columns else pd.Series(0, index=df.index)
+        df["Acondicionado"] = np.where(_actual_acond > 0, _actual_acond, _calc_acond)
 
     num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado"]
     for c in num_cols:
@@ -806,7 +783,6 @@ now = datetime.now()
 
 
 
-
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -814,76 +790,52 @@ def render_orion_header():
         logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("utf-8")
         logo_src = f"data:image/png;base64,{logo_b64}"
 
-    logo_html = (
-        f'<img src="{logo_src}" style="max-width:104px;max-height:68px;object-fit:contain;">'
-        if logo_src else
-        '<div class="logo-fallback">Price<br>Shoes</div>'
-    )
+    if logo_src:
+        logo_html = f'<img src="{logo_src}" style="max-width:120px;max-height:78px;object-fit:contain;">'
+    else:
+        logo_html = '<div class="logo-fallback">Price<br>Shoes</div>'
 
     header_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
     <style>
-        html,body{{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#fff;width:100%;overflow:hidden;}}
-        .wrap{{width:100%;box-sizing:border-box;padding:12px 10px 8px;background:#fff;}}
-        .top{{display:grid;grid-template-columns:105px minmax(300px,480px) minmax(560px,1fr);gap:22px;align-items:center;width:100%;}}
-        .logo{{width:104px;height:74px;display:flex;align-items:center;justify-content:center;}}
-        .logo-fallback{{color:#0D4A9C;font-size:20px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:9px 6px;background:#F6FBFF;}}
-        .title{{font-size:40px;font-weight:950;color:#14172F;line-height:1.0;letter-spacing:-.035em;white-space:normal;}}
-        .subtitle{{font-size:18px;color:#6B7280;font-weight:750;margin-top:7px;}}
-        .kpis{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:center;width:100%;}}
-        .kpi{{display:flex;align-items:center;gap:9px;min-width:0;}}
-        .icon{{width:52px;height:52px;min-width:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:900;}}
-        .rec{{background:#FCE2EF;color:#EC007C;}} .cam{{background:#E8EEF9;color:#0047B3;}} .mue{{background:#EFE8FB;color:#6F35B5;}}
-        .label{{color:#14172F;font-size:13px;font-weight:900;line-height:1.1;white-space:nowrap;}}
-        .value{{font-size:22px;font-weight:950;line-height:1.05;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px;}}
-        .vrec{{color:#EC007C;}} .vcam{{color:#0047B3;}} .vmue{{color:#6F35B5;}}
-        .cards{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:18px;width:100%;}}
-        .card{{height:96px;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 2px 12px rgba(17,24,39,.05);padding:16px;box-sizing:border-box;background:#fff;min-width:0;}}
-        .card-label{{font-size:14px;color:#14172F;font-weight:500;margin-bottom:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
-        .card-value{{font-size:30px;color:#3520B8;font-weight:950;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
-        @media(max-width:900px){{
-            .wrap{{padding:8px 4px 6px;}}
-            .top{{grid-template-columns:62px 1fr;gap:8px;}}
-            .logo{{width:62px;height:50px;}}
-            .logo img{{max-width:62px!important;max-height:48px!important;}}
-            .title{{font-size:24px;line-height:1.02;letter-spacing:-.02em;}}
-            .subtitle{{font-size:13px;margin-top:3px;}}
-            .kpis{{grid-column:1/-1;grid-template-columns:1fr;gap:6px;margin-top:10px;}}
-            .kpi{{gap:7px;min-height:34px;}}
-            .icon{{width:32px;height:32px;min-width:32px;font-size:17px;}}
-            .label{{font-size:11px;}}
-            .value{{font-size:16px;max-width:100%;}}
-            .cards{{grid-template-columns:1fr;gap:8px;margin-top:12px;}}
-            .card{{height:auto;min-height:70px;padding:11px 12px;}}
-            .card-label{{font-size:12px;margin-bottom:7px;}}
-            .card-value{{font-size:22px;white-space:normal;overflow:visible;text-overflow:clip;}}
-        }}
+        body {{ margin:0; padding:0; font-family:Arial, Helvetica, sans-serif; background:#FFFFFF; overflow:hidden; }}
+        .top {{ width:100%; height:156px; display:grid; grid-template-columns:145px minmax(420px,1fr) 720px; gap:18px; align-items:center; box-sizing:border-box; padding:8px 8px 10px 8px; }}
+        .logo {{ width:132px; height:86px; display:flex; align-items:center; justify-content:center; }}
+        .logo-fallback {{ color:#0D4A9C; font-size:27px; font-weight:950; line-height:.9; text-align:center; border:2px solid #0D4A9C; border-radius:50%; padding:12px 8px; background:#F6FBFF; }}
+        .title {{ font-size:42px; font-weight:950; color:#14172F; margin:0; line-height:1.05; letter-spacing:-0.03em; white-space:nowrap; }}
+        .subtitle {{ font-size:18px; color:#6B7280; font-weight:700; margin-top:8px; white-space:nowrap; }}
+        .kpis {{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; align-items:center; }}
+        .kpi {{ display:flex; align-items:center; gap:12px; min-width:0; }}
+        .icon {{ width:64px; height:64px; min-width:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:31px; font-weight:900; }}
+        .rec {{ background:#FCE2EF; color:#EC007C; }}
+        .cam {{ background:#E8EEF9; color:#0047B3; }}
+        .mue {{ background:#EFE8FB; color:#6F35B5; }}
+        .label {{ color:#14172F; font-size:14px; font-weight:900; line-height:1.1; }}
+        .value {{ font-size:24px; font-weight:950; line-height:1.05; margin-top:5px; white-space:nowrap; }}
+        .vrec {{ color:#EC007C; }}
+        .vcam {{ color:#0047B3; }}
+        .vmue {{ color:#6F35B5; }}
     </style>
     </head>
     <body>
-        <div class="wrap">
-            <div class="top">
-                <div class="logo">{logo_html}</div>
-                <div><div class="title">Recuperación<br>Cambios y Muertos</div><div class="subtitle">Matriz de Operaciones</div></div>
-                <div class="kpis">
-                    <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
-                    <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
-                    <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
-                </div>
+        <div class="top">
+            <div class="logo">{logo_html}</div>
+            <div>
+                <div class="title">Recuperación Cambios y Muertos</div>
+                <div class="subtitle">Matriz de Operaciones</div>
             </div>
-            <div class="cards">
-                <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
-                <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
-                <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
+            <div class="kpis">
+                <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
+                <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
+                <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Muertos</div><div class="value vmue">Compañía</div></div></div>
             </div>
         </div>
-    </body></html>
+    </body>
+    </html>
     """
-    components.html(header_html, height=260, scrolling=False)
+    components.html(header_html, height=170, scrolling=False)
 
 render_orion_header()
 
@@ -1197,129 +1149,6 @@ def render_wow_cards(op_source):
 
 render_wow_cards(op_all)
 
-
-def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
-    """Resumen con lógica Día Anterior, respetando filtros globales."""
-    base_op = op.copy() if "op" in globals() else pd.DataFrame()
-    base_daily = daily.copy() if "daily" in globals() else pd.DataFrame()
-    if base_op.empty:
-        return pd.DataFrame(), ""
-
-    if periodo == "semanal":
-        if "Semana ISO" not in base_op.columns or base_op["Semana ISO"].dropna().empty:
-            return pd.DataFrame(), ""
-        if semana_sel is None:
-            semana_sel = int(base_op["Semana ISO"].dropna().max())
-        base_op = base_op[base_op["Semana ISO"] == int(semana_sel)]
-        if not base_daily.empty and "Semana ISO" in base_daily.columns:
-            base_daily = base_daily[base_daily["Semana ISO"] == int(semana_sel)]
-        etiqueta = f"Semana {int(semana_sel)}"
-    else:
-        fechas = pd.to_datetime(base_op["Fecha Día"], errors="coerce").dropna()
-        if fechas.empty:
-            return pd.DataFrame(), ""
-        mes_periodo = pd.Period(str(mes_sel), freq="M") if mes_sel is not None else fechas.max().to_period("M")
-        base_op = base_op[pd.to_datetime(base_op["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
-        if not base_daily.empty and "Fecha Día" in base_daily.columns:
-            base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
-        etiqueta = f"Mes {mes_periodo}"
-
-    if base_op.empty:
-        return pd.DataFrame(), etiqueta
-
-    op_resumen = base_op.groupby("Tienda", as_index=False).agg(
-        Muertos=("Muertos","sum"),
-        Cajas=("Cajas","sum"),
-        Probador=("Probador","sum"),
-        Acondicionado=("Acondicionado","sum"),
-        Ubicado=("Ubicado","sum"),
-        Recorridos=("Recorridos","sum"),
-        Productividad=("Productividad Total","sum")
-    )
-    op_resumen["Productividad Registrada"] = op_resumen[["Muertos","Cajas","Probador","Acondicionado","Ubicado"]].sum(axis=1)
-    op_resumen = op_resumen[op_resumen["Productividad Registrada"] > 0]
-
-    if not base_daily.empty and "Tienda" in base_daily.columns:
-        sys_resumen = base_daily.groupby("Tienda", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"))
-    else:
-        sys_resumen = pd.DataFrame(columns=["Tienda","Dev_Pzs"])
-
-    resumen = op_resumen.merge(sys_resumen, on="Tienda", how="left").fillna(0)
-    for c in ["Dev_Pzs","Muertos","Cajas","Probador","Acondicionado","Ubicado","Recorridos","Productividad"]:
-        resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
-
-    resumen["Periodo"] = etiqueta
-    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
-    resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
-    resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
-    resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
-    resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
-    resumen["Estatus"] = np.where(resumen["Pendiente Ubicar"] <= 0, "🟢 Completo", np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente"))
-    return resumen.sort_values(["Pendiente Ubicar","Pendiente Acondicionar"], ascending=False), etiqueta
-
-def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
-    if resumen is None or resumen.empty:
-        st.info(f"No hay información para {periodo_nombre} con los filtros seleccionados.")
-        return
-    total_pzas = resumen["Piezas Ingresadas"].sum()
-    total_aco = resumen["Acondicionado"].sum()
-    total_ubi = resumen["Ubicado"].sum()
-    total_pend_aco = resumen["Pendiente Acondicionar"].sum()
-    total_pend_ubi = resumen["Pendiente Ubicar"].sum()
-    pct_aco = pct(total_aco, total_pzas)
-    pct_ubi = pct(total_ubi, total_pzas)
-
-    st.subheader(f"{titulo} {etiqueta}")
-    st.caption("Respeta los filtros globales y usa la lógica de Día Anterior / Pendiente.")
-
-    st.markdown(f"""
-    <div class="boceto-card-row">
-        <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_pzas)}</div><div class="boceto-card-foot">Total piezas</div></div></div>
-        <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Acondicionado</div><div class="boceto-card-value" style="color:#0047B3;">{n0(total_aco)}</div><div class="boceto-card-foot">{p1(pct_aco)}</div></div></div>
-        <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⌖</div><div><div class="boceto-card-title">Ubicado</div><div class="boceto-card-value" style="color:#F39800;">{n0(total_ubi)}</div><div class="boceto-card-foot">{p1(pct_ubi)}</div></div></div>
-        <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">⏳</div><div><div class="boceto-card-title">Pendiente por Procesar</div><div class="boceto-card-value" style="color:#00A651;">{n0(total_pend_ubi)}</div><div class="boceto-card-foot">Pendiente ubicar</div></div></div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    resumen_general = pd.DataFrame([{
-        "Tiendas con Productividad": resumen["Tienda"].nunique(),
-        "Piezas Ingresadas": total_pzas,
-        "Acondicionado": total_aco,
-        "% Acondicionado": pct_aco,
-        "Ubicado": total_ubi,
-        "% Ubicado": pct_ubi,
-        "Pendiente Acondicionar": total_pend_aco,
-        "Pendiente Ubicar": total_pend_ubi
-    }])
-
-    columnas = ["Tienda","Piezas Ingresadas","Acondicionado","% Acondicionado","Ubicado","% Ubicado","Pendiente Acondicionar","Pendiente Ubicar","Recorridos","Estatus"]
-
-    st.markdown("<div class='boceto-section'><h3>RESUMEN GENERAL</h3>", unsafe_allow_html=True)
-    st.dataframe(style_dataframe(resumen_general), width="stretch")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA</h3>", unsafe_allow_html=True)
-    st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-    with c1:
-        fig = go.Figure()
-        fig.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
-        fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
-        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
-        fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
-    with c2:
-        fig2 = go.Figure()
-        fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
-        fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
-        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
-        fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
-    export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
-    exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
-
 # ==========================================================
 # PESTAÑAS
 # ==========================================================
@@ -1521,49 +1350,77 @@ with tab["0. Día Anterior / Pendiente"]:
                 st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
 
 
-
-# 1 Reporte Semanal
+# 1 Panel Ejecutivo
 with tab["1. Reporte Semanal"]:
-    semanas_disp_reporte = sorted([int(x) for x in op.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if "op" in globals() and not op.empty else []
-    if semanas_disp_reporte:
-        semana_default = max(semanas_disp_reporte)
-        csel, _ = st.columns([1.3, 4])
-        with csel:
-            semana_sel = st.selectbox("Semana a consultar", semanas_disp_reporte, index=semanas_disp_reporte.index(semana_default))
-        reporte_semanal, etiqueta_sem = construir_reporte_periodo("semanal", semana_sel=semana_sel)
-        render_reporte_periodo(reporte_semanal, "Reporte Semanal", "Reporte Semanal", etiqueta_sem)
+    st.subheader("Reporte Semanal")
+    st.caption("Top y Bottom solo consideran tiendas con registros. Se descartan registros no coherentes mediante agrupación por ID empleado / Ocurrencia.")
+
+    score_df = ss.copy()
+    if not score_df.empty:
+        score_df["Score"] = (
+            score_df["Productividad"].rank(pct=True)*40 +
+            score_df["% Acondicionado"].rank(pct=True)*25 +
+            score_df["% Ubicado"].rank(pct=True)*15 +
+            score_df["Conversión %"].rank(pct=True)*10 +
+            score_df["% Recorridos"].rank(pct=True)*10
+        ).round(1)
+
+    a,b = st.columns(2)
+    with a:
+        st.write("🏆 Top 2 Tiendas")
+        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=False).head(2)), width="stretch")
+    with b:
+        st.write("⚠️ Bottom 2 Tiendas")
+        st.dataframe(style_dataframe(score_df.sort_values("Score", ascending=True).head(2)), width="stretch")
+
+    valid = op.copy()
+    if not valid.empty:
+        valid = valid[~valid["Nombre Real"].str.lower().isin(["sin dato", "nan", "0", "-", ""])]
+        colab = valid.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"))
+        colab = colab.sort_values("Productividad", ascending=False)
     else:
-        st.info("No hay semanas disponibles con los filtros seleccionados.")
+        colab = pd.DataFrame()
 
+    a,b = st.columns(2)
+    with a:
+        st.write("👤 Top 3 Colaboradores")
+        st.dataframe(style_dataframe(colab.head(3)), width="stretch")
+    with b:
+        st.write("👤 Bottom 3 Colaboradores")
+        st.dataframe(style_dataframe(colab[colab["Productividad"] > 0].tail(3) if not colab.empty else colab), width="stretch")
 
-# 2 Reporte Mensual
+    st.plotly_chart(px.bar(score_df.sort_values("Score", ascending=False), x="Tienda", y="Score", color="Estado",
+                           title="Score Card por Tienda", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
+                    width="stretch")
+    export_buttons("panel_ejecutivo", {"score_tiendas": score_df, "colaboradores": colab})
+
+# 2 Macro
 with tab["2. Reporte Mensual"]:
-    fechas_mes = pd.to_datetime(op.get("Fecha Día", pd.Series(dtype=str)), errors="coerce").dropna() if "op" in globals() and not op.empty else pd.Series(dtype="datetime64[ns]")
-    meses_disp = sorted(fechas_mes.dt.to_period("M").astype(str).unique().tolist()) if not fechas_mes.empty else []
-    if meses_disp:
-        mes_default = meses_disp[-1]
-        csel, _ = st.columns([1.3, 4])
-        with csel:
-            mes_sel = st.selectbox("Mes a consultar", meses_disp, index=meses_disp.index(mes_default))
-        reporte_mensual, etiqueta_mes = construir_reporte_periodo("mensual", mes_sel=mes_sel)
-        render_reporte_periodo(reporte_mensual, "Reporte Mensual", "Reporte Mensual", etiqueta_mes)
+    st.subheader("Macro | Últimas 4 semanas")
+    if op_all.empty:
+        st.warning("Sin datos operativos.")
     else:
-        st.info("No hay meses disponibles con los filtros seleccionados.")
-
-
-# Variables seguras para pestañas comerciales
-if "dev_pzs" not in globals():
-    dev_pzs = ss["Dev_Pzs"].sum() if "ss" in globals() and not ss.empty and "Dev_Pzs" in ss.columns else 0
-if "vta_pzs" not in globals():
-    vta_pzs = ss["Vta_Pzs"].sum() if "ss" in globals() and not ss.empty and "Vta_Pzs" in ss.columns else 0
-if "conv_pct" not in globals():
-    conv_pct = pct(vta_pzs, dev_pzs)
-if "recuperacion" not in globals():
-    recuperacion = ss["Recuperacion"].sum() if "ss" in globals() and not ss.empty and "Recuperacion" in ss.columns else 0
-if "costo_dev" not in globals():
-    costo_dev = ss["Costo_Dev"].sum() if "ss" in globals() and not ss.empty and "Costo_Dev" in ss.columns else 0
-if "rec_pct" not in globals():
-    rec_pct = pct(recuperacion, costo_dev)
+        macro = op_all.groupby("Semana ISO", as_index=False).agg(
+            Muertos=("Muertos","sum"),
+            Cajas=("Cajas","sum"),
+            Probador=("Probador","sum"),
+            Acondicionado=("Acondicionado","sum"),
+            Ubicado=("Ubicado","sum")
+        )
+        sys_week = daily_all.groupby("Semana ISO", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum")) if not daily_all.empty else pd.DataFrame(columns=["Semana ISO","Dev_Pzs"])
+        macro = macro.merge(sys_week, on="Semana ISO", how="left").fillna(0)
+        macro["Piezas Ingresadas"] = macro["Dev_Pzs"] + macro["Muertos"] + macro["Cajas"] + macro["Probador"]
+        macro["% Acondicionado"] = sdiv(macro["Acondicionado"], macro["Piezas Ingresadas"]) * 100
+        macro["% Ubicado"] = sdiv(macro["Ubicado"], macro["Piezas Ingresadas"]) * 100
+        macro["Semana ISO"] = macro["Semana ISO"].astype(int)
+        macro = macro.sort_values("Semana ISO").tail(4)
+        st.dataframe(style_dataframe(macro), width="stretch")
+        st.plotly_chart(px.bar(macro, x="Semana ISO", y="Piezas Ingresadas", text_auto=True,
+                               title="Total de ingresos por semana", color_discrete_sequence=["#3366CC"]),
+                        width="stretch")
+        st.plotly_chart(px.line(macro, x="Semana ISO", y=["% Acondicionado","% Ubicado"], markers=True,
+                                title="% Acondicionado vs % Ubicado", color_discrete_sequence=["#3366CC","#FF99FF"]),
+                        width="stretch")
 
 # 3 Conversión
 with tab["3. Conversión"]:
@@ -1572,7 +1429,7 @@ with tab["3. Conversión"]:
     c1.metric("Dev_Pzs", n0(dev_pzs))
     c2.metric("Vta_Pzs validada", n0(vta_pzs))
     c3.metric("Conversión", p1(conv_pct))
-    conv = ss[["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"])
+    conv = ss[["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"]].copy()
     st.dataframe(style_dataframe(conv.sort_values("Conversión %", ascending=False)), width="stretch")
     st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False), x="Tienda", y="Conversión %",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
@@ -1585,7 +1442,7 @@ with tab["4. Recuperación Económica"]:
     c1.metric("Valor Recuperado", money(recuperacion))
     c2.metric("Costo Dev", money(costo_dev))
     c3.metric("Valor Pendiente", money(costo_dev - recuperacion))
-    eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"])
+    eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy()
     eco = eco.rename(columns={"Recuperacion":"Recuperacion", "Costo_Dev":"Costo Dev $"})
     eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperacion"]
     st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
