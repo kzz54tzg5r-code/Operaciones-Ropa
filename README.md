@@ -1,10 +1,7 @@
-# ORION - Header corregido + PDF en pestañas
+# ORION - Fix NameError op_all
 
-Cambios:
-- Header más compacto para evitar encimado.
-- Selectores de semana/mes con ancho corto.
-- En móvil las tarjetas se acomodan verticalmente para evitar encimarse.
-- Reporte Semanal y Reporte Mensual conservan selector.
-- Descarga PDF con diseño uniforme.
-- PDF agregado para pestañas con tablas/DataFrames.
-- Muertos: Compañía.
+Corrige:
+- NameError en render_wow_cards(op_all)
+- Mantiene header compacto
+- Mantiene PDF por pestañas
+- Mantiene Reporte Semanal/Mensual con selector

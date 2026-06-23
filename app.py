@@ -1188,7 +1188,8 @@ def render_wow_cards(op_source):
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
-render_wow_cards(op_all)
+if "op_all" in globals():
+    render_wow_cards(op_all)
 
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
