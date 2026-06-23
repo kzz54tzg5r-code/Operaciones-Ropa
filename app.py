@@ -722,17 +722,24 @@ def normalizar_operacion(df):
             df["Motivo de ingreso"].astype(str) + " " +
             df["Área"].astype(str)
         ).str.lower()
-        _acond_calc = np.where(
-            _act_acond.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True),
-            pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
-            0
+
+        _acond_calc = pd.Series(
+            np.where(
+                _act_acond.str.contains("acondicion|habilitad|habilitar|habilitado|habilitada", regex=True, na=False),
+                pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
+                0
+            ),
+            index=df.index
         )
-        # Si ya existe Acondicionado pero está en cero, usar el cálculo nuevo.
-        df["Acondicionado"] = np.where(
-            pd.to_numeric(df.get("Acondicionado", 0), errors="coerce").fillna(0) > 0,
-            pd.to_numeric(df.get("Acondicionado", 0), errors="coerce").fillna(0),
-            _acond_calc
-        )
+
+        if "Acondicionado" in df.columns:
+            _acond_actual = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0)
+        elif "Habilitado" in df.columns:
+            _acond_actual = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
+        else:
+            _acond_actual = pd.Series(0, index=df.index)
+
+        df["Acondicionado"] = np.where(_acond_actual > 0, _acond_actual, _acond_calc)
 
     num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado"]
     for c in num_cols:
@@ -1193,7 +1200,7 @@ render_wow_cards(op_all)
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con lógica Día Anterior, respetando filtros globales."""
-    base_op = normalizar_operacion(op.copy()) if "op" in globals() and not op.empty else pd.DataFrame()
+    base_op = op.copy() if "op" in globals() else pd.DataFrame()
     base_daily = daily.copy() if "daily" in globals() else pd.DataFrame()
     if base_op.empty:
         return pd.DataFrame(), ""
@@ -1302,14 +1309,14 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
         fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}")
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
         fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}")
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
@@ -1542,6 +1549,21 @@ with tab["2. Reporte Mensual"]:
         render_reporte_periodo(reporte_mensual, "Reporte Mensual", "Reporte Mensual", etiqueta_mes)
     else:
         st.info("No hay meses disponibles con los filtros seleccionados.")
+
+
+# Variables seguras para pestañas comerciales
+if "dev_pzs" not in globals():
+    dev_pzs = ss["Dev_Pzs"].sum() if "ss" in globals() and not ss.empty and "Dev_Pzs" in ss.columns else 0
+if "vta_pzs" not in globals():
+    vta_pzs = ss["Vta_Pzs"].sum() if "ss" in globals() and not ss.empty and "Vta_Pzs" in ss.columns else 0
+if "conv_pct" not in globals():
+    conv_pct = pct(vta_pzs, dev_pzs)
+if "recuperacion" not in globals():
+    recuperacion = ss["Recuperacion"].sum() if "ss" in globals() and not ss.empty and "Recuperacion" in ss.columns else 0
+if "costo_dev" not in globals():
+    costo_dev = ss["Costo_Dev"].sum() if "ss" in globals() and not ss.empty and "Costo_Dev" in ss.columns else 0
+if "rec_pct" not in globals():
+    rec_pct = pct(recuperacion, costo_dev)
 
 # 3 Conversión
 with tab["3. Conversión"]:
