@@ -109,17 +109,6 @@ div[data-testid="stDateInput"]{max-width:330px!important;}
     .boceto-card-value{font-size:21px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;}
     .wow-row{grid-template-columns:1fr!important;min-width:0!important;}
 }
-
-/* Ajuste seguro de pestañas largas */
-.stTabs [data-baseweb="tab"]{
-    min-width:150px!important;
-    padding-left:8px!important;
-    padding-right:8px!important;
-}
-.stTabs [data-baseweb="tab"] p{
-    font-size:13px!important;
-    white-space:nowrap!important;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -527,7 +516,7 @@ def cargar_operacion(file, hoja):
     df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
     df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
     df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
-    df["Acondicionado"] = np.where(act.str.contains("acondicionado|habilitar", regex=True), df["Número de Piezas"], 0)
+    df["Acondicionado"] = np.where(act.str.contains("acondicion|acondicionado|acondicionamiento|habilitad|habilitar|habilitado|habilitada", regex=True, na=False), df["Número de Piezas"], 0)
     df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
 
     df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
@@ -791,6 +780,7 @@ now = datetime.now()
 
 
 
+
 def render_orion_header():
     logo_src = ""
     if LOGO_PATH.exists():
@@ -799,7 +789,7 @@ def render_orion_header():
         logo_src = f"data:image/png;base64,{logo_b64}"
 
     logo_html = (
-        f'<img src="{logo_src}" style="max-width:104px;max-height:68px;object-fit:contain;">'
+        f'<img src="{logo_src}" style="max-width:150px;max-height:105px;object-fit:contain;">'
         if logo_src else
         '<div class="logo-fallback">Price<br>Shoes</div>'
     )
@@ -809,40 +799,47 @@ def render_orion_header():
     <html>
     <head>
     <style>
-        html,body{{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;background:#fff;width:100%;overflow:hidden;}}
-        .wrap{{width:100%;box-sizing:border-box;padding:12px 10px 8px;background:#fff;}}
-        .top{{display:grid;grid-template-columns:105px minmax(300px,480px) minmax(560px,1fr);gap:22px;align-items:center;width:100%;}}
-        .logo{{width:104px;height:74px;display:flex;align-items:center;justify-content:center;}}
-        .logo-fallback{{color:#0D4A9C;font-size:20px;font-weight:950;line-height:.9;text-align:center;border:2px solid #0D4A9C;border-radius:50%;padding:9px 6px;background:#F6FBFF;}}
-        .title{{font-size:34px;font-weight:950;color:#14172F;line-height:1.0;letter-spacing:-.035em;white-space:normal;}}
-        .subtitle{{font-size:18px;color:#6B7280;font-weight:750;margin-top:7px;}}
-        .kpis{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:center;width:100%;}}
-        .kpi{{display:flex;align-items:center;gap:9px;min-width:0;}}
-        .icon{{width:52px;height:52px;min-width:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:900;}}
-        .rec{{background:#FCE2EF;color:#EC007C;}} .cam{{background:#E8EEF9;color:#0047B3;}} .mue{{background:#EFE8FB;color:#6F35B5;}}
-        .label{{color:#14172F;font-size:13px;font-weight:900;line-height:1.1;white-space:nowrap;}}
-        .value{{font-size:22px;font-weight:950;line-height:1.05;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px;}}
+        html,body{{
+            margin:0;padding:0;font-family:Arial, Helvetica, sans-serif;
+            background:#FFFFFF;width:100%;overflow:hidden;
+        }}
+        .wrap{{width:100%;box-sizing:border-box;padding:16px 10px 18px 10px;background:#FFFFFF;}}
+        .top{{
+            display:grid;
+            grid-template-columns:165px minmax(430px, 1.1fr) minmax(650px, 1.35fr);
+            gap:28px;align-items:center;width:100%;box-sizing:border-box;
+        }}
+        .logo{{width:160px;height:115px;display:flex;align-items:center;justify-content:center;}}
+        .logo-fallback{{
+            color:#0D4A9C;font-size:26px;font-weight:950;line-height:.9;text-align:center;
+            border:2px solid #0D4A9C;border-radius:50%;padding:12px 8px;background:#F6FBFF;
+        }}
+        .title{{
+            font-size:46px;font-weight:950;color:#14172F;line-height:1.02;
+            letter-spacing:-0.035em;white-space:normal;
+        }}
+        .subtitle{{font-size:21px;color:#6B7280;font-weight:750;margin-top:8px;}}
+        .kpis{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:center;width:100%;}}
+        .kpi{{display:flex;align-items:center;gap:11px;min-width:0;}}
+        .icon{{
+            width:62px;height:62px;min-width:62px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;
+        }}
+        .rec{{background:#FCE2EF;color:#EC007C;}}
+        .cam{{background:#E8EEF9;color:#0047B3;}}
+        .mue{{background:#EFE8FB;color:#6F35B5;}}
+        .label{{color:#14172F;font-size:15px;font-weight:900;line-height:1.1;white-space:nowrap;}}
+        .value{{font-size:27px;font-weight:950;line-height:1.05;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
         .vrec{{color:#EC007C;}} .vcam{{color:#0047B3;}} .vmue{{color:#6F35B5;}}
-        .cards{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-top:28px;width:100%;}}
-        .card{{height:96px;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 2px 12px rgba(17,24,39,.05);padding:16px;box-sizing:border-box;background:#fff;min-width:0;}}
-        .card-label{{font-size:14px;color:#14172F;font-weight:500;margin-bottom:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
-        .card-value{{font-size:30px;color:#3520B8;font-weight:950;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}
         @media(max-width:900px){{
-            .wrap{{padding:8px 4px 6px;}}
-            .top{{grid-template-columns:62px 1fr;gap:8px;}}
-            .logo{{width:62px;height:50px;}}
-            .logo img{{max-width:62px!important;max-height:48px!important;}}
-            .title{{font-size:24px;line-height:1.02;letter-spacing:-.02em;}}
-            .subtitle{{font-size:13px;margin-top:3px;}}
-            .kpis{{grid-column:1/-1;grid-template-columns:1fr;gap:6px;margin-top:10px;}}
-            .kpi{{gap:7px;min-height:34px;}}
-            .icon{{width:32px;height:32px;min-width:32px;font-size:17px;}}
-            .label{{font-size:11px;}}
-            .value{{font-size:16px;max-width:100%;}}
-            .cards{{grid-template-columns:1fr;gap:8px;margin-top:12px;}}
-            .card{{height:auto;min-height:70px;padding:11px 12px;}}
-            .card-label{{font-size:12px;margin-bottom:7px;}}
-            .card-value{{font-size:22px;white-space:normal;overflow:visible;text-overflow:clip;}}
+            .top{{grid-template-columns:82px 1fr;gap:10px;}}
+            .logo{{width:82px;height:65px;}}
+            .logo img{{max-width:82px!important;max-height:60px!important;}}
+            .title{{font-size:27px;line-height:1.02;}}
+            .subtitle{{font-size:14px;}}
+            .kpis{{grid-column:1 / -1;grid-template-columns:1fr;gap:8px;margin-top:12px;}}
+            .icon{{width:38px;height:38px;min-width:38px;font-size:20px;}}
+            .label{{font-size:12px;}} .value{{font-size:18px;}}
         }}
     </style>
     </head>
@@ -850,24 +847,21 @@ def render_orion_header():
         <div class="wrap">
             <div class="top">
                 <div class="logo">{logo_html}</div>
-                <div><div class="title">Recuperación<br>Cambios y Muertos</div><div class="subtitle">Matriz de Operaciones</div></div>
+                <div>
+                    <div class="title">Recuperación<br>Cambios y Muertos</div>
+                    <div class="subtitle">Matriz de Operaciones</div>
+                </div>
                 <div class="kpis">
                     <div class="kpi"><div class="icon rec">↻</div><div><div class="label">Recuperación</div><div class="value vrec">Operaciones</div></div></div>
                     <div class="kpi"><div class="icon cam">↔</div><div><div class="label">Cambios</div><div class="value vcam">Ropa</div></div></div>
                     <div class="kpi"><div class="icon mue">♟</div><div><div class="label">Indicadores</div><div class="value vmue">Compañía</div></div></div>
                 </div>
             </div>
-            <div class="cards">
-                <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
-                <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
-                <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
-            </div>
         </div>
-    </body></html>
+    </body>
+    </html>
     """
-    components.html(header_html, height=310, scrolling=False)
+    components.html(header_html, height=175, scrolling=False)
 
 render_orion_header()
 
@@ -1291,18 +1285,56 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig = go.Figure()
         fig.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
-        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
+        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
         st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
-        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
+        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
         st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
+
+
+def conversion_semanal_dev_venta(codf):
+    """
+    Conversión Semanal Dev → Venta:
+    Sólo cuenta piezas vendidas dentro de la misma Semana ISO consultada.
+    """
+    if codf is None or codf.empty:
+        return pd.DataFrame(columns=[
+            "Semana ISO", "Tienda", "Piezas Devueltas Semana",
+            "Conversión Dev → Venta Pzs", "Conversión Dev → Venta $",
+            "% Conversión Dev → Venta"
+        ])
+    d = codf.copy()
+    for c in ["Dev_Pzs", "Vta_Pzs", "Vta_Imp"]:
+        if c not in d.columns:
+            d[c] = 0
+        d[c] = pd.to_numeric(d[c], errors="coerce").fillna(0)
+
+    group_cols = []
+    if "Semana ISO" in d.columns:
+        group_cols.append("Semana ISO")
+    if "Tienda" in d.columns:
+        group_cols.append("Tienda")
+
+    out = d.groupby(group_cols, as_index=False).agg(
+        **{
+            "Piezas Devueltas Semana": ("Dev_Pzs", "sum"),
+            "Conversión Dev → Venta Pzs": ("Vta_Pzs", "sum"),
+            "Conversión Dev → Venta $": ("Vta_Imp", "sum"),
+        }
+    )
+    out["% Conversión Dev → Venta"] = sdiv(out["Conversión Dev → Venta Pzs"], out["Piezas Devueltas Semana"]) * 100
+    if "Semana ISO" in out.columns:
+        out = out.sort_values(["Semana ISO", "% Conversión Dev → Venta"], ascending=[False, False])
+    else:
+        out = out.sort_values("% Conversión Dev → Venta", ascending=False)
+    return out
 
 # ==========================================================
 # PESTAÑAS
@@ -1482,8 +1514,8 @@ with tab["0. Día Anterior / Pendiente"]:
                 with chart_col1:
                     st.markdown("<div class='boceto-section'><h3>INGRESO vs ACONDICIONADO vs UBICADO POR TIENDA</h3>", unsafe_allow_html=True)
                     fig_combo = go.Figure()
-                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado (Piezas)", text=resumen["Acondicionado"], textposition="outside", marker_color="#00A651")
-                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
+                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado (Piezas)", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
+                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
                     st.plotly_chart(fig_combo, width="stretch")
@@ -1491,8 +1523,8 @@ with tab["0. Día Anterior / Pendiente"]:
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
                     fig_pend = go.Figure()
-                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#00A651")
-                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
+                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
+                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
                     st.plotly_chart(fig_pend, width="stretch")
@@ -1534,33 +1566,74 @@ with tab["2. Reporte Mensual"]:
     else:
         st.info("No hay meses disponibles con los filtros seleccionados.")
 
+
 # 3 Conversión
 with tab["3. Conversión"]:
-    st.subheader("Conversión | Dev_Pzs a Venta")
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Dev_Pzs", n0(dev_pzs))
-    c2.metric("Vta_Pzs validada", n0(vta_pzs))
-    c3.metric("Conversión", p1(conv_pct))
-    conv = ss[["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"])
-    st.dataframe(style_dataframe(conv.sort_values("Conversión %", ascending=False)), width="stretch")
-    st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False), x="Tienda", y="Conversión %",
-                           color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
-                           title="Conversión por tienda"), width="stretch")
+    st.subheader("Conversión Semanal Dev → Venta")
+    conv_sem = conversion_semanal_dev_venta(co)
+
+    if conv_sem.empty:
+        st.info("No hay información de conversión con los filtros seleccionados.")
+    else:
+        total_dev_sem = conv_sem["Piezas Devueltas Semana"].sum()
+        total_vta_sem = conv_sem["Conversión Dev → Venta Pzs"].sum()
+        total_vta_imp_sem = conv_sem["Conversión Dev → Venta $"].sum()
+        pct_conv_sem = pct(total_vta_sem, total_dev_sem)
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Piezas Devueltas Semana", n0(total_dev_sem))
+        c2.metric("Conversión Dev → Venta Pzs", n0(total_vta_sem))
+        c3.metric("Conversión Dev → Venta $", money(total_vta_imp_sem))
+        c4.metric("% Conversión Dev → Venta", p1(pct_conv_sem))
+
+        st.caption("Sólo cuenta piezas vendidas dentro de la misma Semana ISO en la que se devolvieron.")
+        st.dataframe(style_dataframe(conv_sem), width="stretch")
+
+        fig_conv = px.bar(
+            conv_sem,
+            x="Tienda",
+            y="% Conversión Dev → Venta",
+            text="% Conversión Dev → Venta",
+            title="Conversión Semanal Dev → Venta por Tienda",
+            color_discrete_sequence=["#0047B3"]
+        )
+        fig_conv.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+        fig_conv.update_layout(height=420)
+        st.plotly_chart(fig_conv, width="stretch", config={"responsive": True, "displayModeBar": True}, key="conv_semanal_dev_venta")
+
+        export_buttons("conversion_semanal_dev_venta", {"Conversión Semanal Dev Venta": conv_sem})
+
 
 # 4 Recuperación Económica
 with tab["4. Recuperación Económica"]:
-    st.subheader("Recuperación Económica")
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Valor Recuperado", money(recuperacion))
-    c2.metric("Costo Dev", money(costo_dev))
-    c3.metric("Valor Pendiente", money(costo_dev - recuperacion))
-    eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"])
-    eco = eco.rename(columns={"Recuperacion":"Recuperacion", "Costo_Dev":"Costo Dev $"})
-    eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperacion"]
-    st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
-    st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
-                           color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
-                           title="Recuperación $ por tienda"), width="stretch")
+    st.subheader("Recuperación Económica de Devolución Semanal")
+    rec_sem = conversion_semanal_dev_venta(co)
+
+    if rec_sem.empty:
+        st.info("No hay información de recuperación económica con los filtros seleccionados.")
+    else:
+        total_dev_sem = rec_sem["Piezas Devueltas Semana"].sum()
+        total_vta_sem = rec_sem["Conversión Dev → Venta Pzs"].sum()
+        total_vta_imp_sem = rec_sem["Conversión Dev → Venta $"].sum()
+        pct_conv_sem = pct(total_vta_sem, total_dev_sem)
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Piezas Devueltas Semana", n0(total_dev_sem))
+        c2.metric("Venta Recuperada de Devolución Semanal", money(total_vta_imp_sem))
+        c3.metric("% Conversión Dev → Venta", p1(pct_conv_sem))
+
+        st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO consultada.")
+
+        rec_show = rec_sem.copy()
+        rec_show["Venta Pendiente Pzs"] = (rec_show["Piezas Devueltas Semana"] - rec_show["Conversión Dev → Venta Pzs"]).clip(lower=0)
+        st.dataframe(style_dataframe(rec_show), width="stretch")
+
+        fig_rec = go.Figure()
+        fig_rec.add_bar(x=rec_show["Tienda"], y=rec_show["Conversión Dev → Venta $"], name="Conversión Dev → Venta $", marker_color="#EC007C")
+        fig_rec.update_layout(title="Venta Recuperada de Devolución Semanal", height=420)
+        st.plotly_chart(fig_rec, width="stretch", config={"responsive": True, "displayModeBar": True}, key="recuperacion_sem_dev_venta")
+
+        export_buttons("recuperacion_economica_semanal", {"Recuperación Económica Semanal": rec_show})
 
 # 5 Productividad Colaborador
 with tab["5. Productividad por Colaborador"]:
