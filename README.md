@@ -1,11 +1,11 @@
-# ORION - Penúltimo corregido seguro
+# ORION - Base app(11) con fix mínimo
 
-Base: penúltima versión estable.
+Base: app.py que el usuario indicó como punto de partida.
 
-Cambios:
-- Corrige StreamlitDuplicateElementId sólo en las 2 gráficas de Reporte Semanal/Mensual.
-- Baja tarjetas superiores para dar espacio al título.
-- Ajusta pestañas largas.
-- Indicadores Compañía.
-- Colores azul/rosa.
-- No aplica reemplazo global riesgoso de plotly_chart.
+Cambios aplicados:
+- Corrección mínima de StreamlitDuplicateElementId sólo en render_reporte_periodo.
+- Header con más altura.
+- Texto Indicadores Compañía.
+- Ajuste visual de pestañas largas.
+
+No se modificó lógica de carga, usuarios, filtros, Excel, PDF ni cálculos principales.
