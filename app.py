@@ -29,6 +29,7 @@ DB_PATH = DATA_DIR / "orion_config.db"
 OPERACION_FILE = DATA_DIR / "operacion.parquet"
 COMERCIAL_FILE = DATA_DIR / "comercial.parquet"
 DIARIO_COMERCIAL_FILE = DATA_DIR / "comercial_diario.parquet"
+PLANTILLA_FILE = DATA_DIR / "plantilla.parquet"
 
 TIENDAS_OFICIALES = [
     "Iztapalapa", "Vallejo", "Ecatepec", "Toluca", "Arco Norte",
@@ -75,7 +76,7 @@ section[data-testid="stSidebar"]{background:#FAFAFC;border-right:1px solid #ECEE
 .orion-mini-label{font-size:13px;color:var(--blue-dark);font-weight:900;line-height:1.1}.orion-mini-value{font-size:22px;font-weight:950;margin-top:3px;line-height:1.05}.value-rec{color:var(--magenta)}.value-cam{color:var(--blue)}.value-mue{color:var(--purple)}
 .orion-pink-bar{background:var(--magenta);color:white;padding:16px 26px;margin-left:-1.8rem;margin-right:-1.8rem;margin-bottom:14px;font-size:28px;line-height:1;font-weight:950;}
 .stTabs [data-baseweb="tab-list"]{gap:0;background:#FFFFFF;border-bottom:1px solid #D7DAE2;padding:0;overflow-x:auto;}
-.stTabs [data-baseweb="tab"]{min-width:165px;height:58px;padding:0 10px;color:#2E3248;font-weight:850;border-bottom:4px solid transparent;}
+.stTabs [data-baseweb="tab"]{min-width:190px;height:58px;padding:0 16px;color:#2E3248;font-weight:850;border-bottom:4px solid transparent;}
 .stTabs [aria-selected="true"]{color:var(--magenta)!important;border-bottom:4px solid var(--magenta);background:#FFFFFF!important;}
 h1,h2,h3{color:var(--blue-dark)!important;letter-spacing:-.01em;}h2{font-weight:950!important;}
 div[data-testid="stDateInput"]{max-width:330px!important;}div[data-testid="stDateInput"] input{height:46px!important;border-radius:6px!important;}
@@ -110,9 +111,14 @@ div[data-testid="stDateInput"]{max-width:330px!important;}
     .wow-row{grid-template-columns:1fr!important;min-width:0!important;}
 }
 
-/* Ajuste pestañas largas */
+/* Ajuste seguro de pestañas largas */
+.stTabs [data-baseweb="tab"]{
+    min-width:150px!important;
+    padding-left:8px!important;
+    padding-right:8px!important;
+}
 .stTabs [data-baseweb="tab"] p{
-    font-size:14px!important;
+    font-size:13px!important;
     white-space:nowrap!important;
 }
 </style>
@@ -243,6 +249,16 @@ def p1(x):
         return f"{float(x):,.1f}%"
     except Exception:
         return "0.0%"
+
+
+def money_k(x):
+    try:
+        v = float(x)
+        if abs(v) >= 1000:
+            return f"${v/1000:,.1f} mil"
+        return f"${v:,.0f}"
+    except Exception:
+        return "$0"
 
 def money(x):
     try:
@@ -603,16 +619,55 @@ def cargar_comercial(file, hoja):
     daily = pd.concat(daily_rows, ignore_index=True) if daily_rows else pd.DataFrame()
     return df, daily, header_row, [str(x) for x in raw.iloc[header_row].tolist()]
 
+
+def cargar_plantilla(file, hoja="plantilla"):
+    try:
+        df = pd.read_excel(file, sheet_name=hoja)
+    except Exception:
+        return pd.DataFrame()
+    df.columns = [str(c).strip() for c in df.columns]
+    col_id = None
+    col_nom = None
+    for c in df.columns:
+        cl = str(c).lower()
+        if col_id is None and any(k in cl for k in ["ocurrencia", "occurrence", "id empleado", "id_empleado"]):
+            col_id = c
+        if col_nom is None and any(k in cl for k in ["nombre completo", "nombre_completo", "nombre real", "colaborador", "nombre"]):
+            col_nom = c
+    if col_id is None or col_nom is None:
+        return pd.DataFrame()
+    out = pd.DataFrame()
+    out["Ocurrencia"] = df[col_id].astype(str).str.strip()
+    out["Nombre Plantilla"] = df[col_nom].astype(str).str.strip()
+    out = out[(out["Ocurrencia"] != "") & (out["Nombre Plantilla"] != "")]
+    return out.drop_duplicates("Ocurrencia")
+
+def aplicar_plantilla_nombres(opdf):
+    if opdf is None or opdf.empty:
+        return opdf
+    opdf = opdf.copy()
+    if PLANTILLA_FILE.exists():
+        try:
+            plant = pd.read_parquet(PLANTILLA_FILE)
+            if not plant.empty and "Ocurrencia" in opdf.columns:
+                mapa = dict(zip(plant["Ocurrencia"].astype(str), plant["Nombre Plantilla"].astype(str)))
+                opdf["Nombre Real"] = opdf["Ocurrencia"].astype(str).map(mapa).fillna(opdf.get("Nombre Real", opdf.get("Nombre", "Sin dato")))
+        except Exception:
+            pass
+    return opdf
+
 def procesar_excel(file):
     xls = pd.ExcelFile(file)
     hojas = xls.sheet_names
     hoja_op = detectar_hoja_operativa(hojas)
     hojas_mensuales = detectar_hojas_mensuales(hojas)
+    hoja_plantilla = next((h for h in hojas if str(h).strip().lower() == "plantilla"), None)
 
     diag = {
         "hojas_detectadas": hojas,
         "hoja_operativa": hoja_op,
         "hojas_mensuales": hojas_mensuales,
+        "hoja_plantilla": hoja_plantilla,
         "errores": [],
         "encabezados": {},
         "columnas": {}
@@ -621,6 +676,7 @@ def procesar_excel(file):
     op = pd.DataFrame()
     co_list = []
     daily_list = []
+    plantilla = pd.DataFrame()
 
     if hoja_op:
         try:
@@ -630,6 +686,13 @@ def procesar_excel(file):
             diag["errores"].append(f"Operación: {e}")
     else:
         diag["errores"].append("No se detectó hoja de productividad.")
+
+    if hoja_plantilla:
+        try:
+            plantilla = cargar_plantilla(file, hoja_plantilla)
+            diag["columnas"]["plantilla"] = list(plantilla.columns)
+        except Exception as e:
+            diag["errores"].append(f"Plantilla: {e}")
 
     for h in hojas_mensuales:
         try:
@@ -646,7 +709,7 @@ def procesar_excel(file):
     co = pd.concat(co_list, ignore_index=True) if co_list else pd.DataFrame()
     daily = pd.concat(daily_list, ignore_index=True) if daily_list else pd.DataFrame()
 
-    return op, co, daily, diag
+    return op, co, daily, plantilla, diag
 
 
 def preparar_para_parquet(df):
@@ -666,7 +729,7 @@ def preparar_para_parquet(df):
     return df
 
 
-def guardar_datos(op, co, daily, diag, filename):
+def guardar_datos(op, co, daily, plantilla, diag, filename):
     op = preparar_para_parquet(op)
     co = preparar_para_parquet(co)
     daily = preparar_para_parquet(daily)
@@ -677,6 +740,8 @@ def guardar_datos(op, co, daily, diag, filename):
         co.to_parquet(COMERCIAL_FILE, index=False)
     if daily is not None and not daily.empty:
         daily.to_parquet(DIARIO_COMERCIAL_FILE, index=False)
+    if plantilla is not None and not plantilla.empty:
+        plantilla.to_parquet(PLANTILLA_FILE, index=False)
     set_estado("archivo", filename)
     set_estado("ultima_actualizacion", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     set_estado("diagnostico", json.dumps(diag, ensure_ascii=False, default=str))
@@ -689,6 +754,7 @@ def cargar_datos():
     if not op.empty and "Ocurrencia" in op.columns:
         nombre_map = get_nombre_map()
         op["Nombre Real"] = op["Ocurrencia"].astype(str).map(nombre_map).fillna(op.get("Nombre", "Sin dato"))
+        op = aplicar_plantilla_nombres(op)
     return op, co, daily
 
 
@@ -735,6 +801,7 @@ def normalizar_operacion(df):
 
     nombre_map = get_nombre_map()
     df["Nombre Real"] = df["Ocurrencia"].astype(str).map(nombre_map).fillna(df["Nombre Real"]).fillna(df["Nombre"])
+    df = aplicar_plantilla_nombres(df)
 
     return df
 
@@ -813,7 +880,7 @@ def render_orion_header():
         .subtitle{{font-size:18px;color:#6B7280;font-weight:750;margin-top:7px;}}
         .kpis{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:center;width:100%;}}
         .kpi{{display:flex;align-items:center;gap:9px;min-width:0;}}
-        .icon{{width:52px;height:52px;min-width:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:900;}}
+        .icon{{width:48px;height:48px;min-width:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:25px;font-weight:900;}}
         .rec{{background:#FCE2EF;color:#EC007C;}} .cam{{background:#E8EEF9;color:#0047B3;}} .mue{{background:#EFE8FB;color:#6F35B5;}}
         .label{{color:#14172F;font-size:13px;font-weight:900;line-height:1.1;white-space:nowrap;}}
         .value{{font-size:20px;font-weight:950;line-height:1.05;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}}
@@ -856,7 +923,7 @@ def render_orion_header():
                 <div class="card"><div class="card-label">Total Ingresos</div><div class="card-value">{n0(total_ingresos) if 'total_ingresos' in globals() else '0'}</div></div>
                 <div class="card"><div class="card-label">% Acondicionado</div><div class="card-value">{p1(hab_pct) if 'hab_pct' in globals() else '0.0%'}</div></div>
                 <div class="card"><div class="card-label">% Ubicado</div><div class="card-value">{p1(ubi_pct) if 'ubi_pct' in globals() else '0.0%'}</div></div>
-                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
+                <div class="card"><div class="card-label">Recuperación $</div><div class="card-value">{money_k(recuperacion) if 'recuperacion' in globals() else '$0'}</div></div>
                 <div class="card"><div class="card-label">Score Integral</div><div class="card-value">{str(score_integral) + '/100' if 'score_integral' in globals() else '0/100'}</div></div>
             </div>
         </div>
@@ -922,15 +989,15 @@ with st.sidebar:
             if st.button("🚀 Procesar archivo", type="primary"):
                 with st.spinner("Procesando archivo completo. Puede tardar por el tamaño del Excel..."):
                     try:
-                        op_new, co_new, daily_new, diag = procesar_excel(uploaded)
-                        guardar_datos(op_new, co_new, daily_new, diag, uploaded.name)
+                        op_new, co_new, daily_new, plantilla_new, diag = procesar_excel(uploaded)
+                        guardar_datos(op_new, co_new, daily_new, plantilla_new, diag, uploaded.name)
                         st.success("Archivo procesado y guardado correctamente.")
                         st.rerun()
                     except Exception as e:
                         st.error(f"No se pudo procesar el archivo: {e}")
             st.caption("Si cambiaste de versión y la app conserva datos viejos, borra la persistencia y vuelve a cargar el Excel.")
         if st.button("🧹 Borrar datos persistidos"):
-            for f in [OPERACION_FILE, COMERCIAL_FILE, DIARIO_COMERCIAL_FILE]:
+            for f in [OPERACION_FILE, COMERCIAL_FILE, DIARIO_COMERCIAL_FILE, PLANTILLA_FILE]:
                 try:
                     if f.exists():
                         f.unlink()
@@ -1130,6 +1197,11 @@ costo_dev = ss["Costo_Dev"].sum() if not ss.empty else 0
 
 conv_pct = pct(vta_pzs, dev_pzs)
 rec_pct = pct(recuperacion, costo_dev)
+
+venta_recuperada = recuperacion
+costo_devolucion = costo_dev
+pendiente_recuperacion = costo_devolucion - venta_recuperada
+
 hab_pct = pct(acondicionado, total_ingresos)
 ubi_pct = pct(ubicado, total_ingresos)
 recorr_pct = pct(recorridos, meta_recorridos_periodo(op) * max(ss["Tienda"].nunique(), 1)) if not ss.empty else 0
@@ -1288,14 +1360,14 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
         fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key="orion_plotly_1")
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
         fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key="orion_plotly_2")
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
@@ -1481,7 +1553,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_combo, width="stretch", key="orion_plotly_3")
+                    st.plotly_chart(fig_combo, width="stretch")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1490,7 +1562,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
-                    st.plotly_chart(fig_pend, width="stretch", key="orion_plotly_4")
+                    st.plotly_chart(fig_pend, width="stretch")
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
@@ -1538,7 +1610,7 @@ with tab["3. Conversión"]:
     c3.metric("Conversión", p1(conv_pct))
     conv = ss[["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"])
     st.dataframe(style_dataframe(conv.sort_values("Conversión %", ascending=False)), width="stretch")
-    st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False, key="orion_plotly_5"), x="Tienda", y="Conversión %",
+    st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False), x="Tienda", y="Conversión %",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Conversión por tienda"), width="stretch")
 
@@ -1546,14 +1618,14 @@ with tab["3. Conversión"]:
 with tab["4. Recuperación Económica"]:
     st.subheader("Recuperación Económica")
     c1,c2,c3 = st.columns(3)
-    c1.metric("Valor Recuperado", money(recuperacion))
-    c2.metric("Costo Dev", money(costo_dev))
+    c1.metric("Costo Devolución", money(costo_devolucion))
+    c2.metric("Venta Recuperada", money(venta_recuperada))
     c3.metric("Valor Pendiente", money(costo_dev - recuperacion))
     eco = ss[["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Recuperacion","Costo_Dev","Recuperación %","Estado"])
-    eco = eco.rename(columns={"Recuperacion":"Recuperacion", "Costo_Dev":"Costo Dev $"})
-    eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperacion"]
+    eco = eco.rename(columns={"Recuperacion":"Recuperacion", "Costo_Dev":"Costo Devolución $"})
+    eco["Pendiente $"] = eco["Costo Devolución $"] - eco["Recuperacion"]
     st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
-    st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False, key="orion_plotly_6"), x="Tienda", y="Recuperacion",
+    st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
                            color="Estado", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"],
                            title="Recuperación $ por tienda"), width="stretch")
 
@@ -1583,7 +1655,7 @@ with tab["5. Productividad por Colaborador"]:
         base_colab["Ranking"] = base_colab["Productividad"].rank(method="dense", ascending=False).astype(int)
         base_colab = base_colab.sort_values("Ranking")
         st.dataframe(style_dataframe(base_colab), width="stretch")
-        st.plotly_chart(px.bar(base_colab.head(30, key="orion_plotly_7"), x="Nombre Real", y="Productividad", color="Tienda",
+        st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
                                color_discrete_sequence=["#3366CC","#FF99FF","#003366"],
                                title="Top colaboradores por productividad"), width="stretch")
 
@@ -1600,7 +1672,7 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por actividad")
         st.dataframe(style_dataframe(act_df), width="stretch")
         st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
-                               color="Actividad", color_discrete_sequence=["#3366CC","#FF99FF","#003366"], key="orion_plotly_8"),
+                               color="Actividad", color_discrete_sequence=["#3366CC","#FF99FF","#003366"]),
                         width="stretch")
 
         ingresos_df = pd.DataFrame({
@@ -1610,7 +1682,7 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por ingresos")
         st.dataframe(style_dataframe(ingresos_df), width="stretch")
         st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
-                               color="Concepto", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"], key="orion_plotly_9"),
+                               color="Concepto", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
                         width="stretch")
 
 # 7 Eficiencia Operativa
@@ -1638,7 +1710,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch", key="orion_plotly_10")
+    st.plotly_chart(fig, width="stretch")
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:
@@ -1682,7 +1754,7 @@ with tab["10. Top 30 Modelos"]:
         top = top.sort_values(col, ascending=False).head(30)
         st.dataframe(style_dataframe(top), width="stretch")
         st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
-                               color_discrete_sequence=["#3366CC","#FF99FF","#003366"], title=criterio, key="orion_plotly_11"),
+                               color_discrete_sequence=["#3366CC","#FF99FF","#003366"], title=criterio),
                         width="stretch")
 
 # 11 Categoría
@@ -1694,7 +1766,7 @@ with tab["11. Análisis por Categoría"]:
         cat = co.groupby("Categoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
         st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
-        st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False, key="orion_plotly_12"), x="Categoria", y="Recuperacion",
+        st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
                                color_discrete_sequence=["#3366CC"]), width="stretch")
 
 # 12 Subcategoría
@@ -1706,7 +1778,7 @@ with tab["12. Análisis por Subcategoría"]:
         sub = co.groupby("Subcategoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
         st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
-        st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False, key="orion_plotly_13").head(30), x="Subcategoria", y="Recuperacion",
+        st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
                                color_discrete_sequence=["#FF99FF"]), width="stretch")
 
 # 13 Ranking Tiendas

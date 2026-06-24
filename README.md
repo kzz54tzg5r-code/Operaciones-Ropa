@@ -1,8 +1,11 @@
-# ORION - Fix tabs, header y duplicate element
+# ORION - Penúltimo corregido seguro
+
+Base: penúltima versión estable.
 
 Cambios:
-- Corrige StreamlitDuplicateElementId agregando keys únicas a todas las gráficas Plotly.
-- Baja las tarjetas superiores para dar espacio al título.
-- Ajusta pestañas largas 5 y 6.
-- Cambia Muertos Compañía por Indicadores Compañía.
-- Mantiene colores azul/rosa corporativos.
+- Corrige StreamlitDuplicateElementId sólo en las 2 gráficas de Reporte Semanal/Mensual.
+- Baja tarjetas superiores para dar espacio al título.
+- Ajusta pestañas largas.
+- Indicadores Compañía.
+- Colores azul/rosa.
+- No aplica reemplazo global riesgoso de plotly_chart.
