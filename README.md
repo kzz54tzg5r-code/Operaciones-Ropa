@@ -1,8 +1,8 @@
-# ORION - PDF con gráficos y sin Excel/CSV
+# ORION - Ajustes solicitados
 
 Cambios:
-- PDF incluye gráficas generadas con matplotlib, sin depender de kaleido.
-- Se retiró exportación Excel y CSV.
-- Día anterior y reportes usan colores corporativos Price Shoes.
-- Botón para PDF completo de todas las pestañas.
-- Se mantienen keys únicas en gráficas Plotly.
+- Header sin recorte y cambia Muertos por Indicadores Compañía.
+- Resultado monetario superior reducido a miles.
+- Gráficas con azul/rosa corporativo Price Shoes.
+- Recuperación económica: Costo Devolución, Venta Recuperada y Pendiente.
+- Lee hoja 'plantilla' para agrupar nombres de colaboradores por Ocurrencia/ID.
