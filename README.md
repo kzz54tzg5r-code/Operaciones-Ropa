@@ -1,8 +1,8 @@
-# ORION - Header filtrado + PDF completo
+# ORION - PDF con gráficos y sin Excel/CSV
 
 Cambios:
-- Las tarjetas superiores ahora se calculan después de aplicar filtros globales.
-- Gráficas con colores corporativos Price Shoes.
-- PDF por pestaña con tablas y gráficas cuando kaleido está disponible.
-- Botón para descargar PDF completo de todas las pestañas.
-- Mantiene corrección de DuplicateElementId.
+- PDF incluye gráficas generadas con matplotlib, sin depender de kaleido.
+- Se retiró exportación Excel y CSV.
+- Día anterior y reportes usan colores corporativos Price Shoes.
+- Botón para PDF completo de todas las pestañas.
+- Se mantienen keys únicas en gráficas Plotly.

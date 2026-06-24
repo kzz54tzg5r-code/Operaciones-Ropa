@@ -5,4 +5,4 @@ openpyxl
 plotly
 pyarrow
 reportlab
-kaleido
+matplotlib

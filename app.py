@@ -354,23 +354,95 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
 
 
 
+def _chart_image_from_df(df, chart_type="ingreso"):
+    """Genera una imagen PNG de gráfico con colores Price Shoes sin depender de Kaleido."""
+    import matplotlib.pyplot as plt
+    from io import BytesIO
+
+    if df is None or df.empty or "Tienda" not in df.columns:
+        return None
+
+    d = df.copy().head(18)
+    x = d["Tienda"].astype(str).tolist()
+    idx = np.arange(len(x))
+    width = 0.35
+
+    fig, ax1 = plt.subplots(figsize=(12.5, 5.2))
+
+    if chart_type == "pendientes":
+        y1 = pd.to_numeric(d.get("Pendiente Acondicionar", 0), errors="coerce").fillna(0)
+        y2 = pd.to_numeric(d.get("Pendiente Ubicar", 0), errors="coerce").fillna(0)
+        yline = pd.to_numeric(d.get("Piezas Ingresadas", 0), errors="coerce").fillna(0)
+        label1, label2, label_line = "Pendiente Acondicionar", "Pendiente Ubicar", "Piezas Ingresadas"
+    else:
+        y1 = pd.to_numeric(d.get("Acondicionado", 0), errors="coerce").fillna(0)
+        y2 = pd.to_numeric(d.get("Ubicado", 0), errors="coerce").fillna(0)
+        yline = pd.to_numeric(d.get("Piezas Ingresadas", 0), errors="coerce").fillna(0)
+        label1, label2, label_line = "Acondicionado", "Ubicado", "Piezas Ingresadas"
+
+    b1 = ax1.bar(idx - width/2, y1, width, label=label1, color="#0047B3")
+    b2 = ax1.bar(idx + width/2, y2, width, label=label2, color="#EC007C")
+    ax1.plot(idx, yline, color="#F39800", marker="o", linewidth=3, label=label_line)
+
+    for bars in [b1, b2]:
+        for bar in bars:
+            h = bar.get_height()
+            if h:
+                ax1.text(bar.get_x() + bar.get_width()/2, h, f"{h:,.0f}", ha="center", va="bottom", fontsize=7, rotation=0)
+
+    for i, v in enumerate(yline):
+        if v:
+            ax1.text(i, v, f"{v:,.0f}", ha="center", va="bottom", fontsize=7, color="#F39800")
+
+    ax1.set_xticks(idx)
+    ax1.set_xticklabels(x, rotation=45, ha="right", fontsize=8)
+    ax1.tick_params(axis="y", labelsize=8)
+    ax1.grid(axis="y", alpha=0.25)
+    ax1.legend(loc="upper center", bbox_to_anchor=(0.5, 1.13), ncol=3, frameon=False)
+    fig.tight_layout()
+
+    bio = BytesIO()
+    fig.savefig(bio, format="png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    bio.seek(0)
+    return bio
+
 def pdf_generico_bytes(titulo, hojas, figuras=None):
     from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
+
     bio = BytesIO()
     doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=22, leftMargin=22, topMargin=22, bottomMargin=22)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("OrionTitle", parent=styles["Title"], textColor=colors.HexColor("#14172F"), fontSize=18, leading=22)
     sub_style = ParagraphStyle("OrionSub", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"), fontSize=12, leading=14)
     section_style = ParagraphStyle("OrionSection", parent=styles["Heading3"], textColor=colors.HexColor("#2F4A8A"), fontSize=11, leading=13)
+
     story = [
         Paragraph("Recuperación Cambios y Muertos", title_style),
         Paragraph(f"Operaciones Ropa | {titulo}", sub_style),
         Spacer(1, 8)
     ]
+
+    figuras = figuras or {}
+    for nombre, fig_data in figuras.items():
+        img_bio = None
+        try:
+            if isinstance(fig_data, tuple):
+                df_chart, chart_type = fig_data
+                img_bio = _chart_image_from_df(df_chart, chart_type)
+            elif isinstance(fig_data, pd.DataFrame):
+                img_bio = _chart_image_from_df(fig_data, "ingreso")
+        except Exception:
+            img_bio = None
+
+        if img_bio:
+            story.append(Paragraph(str(nombre), section_style))
+            story.append(RLImage(img_bio, width=9.4*inch, height=3.9*inch))
+            story.append(Spacer(1, 10))
 
     def prep(df, max_rows=35, max_cols=12):
         d = df.copy().iloc[:max_rows, :max_cols]
@@ -383,18 +455,6 @@ def pdf_generico_bytes(titulo, hojas, figuras=None):
                 else:
                     d[col] = d[col].apply(lambda x: f"{x:,.0f}")
         return [list(d.columns)] + d.astype(str).values.tolist()
-
-    figuras = figuras or {}
-    for nombre, fig in figuras.items():
-        try:
-            img_bytes = fig.to_image(format="png", width=1100, height=520, scale=1)
-            img = RLImage(BytesIO(img_bytes), width=9.5*inch, height=4.4*inch)
-            story.append(Paragraph(str(nombre), section_style))
-            story.append(img)
-            story.append(Spacer(1, 8))
-        except Exception:
-            story.append(Paragraph(f"{nombre}: gráfica disponible en la app. Para incluirla en PDF instala kaleido.", section_style))
-            story.append(Spacer(1, 6))
 
     for nombre, df in hojas.items():
         if not isinstance(df, pd.DataFrame) or df.empty:
@@ -411,7 +471,7 @@ def pdf_generico_bytes(titulo, hojas, figuras=None):
             ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white, colors.HexColor("#F8F9FB")]),
         ]))
         story.append(table)
-        story.append(Spacer(1,12))
+        story.append(Spacer(1, 12))
 
     doc.build(story)
     bio.seek(0)
@@ -425,22 +485,15 @@ def exportar_pestana_pdf(nombre, hojas, figuras=None):
         mime="application/pdf"
     )
 
-def export_buttons(name, sheets):
+
+def export_buttons(name, sheets, figuras=None):
+    """Exportación única en PDF. Se retira Excel y CSV."""
     st.download_button(
-        f"⬇️ Exportar {name} Excel",
-        data=excel_export(sheets),
-        file_name=f"{name}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        f"⬇️ Descargar {name} PDF",
+        data=pdf_generico_bytes(name, sheets, figuras),
+        file_name=f"{name}.pdf",
+        mime="application/pdf"
     )
-    if sheets:
-        first = list(sheets.values())[0]
-        if isinstance(first, pd.DataFrame):
-            st.download_button(
-                f"⬇️ Exportar {name} CSV",
-                data=first.to_csv(index=False).encode("utf-8-sig"),
-                file_name=f"{name}.csv",
-                mime="text/csv"
-            )
 
 def current_or_latest_week(df):
     if df.empty or "Semana ISO" not in df.columns:
@@ -537,7 +590,7 @@ def cargar_operacion(file, hoja):
     df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
     df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
     df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
-    df["Acondicionado"] = np.where(act.str.contains("acondicionado|habilitar", regex=True), df["Número de Piezas"], 0)
+    df["Acondicionado"] = np.where(act.str.contains("acondicion|acondicionado|acondicionamiento|habilitad|habilitar|habilitado|habilitada", regex=True, na=False), df["Número de Piezas"], 0)
     df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
 
     df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
@@ -879,7 +932,9 @@ def render_orion_header():
     """
     components.html(header_html, height=260, scrolling=False)
 
-# Header se renderiza después de calcular métricas filtradas
+render_orion_header()
+
+st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
 
 # ==========================================================
 # SIDEBAR ACCESO / CARGA
@@ -1158,14 +1213,6 @@ score_integral = round(
 )
 
 # ==========================================================
-# HEADER CON MÉTRICAS FILTRADAS
-# ==========================================================
-render_orion_header()
-st.markdown('<div class="orion-pink-bar">Operaciones Ropa</div>', unsafe_allow_html=True)
-
-
-
-# ==========================================================
 # SCORE CARDS
 # ==========================================================
 def render_wow_cards(op_source):
@@ -1309,32 +1356,30 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
         fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
         fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True})
-    export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
-    exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]}, {"Ingreso vs Acondicionado vs Ubicado": fig, "Pendientes por Procesar": fig2})
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
+    export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]}, {"Ingreso vs Acondicionado vs Ubicado": (resumen[columnas], "ingreso"), "Pendientes por Procesar": (resumen[columnas], "pendientes")})
+    exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]}, {"Ingreso vs Acondicionado vs Ubicado": (resumen[columnas], "ingreso"), "Pendientes por Procesar": (resumen[columnas], "pendientes")})
 
 
 def generar_pdf_todas_pestanas():
     hojas = {}
     figuras = {}
-
     try:
         hojas["Resumen Tiendas"] = ss.copy()
+        figuras["Resumen Operativo por Tienda"] = (ss.copy(), "ingreso")
     except Exception:
         pass
-
     try:
         hojas["Ranking Tiendas"] = ss_all.copy()
     except Exception:
         pass
-
     try:
         if not co.empty:
             hojas["Top Modelos"] = co.groupby(["Modelo","Categoria","Subcategoria"], as_index=False).agg(
@@ -1344,27 +1389,6 @@ def generar_pdf_todas_pestanas():
             ).sort_values("Dev_Pzs", ascending=False).head(30)
     except Exception:
         pass
-
-    try:
-        if not co.empty:
-            hojas["Categoria"] = co.groupby("Categoria", as_index=False).agg(
-                Dev_Pzs=("Dev_Pzs","sum"),
-                Vta_Pzs=("Vta_Pzs","sum"),
-                Vta_Imp=("Vta_Imp","sum")
-            ).sort_values("Dev_Pzs", ascending=False)
-    except Exception:
-        pass
-
-    try:
-        if not co.empty:
-            hojas["Subcategoria"] = co.groupby("Subcategoria", as_index=False).agg(
-                Dev_Pzs=("Dev_Pzs","sum"),
-                Vta_Pzs=("Vta_Pzs","sum"),
-                Vta_Imp=("Vta_Imp","sum")
-            ).sort_values("Dev_Pzs", ascending=False)
-    except Exception:
-        pass
-
     try:
         if not op.empty:
             hojas["Colaboradores"] = op.groupby(["Ocurrencia","Nombre Real","Tienda"], as_index=False).agg(
@@ -1375,20 +1399,7 @@ def generar_pdf_todas_pestanas():
             ).sort_values("Productividad", ascending=False).head(50)
     except Exception:
         pass
-
-    try:
-        if not ss.empty:
-            fig_res = go.Figure()
-            fig_res.add_bar(x=ss["Tienda"], y=ss["Acondicionado"], name="Acondicionado", marker_color="#0047B3")
-            fig_res.add_bar(x=ss["Tienda"], y=ss["Ubicado"], name="Ubicado", marker_color="#EC007C")
-            fig_res.add_scatter(x=ss["Tienda"], y=ss["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers", line=dict(color="#F39800", width=4))
-            fig_res.update_layout(barmode="group", height=430, title="Resumen Operativo por Tienda")
-            figuras["Resumen Operativo por Tienda"] = fig_res
-    except Exception:
-        pass
-
     return pdf_generico_bytes("Reporte completo ORION", hojas, figuras)
-
 
 # ==========================================================
 # PESTAÑAS
@@ -1638,7 +1649,7 @@ with tab["3. Conversión"]:
     conv = ss[["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"]].copy() if not ss.empty else pd.DataFrame(columns=["Tienda","Dev_Pzs","Vta_Pzs","Conversión %","Estado"])
     st.dataframe(style_dataframe(conv.sort_values("Conversión %", ascending=False)), width="stretch")
     st.plotly_chart(px.bar(conv.sort_values("Conversión %", ascending=False), x="Tienda", y="Conversión %",
-                           color="Estado", color_discrete_sequence=["#0047B3","#EC007C","#F39800","#00A651","#6F35B5","#2F4A8A"],
+                           color="Estado", color_discrete_sequence=["#0047B3","#EC007C","#003366","#94A3B8"],
                            title="Conversión por tienda"), width="stretch")
 
 # 4 Recuperación Económica
@@ -1653,7 +1664,7 @@ with tab["4. Recuperación Económica"]:
     eco["Valor Pendiente $"] = eco["Costo Dev $"] - eco["Recuperacion"]
     st.dataframe(style_dataframe(eco.sort_values("Recuperacion", ascending=False)), width="stretch")
     st.plotly_chart(px.bar(eco.sort_values("Recuperacion", ascending=False), x="Tienda", y="Recuperacion",
-                           color="Estado", color_discrete_sequence=["#0047B3","#EC007C","#F39800","#00A651","#6F35B5","#2F4A8A"],
+                           color="Estado", color_discrete_sequence=["#0047B3","#EC007C","#003366","#94A3B8"],
                            title="Recuperación $ por tienda"), width="stretch")
 
 # 5 Productividad Colaborador
@@ -1683,7 +1694,7 @@ with tab["5. Productividad por Colaborador"]:
         base_colab = base_colab.sort_values("Ranking")
         st.dataframe(style_dataframe(base_colab), width="stretch")
         st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
-                               color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"],
+                               color_discrete_sequence=["#0047B3","#EC007C","#003366"],
                                title="Top colaboradores por productividad"), width="stretch")
 
 # 6 Productividad Actividad
@@ -1699,7 +1710,7 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por actividad")
         st.dataframe(style_dataframe(act_df), width="stretch")
         st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
-                               color="Actividad", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"]),
+                               color="Actividad", color_discrete_sequence=["#0047B3","#EC007C","#003366"]),
                         width="stretch")
 
         ingresos_df = pd.DataFrame({
@@ -1709,7 +1720,7 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por ingresos")
         st.dataframe(style_dataframe(ingresos_df), width="stretch")
         st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
-                               color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#F39800","#00A651","#6F35B5","#2F4A8A"]),
+                               color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#003366","#94A3B8"]),
                         width="stretch")
 
 # 7 Eficiencia Operativa
@@ -1735,7 +1746,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     rec = rec[["Ranking","Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos","Estatus"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rec), width="stretch")
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
-                 color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"])
+                 color_discrete_sequence=["#0047B3","#EC007C","#003366"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#EC007C", width=4))
     st.plotly_chart(fig, width="stretch")
 
@@ -1781,7 +1792,7 @@ with tab["10. Top 30 Modelos"]:
         top = top.sort_values(col, ascending=False).head(30)
         st.dataframe(style_dataframe(top), width="stretch")
         st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
-                               color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"], title=criterio),
+                               color_discrete_sequence=["#0047B3","#EC007C","#003366"], title=criterio),
                         width="stretch")
 
 # 11 Categoría
