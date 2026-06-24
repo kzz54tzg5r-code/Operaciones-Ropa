@@ -894,7 +894,7 @@ with st.sidebar:
 
     if rol == "Administrador":
         clave = st.text_input("Clave administrador", type="password")
-        is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "orion_admin")
+        is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "Q1023v")
         if is_admin:
             can_upload = True
             can_config = True
