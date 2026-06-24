@@ -516,7 +516,7 @@ def cargar_operacion(file, hoja):
     df["Muertos"] = np.where(act.str.contains("muerto", regex=False), df["Número de Piezas"], 0)
     df["Cajas"] = np.where(act.str.contains("caja", regex=False), df["Número de Piezas"], 0)
     df["Probador"] = np.where(act.str.contains("probado|probador", regex=True), df["Número de Piezas"], 0)
-    df["Acondicionado"] = np.where(act.str.contains("acondicionado|habilitar", regex=True), df["Número de Piezas"], 0)
+    df["Acondicionado"] = np.where(act.str.contains("acondicion|acondicionado|acondicionamiento|habilitad|habilitar|habilitado|habilitada", regex=True, na=False), df["Número de Piezas"], 0)
     df["Ubicado"] = np.where(act.str.contains("ubicado|ubicar", regex=True), df["Número de Piezas"], 0)
 
     df["Recolección de Muertos"] = df["Muertos"] + df["Cajas"] + df["Probador"]
@@ -713,6 +713,22 @@ def normalizar_operacion(df):
 
     if "Acondicionado" not in df.columns and "Habilitado" in df.columns:
         df["Acondicionado"] = pd.to_numeric(df["Habilitado"], errors="coerce").fillna(0)
+
+
+    # Recalcular Acondicionado si viene en cero desde un parquet anterior
+    if all(c in df.columns for c in ["Actividad Realizada", "Motivo de ingreso", "Área", "Número de Piezas"]):
+        _texto_acond = (
+            df["Actividad Realizada"].astype(str) + " " +
+            df["Motivo de ingreso"].astype(str) + " " +
+            df["Área"].astype(str)
+        ).str.lower()
+        _calc_acond = np.where(
+            _texto_acond.str.contains("acondicion|acondicionado|acondicionamiento|habilitad|habilitar|habilitado|habilitada", regex=True, na=False),
+            pd.to_numeric(df["Número de Piezas"], errors="coerce").fillna(0),
+            0
+        )
+        _actual_acond = pd.to_numeric(df["Acondicionado"], errors="coerce").fillna(0) if "Acondicionado" in df.columns else pd.Series(0, index=df.index)
+        df["Acondicionado"] = np.where(_actual_acond > 0, _actual_acond, _calc_acond)
 
     num_cols = ["Número de Piezas", "Recorridos", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado"]
     for c in num_cols:
@@ -1282,14 +1298,14 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
         fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
         fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True})
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
