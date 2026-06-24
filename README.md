@@ -1,8 +1,8 @@
-# ORION - Ajustes solicitados
+# ORION - Fix tabs, header y duplicate element
 
 Cambios:
-- Header sin recorte y cambia Muertos por Indicadores Compañía.
-- Resultado monetario superior reducido a miles.
-- Gráficas con azul/rosa corporativo Price Shoes.
-- Recuperación económica: Costo Devolución, Venta Recuperada y Pendiente.
-- Lee hoja 'plantilla' para agrupar nombres de colaboradores por Ocurrencia/ID.
+- Corrige StreamlitDuplicateElementId agregando keys únicas a todas las gráficas Plotly.
+- Baja las tarjetas superiores para dar espacio al título.
+- Ajusta pestañas largas 5 y 6.
+- Cambia Muertos Compañía por Indicadores Compañía.
+- Mantiene colores azul/rosa corporativos.
