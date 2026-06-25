@@ -748,6 +748,109 @@ def guardar_datos(op, co, daily, diag, filename):
     set_estado("ultima_actualizacion", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     set_estado("diagnostico", json.dumps(diag, ensure_ascii=False, default=str))
 
+
+def tiendas_proyecto_activas():
+    try:
+        if "project_stores" in globals() and project_stores:
+            return [str(t) for t in project_stores]
+    except Exception:
+        pass
+    try:
+        if "get_project_stores" in globals():
+            return [str(t) for t in get_project_stores([])]
+    except Exception:
+        pass
+    return []
+
+def aplicar_filtro_proyecto(df):
+    tiendas = tiendas_proyecto_activas()
+    if df is None or df.empty or not tiendas or "Tienda" not in df.columns:
+        return df
+    return df[df["Tienda"].astype(str).isin(tiendas)].copy()
+
+def cargar_mapa_plantilla_colaboradores():
+    mapa = {}
+    try:
+        if "PLANTILLA_FILE" in globals() and PLANTILLA_FILE.exists():
+            pl = pd.read_parquet(PLANTILLA_FILE)
+        else:
+            return mapa
+
+        if pl is None or pl.empty:
+            return mapa
+
+        cols = {str(c).strip().lower(): c for c in pl.columns}
+
+        col_nombre = None
+        for k in ["nombre plantilla", "nombre completo", "nombre_completo", "nombre real", "colaborador", "nombre"]:
+            if k in cols:
+                col_nombre = cols[k]
+                break
+
+        posibles_key = []
+        for k in ["ocurrencia", "occurrence", "abreviatura", "nombre corto", "nombre", "colaborador"]:
+            if k in cols:
+                posibles_key.append(cols[k])
+
+        if col_nombre is None:
+            return mapa
+
+        for _, r in pl.iterrows():
+            nombre_final = str(r.get(col_nombre, "")).strip()
+            if not nombre_final:
+                continue
+            for kc in posibles_key:
+                key = str(r.get(kc, "")).strip().lower()
+                if key and key != "nan":
+                    mapa[key] = nombre_final
+    except Exception:
+        pass
+    return mapa
+
+def nombre_colaborador_unificado_df(df):
+    if df is None or df.empty:
+        return pd.Series([], dtype=str)
+
+    mapa = cargar_mapa_plantilla_colaboradores()
+
+    base = pd.Series(["Sin dato"] * len(df), index=df.index, dtype="object")
+    for col in ["Ocurrencia", "Occurrence", "Nombre", "Nombre Real", "Usuario"]:
+        if col in df.columns:
+            vals = df[col].astype(str).str.strip()
+            base = np.where(
+                (pd.Series(base, index=df.index).astype(str) == "Sin dato")
+                & (vals != "")
+                & (vals.str.lower() != "nan"),
+                vals,
+                base
+            )
+
+    base = pd.Series(base, index=df.index).astype(str).str.strip()
+    base_key = base.str.lower()
+    return base_key.map(mapa).fillna(base)
+
+def colaboradores_activos_por_tienda(opdf):
+    cols = ["Tienda", "No. Colaboradores"]
+    if opdf is None or opdf.empty or "Tienda" not in opdf.columns:
+        return pd.DataFrame(columns=cols)
+
+    d = opdf.copy()
+    d["Colaborador Unificado"] = nombre_colaborador_unificado_df(d)
+
+    if "Actividad Realizada" in d.columns:
+        d = d[d["Actividad Realizada"].astype(str).str.strip().ne("")]
+
+    d = d[d["Colaborador Unificado"].astype(str).str.strip().ne("")]
+    d = d[d["Colaborador Unificado"].astype(str).str.lower().ne("sin dato")]
+
+    if d.empty:
+        return pd.DataFrame(columns=cols)
+
+    out = d.groupby("Tienda")["Colaborador Unificado"].nunique().reset_index()
+    out.columns = cols
+    return out
+
+
 def cargar_datos():
     op = pd.read_parquet(OPERACION_FILE) if OPERACION_FILE.exists() else pd.DataFrame()
     co = pd.read_parquet(COMERCIAL_FILE) if COMERCIAL_FILE.exists() else pd.DataFrame()
@@ -1115,114 +1218,6 @@ def total_dev_system(codf):
 
 
 
-
-
-def tiendas_proyecto_activas():
-    """
-    Devuelve tiendas seleccionadas en Configuración de Metas.
-    Si no hay selección guardada, regresa lista vacía para no romper.
-    """
-    try:
-        if "project_stores" in globals() and project_stores:
-            return [str(t) for t in project_stores]
-    except Exception:
-        pass
-    try:
-        if "get_project_stores" in globals():
-            return [str(t) for t in get_project_stores([])]
-    except Exception:
-        pass
-    return []
-
-def aplicar_filtro_proyecto(df):
-    tiendas = tiendas_proyecto_activas()
-    if df is None or df.empty or not tiendas or "Tienda" not in df.columns:
-        return df
-    return df[df["Tienda"].astype(str).isin(tiendas)].copy()
-
-def cargar_mapa_plantilla_colaboradores():
-    """
-    Lee plantilla.parquet si existe y crea mapa por ocurrencia/abreviatura/nombre.
-    Usa cualquier columna disponible de plantilla para homologar el colaborador.
-    """
-    mapa = {}
-    try:
-        if "PLANTILLA_FILE" in globals() and PLANTILLA_FILE.exists():
-            pl = pd.read_parquet(PLANTILLA_FILE)
-        else:
-            return mapa
-
-        if pl is None or pl.empty:
-            return mapa
-
-        cols = {str(c).strip().lower(): c for c in pl.columns}
-
-        col_nombre = None
-        for k in ["nombre plantilla", "nombre completo", "nombre_completo", "nombre real", "colaborador", "nombre"]:
-            if k in cols:
-                col_nombre = cols[k]
-                break
-
-        posibles_key = []
-        for k in ["ocurrencia", "occurrence", "abreviatura", "nombre corto", "nombre", "colaborador"]:
-            if k in cols:
-                posibles_key.append(cols[k])
-
-        if col_nombre is None:
-            return mapa
-
-        for _, r in pl.iterrows():
-            nombre_final = str(r.get(col_nombre, "")).strip()
-            if not nombre_final:
-                continue
-            for kc in posibles_key:
-                key = str(r.get(kc, "")).strip().lower()
-                if key and key != "nan":
-                    mapa[key] = nombre_final
-    except Exception:
-        pass
-    return mapa
-
-def nombre_colaborador_unificado_df(df):
-    if df is None or df.empty:
-        return pd.Series([], dtype=str)
-
-    mapa = cargar_mapa_plantilla_colaboradores()
-
-    base = pd.Series(["Sin dato"] * len(df), index=df.index, dtype="object")
-    for col in ["Ocurrencia", "Occurrence", "Nombre", "Nombre Real", "Usuario"]:
-        if col in df.columns:
-            vals = df[col].astype(str).str.strip()
-            base = np.where((pd.Series(base, index=df.index).astype(str) == "Sin dato") & (vals != "") & (vals.str.lower() != "nan"), vals, base)
-
-    base = pd.Series(base, index=df.index).astype(str).str.strip()
-    base_key = base.str.lower()
-    return base_key.map(mapa).fillna(base)
-
-def colaboradores_activos_por_tienda(opdf):
-    """
-    Colaborador activo = colaborador con cualquier registro de actividad del día.
-    Homologa con hoja plantilla cuando existe.
-    """
-    cols = ["Tienda", "No. Colaboradores"]
-    if opdf is None or opdf.empty or "Tienda" not in opdf.columns:
-        return pd.DataFrame(columns=cols)
-
-    d = opdf.copy()
-    d["Colaborador Unificado"] = nombre_colaborador_unificado_df(d)
-
-    # Sólo registros con actividad y piezas/recorridos. Si no hay piezas, igual cuenta si tiene actividad realizada.
-    if "Actividad Realizada" in d.columns:
-        d = d[d["Actividad Realizada"].astype(str).str.strip().ne("")]
-    d = d[d["Colaborador Unificado"].astype(str).str.strip().ne("")]
-    d = d[d["Colaborador Unificado"].astype(str).str.lower().ne("sin dato")]
-
-    if d.empty:
-        return pd.DataFrame(columns=cols)
-
-    out = d.groupby("Tienda")["Colaborador Unificado"].nunique().reset_index()
-    out.columns = cols
-    return out
 
 
 def clasificar_ingresos_recoleccion_dia(opdf):
