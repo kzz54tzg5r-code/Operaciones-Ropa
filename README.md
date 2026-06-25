@@ -1,10 +1,7 @@
-# ORION - Cambios solicitados
+# ORION - Fix gráficos visibles en app y PDF
 
-Incluye:
-- Header sin tarjetas superiores, con logo y línea rosa.
-- Configuración de tiendas del proyecto Cambios y Muertos.
-- Resumen ejecutivo filtrado por tiendas del proyecto.
-- Día anterior con KPIs y detalle solicitados.
-- PDF Día Anterior con tablas y gráficos.
-- Colores corporativos azul/rosa.
-- Fix StreamlitDuplicateElementId en Reporte Semanal/Mensual.
+Cambios:
+- Los datos de los gráficos de Día Anterior se muestran con más margen.
+- Se evita que las etiquetas se encimen con la línea.
+- El PDF también incluye etiquetas visibles en barras y línea.
+- Mantiene colores corporativos azul, rosa y azul oscuro.
