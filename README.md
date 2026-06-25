@@ -1,11 +1,6 @@
-# ORION APP13 - Fix datos día anterior y descarga
+# ORION APP13 - Ingresos proyecto V2
 
-Cambios:
-- Corrige key duplicada en botón PDF de Reporte Semanal/Mensual.
-- Día anterior se alinea a control manual:
-  Total ingresos = Ingreso Aduana (sistema) + Muertos + Ingresos Cajas.
-  Pzas Recolectadas = Muertos + Ingresos Cajas.
-- Columnas visibles: Tienda, Ingreso Aduana, Muertos, Ingresos Cajas, Total ingresos,
-  Recorridos meta/realizados, Pzas Recolectadas, Pzas Habilitadas, Pzas Ubicadas,
-  % Recorridos, % Acondicionado, % Ubicado.
-- Mantiene loader de errores en pantalla.
+- Total ingresos = Ingreso Aduana (Dev pzs) + Muertos Piso Venta + Ingresos Cajas + Ingresos Probador.
+- Clasifica Muertos/Cajas/Probador desde Actividad Realizada + Motivo/Ingreso/Área/Tabla.
+- Incluye todas las tiendas seleccionadas en proyecto aunque no tengan actividad operativa.
+- Resumen ejecutivo filtra tiendas seleccionadas del proyecto.
