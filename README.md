@@ -1,12 +1,10 @@
-# ORION DEBUG SAFE
+# ORION - Cambios solicitados
 
-IMPORTANTE:
-Sube estos archivos juntos:
-- app.py
-- orion_main.py
-- requirements.txt
-- assets/logo.png
-
-Esta versión parte directamente de app(12).py.
-Agrega keys a 9 gráficas y 5 botones para evitar DuplicateElementId.
-Si vuelve a fallar, la app mostrará el traceback en pantalla.
+Incluye:
+- Header sin tarjetas superiores, con logo y línea rosa.
+- Configuración de tiendas del proyecto Cambios y Muertos.
+- Resumen ejecutivo filtrado por tiendas del proyecto.
+- Día anterior con KPIs y detalle solicitados.
+- PDF Día Anterior con tablas y gráficos.
+- Colores corporativos azul/rosa.
+- Fix StreamlitDuplicateElementId en Reporte Semanal/Mensual.
