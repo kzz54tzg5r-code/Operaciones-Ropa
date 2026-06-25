@@ -755,7 +755,7 @@ def cargar_datos():
     # Aplicar nombres corregidos si ya hay mapa
     if not op.empty and "Ocurrencia" in op.columns:
         nombre_map = get_nombre_map()
-        op["Nombre Real"] = op["Ocurrencia"].astype(str).map(nombre_map).fillna(op.get("Nombre", "Sin dato"))
+        op["Nombre Real"] = nombre_colaborador_unificado_df(op)
     return op, co, daily
 
 
@@ -801,7 +801,7 @@ def normalizar_operacion(df):
     df["Productividad Total"] = df["Recolección de Muertos"] + df["Acondicionado"] + df["Ubicado"]
 
     nombre_map = get_nombre_map()
-    df["Nombre Real"] = df["Ocurrencia"].astype(str).map(nombre_map).fillna(df["Nombre Real"]).fillna(df["Nombre"])
+    df["Nombre Real"] = nombre_colaborador_unificado_df(df)
 
     return df
 
@@ -1116,6 +1116,115 @@ def total_dev_system(codf):
 
 
 
+
+def tiendas_proyecto_activas():
+    """
+    Devuelve tiendas seleccionadas en Configuración de Metas.
+    Si no hay selección guardada, regresa lista vacía para no romper.
+    """
+    try:
+        if "project_stores" in globals() and project_stores:
+            return [str(t) for t in project_stores]
+    except Exception:
+        pass
+    try:
+        if "get_project_stores" in globals():
+            return [str(t) for t in get_project_stores([])]
+    except Exception:
+        pass
+    return []
+
+def aplicar_filtro_proyecto(df):
+    tiendas = tiendas_proyecto_activas()
+    if df is None or df.empty or not tiendas or "Tienda" not in df.columns:
+        return df
+    return df[df["Tienda"].astype(str).isin(tiendas)].copy()
+
+def cargar_mapa_plantilla_colaboradores():
+    """
+    Lee plantilla.parquet si existe y crea mapa por ocurrencia/abreviatura/nombre.
+    Usa cualquier columna disponible de plantilla para homologar el colaborador.
+    """
+    mapa = {}
+    try:
+        if "PLANTILLA_FILE" in globals() and PLANTILLA_FILE.exists():
+            pl = pd.read_parquet(PLANTILLA_FILE)
+        else:
+            return mapa
+
+        if pl is None or pl.empty:
+            return mapa
+
+        cols = {str(c).strip().lower(): c for c in pl.columns}
+
+        col_nombre = None
+        for k in ["nombre plantilla", "nombre completo", "nombre_completo", "nombre real", "colaborador", "nombre"]:
+            if k in cols:
+                col_nombre = cols[k]
+                break
+
+        posibles_key = []
+        for k in ["ocurrencia", "occurrence", "abreviatura", "nombre corto", "nombre", "colaborador"]:
+            if k in cols:
+                posibles_key.append(cols[k])
+
+        if col_nombre is None:
+            return mapa
+
+        for _, r in pl.iterrows():
+            nombre_final = str(r.get(col_nombre, "")).strip()
+            if not nombre_final:
+                continue
+            for kc in posibles_key:
+                key = str(r.get(kc, "")).strip().lower()
+                if key and key != "nan":
+                    mapa[key] = nombre_final
+    except Exception:
+        pass
+    return mapa
+
+def nombre_colaborador_unificado_df(df):
+    if df is None or df.empty:
+        return pd.Series([], dtype=str)
+
+    mapa = cargar_mapa_plantilla_colaboradores()
+
+    base = pd.Series(["Sin dato"] * len(df), index=df.index, dtype="object")
+    for col in ["Ocurrencia", "Occurrence", "Nombre", "Nombre Real", "Usuario"]:
+        if col in df.columns:
+            vals = df[col].astype(str).str.strip()
+            base = np.where((pd.Series(base, index=df.index).astype(str) == "Sin dato") & (vals != "") & (vals.str.lower() != "nan"), vals, base)
+
+    base = pd.Series(base, index=df.index).astype(str).str.strip()
+    base_key = base.str.lower()
+    return base_key.map(mapa).fillna(base)
+
+def colaboradores_activos_por_tienda(opdf):
+    """
+    Colaborador activo = colaborador con cualquier registro de actividad del día.
+    Homologa con hoja plantilla cuando existe.
+    """
+    cols = ["Tienda", "No. Colaboradores"]
+    if opdf is None or opdf.empty or "Tienda" not in opdf.columns:
+        return pd.DataFrame(columns=cols)
+
+    d = opdf.copy()
+    d["Colaborador Unificado"] = nombre_colaborador_unificado_df(d)
+
+    # Sólo registros con actividad y piezas/recorridos. Si no hay piezas, igual cuenta si tiene actividad realizada.
+    if "Actividad Realizada" in d.columns:
+        d = d[d["Actividad Realizada"].astype(str).str.strip().ne("")]
+    d = d[d["Colaborador Unificado"].astype(str).str.strip().ne("")]
+    d = d[d["Colaborador Unificado"].astype(str).str.lower().ne("sin dato")]
+
+    if d.empty:
+        return pd.DataFrame(columns=cols)
+
+    out = d.groupby("Tienda")["Colaborador Unificado"].nunique().reset_index()
+    out.columns = cols
+    return out
+
+
 def clasificar_ingresos_recoleccion_dia(opdf):
     """
     Clasifica ingresos operativos respetando estrictamente la condición:
@@ -1327,7 +1436,7 @@ def render_wow_cards(op_source):
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
-render_wow_cards(filtrar_tiendas_proyecto(op_all, project_stores) if "project_stores" in globals() and project_stores else op_all)
+render_wow_cards(aplicar_filtro_proyecto(op_all))
 
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
@@ -1691,6 +1800,23 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["No. Recorridos meta"] = _meta_dia
                 resumen["No. Recorridos realizados"] = resumen["Recorridos"]
                 resumen["% Recorridos"] = sdiv(resumen["No. Recorridos realizados"], resumen["No. Recorridos meta"]) * 100
+                # Colaboradores y meta diaria por tienda
+                _colabs_tienda = colaboradores_activos_por_tienda(temp_op)
+                if not _colabs_tienda.empty:
+                    resumen = resumen.merge(_colabs_tienda, on="Tienda", how="left")
+                if "No. Colaboradores" not in resumen.columns:
+                    resumen["No. Colaboradores"] = 0
+                resumen["No. Colaboradores"] = pd.to_numeric(resumen["No. Colaboradores"], errors="coerce").fillna(0).astype(int)
+                resumen["Meta Colaboradores"] = resumen["No. Colaboradores"] * metas.get("productividad_diaria", 784)
+                resumen["Productividad Total"] = (
+                    resumen["Muertos Piso Venta"]
+                    + resumen["Ingresos Cajas"]
+                    + resumen["Ingresos Probador"]
+                    + resumen["Pzas Habilitadas"]
+                    + resumen["Pzas Ubicadas"]
+                )
+                resumen["Diferencia vs Meta"] = resumen["Meta Colaboradores"] - resumen["Productividad Total"]
+
 
                 resumen["Estatus"] = np.where(
                     resumen["Pendiente Ubicar"] <= 0,
@@ -1812,7 +1938,7 @@ with tab["2. Reporte Mensual"]:
 with tab["3. Conversión"]:
     st.subheader("Conversión Semanal Dev → Venta")
 
-    conv_det = conversion_semanal_dev_venta(co)
+    conv_det = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
     conv_res = resumen_conversion_semanal(conv_det)
 
     if conv_res.empty:
@@ -1852,7 +1978,7 @@ with tab["3. Conversión"]:
 with tab["4. Recuperación Económica"]:
     st.subheader("Recuperación Económica Semanal Dev → Venta")
 
-    conv_det = conversion_semanal_dev_venta(co)
+    conv_det = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
     conv_res = resumen_conversion_semanal(conv_det)
 
     if conv_res.empty:
