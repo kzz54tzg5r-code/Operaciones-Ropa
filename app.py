@@ -538,7 +538,7 @@ def exportar_pestana_pdf(nombre, hojas):
         data=pdf_generico_bytes(nombre, hojas),
         file_name=f"{nombre.lower().replace(' ', '_').replace('/', '_')}.pdf",
         mime="application/pdf"
-    )
+    , key="orion_download_1")
 
 def export_buttons(name, sheets):
     st.download_button(
@@ -546,7 +546,7 @@ def export_buttons(name, sheets):
         data=excel_export(sheets),
         file_name=f"{name}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    , key="orion_download_2")
     if sheets:
         first = list(sheets.values())[0]
         if isinstance(first, pd.DataFrame):
@@ -555,7 +555,7 @@ def export_buttons(name, sheets):
                 data=first.to_csv(index=False).encode("utf-8-sig"),
                 file_name=f"{name}.csv",
                 mime="text/csv"
-            )
+            , key="orion_download_3")
 
 def current_or_latest_week(df):
     if df.empty or "Semana ISO" not in df.columns:
@@ -1849,7 +1849,7 @@ with tab["0. Día Anterior / Pendiente"]:
                         uniformtext_minsize=10,
                         uniformtext_mode="show"
                     )
-                    st.plotly_chart(fig_combo, width="stretch", key="dia_anterior_combo")
+                    st.plotly_chart(fig_combo, width="stretch", key="orion_chart_1")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1868,14 +1868,14 @@ with tab["0. Día Anterior / Pendiente"]:
                         uniformtext_minsize=10,
                         uniformtext_mode="show"
                     )
-                    st.plotly_chart(fig_pend, width="stretch", key="dia_anterior_pendientes")
+                    st.plotly_chart(fig_pend, width="stretch", key="orion_chart_2")
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
-                st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf", key="pdf_dia_anterior_1")
+                st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf", key="orion_download_4")
 
                 export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
-                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf", key="pdf_dia_anterior_2")
+                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf", key="orion_download_5")
 
 
 
@@ -2008,7 +2008,7 @@ with tab["5. Productividad por Colaborador"]:
         st.dataframe(style_dataframe(base_colab), width="stretch")
         st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
                                color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"],
-                               title="Top colaboradores por productividad"), width="stretch", key="plot_top_colaboradores")
+                               title="Top colaboradores por productividad"), width="stretch", key="orion_chart_3")
 
 # 6 Productividad Actividad
 with tab["6. Productividad por Actividad"]:
@@ -2024,7 +2024,7 @@ with tab["6. Productividad por Actividad"]:
         st.dataframe(style_dataframe(act_df), width="stretch")
         st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
                                color="Actividad", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"]),
-                        width="stretch", key="plot_productividad_actividad")
+                        width="stretch", key="orion_chart_4")
 
         ingresos_df = pd.DataFrame({
             "Concepto": ["Sistema Dev_Pzs", "Piso de venta", "Recolección Cajas", "Recolección Probador"],
@@ -2033,8 +2033,8 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por ingresos")
         st.dataframe(style_dataframe(ingresos_df), width="stretch")
         st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
-                               color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A","#6B7280"]),
-                        width="stretch", key="plot_productividad_ingresos")
+                               color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A","#94A3B8"]),
+                        width="stretch", key="orion_chart_5")
 
 # 7 Eficiencia Operativa
 with tab["7. Eficiencia Operativa"]:
@@ -2061,7 +2061,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#EC007C", width=4))
-    st.plotly_chart(fig, width="stretch", key="plot_recorridos")
+    st.plotly_chart(fig, width="stretch", key="orion_chart_6")
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:
@@ -2106,7 +2106,7 @@ with tab["10. Top 30 Modelos"]:
         st.dataframe(style_dataframe(top), width="stretch")
         st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
                                color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"], title=criterio),
-                        width="stretch", key="plot_top_modelos")
+                        width="stretch", key="orion_chart_7")
 
 # 11 Categoría
 with tab["11. Análisis por Categoría"]:
@@ -2118,7 +2118,7 @@ with tab["11. Análisis por Categoría"]:
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
         st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
         st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
-                               color_discrete_sequence=["#0047B3"]), width="stretch", key="plot_categoria")
+                               color_discrete_sequence=["#0047B3"]), width="stretch", key="orion_chart_8")
 
 # 12 Subcategoría
 with tab["12. Análisis por Subcategoría"]:
@@ -2130,7 +2130,7 @@ with tab["12. Análisis por Subcategoría"]:
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
         st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
         st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
-                               color_discrete_sequence=["#EC007C"]), width="stretch", key="plot_subcategoria")
+                               color_discrete_sequence=["#EC007C"]), width="stretch", key="orion_chart_9")
 
 # 13 Ranking Tiendas
 with tab["13. Ranking de Tiendas"]:
