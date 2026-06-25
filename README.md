@@ -1,1 +1,1 @@
-Conversión Semanal Dev → Venta V2: cálculo por semana ISO y amarre por tienda/modelo/color/talla.
+Versión basada en app(13).py con loader de diagnóstico, keys únicas, header limpio, gráficos visibles y PDF con gráficos.
