@@ -1,7 +1,11 @@
-# ORION APP13 - Fix DuplicateElementKey
+# ORION APP13 - Fix datos día anterior y descarga
 
-Corrección aplicada:
-- Las gráficas de Reporte Semanal y Reporte Mensual ya no usan la misma key.
-- Las keys ahora incluyen periodo_nombre y etiqueta.
-- Se mantiene el fix anterior de textposition.
-- Se mantiene loader para mostrar errores en pantalla.
+Cambios:
+- Corrige key duplicada en botón PDF de Reporte Semanal/Mensual.
+- Día anterior se alinea a control manual:
+  Total ingresos = Ingreso Aduana (sistema) + Muertos + Ingresos Cajas.
+  Pzas Recolectadas = Muertos + Ingresos Cajas.
+- Columnas visibles: Tienda, Ingreso Aduana, Muertos, Ingresos Cajas, Total ingresos,
+  Recorridos meta/realizados, Pzas Recolectadas, Pzas Habilitadas, Pzas Ubicadas,
+  % Recorridos, % Acondicionado, % Ubicado.
+- Mantiene loader de errores en pantalla.

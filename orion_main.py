@@ -484,7 +484,7 @@ def exportar_pestana_pdf(nombre, hojas):
         data=pdf_generico_bytes(nombre, hojas),
         file_name=f"{nombre.lower().replace(' ', '_').replace('/', '_')}.pdf",
         mime="application/pdf"
-    , key="orion_dl_1")
+    , key=f"pdf_pestana_{nombre}")
 
 def export_buttons(name, sheets):
     st.download_button(
@@ -1277,7 +1277,7 @@ def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
         resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
 
     resumen["Periodo"] = etiqueta
-    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"]
     resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
     resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
     resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
@@ -1561,11 +1561,33 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
                 resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
                 resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
+                # Columnas de validación manual
+                resumen["Ingreso Aduana (sistema)"] = resumen["Dev_Pzs"]
+                resumen["Muertos"] = resumen["Muertos"]
+                resumen["Ingresos Cajas"] = resumen["Cajas"]
+                resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
+                _wd = pd.to_datetime(fecha_consulta).weekday()
+                _meta_dia = {
+                    0: metas.get("recorridos_lunes", 5),
+                    1: metas.get("recorridos_martes", 5),
+                    2: metas.get("recorridos_miercoles", 5),
+                    3: metas.get("recorridos_jueves", 8),
+                    4: metas.get("recorridos_viernes", 8),
+                    5: metas.get("recorridos_sabado", 8),
+                    6: metas.get("recorridos_domingo", 8),
+                }.get(_wd, 5)
+                resumen["No. Recorridos meta"] = _meta_dia
+                resumen["No. Recorridos realizados"] = resumen["Recorridos"]
+                resumen["Pzas Recolectadas"] = resumen["Muertos"] + resumen["Cajas"]
+                resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
+                resumen["Pzas Ubicadas"] = resumen["Ubicado"]
+                resumen["% Recorridos"] = sdiv(resumen["No. Recorridos realizados"], resumen["No. Recorridos meta"]) * 100
+
                 resumen["Ingreso Aduana (Dev pzs)"] = resumen["Dev_Pzs"]
                 resumen["Muertos Piso Venta"] = resumen["Muertos"]
                 resumen["Ingresos Cajas"] = resumen["Cajas"]
                 resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
-                resumen["Pzas Recolectadas"] = resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+                resumen["Pzas Recolectadas"] = resumen["Muertos"] + resumen["Cajas"]
                 resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
                 resumen["Pzas Ubicadas"] = resumen["Ubicado"]
                 resumen["Pendiente por Habilitar"] = resumen["Pendiente Acondicionar"]
