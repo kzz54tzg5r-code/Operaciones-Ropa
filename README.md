@@ -1,6 +1,7 @@
-# ORION APP13 - Fix textposition Plotly
+# ORION APP13 - Fix DuplicateElementKey
 
 Corrección aplicada:
-- `textposition="outside"` ahora sólo se aplica a trazas tipo barra.
-- Las líneas/scatter conservan posiciones válidas como `top center`.
-- Mantiene loader de errores en pantalla.
+- Las gráficas de Reporte Semanal y Reporte Mensual ya no usan la misma key.
+- Las keys ahora incluyen periodo_nombre y etiqueta.
+- Se mantiene el fix anterior de textposition.
+- Se mantiene loader para mostrar errores en pantalla.
