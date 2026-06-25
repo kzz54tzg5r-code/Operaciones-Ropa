@@ -1,7 +1,10 @@
-# ORION - Fix gráficos visibles en app y PDF
+# ORION - Corrección app(12)
 
-Cambios:
-- Los datos de los gráficos de Día Anterior se muestran con más margen.
-- Se evita que las etiquetas se encimen con la línea.
-- El PDF también incluye etiquetas visibles en barras y línea.
+Cambios aplicados:
+- Gráficos con etiquetas visibles y sin encimarse.
+- PDF con etiquetas visibles en barras y línea.
+- Detalle Día Anterior con columnas de control manual:
+  Dev pzs, Muertos Piso Venta, Ingresos Cajas, Total ingresos,
+  Recorridos meta/realizados, Pzas Recolectadas, Pzas Habilitadas,
+  Pzas Ubicadas, % Recorridos, % Acondicionado, % Ubicado.
 - Mantiene colores corporativos azul, rosa y azul oscuro.

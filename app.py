@@ -249,6 +249,20 @@ init_db()
 # ==========================================================
 # UTILIDADES
 # ==========================================================
+
+def max_safe(*series):
+    vals = []
+    for s in series:
+        try:
+            if isinstance(s, pd.Series):
+                vals.append(float(pd.to_numeric(s, errors="coerce").fillna(0).max()))
+            else:
+                vals.append(float(s))
+        except Exception:
+            vals.append(0.0)
+    return max(vals) if vals else 0.0
+
+
 def n0(x):
     try:
         return f"{float(x):,.0f}"
@@ -363,19 +377,10 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     import matplotlib.pyplot as plt
 
     bio = BytesIO()
-    doc = SimpleDocTemplate(
-        bio,
-        pagesize=landscape(letter),
-        rightMargin=24,
-        leftMargin=24,
-        topMargin=24,
-        bottomMargin=24
-    )
-
+    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=24, leftMargin=24, topMargin=24, bottomMargin=24)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("title_orion", parent=styles["Title"], textColor=colors.HexColor("#14172F"))
     sub_style = ParagraphStyle("sub_orion", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"))
-
     story = [
         Paragraph("Recuperación Cambios y Muertos", title_style),
         Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", sub_style),
@@ -401,7 +406,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),
             ("TEXTCOLOR",(0,0),(-1,0),colors.white),
             ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-            ("FONTSIZE",(0,0),(-1,-1),7),
+            ("FONTSIZE",(0,0),(-1,-1),6.4),
             ("GRID",(0,0),(-1,-1),.25,colors.HexColor("#D1D5DB")),
             ("ALIGN",(0,0),(-1,-1),"CENTER"),
             ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white, colors.HexColor("#F8F9FB")]),
@@ -409,11 +414,16 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
         story.append(table)
         story.append(Spacer(1, 10))
 
+    def _col(d, names, default=0):
+        for name in names:
+            if name in d.columns:
+                return pd.to_numeric(d[name], errors="coerce").fillna(0)
+        return pd.Series([default] * len(d), index=d.index)
+
     def add_chart(title, df, mode="procesado"):
         try:
             if df is None or df.empty or "Tienda" not in df.columns:
                 return
-
             d = df.copy().head(18)
             x = d["Tienda"].astype(str).tolist()
             idx = np.arange(len(x))
@@ -422,34 +432,32 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             fig, ax = plt.subplots(figsize=(13.5, 5.2))
 
             if mode == "pendiente":
-                y1 = pd.to_numeric(d["Pendiente Acondicionar"], errors="coerce").fillna(0)
-                y2 = pd.to_numeric(d["Pendiente Ubicar"], errors="coerce").fillna(0)
+                ingresos = _col(d, ["Total ingresos", "Piezas Ingresadas"])
+                hab = _col(d, ["Pzas Habilitadas", "Piezas Acondicionadas", "Acondicionado"])
+                ubi = _col(d, ["Pzas Ubicadas", "Piezas Ubicadas", "Ubicado"])
+                y1 = (ingresos - hab).clip(lower=0)
+                y2 = (ingresos - ubi).clip(lower=0)
                 l1, l2 = "Pendiente Acondicionar", "Pendiente Ubicar"
             else:
-                y1 = pd.to_numeric(d["Piezas Acondicionadas"], errors="coerce").fillna(0)
-                y2 = pd.to_numeric(d["Piezas Ubicadas"], errors="coerce").fillna(0)
-                l1, l2 = "Piezas Acondicionadas", "Piezas Ubicadas"
+                y1 = _col(d, ["Pzas Habilitadas", "Piezas Acondicionadas", "Acondicionado"])
+                y2 = _col(d, ["Pzas Ubicadas", "Piezas Ubicadas", "Ubicado"])
+                l1, l2 = "Pzas Habilitadas", "Pzas Ubicadas"
 
-            yline = pd.to_numeric(d["Piezas Ingresadas"], errors="coerce").fillna(0)
+            yline = _col(d, ["Total ingresos", "Piezas Ingresadas"])
 
             bars1 = ax.bar(idx - width/2, y1, width, label=l1, color="#0047B3")
             bars2 = ax.bar(idx + width/2, y2, width, label=l2, color="#EC007C")
-            ax.plot(idx, yline, color="#2F4A8A", marker="o", linewidth=3, label="Piezas Ingresadas")
+            ax.plot(idx, yline, color="#2F4A8A", marker="o", linewidth=3, label="Total ingresos")
 
-            ymax = max(
-                float(y1.max()) if len(y1) else 0,
-                float(y2.max()) if len(y2) else 0,
-                float(yline.max()) if len(yline) else 0
-            )
-            ax.set_ylim(0, ymax * 1.36 if ymax else 10)
+            ymax = max(float(y1.max()) if len(y1) else 0, float(y2.max()) if len(y2) else 0, float(yline.max()) if len(yline) else 0)
+            ax.set_ylim(0, ymax * 1.40 if ymax else 10)
 
-            # Etiquetas de barras
             for bars in [bars1, bars2]:
                 for bar in bars:
                     h = bar.get_height()
                     if h:
                         ax.text(
-                            bar.get_x() + bar.get_width() / 2,
+                            bar.get_x() + bar.get_width()/2,
                             h + (ymax * 0.025 if ymax else 1),
                             f"{h:,.0f}",
                             ha="center",
@@ -459,7 +467,6 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
                             fontweight="bold"
                         )
 
-            # Etiquetas de línea
             for i, v in enumerate(yline):
                 if v:
                     ax.text(
@@ -477,15 +484,9 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             ax.set_xticklabels(x, rotation=45, ha="right", fontsize=8)
             ax.tick_params(axis="y", labelsize=8)
             ax.grid(axis="y", alpha=0.25)
-            ax.legend(
-                loc="upper center",
-                bbox_to_anchor=(0.5, 1.21),
-                ncol=3,
-                frameon=False,
-                fontsize=8
-            )
-
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=3, frameon=False, fontsize=8)
             fig.tight_layout()
+
             img = BytesIO()
             fig.savefig(img, format="png", dpi=170, bbox_inches="tight")
             plt.close(fig)
@@ -499,13 +500,12 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
 
     add_table("Indicadores Día Anterior", resumen_general)
     add_table("Detalle por tienda - Día anterior", detalle)
-    add_chart("Ingreso vs Acondicionado vs Ubicado por tienda", detalle, "procesado")
+    add_chart("Ingreso vs Habilitado vs Ubicado por tienda", detalle, "procesado")
     add_chart("Pendientes por procesar", detalle, "pendiente")
 
     doc.build(story)
     bio.seek(0)
     return bio.getvalue()
-
 
 def pdf_generico_bytes(titulo, hojas):
     from reportlab.lib.pagesizes import letter, landscape
@@ -1771,6 +1771,30 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
                 resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
                 resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
+                # Columnas de control manual
+                resumen["Ingreso Aduana (Dev pzs)"] = resumen["Dev_Pzs"]
+                resumen["Muertos Piso Venta"] = resumen["Muertos"]
+                resumen["Ingresos Cajas"] = resumen["Cajas"]
+                resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
+                resumen["No. Recorridos meta"] = metas.get(f"recorridos_{pd.to_datetime(fecha_consulta).day_name().lower()}", 0)
+                # Compatibilidad con nombres de días en español
+                _wd = pd.to_datetime(fecha_consulta).weekday()
+                _meta_dia = {
+                    0: metas.get("recorridos_lunes", 5),
+                    1: metas.get("recorridos_martes", 5),
+                    2: metas.get("recorridos_miercoles", 5),
+                    3: metas.get("recorridos_jueves", 8),
+                    4: metas.get("recorridos_viernes", 8),
+                    5: metas.get("recorridos_sabado", 8),
+                    6: metas.get("recorridos_domingo", 8),
+                }.get(_wd, 5)
+                resumen["No. Recorridos meta"] = _meta_dia
+                resumen["No. Recorridos realizados"] = resumen["Recorridos"]
+                resumen["Pzas Recolectadas"] = resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
+                resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
+                resumen["Pzas Ubicadas"] = resumen["Ubicado"]
+                resumen["% Recorridos"] = sdiv(resumen["No. Recorridos realizados"], resumen["No. Recorridos meta"]) * 100
+
 
                 resumen["Estatus"] = np.where(
                     resumen["Pendiente Ubicar"] <= 0,
@@ -1810,12 +1834,17 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["Piezas Ubicadas"] = resumen["Ubicado"]
                 columnas = [
                     "Tienda",
-                    "Piezas Ingresadas",
-                    "Piezas Acondicionadas",
-                    "Pendiente Acondicionar",
+                    "Ingreso Aduana (Dev pzs)",
+                    "Muertos Piso Venta",
+                    "Ingresos Cajas",
+                    "Total ingresos",
+                    "No. Recorridos meta",
+                    "No. Recorridos realizados",
+                    "Pzas Recolectadas",
+                    "Pzas Habilitadas",
+                    "Pzas Ubicadas",
+                    "% Recorridos",
                     "% Acondicionado",
-                    "Piezas Ubicadas",
-                    "Pendiente Ubicar",
                     "% Ubicado"
                 ]
 
@@ -1829,22 +1858,18 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado (Piezas)", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
-                    max_y_combo = max(
-                        resumen["Piezas Ingresadas"].max(),
-                        resumen["Acondicionado"].max(),
-                        resumen["Ubicado"].max()
-                    ) if not resumen.empty else 0
-                    fig_combo.update_yaxes(range=[0, max_y_combo * 1.35 if max_y_combo else 10])
+                    max_y_combo = max_safe(resumen["Piezas Ingresadas"], resumen["Acondicionado"], resumen["Ubicado"])
+                    fig_combo.update_yaxes(range=[0, max_y_combo * 1.38 if max_y_combo else 10])
                     fig_combo.update_traces(textposition="outside", cliponaxis=False)
                     fig_combo.update_layout(
                         barmode="group",
-                        height=520,
-                        margin=dict(l=20, r=20, t=115, b=95),
-                        legend=dict(orientation="h", y=-0.23),
+                        height=540,
+                        margin=dict(l=20, r=20, t=125, b=100),
+                        legend=dict(orientation="h", y=-0.24),
                         uniformtext_minsize=10,
                         uniformtext_mode="show"
                     )
-                    st.plotly_chart(fig_combo, width="stretch")
+                    st.plotly_chart(fig_combo, width="stretch", key="dia_anterior_combo_visible")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1852,22 +1877,18 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
-                    max_y_pend = max(
-                        resumen["Piezas Ingresadas"].max(),
-                        resumen["Pendiente Acondicionar"].max(),
-                        resumen["Pendiente Ubicar"].max()
-                    ) if not resumen.empty else 0
-                    fig_pend.update_yaxes(range=[0, max_y_pend * 1.35 if max_y_pend else 10])
+                    max_y_pend = max_safe(resumen["Piezas Ingresadas"], resumen["Pendiente Acondicionar"], resumen["Pendiente Ubicar"])
+                    fig_pend.update_yaxes(range=[0, max_y_pend * 1.38 if max_y_pend else 10])
                     fig_pend.update_traces(textposition="outside", cliponaxis=False)
                     fig_pend.update_layout(
                         barmode="group",
-                        height=520,
-                        margin=dict(l=20, r=20, t=115, b=95),
-                        legend=dict(orientation="h", y=-0.23),
+                        height=540,
+                        margin=dict(l=20, r=20, t=125, b=100),
+                        legend=dict(orientation="h", y=-0.24),
                         uniformtext_minsize=10,
                         uniformtext_mode="show"
                     )
-                    st.plotly_chart(fig_pend, width="stretch")
+                    st.plotly_chart(fig_pend, width="stretch", key="dia_anterior_pend_visible")
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
                 st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
