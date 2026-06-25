@@ -1,10 +1,8 @@
-# ORION - Cambios solicitados
+# ORION - Gráficos visibles + PDF + últimas 4 semanas
 
-Incluye:
-- Header sin tarjetas superiores, con logo y línea rosa.
-- Configuración de tiendas del proyecto Cambios y Muertos.
-- Resumen ejecutivo filtrado por tiendas del proyecto.
-- Día anterior con KPIs y detalle solicitados.
-- PDF Día Anterior con tablas y gráficos.
+Cambios:
+- Etiquetas de gráficos con más margen para no encimarse.
+- PDF de Día Anterior incluye datos visibles en gráficos.
+- Resumen Ejecutivo muestra tarjetas de últimas 4 semanas.
 - Colores corporativos azul/rosa.
-- Fix StreamlitDuplicateElementId en Reporte Semanal/Mensual.
+- Fix DuplicateElementId en Reporte Semanal/Mensual.
