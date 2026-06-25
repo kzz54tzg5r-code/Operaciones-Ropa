@@ -1115,17 +1115,17 @@ def total_dev_system(codf):
 
 
 
+
 def clasificar_ingresos_recoleccion_dia(opdf):
     """
-    Clasifica ingresos operativos por Motivo de ingreso.
+    Clasifica ingresos operativos respetando estrictamente la condición:
 
-    Regla corregida:
-    - Usa Motivo de ingreso como columna principal:
-        Muertos  -> Muertos Piso Venta
-        Cajas    -> Ingresos Cajas
-        Probador -> Ingresos Probador
-    - Actividad Realizada se usa como filtro flexible cuando existe.
-      Si no coincide por acentos/variantes, no bloquea el cálculo si el Motivo de ingreso es válido.
+    Actividad Realizada = Recolección de muertos
+    Motivo de ingreso = Muertos / Cajas / Probador
+
+    Ejemplo:
+    Si Motivo de ingreso = Muertos pero Actividad Realizada = Acondicionado o Ubicado,
+    NO se suma en Muertos Piso Venta.
     """
     cols = ["Fecha Día", "Tienda", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"]
     if opdf is None or opdf.empty:
@@ -1146,19 +1146,8 @@ def clasificar_ingresos_recoleccion_dia(opdf):
         d["Número de Piezas"] = 0
     d["Número de Piezas"] = pd.to_numeric(d["Número de Piezas"], errors="coerce").fillna(0)
 
-    if "Motivo de ingreso" not in d.columns:
-        # Respaldo si la normalización ya creó columnas.
-        out = d.groupby(["Fecha Día", "Tienda"], as_index=False).agg(
-            **{
-                "Muertos Piso Venta": ("Muertos", "sum") if "Muertos" in d.columns else ("Número de Piezas", "sum"),
-                "Ingresos Cajas": ("Cajas", "sum") if "Cajas" in d.columns else ("Número de Piezas", "sum"),
-                "Ingresos Probador": ("Probador", "sum") if "Probador" in d.columns else ("Número de Piezas", "sum"),
-            }
-        )
-        for c in ["Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"]:
-            if c not in out.columns:
-                out[c] = 0
-        return out[cols]
+    if "Actividad Realizada" not in d.columns or "Motivo de ingreso" not in d.columns:
+        return pd.DataFrame(columns=cols)
 
     def norm(s):
         return (
@@ -1170,27 +1159,35 @@ def clasificar_ingresos_recoleccion_dia(opdf):
              .str.decode("utf-8")
         )
 
+    actividad = norm(d["Actividad Realizada"])
     motivo = norm(d["Motivo de ingreso"])
 
-    if "Actividad Realizada" in d.columns:
-        actividad = norm(d["Actividad Realizada"])
-        es_recoleccion = actividad.str.contains("recolec|muerto", regex=True, na=False)
-        # Si por alguna variante no detecta actividad, no descartamos el motivo válido.
-        # Esto evita regresar ceros cuando Motivo de ingreso sí trae Muertos/Cajas/Probador.
-    else:
-        es_recoleccion = pd.Series([True] * len(d), index=d.index)
+    # Condición estricta: SOLO Recolección de muertos.
+    # No suma Acondicionado, Ubicado ni Recorrido aunque Motivo de ingreso sea Muertos.
+    es_recoleccion_muertos = (
+        actividad.str.contains("recoleccion", regex=False, na=False)
+        & actividad.str.contains("muerto", regex=False, na=False)
+    )
 
-    es_muertos = motivo.str.contains(r"\bmuerto\b|\bmuertos\b|piso", regex=True, na=False)
-    es_cajas = motivo.str.contains(r"\bcaja\b|\bcajas\b", regex=True, na=False)
-    es_probador = motivo.str.contains(r"probador|probadores|probado", regex=True, na=False)
+    es_muertos = motivo.str.fullmatch(r"muertos?|piso de venta|piso venta", na=False)
+    es_cajas = motivo.str.fullmatch(r"cajas?", na=False)
+    es_probador = motivo.str.fullmatch(r"probador|probadores|probado", na=False)
 
-    # Motivo manda; actividad sólo ayuda, pero no bloquea.
-    motivo_valido = es_muertos | es_cajas | es_probador
-    usar = motivo_valido
-
-    d["_muertos_piso"] = np.where(usar & es_muertos, d["Número de Piezas"], 0)
-    d["_cajas"] = np.where(usar & es_cajas, d["Número de Piezas"], 0)
-    d["_probador"] = np.where(usar & es_probador, d["Número de Piezas"], 0)
+    d["_muertos_piso"] = np.where(
+        es_recoleccion_muertos & es_muertos,
+        d["Número de Piezas"],
+        0
+    )
+    d["_cajas"] = np.where(
+        es_recoleccion_muertos & es_cajas,
+        d["Número de Piezas"],
+        0
+    )
+    d["_probador"] = np.where(
+        es_recoleccion_muertos & es_probador,
+        d["Número de Piezas"],
+        0
+    )
 
     out = d.groupby(["Fecha Día", "Tienda"], as_index=False).agg(
         **{
