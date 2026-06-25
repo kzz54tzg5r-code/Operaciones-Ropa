@@ -1112,75 +1112,6 @@ def meta_recorridos_periodo(opdf):
 def total_dev_system(codf):
     return float(codf["Dev_Pzs"].sum()) if not codf.empty and "Dev_Pzs" in codf else 0
 
-
-def clasificar_ingresos_recoleccion_dia(opdf):
-    cols = ["Fecha Día", "Tienda", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"]
-    if opdf is None or opdf.empty:
-        return pd.DataFrame(columns=cols)
-
-    d = opdf.copy()
-
-    if "Fecha Día" not in d.columns:
-        if "Fecha" in d.columns:
-            d["Fecha Día"] = pd.to_datetime(d["Fecha"], errors="coerce").dt.date
-        else:
-            return pd.DataFrame(columns=cols)
-
-    if "Tienda" not in d.columns:
-        return pd.DataFrame(columns=cols)
-
-    if "Número de Piezas" not in d.columns:
-        d["Número de Piezas"] = 0
-
-    d["Número de Piezas"] = pd.to_numeric(d["Número de Piezas"], errors="coerce").fillna(0)
-
-    def txt(col):
-        if col in d.columns:
-            return d[col].astype(str).str.lower()
-        return pd.Series([""] * len(d), index=d.index)
-
-    actividad = txt("Actividad Realizada")
-    tipo = txt("Motivo de ingreso") + " " + txt("Ingreso") + " " + txt("Área") + " " + txt("Tabla")
-
-    es_recoleccion = actividad.str.contains("recolec|muerto", regex=True, na=False)
-
-    d["_muertos_piso"] = np.where(es_recoleccion & tipo.str.contains("muerto|piso", regex=True, na=False), d["Número de Piezas"], 0)
-    d["_cajas"] = np.where(es_recoleccion & tipo.str.contains("caja", regex=True, na=False), d["Número de Piezas"], 0)
-    d["_probador"] = np.where(es_recoleccion & tipo.str.contains("probador|probado", regex=True, na=False), d["Número de Piezas"], 0)
-
-    if "Muertos" in d.columns:
-        d["_muertos_piso"] = np.where(d["_muertos_piso"] > 0, d["_muertos_piso"], pd.to_numeric(d["Muertos"], errors="coerce").fillna(0))
-    if "Cajas" in d.columns:
-        d["_cajas"] = np.where(d["_cajas"] > 0, d["_cajas"], pd.to_numeric(d["Cajas"], errors="coerce").fillna(0))
-    if "Probador" in d.columns:
-        d["_probador"] = np.where(d["_probador"] > 0, d["_probador"], pd.to_numeric(d["Probador"], errors="coerce").fillna(0))
-
-    out = d.groupby(["Fecha Día", "Tienda"], as_index=False).agg(
-        **{
-            "Muertos Piso Venta": ("_muertos_piso", "sum"),
-            "Ingresos Cajas": ("_cajas", "sum"),
-            "Ingresos Probador": ("_probador", "sum"),
-        }
-    )
-    return out
-
-def base_tiendas_proyecto_para_dia(op_resumen, sys_resumen):
-    tiendas = []
-    try:
-        if "project_stores" in globals() and project_stores:
-            tiendas = [str(t) for t in project_stores]
-    except Exception:
-        tiendas = []
-
-    if not tiendas:
-        for df in [op_resumen, sys_resumen]:
-            if df is not None and not df.empty and "Tienda" in df.columns:
-                tiendas += df["Tienda"].astype(str).tolist()
-
-    tiendas = sorted(set([t for t in tiendas if str(t).strip()]))
-    return pd.DataFrame({"Tienda": tiendas})
-
-
 def store_summary(opdf, codf, only_registered=True):
     op_store = pd.DataFrame(columns=["Tienda"])
     if not opdf.empty:
@@ -1292,7 +1223,7 @@ def render_wow_cards(op_source):
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
-render_wow_cards(filtrar_tiendas_proyecto(op_all, project_stores) if "project_stores" in globals() and project_stores else op_all)
+render_wow_cards(op_all)
 
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
@@ -1598,51 +1529,43 @@ with tab["0. Día Anterior / Pendiente"]:
             else:
                 sys_resumen = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
 
-            # Se contemplan todas las tiendas seleccionadas en el proyecto,
-            # aunque no tengan actividad registrada, porque pueden tener Dev_Pzs del sistema.
-            base_tiendas_dia = base_tiendas_proyecto_para_dia(op_resumen, sys_resumen)
-            tiendas_dia = sorted(set(base_tiendas_dia["Tienda"].astype(str).tolist()))
+            # Solo tiendas con registro de productividad operativa en el día.
+            # No se incluyen tiendas que solo traen sistema/dev sin productividad.
+            if not op_resumen.empty:
+                op_resumen["Productividad Registrada"] = (
+                    pd.to_numeric(op_resumen["Muertos"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Cajas"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Probador"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Acondicionado"], errors="coerce").fillna(0) +
+                    pd.to_numeric(op_resumen["Ubicado"], errors="coerce").fillna(0)
+                )
+                op_resumen = op_resumen[op_resumen["Productividad Registrada"] > 0]
+
+            tiendas_dia = sorted(set(op_resumen["Tienda"].astype(str).tolist()))
 
             if not tiendas_dia:
-                st.info("No hay tiendas configuradas o información para la fecha seleccionada.")
+                st.info("No hay registros para la fecha seleccionada.")
             else:
-                resumen = base_tiendas_dia.copy()
+                resumen = pd.DataFrame({"Tienda": tiendas_dia})
                 resumen = resumen.merge(op_resumen, on="Tienda", how="left")
                 resumen = resumen.merge(sys_resumen, on="Tienda", how="left")
-
-                ingresos_op_dia = clasificar_ingresos_recoleccion_dia(temp_op)
-                if not ingresos_op_dia.empty:
-                    ingresos_op_dia = ingresos_op_dia[ingresos_op_dia["Fecha Día"].astype(str) == str(fecha_consulta)]
-                    resumen = resumen.drop(columns=[c for c in ["Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"] if c in resumen.columns], errors="ignore")
-                    resumen = resumen.merge(ingresos_op_dia.drop(columns=["Fecha Día"], errors="ignore"), on="Tienda", how="left")
-
                 resumen = resumen.fillna(0)
 
-                for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos",
-                          "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"]:
-                    if c not in resumen.columns:
-                        resumen[c] = 0
+                for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos"]:
                     resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
 
-                resumen["Piezas Ingresadas Día Anterior"] = (
-                    resumen["Dev_Pzs"]
-                    + resumen["Muertos Piso Venta"]
-                    + resumen["Ingresos Cajas"]
-                    + resumen["Ingresos Probador"]
-                )
+                resumen["Piezas Ingresadas Día Anterior"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"] + resumen["Probador"]
                 resumen["Piezas Ingresadas"] = resumen["Piezas Ingresadas Día Anterior"]
+                resumen["Acondicionado"] = resumen["Acondicionado"]
                 resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Acondicionado"]).clip(lower=0)
                 resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
                 resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
                 resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
-
-                resumen["Ingreso Aduana (Dev pzs)"] = resumen["Dev_Pzs"]
+                # Columnas de validación manual
+                resumen["Ingreso Aduana (sistema)"] = resumen["Dev_Pzs"]
+                resumen["Muertos"] = resumen["Muertos"]
+                resumen["Ingresos Cajas"] = resumen["Cajas"]
                 resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
-                resumen["Pzas Recolectadas"] = resumen["Muertos Piso Venta"] + resumen["Ingresos Cajas"] + resumen["Ingresos Probador"]
-                resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
-                resumen["Pzas Ubicadas"] = resumen["Ubicado"]
-                resumen["Pendiente por Habilitar"] = resumen["Pendiente Acondicionar"]
-
                 _wd = pd.to_datetime(fecha_consulta).weekday()
                 _meta_dia = {
                     0: metas.get("recorridos_lunes", 5),
@@ -1655,7 +1578,20 @@ with tab["0. Día Anterior / Pendiente"]:
                 }.get(_wd, 5)
                 resumen["No. Recorridos meta"] = _meta_dia
                 resumen["No. Recorridos realizados"] = resumen["Recorridos"]
+                resumen["Pzas Recolectadas"] = resumen["Muertos"] + resumen["Cajas"]
+                resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
+                resumen["Pzas Ubicadas"] = resumen["Ubicado"]
                 resumen["% Recorridos"] = sdiv(resumen["No. Recorridos realizados"], resumen["No. Recorridos meta"]) * 100
+
+                resumen["Ingreso Aduana (Dev pzs)"] = resumen["Dev_Pzs"]
+                resumen["Muertos Piso Venta"] = resumen["Muertos"]
+                resumen["Ingresos Cajas"] = resumen["Cajas"]
+                resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
+                resumen["Pzas Recolectadas"] = resumen["Muertos"] + resumen["Cajas"]
+                resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
+                resumen["Pzas Ubicadas"] = resumen["Ubicado"]
+                resumen["Pendiente por Habilitar"] = resumen["Pendiente Acondicionar"]
+
 
                 resumen["Estatus"] = np.where(
                     resumen["Pendiente Ubicar"] <= 0,
@@ -1696,7 +1632,6 @@ with tab["0. Día Anterior / Pendiente"]:
                     "Ingreso Aduana (Dev pzs)",
                     "Muertos Piso Venta",
                     "Ingresos Cajas",
-                    "Ingresos Probador",
                     "Total ingresos",
                     "Pzas Recolectadas",
                     "Pzas Habilitadas",
