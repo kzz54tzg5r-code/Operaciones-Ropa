@@ -1141,82 +1141,35 @@ score_integral = round(
 # ==========================================================
 # SCORE CARDS
 # ==========================================================
-
-def render_wow_cards(opdf):
-    """Tarjetas Resumen Ejecutivo: últimas 4 semanas ISO con datos."""
-    if opdf is None or opdf.empty or "Semana ISO" not in opdf.columns:
-        st.info("No hay información para el resumen ejecutivo.")
+def render_wow_cards(op_source):
+    if op_source is None or op_source.empty or "Semana ISO" not in op_source.columns:
         return
-
-    d = opdf.copy()
-    d["Semana ISO"] = pd.to_numeric(d["Semana ISO"], errors="coerce")
-    d = d.dropna(subset=["Semana ISO"])
-    if d.empty:
-        st.info("No hay semanas ISO disponibles.")
+    tmp = asegurar_acondicionado_alias(op_source)
+    sem = tmp.groupby("Semana ISO", as_index=False).agg(Piezas=("Productividad Total","sum"), Acondicionado=("Acondicionado","sum"), Ubicado=("Ubicado","sum"), Recorridos=("Recorridos","sum")).sort_values("Semana ISO").tail(4)
+    if sem.empty:
         return
+    html = '<div class="wow-title">📊 Resumen Ejecutivo</div><div class="wow-row">'
+    prev = None
+    for _, r in sem.iterrows():
+        def v(col):
+            if prev is None or float(prev[col]) == 0:
+                return '<span class="wow-flat">—</span>'
+            pctv = (float(r[col])-float(prev[col]))/float(prev[col])*100
+            cls = "wow-up" if pctv >= 0 else "wow-down"
+            arrow = "▲" if pctv >= 0 else "▼"
+            return f'<span class="{cls}">{arrow} {abs(pctv):.1f}%</span>'
+        html += f'<div class="wow-card"><div class="wow-head">Sem {int(r["Semana ISO"])}</div><div class="wow-body">'
+        html += f'<div class="wow-line"><div class="wow-lbl">INGRESOS</div><div class="wow-num">{float(r["Piezas"]):,.0f}</div><div class="wow-var">{v("Piezas")}</div></div>'
+        html += f'<div class="wow-line"><div class="wow-lbl">ACONDICIONADO</div><div class="wow-num">{float(r["Acondicionado"]):,.0f}</div><div class="wow-var">{v("Acondicionado")}</div></div>'
+        html += f'<div class="wow-line"><div class="wow-lbl">UBICADO</div><div class="wow-num">{float(r["Ubicado"]):,.0f}</div><div class="wow-var">{v("Ubicado")}</div></div>'
+        html += f'<div class="wow-line"><div class="wow-lbl">RECORRIDOS</div><div class="wow-num">{float(r["Recorridos"]):,.0f}</div><div class="wow-var">—</div></div>'
+        html += '</div></div>'
+        prev = r
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
 
-    semanas = sorted(d["Semana ISO"].astype(int).unique())[-4:]
-    wow = []
+render_wow_cards(op_all)
 
-    for sem in semanas:
-        x = d[d["Semana ISO"].astype(int) == int(sem)]
-        ingresos = (
-            pd.to_numeric(x.get("Muertos", 0), errors="coerce").fillna(0).sum()
-            + pd.to_numeric(x.get("Cajas", 0), errors="coerce").fillna(0).sum()
-            + pd.to_numeric(x.get("Probador", 0), errors="coerce").fillna(0).sum()
-        )
-        # Si hay Dev_Pzs en opdf por integración, se suma; si no, se mantiene recuperación operativa
-        if "Dev_Pzs" in x.columns:
-            ingresos += pd.to_numeric(x["Dev_Pzs"], errors="coerce").fillna(0).sum()
-
-        acondicionado = pd.to_numeric(x.get("Acondicionado", 0), errors="coerce").fillna(0).sum()
-        ubicado = pd.to_numeric(x.get("Ubicado", 0), errors="coerce").fillna(0).sum()
-        recorridos = pd.to_numeric(x.get("Recorridos", 0), errors="coerce").fillna(0).sum()
-
-        wow.append({
-            "semana": int(sem),
-            "ingresos": ingresos,
-            "acondicionado": acondicionado,
-            "ubicado": ubicado,
-            "recorridos": recorridos,
-        })
-
-    def delta_html(actual, anterior):
-        if anterior is None or anterior == 0:
-            return "<span style='color:#6B7280;'>—</span>"
-        var = ((actual - anterior) / anterior) * 100
-        if var >= 0:
-            return f"<span style='color:#00A651;font-weight:900;'>▲ {var:,.1f}%</span>"
-        return f"<span style='color:#EC007C;font-weight:900;'>▼ {abs(var):,.1f}%</span>"
-
-    cards = []
-    for i, row in enumerate(wow):
-        prev = wow[i-1] if i > 0 else None
-        cards.append(f"""
-        <div class="wow-card">
-            <div class="wow-head">Sem {row['semana']}</div>
-            <div class="wow-body">
-                <div class="wow-line"><span>INGRESOS</span><b>{n0(row['ingresos'])}</b>{delta_html(row['ingresos'], prev['ingresos'] if prev else None)}</div>
-                <div class="wow-line"><span>ACONDICIONADO</span><b>{n0(row['acondicionado'])}</b>{delta_html(row['acondicionado'], prev['acondicionado'] if prev else None)}</div>
-                <div class="wow-line"><span>UBICADO</span><b>{n0(row['ubicado'])}</b>{delta_html(row['ubicado'], prev['ubicado'] if prev else None)}</div>
-                <div class="wow-line"><span>RECORRIDOS</span><b>{n0(row['recorridos'])}</b>{delta_html(row['recorridos'], prev['recorridos'] if prev else None)}</div>
-            </div>
-        </div>
-        """)
-
-    st.markdown("""
-    <style>
-    .wow-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-top:14px;}
-    .wow-card{border:1px solid #DDE2EA;border-radius:8px;background:#F8F9FB;overflow:hidden;}
-    .wow-head{background:#2F4A8A;color:white;text-align:center;font-size:18px;font-weight:950;padding:12px;}
-    .wow-body{padding:14px 18px;}
-    .wow-line{display:grid;grid-template-columns:1fr 110px 80px;gap:8px;align-items:center;border-bottom:1px solid #E5E7EB;padding:10px 0;}
-    .wow-line:last-child{border-bottom:none;}
-    .wow-line span{font-size:13px;color:#666;font-weight:900;}
-    .wow-line b{font-size:20px;color:#2F4A8A;text-align:right;}
-    @media(max-width:900px){.wow-row{grid-template-columns:1fr}.wow-line{grid-template-columns:1fr 90px 70px}.wow-line b{font-size:17px}}
-    </style>
-    <div class="wow-row">""" + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con lógica Día Anterior, respetando filtros globales."""
@@ -1327,16 +1280,16 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
         fig = go.Figure()
         fig.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
         fig.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
-        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
+        fig.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Ingreso vs Acondicionado vs Ubicado")
-        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_ingreso_{periodo_nombre}_{etiqueta}")
+        st.plotly_chart(fig, width="stretch", config={"responsive": True, "displayModeBar": True})
     with c2:
         fig2 = go.Figure()
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
         fig2.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
-        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
+        fig2.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#F39800", width=4))
         fig2.update_layout(barmode="group", height=430, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"), title="Pendientes por Procesar")
-        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True}, key=f"chart_pendientes_{periodo_nombre}_{etiqueta}")
+        st.plotly_chart(fig2, width="stretch", config={"responsive": True, "displayModeBar": True})
     export_buttons(f"{periodo_nombre.lower().replace(' ', '_')}", {periodo_nombre: resumen[columnas]})
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
@@ -1609,8 +1562,8 @@ with tab["0. Día Anterior / Pendiente"]:
                 with chart_col1:
                     st.markdown("<div class='boceto-section'><h3>INGRESO vs ACONDICIONADO vs UBICADO POR TIENDA</h3>", unsafe_allow_html=True)
                     fig_combo = go.Figure()
-                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado (Piezas)", text=resumen["Acondicionado"], textposition="outside", marker_color="#0047B3")
-                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
+                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Acondicionado"], name="Acondicionado (Piezas)", text=resumen["Acondicionado"], textposition="outside", marker_color="#00A651")
+                    fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#F39800")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_combo.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
                     st.plotly_chart(fig_combo, width="stretch")
@@ -1618,8 +1571,8 @@ with tab["0. Día Anterior / Pendiente"]:
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
                     fig_pend = go.Figure()
-                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#0047B3")
-                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
+                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Acondicionar"], name="Pendiente por Acondicionar", text=resumen["Pendiente Acondicionar"], textposition="outside", marker_color="#00A651")
+                    fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#F39800")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#0047B3", width=4))
                     fig_pend.update_layout(barmode="group", height=400, margin=dict(l=20,r=20,t=40,b=20), legend=dict(orientation="h"))
                     st.plotly_chart(fig_pend, width="stretch")
