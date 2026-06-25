@@ -262,7 +262,6 @@ def max_safe(*series):
             vals.append(0.0)
     return max(vals) if vals else 0.0
 
-
 def n0(x):
     try:
         return f"{float(x):,.0f}"
@@ -428,7 +427,6 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             x = d["Tienda"].astype(str).tolist()
             idx = np.arange(len(x))
             width = 0.34
-
             fig, ax = plt.subplots(figsize=(13.5, 5.2))
 
             if mode == "pendiente":
@@ -444,7 +442,6 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
                 l1, l2 = "Pzas Habilitadas", "Pzas Ubicadas"
 
             yline = _col(d, ["Total ingresos", "Piezas Ingresadas"])
-
             bars1 = ax.bar(idx - width/2, y1, width, label=l1, color="#0047B3")
             bars2 = ax.bar(idx + width/2, y2, width, label=l2, color="#EC007C")
             ax.plot(idx, yline, color="#2F4A8A", marker="o", linewidth=3, label="Total ingresos")
@@ -456,29 +453,13 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
                 for bar in bars:
                     h = bar.get_height()
                     if h:
-                        ax.text(
-                            bar.get_x() + bar.get_width()/2,
-                            h + (ymax * 0.025 if ymax else 1),
-                            f"{h:,.0f}",
-                            ha="center",
-                            va="bottom",
-                            fontsize=8,
-                            color="#6B7280",
-                            fontweight="bold"
-                        )
+                        ax.text(bar.get_x() + bar.get_width()/2, h + (ymax * 0.025 if ymax else 1), f"{h:,.0f}",
+                                ha="center", va="bottom", fontsize=8, color="#6B7280", fontweight="bold")
 
             for i, v in enumerate(yline):
                 if v:
-                    ax.text(
-                        i,
-                        v + (ymax * 0.075 if ymax else 1),
-                        f"{v:,.0f}",
-                        ha="center",
-                        va="bottom",
-                        fontsize=8,
-                        color="#2F4A8A",
-                        fontweight="bold"
-                    )
+                    ax.text(i, v + (ymax * 0.075 if ymax else 1), f"{v:,.0f}",
+                            ha="center", va="bottom", fontsize=8, color="#2F4A8A", fontweight="bold")
 
             ax.set_xticks(idx)
             ax.set_xticklabels(x, rotation=45, ha="right", fontsize=8)
@@ -506,6 +487,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     doc.build(story)
     bio.seek(0)
     return bio.getvalue()
+
 
 def pdf_generico_bytes(titulo, hojas):
     from reportlab.lib.pagesizes import letter, landscape
@@ -1771,13 +1753,11 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas Día Anterior"] - resumen["Ubicado"]).clip(lower=0)
                 resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
                 resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
-                # Columnas de control manual
+                # Columnas de validación manual
                 resumen["Ingreso Aduana (Dev pzs)"] = resumen["Dev_Pzs"]
-                resumen["Muertos Piso Venta"] = resumen["Muertos"]
+                resumen["Muertos"] = resumen["Muertos"]
                 resumen["Ingresos Cajas"] = resumen["Cajas"]
                 resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
-                resumen["No. Recorridos meta"] = metas.get(f"recorridos_{pd.to_datetime(fecha_consulta).day_name().lower()}", 0)
-                # Compatibilidad con nombres de días en español
                 _wd = pd.to_datetime(fecha_consulta).weekday()
                 _meta_dia = {
                     0: metas.get("recorridos_lunes", 5),
@@ -1835,7 +1815,7 @@ with tab["0. Día Anterior / Pendiente"]:
                 columnas = [
                     "Tienda",
                     "Ingreso Aduana (Dev pzs)",
-                    "Muertos Piso Venta",
+                    "Muertos",
                     "Ingresos Cajas",
                     "Total ingresos",
                     "No. Recorridos meta",
@@ -1859,17 +1839,17 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_combo.add_bar(x=resumen["Tienda"], y=resumen["Ubicado"], name="Ubicado (Piezas)", text=resumen["Ubicado"], textposition="outside", marker_color="#EC007C")
                     fig_combo.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
                     max_y_combo = max_safe(resumen["Piezas Ingresadas"], resumen["Acondicionado"], resumen["Ubicado"])
-                    fig_combo.update_yaxes(range=[0, max_y_combo * 1.38 if max_y_combo else 10])
+                    fig_combo.update_yaxes(range=[0, max_y_combo * 1.40 if max_y_combo else 10])
                     fig_combo.update_traces(textposition="outside", cliponaxis=False)
                     fig_combo.update_layout(
                         barmode="group",
                         height=540,
-                        margin=dict(l=20, r=20, t=125, b=100),
+                        margin=dict(l=20, r=20, t=130, b=100),
                         legend=dict(orientation="h", y=-0.24),
                         uniformtext_minsize=10,
                         uniformtext_mode="show"
                     )
-                    st.plotly_chart(fig_combo, width="stretch", key="dia_anterior_combo_visible")
+                    st.plotly_chart(fig_combo, width="stretch", key="dia_anterior_combo")
                     st.markdown("</div>", unsafe_allow_html=True)
                 with chart_col2:
                     st.markdown("<div class='boceto-section'><h3>PENDIENTES POR PROCESAR</h3>", unsafe_allow_html=True)
@@ -1878,24 +1858,24 @@ with tab["0. Día Anterior / Pendiente"]:
                     fig_pend.add_bar(x=resumen["Tienda"], y=resumen["Pendiente Ubicar"], name="Pendiente por Ubicar", text=resumen["Pendiente Ubicar"], textposition="outside", marker_color="#EC007C")
                     fig_pend.add_scatter(x=resumen["Tienda"], y=resumen["Piezas Ingresadas"], name="Piezas Ingresadas", mode="lines+markers+text", text=[f"{x:,.0f}" for x in resumen["Piezas Ingresadas"]], textposition="top center", line=dict(color="#2F4A8A", width=4))
                     max_y_pend = max_safe(resumen["Piezas Ingresadas"], resumen["Pendiente Acondicionar"], resumen["Pendiente Ubicar"])
-                    fig_pend.update_yaxes(range=[0, max_y_pend * 1.38 if max_y_pend else 10])
+                    fig_pend.update_yaxes(range=[0, max_y_pend * 1.40 if max_y_pend else 10])
                     fig_pend.update_traces(textposition="outside", cliponaxis=False)
                     fig_pend.update_layout(
                         barmode="group",
                         height=540,
-                        margin=dict(l=20, r=20, t=125, b=100),
+                        margin=dict(l=20, r=20, t=130, b=100),
                         legend=dict(orientation="h", y=-0.24),
                         uniformtext_minsize=10,
                         uniformtext_mode="show"
                     )
-                    st.plotly_chart(fig_pend, width="stretch", key="dia_anterior_pend_visible")
+                    st.plotly_chart(fig_pend, width="stretch", key="dia_anterior_pendientes")
                     st.markdown("</div>", unsafe_allow_html=True)
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
-                st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
+                st.download_button("⬇️ Descargar PDF", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf", key="pdf_dia_anterior_1")
 
                 export_buttons("dia_anterior_pendiente", {"Dia_Anterior_Pendiente": resumen[columnas]})
                 pdf_data = pdf_dia_anterior_bytes(resumen_general, resumen[columnas], str(fecha_consulta))
-                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf")
+                st.download_button("⬇️ Descargar PDF Día Anterior", data=pdf_data, file_name=f"dia_anterior_pendiente_{fecha_consulta}.pdf", mime="application/pdf", key="pdf_dia_anterior_2")
 
 
 
@@ -2027,8 +2007,8 @@ with tab["5. Productividad por Colaborador"]:
         base_colab = base_colab.sort_values("Ranking")
         st.dataframe(style_dataframe(base_colab), width="stretch")
         st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
-                               color_discrete_sequence=["#3366CC","#FF99FF","#003366"],
-                               title="Top colaboradores por productividad"), width="stretch")
+                               color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"],
+                               title="Top colaboradores por productividad"), width="stretch", key="plot_top_colaboradores")
 
 # 6 Productividad Actividad
 with tab["6. Productividad por Actividad"]:
@@ -2043,8 +2023,8 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por actividad")
         st.dataframe(style_dataframe(act_df), width="stretch")
         st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
-                               color="Actividad", color_discrete_sequence=["#3366CC","#FF99FF","#003366"]),
-                        width="stretch")
+                               color="Actividad", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"]),
+                        width="stretch", key="plot_productividad_actividad")
 
         ingresos_df = pd.DataFrame({
             "Concepto": ["Sistema Dev_Pzs", "Piso de venta", "Recolección Cajas", "Recolección Probador"],
@@ -2053,8 +2033,8 @@ with tab["6. Productividad por Actividad"]:
         st.write("Por ingresos")
         st.dataframe(style_dataframe(ingresos_df), width="stretch")
         st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
-                               color="Concepto", color_discrete_sequence=["#3366CC","#FF99FF","#003366","#94A3B8"]),
-                        width="stretch")
+                               color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A","#6B7280"]),
+                        width="stretch", key="plot_productividad_ingresos")
 
 # 7 Eficiencia Operativa
 with tab["7. Eficiencia Operativa"]:
@@ -2079,9 +2059,9 @@ with tab["8. Cumplimiento de Recorridos"]:
     rec = rec[["Ranking","Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos","Estatus"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rec), width="stretch")
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
-                 color_discrete_sequence=["#3366CC","#FF99FF","#003366"])
-    fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#FF99FF", width=4))
-    st.plotly_chart(fig, width="stretch")
+                 color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"])
+    fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#EC007C", width=4))
+    st.plotly_chart(fig, width="stretch", key="plot_recorridos")
 
 # 9 Indicadores Diarios
 with tab["9. Indicadores Diarios"]:
@@ -2125,8 +2105,8 @@ with tab["10. Top 30 Modelos"]:
         top = top.sort_values(col, ascending=False).head(30)
         st.dataframe(style_dataframe(top), width="stretch")
         st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
-                               color_discrete_sequence=["#3366CC","#FF99FF","#003366"], title=criterio),
-                        width="stretch")
+                               color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"], title=criterio),
+                        width="stretch", key="plot_top_modelos")
 
 # 11 Categoría
 with tab["11. Análisis por Categoría"]:
@@ -2138,7 +2118,7 @@ with tab["11. Análisis por Categoría"]:
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
         st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
         st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
-                               color_discrete_sequence=["#3366CC"]), width="stretch")
+                               color_discrete_sequence=["#0047B3"]), width="stretch", key="plot_categoria")
 
 # 12 Subcategoría
 with tab["12. Análisis por Subcategoría"]:
@@ -2150,7 +2130,7 @@ with tab["12. Análisis por Subcategoría"]:
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
         st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
         st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
-                               color_discrete_sequence=["#FF99FF"]), width="stretch")
+                               color_discrete_sequence=["#EC007C"]), width="stretch", key="plot_subcategoria")
 
 # 13 Ranking Tiendas
 with tab["13. Ranking de Tiendas"]:
