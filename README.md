@@ -1,8 +1,7 @@
-# ORION APP13 - Tablas compactas globales
+# ORION APP13 - Encabezados ingresos / total / azul
 
 Cambios:
-- Encabezados compactos para todas las tablas de todas las pestañas.
-- Menor padding y letra más compacta en dataframes.
-- Oculta índice en st.dataframe cuando aplica.
-- Acondicionado se mantiene como número, no porcentaje.
-- Exportaciones Excel/PDF usan encabezados compactos.
+- Agrega franja superior "INGRESOS" sobre columnas de ingreso en Detalle Día Anterior.
+- Cambia encabezado compacto "Ingresos" de la columna Total ingresos a "Total".
+- Suma Pendiente Día Anterior al total consultado.
+- Encabezados de tablas en azul para todas las pestañas.

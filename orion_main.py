@@ -135,6 +135,52 @@ div[data-testid="stDataFrame"]{
     max-width:100% !important;
 }
 
+
+/* Encabezados azules en todas las tablas */
+[data-testid="stDataFrame"] div[role="columnheader"]{
+    background-color:#2F4A8A !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border:1px solid #2F4A8A !important;
+}
+[data-testid="stDataFrame"] [data-testid="stDataFrameResizable"] div[role="columnheader"]{
+    background-color:#2F4A8A !important;
+    color:#FFFFFF !important;
+}
+thead tr th, thead tr th.blank, thead tr th.col_heading{
+    background-color:#2F4A8A !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border:1px solid #2F4A8A !important;
+    text-align:center !important;
+}
+.orion-table-group-header{
+    display:grid;
+    grid-template-columns: 120px 640px 1fr;
+    gap:0;
+    margin-top:8px;
+    border-radius:6px 6px 0 0;
+    overflow:hidden;
+    border:1px solid #2F4A8A;
+    border-bottom:none;
+}
+.orion-table-group-header div{
+    background:#2F4A8A;
+    color:#FFFFFF;
+    font-weight:950;
+    text-align:center;
+    padding:6px 4px;
+    font-size:12px;
+    letter-spacing:.3px;
+}
+.orion-table-group-header .otg-empty{
+    background:#2F4A8A;
+}
+@media(max-width:900px){
+    .orion-table-group-header{grid-template-columns:90px 420px 1fr;font-size:10px;}
+    .orion-table-group-header div{font-size:10px;padding:4px 2px;}
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -362,7 +408,7 @@ def compact_column_name(col):
         "Piezas Ingresadas Día Anterior (Cambios y Devoluciones)": "Ingresos",
         "Piezas Ingresadas Día Anterior": "Ingresos",
         "Piezas Ingresadas": "Ingresos",
-        "Total ingresos": "Ingresos",
+        "Total ingresos": "Total",
         "Pzas Recolectadas": "Recolectadas",
         "Piezas Recolectadas": "Recolectadas",
         "Pzas Habilitadas": "Habilitadas",
@@ -2163,7 +2209,7 @@ with tab["0. Día Anterior / Pendiente"]:
                 resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas Día Anterior"]) * 100
 
                 resumen["Ingreso Aduana (Dev pzs)"] = resumen["Dev_Pzs"]
-                resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
+                resumen["Total ingresos"] = resumen["Piezas Ingresadas"] + resumen.get("Pendiente Día Anterior", 0)
                 resumen["Pzas Recolectadas"] = resumen["Muertos Piso Venta"] + resumen["Ingresos Cajas"] + resumen["Ingresos Probador"]
                 resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
                 resumen["Pzas Ubicadas"] = resumen["Ubicado"]
@@ -2218,6 +2264,15 @@ with tab["0. Día Anterior / Pendiente"]:
                 if "Pendiente Día Anterior" not in resumen.columns:
                     resumen["Pendiente Día Anterior"] = 0
                 resumen["Pendiente Día Anterior"] = pd.to_numeric(resumen["Pendiente Día Anterior"], errors="coerce").fillna(0)
+                # El pendiente del día anterior se suma al total operativo consultado.
+                resumen["Piezas Ingresadas"] = pd.to_numeric(resumen["Piezas Ingresadas"], errors="coerce").fillna(0) + resumen["Pendiente Día Anterior"]
+                resumen["Piezas Ingresadas Día Anterior"] = resumen["Piezas Ingresadas"]
+                resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
+                resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
+                resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
+                resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
+                resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
+
 
                 resumen["Ranking Pendiente"] = resumen["Pendiente Ubicar"].rank(method="dense", ascending=False).astype(int)
                 resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Acondicionar"], ascending=False)
@@ -2268,6 +2323,15 @@ with tab["0. Día Anterior / Pendiente"]:
                 ]
 
                 st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA – DÍA ANTERIOR</h3>", unsafe_allow_html=True)
+
+                st.markdown("""
+                <div class="orion-table-group-header">
+                    <div class="otg-empty">Tienda</div>
+                    <div class="otg-ingresos">INGRESOS</div>
+                    <div class="otg-registros">REGISTROS / INDICADORES</div>
+                </div>
+                """, unsafe_allow_html=True)
+
                 st.dataframe(style_dataframe(resumen[columnas]), width="stretch", hide_index=True)
                 st.markdown("</div>", unsafe_allow_html=True)
                 chart_col1, chart_col2 = st.columns(2)
