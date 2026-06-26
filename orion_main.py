@@ -851,6 +851,175 @@ def colaboradores_activos_por_tienda(opdf):
     return out
 
 
+
+# ==========================================================
+# HELPERS PROYECTO / PLANTILLA / FILTROS
+# ==========================================================
+def get_project_stores_safe(default=None):
+    """
+    Tiendas seleccionadas en Configuración de Metas para el proyecto Cambios y Muertos.
+    """
+    try:
+        if "get_estado" in globals():
+            raw = get_estado("tiendas_proyecto_cambios_muertos", "")
+            if raw:
+                data = json.loads(raw)
+                if isinstance(data, list):
+                    return [str(x) for x in data if str(x).strip()]
+    except Exception:
+        pass
+    try:
+        if "project_stores" in globals() and project_stores:
+            return [str(x) for x in project_stores if str(x).strip()]
+    except Exception:
+        pass
+    return list(default or [])
+
+def set_project_stores_safe(stores):
+    stores = [str(x) for x in stores if str(x).strip()]
+    try:
+        set_estado("tiendas_proyecto_cambios_muertos", json.dumps(stores, ensure_ascii=False))
+    except Exception:
+        pass
+
+def tiendas_proyecto_activas():
+    return get_project_stores_safe([])
+
+def aplicar_filtro_proyecto(df, excluir=False):
+    """
+    Filtra tiendas del proyecto. 
+    excluir=True deja la tabla sin filtrar para pestañas permitidas:
+    Conversión, Recuperación Económica y Ranking de Tiendas.
+    """
+    if excluir:
+        return df
+    tiendas = tiendas_proyecto_activas()
+    if df is None or df.empty or not tiendas or "Tienda" not in df.columns:
+        return df
+    return df[df["Tienda"].astype(str).isin(tiendas)].copy()
+
+def cargar_mapa_plantilla_colaboradores():
+    """
+    Lee hoja/archivo plantilla cargado desde Excel y construye mapa:
+    ocurrencia / abreviatura / nombre corto / nombre -> nombre completo.
+    """
+    mapa = {}
+    try:
+        pl = None
+        if "PLANTILLA_FILE" in globals() and PLANTILLA_FILE.exists():
+            pl = pd.read_parquet(PLANTILLA_FILE)
+        elif Path("plantilla.parquet").exists():
+            pl = pd.read_parquet("plantilla.parquet")
+        if pl is None or pl.empty:
+            return mapa
+
+        cols = {str(c).strip().lower(): c for c in pl.columns}
+
+        col_nombre = None
+        for k in [
+            "nombre completo", "nombre_completo", "nombre plantilla",
+            "nombre real", "colaborador completo", "colaborador", "nombre"
+        ]:
+            if k in cols:
+                col_nombre = cols[k]
+                break
+
+        posibles_key = []
+        for k in [
+            "ocurrencia", "occurrence", "abreviatura", "nombre corto",
+            "usuario", "nombre", "colaborador"
+        ]:
+            if k in cols:
+                posibles_key.append(cols[k])
+
+        if col_nombre is None:
+            return mapa
+
+        for _, r in pl.iterrows():
+            nombre_final = str(r.get(col_nombre, "")).strip()
+            if not nombre_final or nombre_final.lower() == "nan":
+                continue
+            for kc in posibles_key:
+                key = str(r.get(kc, "")).strip().lower()
+                if key and key != "nan":
+                    mapa[key] = nombre_final
+    except Exception:
+        pass
+    return mapa
+
+def nombre_colaborador_unificado_df(df):
+    """
+    Regresa nombre homologado con plantilla.
+    Prioridad de llave: Ocurrencia/Occurrence, Nombre, Nombre Real, Usuario.
+    """
+    if df is None or df.empty:
+        return pd.Series([], dtype=str)
+
+    mapa = cargar_mapa_plantilla_colaboradores()
+    base = pd.Series(["Sin dato"] * len(df), index=df.index, dtype="object")
+
+    for col in ["Ocurrencia", "Occurrence", "Nombre", "Nombre Real", "Usuario", "Colaborador"]:
+        if col in df.columns:
+            vals = df[col].astype(str).str.strip()
+            base = np.where(
+                (pd.Series(base, index=df.index).astype(str) == "Sin dato")
+                & (vals != "")
+                & (vals.str.lower() != "nan"),
+                vals,
+                base
+            )
+
+    base = pd.Series(base, index=df.index).astype(str).str.strip()
+    return base.str.lower().map(mapa).fillna(base)
+
+def colaboradores_activos_por_tienda(opdf):
+    cols = ["Tienda", "No. Colaboradores"]
+    if opdf is None or opdf.empty or "Tienda" not in opdf.columns:
+        return pd.DataFrame(columns=cols)
+    d = opdf.copy()
+    d["Colaborador Unificado"] = nombre_colaborador_unificado_df(d)
+    if "Actividad Realizada" in d.columns:
+        d = d[d["Actividad Realizada"].astype(str).str.strip().ne("")]
+    d = d[d["Colaborador Unificado"].astype(str).str.strip().ne("")]
+    d = d[d["Colaborador Unificado"].astype(str).str.lower().ne("sin dato")]
+    if d.empty:
+        return pd.DataFrame(columns=cols)
+    out = d.groupby("Tienda")["Colaborador Unificado"].nunique().reset_index()
+    out.columns = cols
+    return out
+
+def agrupar_resultados_productividad_por_tienda_colaborador(opdf):
+    """
+    Agrupa Resultados de productividad por misma Tienda + colaborador homologado.
+    """
+    if opdf is None or opdf.empty:
+        return pd.DataFrame()
+    d = opdf.copy()
+    d["Nombre Real"] = nombre_colaborador_unificado_df(d)
+    for c in ["Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos", "Número de Piezas"]:
+        if c not in d.columns:
+            d[c] = 0
+        d[c] = pd.to_numeric(d[c], errors="coerce").fillna(0)
+    group_cols = ["Tienda", "Nombre Real"]
+    if "Ocurrencia" in d.columns:
+        # no se usa como agrupador principal porque la plantilla manda el nombre unificado
+        pass
+    out = d.groupby(group_cols, as_index=False).agg(
+        Muertos=("Muertos","sum"),
+        Cajas=("Cajas","sum"),
+        Probador=("Probador","sum"),
+        Acondicionado=("Acondicionado","sum"),
+        Ubicado=("Ubicado","sum"),
+        Recorridos=("Recorridos","sum"),
+        Piezas=("Número de Piezas","sum")
+    )
+    out["Productividad Total"] = out["Muertos"] + out["Cajas"] + out["Probador"] + out["Acondicionado"] + out["Ubicado"]
+    out["Meta Colaborador"] = metas.get("productividad_diaria", 784) if "metas" in globals() else 784
+    out["Diferencia vs Meta"] = out["Meta Colaborador"] - out["Productividad Total"]
+    out["Cumplimiento %"] = sdiv(out["Productividad Total"], out["Meta Colaborador"]) * 100
+    return out.sort_values(["Tienda", "Productividad Total"], ascending=[True, False])
+
+
 def cargar_datos():
     op = pd.read_parquet(OPERACION_FILE) if OPERACION_FILE.exists() else pd.DataFrame()
     co = pd.read_parquet(COMERCIAL_FILE) if COMERCIAL_FILE.exists() else pd.DataFrame()
@@ -1097,6 +1266,17 @@ with st.sidebar:
         st.caption("Este rol no puede cargar ni reemplazar archivos.")
 
 op_all, co_all, daily_all = cargar_datos()
+project_stores = get_project_stores_safe([])
+
+# FILTRO GLOBAL POR TIENDAS DEL PROYECTO
+# Aplica a todas las pestañas operativas. Conversion, Recuperacion Economica y Ranking de Tiendas usan *_all.
+if project_stores:
+    try:
+        op = aplicar_filtro_proyecto(op)
+        daily = aplicar_filtro_proyecto(daily)
+    except Exception:
+        pass
+
 op_all = normalizar_operacion(op_all)
 co_all = normalizar_comercial(co_all)
 daily_all = normalizar_diario_comercial(daily_all)
@@ -1372,8 +1552,8 @@ def store_summary(opdf, codf, only_registered=True):
     )
     return out
 
-ss = store_summary(op, co, only_registered=True)
-ss_all = store_summary(op, co, only_registered=False)
+ss = store_summary(op_all, co_all, only_registered=True)
+ss_all = store_summary(op_all, co_all, only_registered=False)
 
 total_ingresos = ss["Piezas Ingresadas"].sum() if not ss.empty else 0
 productividad = ss["Productividad"].sum() if not ss.empty else 0
@@ -2169,6 +2349,18 @@ with tab["13. Ranking de Tiendas"]:
     rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
     st.dataframe(style_dataframe(rank), width="stretch")
 
+
+
+    st.markdown("### Índice Integral por Colaborador")
+    idx_colab = agrupar_resultados_productividad_por_tienda_colaborador(op)
+    if idx_colab.empty:
+        st.info("No hay información por colaborador con los filtros seleccionados.")
+    else:
+        idx_colab["Score Productividad"] = np.minimum(idx_colab["Cumplimiento %"], 100)
+        idx_colab["Score Recorridos"] = np.minimum(sdiv(idx_colab["Recorridos"], idx_colab["Recorridos"].max()) * 100, 100) if idx_colab["Recorridos"].max() else 0
+        idx_colab["Índice Integral"] = (idx_colab["Score Productividad"] * 0.75) + (idx_colab["Score Recorridos"] * 0.25)
+        idx_colab = idx_colab.sort_values("Índice Integral", ascending=False)
+        st.dataframe(style_dataframe(idx_colab), width="stretch")
 # 14 Ranking Colaboradores
 with tab["14. Ranking de Colaboradores"]:
     st.subheader("Ranking de Colaboradores")
@@ -2242,6 +2434,32 @@ if "17. Corrección de Nombres" in tab:
 if "18. Configuración de Metas" in tab:
     with tab["18. Configuración de Metas"]:
         st.subheader("⚙️ Configuración de Metas")
+
+        st.markdown("### Tiendas del proyecto Cambios y Muertos")
+        _tiendas_base_cfg = []
+        try:
+            if "TIENDAS_OFICIALES" in globals():
+                _tiendas_base_cfg += list(TIENDAS_OFICIALES)
+            if "op_all" in globals() and op_all is not None and not op_all.empty and "Tienda" in op_all.columns:
+                _tiendas_base_cfg += op_all["Tienda"].astype(str).dropna().unique().tolist()
+            if "co_all" in globals() and co_all is not None and not co_all.empty and "Tienda" in co_all.columns:
+                _tiendas_base_cfg += co_all["Tienda"].astype(str).dropna().unique().tolist()
+        except Exception:
+            pass
+        _tiendas_base_cfg = sorted(set([str(t) for t in _tiendas_base_cfg if str(t).strip()]))
+        _tiendas_actuales = get_project_stores_safe(_tiendas_base_cfg)
+        _tiendas_sel = st.multiselect(
+            "Selecciona las tiendas que pertenecen al proyecto",
+            _tiendas_base_cfg,
+            default=[t for t in _tiendas_actuales if t in _tiendas_base_cfg],
+            key="cfg_tiendas_proyecto_cambios_muertos"
+        )
+        if st.button("Guardar tiendas del proyecto", key="btn_guardar_tiendas_proyecto"):
+            set_project_stores_safe(_tiendas_sel)
+            st.success("Tiendas del proyecto actualizadas. La información se filtrará en todas las pestañas excepto Conversión, Recuperación Económica y Ranking de Tiendas.")
+            st.rerun()
+
+
         cols = st.columns(3)
         nuevos = {}
         for i, (k, v) in enumerate(metas.items()):
