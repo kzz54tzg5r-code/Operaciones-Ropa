@@ -109,6 +109,32 @@ div[data-testid="stDateInput"]{max-width:330px!important;}
     .boceto-card-value{font-size:21px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;}
     .wow-row{grid-template-columns:1fr!important;min-width:0!important;}
 }
+
+/* ===== Tablas compactas globales ===== */
+[data-testid="stDataFrame"]{
+    font-size:12px !important;
+}
+[data-testid="stDataFrame"] div[role="columnheader"],
+[data-testid="stDataFrame"] div[role="gridcell"]{
+    padding:3px 4px !important;
+    font-size:12px !important;
+    line-height:1.05 !important;
+}
+[data-testid="stDataFrame"] div[role="columnheader"]{
+    font-weight:800 !important;
+    white-space:normal !important;
+    text-align:center !important;
+}
+[data-testid="stDataFrame"] div[role="gridcell"]{
+    white-space:nowrap !important;
+}
+[data-testid="stDataFrame"] [data-testid="stElementToolbar"]{
+    display:none !important;
+}
+div[data-testid="stDataFrame"]{
+    max-width:100% !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -320,25 +346,145 @@ def normalize_store(x):
             return val
     return clean_text(x).title()
 
+
+def compact_column_name(col):
+    """
+    Encabezados compactos para todas las tablas de todas las pestañas.
+    Sólo modifica la visualización, no la lógica interna.
+    """
+    mapping = {
+        "Ingreso Aduana (Dev pzs)": "Dev pzs",
+        "Ingreso Aduana (sistema)": "Dev pzs",
+        "Muertos Piso Venta": "Muertos",
+        "Ingresos Cajas": "Cajas",
+        "Ingresos Probador": "Probador",
+        "Pendiente Día Anterior": "Pend. Ant.",
+        "Piezas Ingresadas Día Anterior (Cambios y Devoluciones)": "Ingresos",
+        "Piezas Ingresadas Día Anterior": "Ingresos",
+        "Piezas Ingresadas": "Ingresos",
+        "Total ingresos": "Ingresos",
+        "Pzas Recolectadas": "Recolectadas",
+        "Piezas Recolectadas": "Recolectadas",
+        "Pzas Habilitadas": "Habilitadas",
+        "Piezas Habilitadas": "Habilitadas",
+        "Piezas Acondicionadas": "Acondicionado",
+        "Acondicionado": "Acondicionado",
+        "Pendiente por Habilitar": "Pend. Hab.",
+        "Pendiente Acondicionar": "Pend. Hab.",
+        "Pzas Ubicadas": "Ubicadas",
+        "Piezas Ubicadas": "Ubicadas",
+        "Pendiente por Ubicar": "Pend. Ub.",
+        "Pendiente Ubicar": "Pend. Ub.",
+        "No. Colaboradores": "Colab.",
+        "Número de Colaboradores": "Colab.",
+        "Meta Colaboradores": "Meta",
+        "Meta Productividad": "Meta",
+        "Meta Colaborador": "Meta",
+        "Productividad Total": "Productividad",
+        "Diferencia vs Meta": "Dif. Meta",
+        "No. Recorridos meta": "Meta Rec.",
+        "No. Recorridos realizados": "Rec. Real.",
+        "% Recorridos": "% Rec.",
+        "% Acondicionado": "% Acond.",
+        "% Ubicado": "% Ubic.",
+        "Cumplimiento %": "% Cumpl.",
+        "Área mayor productividad": "Área Mayor",
+        "Piezas área mayor": "Pzs Área",
+        "Nombre Real": "Colaborador",
+        "Conversión Dev → Venta Pzs": "Conv. Pzs",
+        "Conversión Dev → Venta $": "Conv. $",
+        "% Conversión Semanal Dev → Venta": "% Conv.",
+        "Pendiente por Convertir Pzs": "Pend. Conv.",
+        "Venta No Convertida $": "Venta No Conv.",
+        "Dev Pzs Semana": "Dev Pzs",
+        "Venta Recuperada $": "Venta Rec. $",
+        "Valor Recuperado": "Recuperado",
+        "Valor Pendiente": "Pendiente",
+        "Costo Dev $": "Costo Dev",
+        "Recuperación %": "% Recup.",
+    }
+    return mapping.get(str(col), str(col))
+
+def compact_display_df(df):
+    """
+    Copia del dataframe con encabezados compactos.
+    Se usa sólo para mostrar/descargar visualmente tablas más legibles.
+    """
+    if not isinstance(df, pd.DataFrame):
+        return df
+    d = df.copy()
+    d.columns = [compact_column_name(c) for c in d.columns]
+    return d
+
 def style_dataframe(df):
     if not isinstance(df, pd.DataFrame) or df.empty:
         return df
-    percent_cols = [c for c in df.columns if "%" in str(c) or "cumplimiento" in str(c).lower()]
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+
+    d = compact_display_df(df)
+
+    # Sólo columnas explícitamente porcentuales se formatean como %.
+    # Acondicionado se mantiene como número, no porcentaje.
+    percent_cols = [
+        c for c in d.columns
+        if "%" in str(c)
+        or str(c).strip().lower().startswith("cumplimiento")
+        or str(c).strip().lower() in ["score productividad", "score recorridos", "índice integral", "indice integral"]
+    ]
+
+    numeric_cols = d.select_dtypes(include=[np.number]).columns.tolist()
     fmt = {c: ("{:,.1f}%" if c in percent_cols else "{:,.0f}") for c in numeric_cols}
-    return (df.style
+
+    return (d.style
         .set_table_styles([
-            {"selector":"th","props":[("background-color","#2F4A8A"),("color","white"),("font-weight","900"),("border","1px solid #2F4A8A"),("text-align","center")]},
-            {"selector":"td","props":[("border","1px solid #E5E7EB"),("background-color","#FFFFFF"),("color","#14172F"),("text-align","center")]},
-            {"selector":"tbody tr:nth-child(even) td","props":[("background-color","#FCFCFD")]}
-        ]).format(fmt))
+            {
+                "selector": "th",
+                "props": [
+                    ("background-color", "#2F4A8A"),
+                    ("color", "white"),
+                    ("font-weight", "900"),
+                    ("border", "1px solid #2F4A8A"),
+                    ("text-align", "center"),
+                    ("vertical-align", "middle"),
+                    ("font-size", "11px"),
+                    ("line-height", "1.05"),
+                    ("padding", "3px 4px"),
+                    ("white-space", "normal"),
+                    ("max-width", "95px"),
+                    ("word-break", "break-word"),
+                ],
+            },
+            {
+                "selector": "td",
+                "props": [
+                    ("border", "1px solid #E5E7EB"),
+                    ("background-color", "#FFFFFF"),
+                    ("color", "#14172F"),
+                    ("text-align", "center"),
+                    ("vertical-align", "middle"),
+                    ("font-size", "12px"),
+                    ("padding", "3px 4px"),
+                    ("line-height", "1.05"),
+                    ("white-space", "nowrap"),
+                    ("max-width", "95px"),
+                    ("overflow", "hidden"),
+                    ("text-overflow", "ellipsis"),
+                ],
+            },
+            {
+                "selector": "tbody tr:nth-child(even) td",
+                "props": [("background-color", "#FCFCFD")],
+            },
+        ])
+        .format(fmt)
+    )
+
 
 def excel_export(sheets):
     bio = BytesIO()
     with pd.ExcelWriter(bio, engine="openpyxl") as writer:
         for name, df in sheets.items():
             if isinstance(df, pd.DataFrame):
-                df.to_excel(writer, sheet_name=name[:31], index=False)
+                compact_display_df(df).to_excel(writer, sheet_name=name[:31], index=False)
     return bio.getvalue()
 
 
@@ -358,7 +504,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     story = [Paragraph("Recuperación Cambios y Muertos", title_style), Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", sub_style), Spacer(1, 10)]
 
     def prep(df, max_rows=28, max_cols=14):
-        d = df.copy().iloc[:max_rows, :max_cols]
+        d = compact_display_df(df).iloc[:max_rows, :max_cols]
         for col in d.columns:
             if pd.api.types.is_numeric_dtype(d[col]):
                 if "%" in str(col):
@@ -449,7 +595,7 @@ def pdf_generico_bytes(titulo, hojas):
         Spacer(1, 10)
     ]
     def prep(df, max_rows=35, max_cols=12):
-        d = df.copy().iloc[:max_rows, :max_cols]
+        d = compact_display_df(df).iloc[:max_rows, :max_cols]
         for col in d.columns:
             if pd.api.types.is_numeric_dtype(d[col]):
                 if "%" in str(col):
@@ -1772,11 +1918,11 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
     columnas = ["Tienda","Piezas Ingresadas","Acondicionado","% Acondicionado","Ubicado","% Ubicado","Pendiente Acondicionar","Pendiente Ubicar","Recorridos","Estatus"]
 
     st.markdown("<div class='boceto-section'><h3>RESUMEN GENERAL</h3>", unsafe_allow_html=True)
-    st.dataframe(style_dataframe(resumen_general), width="stretch")
+    st.dataframe(style_dataframe(resumen_general), width="stretch", hide_index=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA</h3>", unsafe_allow_html=True)
-    st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
+    st.dataframe(style_dataframe(resumen[columnas]), width="stretch", hide_index=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
@@ -2122,7 +2268,7 @@ with tab["0. Día Anterior / Pendiente"]:
                 ]
 
                 st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA – DÍA ANTERIOR</h3>", unsafe_allow_html=True)
-                st.dataframe(style_dataframe(resumen[columnas]), width="stretch")
+                st.dataframe(style_dataframe(resumen[columnas]), width="stretch", hide_index=True)
                 st.markdown("</div>", unsafe_allow_html=True)
                 chart_col1, chart_col2 = st.columns(2)
                 with chart_col1:
@@ -2215,8 +2361,8 @@ with tab["3. Conversión"]:
         c6.metric("Venta No Convertida $", money(venta_no_conv))
 
         st.caption("Se calcula semana por semana. Sólo cuenta la venta si ocurrió dentro de la misma Semana ISO de la devolución.")
-        st.dataframe(style_dataframe(conv_res), width="stretch")
-        st.dataframe(style_dataframe(conv_det), width="stretch")
+        st.dataframe(style_dataframe(conv_res), width="stretch", hide_index=True)
+        st.dataframe(style_dataframe(conv_det), width="stretch", hide_index=True)
 
         fig_conv = go.Figure()
         fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta Pzs"], name="Conversión Dev → Venta Pzs", marker_color="#0047B3", text=conv_res["Conversión Dev → Venta Pzs"], textposition="outside")
@@ -2249,7 +2395,7 @@ with tab["4. Recuperación Económica"]:
         c3.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
 
         st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO.")
-        st.dataframe(style_dataframe(conv_res), width="stretch")
+        st.dataframe(style_dataframe(conv_res), width="stretch", hide_index=True)
 
         fig_rec = go.Figure()
         fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta $"], name="Conversión Dev → Venta $", marker_color="#0047B3")
@@ -2284,7 +2430,7 @@ with tab["5. Productividad por Colaborador"]:
         base_colab["Cumplimiento %"] = sdiv(base_colab["Productividad"], base_colab["Meta"]) * 100
         base_colab["Ranking"] = base_colab["Productividad"].rank(method="dense", ascending=False).astype(int)
         base_colab = base_colab.sort_values("Ranking")
-        st.dataframe(style_dataframe(base_colab), width="stretch")
+        st.dataframe(style_dataframe(base_colab), width="stretch", hide_index=True)
         st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
                                color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"],
                                title="Top colaboradores por productividad"), width="stretch", key="orion_plot_5")
@@ -2300,7 +2446,7 @@ with tab["6. Productividad por Actividad"]:
             "Piezas": [op["Recolección de Muertos"].sum(), op["Acondicionado"].sum(), op["Ubicado"].sum()]
         })
         st.write("Por actividad")
-        st.dataframe(style_dataframe(act_df), width="stretch")
+        st.dataframe(style_dataframe(act_df), width="stretch", hide_index=True)
         st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
                                color="Actividad", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"]),
                         width="stretch", key="orion_plot_6")
@@ -2310,7 +2456,7 @@ with tab["6. Productividad por Actividad"]:
             "Piezas": [total_dev_system(co), op["Muertos"].sum(), op["Cajas"].sum(), op["Probador"].sum()]
         })
         st.write("Por ingresos")
-        st.dataframe(style_dataframe(ingresos_df), width="stretch")
+        st.dataframe(style_dataframe(ingresos_df), width="stretch", hide_index=True)
         st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
                                color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A","#94A3B8"]),
                         width="stretch", key="orion_plot_7")
@@ -2327,7 +2473,7 @@ with tab["7. Eficiencia Operativa"]:
     ef = ss.copy()
     ef["Ranking"] = ef["% Ubicado"].rank(method="dense", ascending=False).astype(int)
     ef = ef[["Ranking","Tienda","Piezas Ingresadas","Acondicionado","Ubicado","% Acondicionado","% Ubicado","Estado"]].sort_values("Ranking")
-    st.dataframe(style_dataframe(ef), width="stretch")
+    st.dataframe(style_dataframe(ef), width="stretch", hide_index=True)
 
 # 8 Cumplimiento Recorridos
 with tab["8. Cumplimiento de Recorridos"]:
@@ -2336,7 +2482,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     rec["Estatus"] = np.where(rec["% Recorridos"] >= 100, "🟢 Cumple", np.where(rec["% Recorridos"] >= 80, "🟡 Atención", "🔴 Bajo"))
     rec["Ranking"] = rec["% Recorridos"].rank(method="dense", ascending=False).astype(int)
     rec = rec[["Ranking","Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos","Estatus"]].sort_values("Ranking")
-    st.dataframe(style_dataframe(rec), width="stretch")
+    st.dataframe(style_dataframe(rec), width="stretch", hide_index=True)
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#EC007C", width=4))
@@ -2363,7 +2509,7 @@ with tab["9. Indicadores Diarios"]:
         diaria["Productividad"] = diaria["Recoleccion"] + diaria["Acondicionado"] + diaria["Ubicado"]
         diaria["Cumplimiento %"] = sdiv(diaria["Productividad"], diaria["Meta"]) * 100
         diaria = diaria.rename(columns={"Ocurrencia":"ID de empleado"})
-        st.dataframe(style_dataframe(diaria), width="stretch")
+        st.dataframe(style_dataframe(diaria), width="stretch", hide_index=True)
 
 # 10 Top Modelos
 with tab["10. Top 30 Modelos"]:
@@ -2382,7 +2528,7 @@ with tab["10. Top 30 Modelos"]:
         criterio = st.selectbox("Ranking", ["Mayor recuperación económica","Mayor recuperación %","Mayor venta","Mayor pendiente"])
         col = {"Mayor recuperación económica":"Recuperacion_Dinero","Mayor recuperación %":"Recuperación %","Mayor venta":"Vta_Pzs","Mayor pendiente":"Valor Pendiente"}[criterio]
         top = top.sort_values(col, ascending=False).head(30)
-        st.dataframe(style_dataframe(top), width="stretch")
+        st.dataframe(style_dataframe(top), width="stretch", hide_index=True)
         st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
                                color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"], title=criterio),
                         width="stretch", key="orion_plot_9")
@@ -2395,7 +2541,7 @@ with tab["11. Análisis por Categoría"]:
     else:
         cat = co.groupby("Categoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch")
+        st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch", hide_index=True)
         st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
                                color_discrete_sequence=["#0047B3"]), width="stretch", key="orion_plot_10")
 
@@ -2407,7 +2553,7 @@ with tab["12. Análisis por Subcategoría"]:
     else:
         sub = co.groupby("Subcategoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch")
+        st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch", hide_index=True)
         st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
                                color_discrete_sequence=["#EC007C"]), width="stretch", key="orion_plot_11")
 
@@ -2425,7 +2571,7 @@ with tab["13. Ranking de Tiendas"]:
     rank["Ranking"] = rank["Score"].rank(method="dense", ascending=False).astype(int)
     rank = rank.rename(columns={"Recuperacion":"Recuperacion"})
     rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
-    st.dataframe(style_dataframe(rank), width="stretch")
+    st.dataframe(style_dataframe(rank), width="stretch", hide_index=True)
 
 
 
@@ -2439,7 +2585,7 @@ with tab["13. Ranking de Tiendas"]:
         idx_colab["Score Recorridos"] = np.minimum((pd.to_numeric(idx_colab["Recorridos"], errors="coerce").fillna(0) / _max_recorridos_colab) * 100, 100) if _max_recorridos_colab else 0
         idx_colab["Índice Integral"] = (idx_colab["Score Productividad"] * 0.75) + (idx_colab["Score Recorridos"] * 0.25)
         idx_colab = idx_colab.sort_values("Índice Integral", ascending=False)
-        st.dataframe(style_dataframe(idx_colab), width="stretch")
+        st.dataframe(style_dataframe(idx_colab), width="stretch", hide_index=True)
 # 14 Ranking Colaboradores
 with tab["14. Ranking de Colaboradores"]:
     st.subheader("Ranking de Colaboradores")
@@ -2449,7 +2595,7 @@ with tab["14. Ranking de Colaboradores"]:
         rc = op.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"), Recorridos=("Recorridos","sum"))
         rc["Score"] = (rc["Productividad"].rank(pct=True)*85 + rc["Recorridos"].rank(pct=True)*15).round(1)
         rc["Ranking"] = rc["Score"].rank(method="dense", ascending=False).astype(int)
-        st.dataframe(style_dataframe(rc.sort_values("Ranking")), width="stretch")
+        st.dataframe(style_dataframe(rc.sort_values("Ranking")), width="stretch", hide_index=True)
 
 # 15 Índice Integral
 with tab["15. Índice Integral"]:
@@ -2461,7 +2607,7 @@ with tab["15. Índice Integral"]:
         "Peso": ["40%", "25%", "15%", "10%", "10%"],
         "Cumplimiento": [prod_pct, hab_pct, ubi_pct, conv_pct, recorr_pct]
     })
-    st.dataframe(style_dataframe(score_break), width="stretch")
+    st.dataframe(style_dataframe(score_break), width="stretch", hide_index=True)
 
 # 16 Alertas
 with tab["16. Alertas Inteligentes"]:
@@ -2486,7 +2632,7 @@ with tab["16. Alertas Inteligentes"]:
     if alert_df.empty:
         st.success("Sin alertas críticas.")
     else:
-        st.dataframe(style_dataframe(alert_df), width="stretch")
+        st.dataframe(style_dataframe(alert_df), width="stretch", hide_index=True)
 
 
 # 17 Corrección de Nombres
@@ -2552,7 +2698,7 @@ if "18. Configuración de Metas" in tab:
             st.rerun()
 
         st.write("Historial de metas")
-        st.dataframe(style_dataframe(get_historial_metas()), width="stretch")
+        st.dataframe(style_dataframe(get_historial_metas()), width="stretch", hide_index=True)
 
 # 18 Diagnóstico
 if "19. Diagnóstico de Datos" in tab:
@@ -2569,7 +2715,7 @@ if "19. Diagnóstico de Datos" in tab:
         c3.metric("Registros comercial diario", n0(len(daily_all)))
         if not op_all.empty:
             st.write("Valores nulos operación")
-            st.dataframe(op_all.isna().sum().reset_index().rename(columns={"index":"Columna",0:"Nulos"}), width="stretch")
+            st.dataframe(op_all.isna().sum().reset_index().rename(columns={"index":"Columna",0:"Nulos"}), width="stretch", hide_index=True)
 
 # 19 Compartir
 with tab["20. Compartir ORION"]:

@@ -1,6 +1,8 @@
-# ORION APP13 - Pendiente día anterior + Acondicionado numérico
+# ORION APP13 - Tablas compactas globales
 
 Cambios:
-- En pestaña 0 agrega tarjeta Pendiente Día Anterior.
-- En Detalle por tienda agrega columna Pendiente Día Anterior.
-- Reporte Semanal/Mensual: Acondicionado se formatea como número, no como porcentaje.
+- Encabezados compactos para todas las tablas de todas las pestañas.
+- Menor padding y letra más compacta en dataframes.
+- Oculta índice en st.dataframe cuando aplica.
+- Acondicionado se mantiene como número, no porcentaje.
+- Exportaciones Excel/PDF usan encabezados compactos.
