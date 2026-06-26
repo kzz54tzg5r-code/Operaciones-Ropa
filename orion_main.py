@@ -2357,7 +2357,8 @@ with tab["13. Ranking de Tiendas"]:
         st.info("No hay información por colaborador con los filtros seleccionados.")
     else:
         idx_colab["Score Productividad"] = np.minimum(idx_colab["Cumplimiento %"], 100)
-        idx_colab["Score Recorridos"] = np.minimum(sdiv(idx_colab["Recorridos"], idx_colab["Recorridos"].max()) * 100, 100) if idx_colab["Recorridos"].max() else 0
+        _max_recorridos_colab = pd.to_numeric(idx_colab["Recorridos"], errors="coerce").fillna(0).max()
+        idx_colab["Score Recorridos"] = np.minimum((pd.to_numeric(idx_colab["Recorridos"], errors="coerce").fillna(0) / _max_recorridos_colab) * 100, 100) if _max_recorridos_colab else 0
         idx_colab["Índice Integral"] = (idx_colab["Score Productividad"] * 0.75) + (idx_colab["Score Recorridos"] * 0.25)
         idx_colab = idx_colab.sort_values("Índice Integral", ascending=False)
         st.dataframe(style_dataframe(idx_colab), width="stretch")
