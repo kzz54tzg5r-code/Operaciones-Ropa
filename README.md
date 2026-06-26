@@ -1,8 +1,8 @@
-# ORION APP13 - Tablas rosas con separadores blancos
+# ORION APP13 - Tablas HTML Rosa Global
 
 Cambios:
-- Encabezados de columnas en rosa (#EC007C).
-- Encabezados agrupadores superiores en azul (#2F4A8A).
-- Separadores blancos entre columnas y filas.
-- Diseño aplicado globalmente a tablas de todas las pestañas.
-- Ajuste también para tablas generadas con pandas Styler.
+- Reemplaza st.dataframe(style_dataframe(...)) por tablas HTML controladas.
+- Encabezados de columnas en rosa en todas las pestañas.
+- Separadores blancos alineados.
+- Detalle Día Anterior usa encabezado agrupado real con colspan (Tienda / Ingresos / Registros e Indicadores).
+- Se elimina el desfase del encabezado superior anterior.

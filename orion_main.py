@@ -295,6 +295,77 @@ tbody tr:nth-child(even) td{
     }
 }
 
+
+/* ===== ORION HTML TABLES GLOBAL ===== */
+.orion-html-table-wrap{
+    width:100%;
+    overflow-x:auto;
+    border:1px solid #E5E7EB;
+    border-radius:8px;
+    margin:6px 0 14px 0;
+}
+.orion-html-table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:auto;
+    background:#FFFFFF;
+    font-family:inherit;
+}
+.orion-html-table th{
+    background:#EC007C !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border:2px solid #FFFFFF !important;
+    padding:5px 6px !important;
+    font-size:12px !important;
+    line-height:1.05 !important;
+    text-align:center !important;
+    vertical-align:middle !important;
+    white-space:normal !important;
+}
+.orion-html-table .orion-group-row th{
+    background:#2F4A8A !important;
+    color:#FFFFFF !important;
+    font-weight:950 !important;
+    font-size:12px !important;
+    letter-spacing:.3px !important;
+}
+.orion-html-table td{
+    border:2px solid #FFFFFF !important;
+    padding:5px 6px !important;
+    font-size:12px !important;
+    line-height:1.1 !important;
+    color:#14172F !important;
+    text-align:right !important;
+    vertical-align:middle !important;
+    background:#FFFFFF !important;
+    white-space:nowrap !important;
+}
+.orion-html-table td:first-child{
+    text-align:left !important;
+}
+.orion-html-table tbody tr:nth-child(even) td{
+    background:#F8FAFC !important;
+}
+
+/* Ocultar header agrupador viejo para evitar desfase */
+.orion-table-group-header{
+    display:none !important;
+}
+
+/* Respaldo para st.dataframe restante */
+[data-testid="stDataFrame"] div[role="columnheader"]{
+    background-color:#EC007C !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border-right:2px solid #FFFFFF !important;
+    border-bottom:2px solid #FFFFFF !important;
+}
+[data-testid="stDataFrame"] div[role="gridcell"]{
+    border-right:2px solid #FFFFFF !important;
+    border-bottom:2px solid #FFFFFF !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -644,6 +715,73 @@ def style_dataframe(df):
         ])
         .format(fmt)
     )
+
+
+
+def render_orion_table(df, group_day=False, max_rows=None):
+    """
+    Renderiza tablas ORION en HTML para garantizar:
+    - encabezados rosa en TODAS las pestañas,
+    - separadores blancos alineados,
+    - encabezado agrupado real por colspan cuando aplica.
+    """
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        st.info("Sin información para mostrar.")
+        return
+
+    d = compact_display_df(df) if "compact_display_df" in globals() else df.copy()
+    if max_rows is not None:
+        d = d.head(max_rows)
+
+    def _fmt_val(v, col):
+        try:
+            if pd.isna(v):
+                return ""
+        except Exception:
+            pass
+        col_s = str(col)
+        if isinstance(v, (int, float, np.integer, np.floating)):
+            if "%" in col_s or col_s.strip().lower().startswith("%") or "cumpl" in col_s.lower() or "conv." in col_s.lower():
+                return f"{float(v):,.1f}%"
+            return f"{float(v):,.0f}"
+        return str(v)
+
+    html = ['<div class="orion-html-table-wrap"><table class="orion-html-table">']
+
+    if group_day:
+        cols = list(d.columns)
+        # Después de compactar:
+        # Tienda | Dev pzs | Muertos | Cajas | Probador | Total | Pend. Ant. | ...
+        tienda_cols = 1 if cols and cols[0] == "Tienda" else 0
+        ingreso_names = {"Dev pzs", "Muertos", "Cajas", "Probador", "Total", "Pend. Ant."}
+        ingreso_count = sum(1 for c in cols[tienda_cols:] if c in ingreso_names)
+        registro_count = max(len(cols) - tienda_cols - ingreso_count, 0)
+
+        html.append("<thead>")
+        html.append("<tr class='orion-group-row'>")
+        if tienda_cols:
+            html.append("<th colspan='1'>Tienda</th>")
+        if ingreso_count:
+            html.append(f"<th colspan='{ingreso_count}'>INGRESOS</th>")
+        if registro_count:
+            html.append(f"<th colspan='{registro_count}'>REGISTROS / INDICADORES</th>")
+        html.append("</tr>")
+        html.append("<tr class='orion-head-row'>")
+    else:
+        html.append("<thead><tr class='orion-head-row'>")
+
+    for c in d.columns:
+        html.append(f"<th>{str(c)}</th>")
+    html.append("</tr></thead><tbody>")
+
+    for _, row in d.iterrows():
+        html.append("<tr>")
+        for c in d.columns:
+            html.append(f"<td>{_fmt_val(row[c], c)}</td>")
+        html.append("</tr>")
+
+    html.append("</tbody></table></div>")
+    st.markdown("".join(html), unsafe_allow_html=True)
 
 
 def excel_export(sheets):
@@ -2250,11 +2388,11 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
     columnas = ["Tienda","Piezas Ingresadas","Acondicionado","% Acondicionado","Ubicado","% Ubicado","Pendiente Acondicionar","Pendiente Ubicar","Recorridos","Estatus"]
 
     st.markdown("<div class='boceto-section'><h3>RESUMEN GENERAL</h3>", unsafe_allow_html=True)
-    st.dataframe(style_dataframe(resumen_general), width="stretch", hide_index=True)
+    render_orion_table(resumen_general)
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='boceto-section'><h3>DETALLE POR TIENDA</h3>", unsafe_allow_html=True)
-    st.dataframe(style_dataframe(resumen[columnas]), width="stretch", hide_index=True)
+    render_orion_table(resumen[columnas])
     st.markdown("</div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
@@ -2618,7 +2756,7 @@ with tab["0. Día Anterior / Pendiente"]:
                 </div>
                 """, unsafe_allow_html=True)
 
-                st.dataframe(style_dataframe(resumen[columnas]), width="stretch", hide_index=True)
+                render_orion_table(resumen[columnas], group_day=True)
                 st.markdown("</div>", unsafe_allow_html=True)
                 chart_col1, chart_col2 = st.columns(2)
                 with chart_col1:
@@ -2711,8 +2849,8 @@ with tab["3. Conversión"]:
         c6.metric("Venta No Convertida $", money(venta_no_conv))
 
         st.caption("Se calcula semana por semana. Sólo cuenta la venta si ocurrió dentro de la misma Semana ISO de la devolución.")
-        st.dataframe(style_dataframe(conv_res), width="stretch", hide_index=True)
-        st.dataframe(style_dataframe(conv_det), width="stretch", hide_index=True)
+        render_orion_table(conv_res)
+        render_orion_table(conv_det)
 
         fig_conv = go.Figure()
         fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta Pzs"], name="Conversión Dev → Venta Pzs", marker_color="#0047B3", text=conv_res["Conversión Dev → Venta Pzs"], textposition="outside")
@@ -2745,7 +2883,7 @@ with tab["4. Recuperación Económica"]:
         c3.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
 
         st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO.")
-        st.dataframe(style_dataframe(conv_res), width="stretch", hide_index=True)
+        render_orion_table(conv_res)
 
         fig_rec = go.Figure()
         fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta $"], name="Conversión Dev → Venta $", marker_color="#0047B3")
@@ -2780,7 +2918,7 @@ with tab["5. Productividad por Colaborador"]:
         base_colab["Cumplimiento %"] = sdiv(base_colab["Productividad"], base_colab["Meta"]) * 100
         base_colab["Ranking"] = base_colab["Productividad"].rank(method="dense", ascending=False).astype(int)
         base_colab = base_colab.sort_values("Ranking")
-        st.dataframe(style_dataframe(base_colab), width="stretch", hide_index=True)
+        render_orion_table(base_colab)
         st.plotly_chart(px.bar(base_colab.head(30), x="Nombre Real", y="Productividad", color="Tienda",
                                color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"],
                                title="Top colaboradores por productividad"), width="stretch", key="orion_plot_5")
@@ -2796,7 +2934,7 @@ with tab["6. Productividad por Actividad"]:
             "Piezas": [op["Recolección de Muertos"].sum(), op["Acondicionado"].sum(), op["Ubicado"].sum()]
         })
         st.write("Por actividad")
-        st.dataframe(style_dataframe(act_df), width="stretch", hide_index=True)
+        render_orion_table(act_df)
         st.plotly_chart(px.bar(act_df, x="Actividad", y="Piezas", text_auto=True,
                                color="Actividad", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"]),
                         width="stretch", key="orion_plot_6")
@@ -2806,7 +2944,7 @@ with tab["6. Productividad por Actividad"]:
             "Piezas": [total_dev_system(co), op["Muertos"].sum(), op["Cajas"].sum(), op["Probador"].sum()]
         })
         st.write("Por ingresos")
-        st.dataframe(style_dataframe(ingresos_df), width="stretch", hide_index=True)
+        render_orion_table(ingresos_df)
         st.plotly_chart(px.bar(ingresos_df, x="Concepto", y="Piezas", text_auto=True,
                                color="Concepto", color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A","#94A3B8"]),
                         width="stretch", key="orion_plot_7")
@@ -2823,7 +2961,7 @@ with tab["7. Eficiencia Operativa"]:
     ef = ss.copy()
     ef["Ranking"] = ef["% Ubicado"].rank(method="dense", ascending=False).astype(int)
     ef = ef[["Ranking","Tienda","Piezas Ingresadas","Acondicionado","Ubicado","% Acondicionado","% Ubicado","Estado"]].sort_values("Ranking")
-    st.dataframe(style_dataframe(ef), width="stretch", hide_index=True)
+    render_orion_table(ef)
 
 # 8 Cumplimiento Recorridos
 with tab["8. Cumplimiento de Recorridos"]:
@@ -2832,7 +2970,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     rec["Estatus"] = np.where(rec["% Recorridos"] >= 100, "🟢 Cumple", np.where(rec["% Recorridos"] >= 80, "🟡 Atención", "🔴 Bajo"))
     rec["Ranking"] = rec["% Recorridos"].rank(method="dense", ascending=False).astype(int)
     rec = rec[["Ranking","Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos","Estatus"]].sort_values("Ranking")
-    st.dataframe(style_dataframe(rec), width="stretch", hide_index=True)
+    render_orion_table(rec)
     fig = px.bar(rec, x="Tienda", y="Recorridos", color="Estatus", title="Recorridos vs Meta",
                  color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"])
     fig.add_scatter(x=rec["Tienda"], y=rec["Meta Recorridos"], mode="lines+markers", name="Meta", line=dict(color="#EC007C", width=4))
@@ -2859,7 +2997,7 @@ with tab["9. Indicadores Diarios"]:
         diaria["Productividad"] = diaria["Recoleccion"] + diaria["Acondicionado"] + diaria["Ubicado"]
         diaria["Cumplimiento %"] = sdiv(diaria["Productividad"], diaria["Meta"]) * 100
         diaria = diaria.rename(columns={"Ocurrencia":"ID de empleado"})
-        st.dataframe(style_dataframe(diaria), width="stretch", hide_index=True)
+        render_orion_table(diaria)
 
 # 10 Top Modelos
 with tab["10. Top 30 Modelos"]:
@@ -2878,7 +3016,7 @@ with tab["10. Top 30 Modelos"]:
         criterio = st.selectbox("Ranking", ["Mayor recuperación económica","Mayor recuperación %","Mayor venta","Mayor pendiente"])
         col = {"Mayor recuperación económica":"Recuperacion_Dinero","Mayor recuperación %":"Recuperación %","Mayor venta":"Vta_Pzs","Mayor pendiente":"Valor Pendiente"}[criterio]
         top = top.sort_values(col, ascending=False).head(30)
-        st.dataframe(style_dataframe(top), width="stretch", hide_index=True)
+        render_orion_table(top)
         st.plotly_chart(px.bar(top, x="Modelo", y=col, color="Categoria",
                                color_discrete_sequence=["#0047B3","#EC007C","#2F4A8A"], title=criterio),
                         width="stretch", key="orion_plot_9")
@@ -2891,7 +3029,7 @@ with tab["11. Análisis por Categoría"]:
     else:
         cat = co.groupby("Categoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         cat["Conversión %"] = sdiv(cat["Vta_Pzs"], cat["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(cat.sort_values("Recuperacion", ascending=False)), width="stretch", hide_index=True)
+        render_orion_table(cat.sort_values("Recuperacion", ascending=False))
         st.plotly_chart(px.bar(cat.sort_values("Recuperacion", ascending=False), x="Categoria", y="Recuperacion",
                                color_discrete_sequence=["#0047B3"]), width="stretch", key="orion_plot_10")
 
@@ -2903,7 +3041,7 @@ with tab["12. Análisis por Subcategoría"]:
     else:
         sub = co.groupby("Subcategoria", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"), Vta_Pzs=("Piezas Vendidas Validadas","sum"), Recuperacion=("Vta_Imp","sum"))
         sub["Conversión %"] = sdiv(sub["Vta_Pzs"], sub["Dev_Pzs"]) * 100
-        st.dataframe(style_dataframe(sub.sort_values("Recuperacion", ascending=False)), width="stretch", hide_index=True)
+        render_orion_table(sub.sort_values("Recuperacion", ascending=False))
         st.plotly_chart(px.bar(sub.sort_values("Recuperacion", ascending=False).head(30), x="Subcategoria", y="Recuperacion",
                                color_discrete_sequence=["#EC007C"]), width="stretch", key="orion_plot_11")
 
@@ -2921,7 +3059,7 @@ with tab["13. Ranking de Tiendas"]:
     rank["Ranking"] = rank["Score"].rank(method="dense", ascending=False).astype(int)
     rank = rank.rename(columns={"Recuperacion":"Recuperacion"})
     rank = rank[["Ranking","Tienda","Dev_Pzs","Vta_Pzs","Recuperacion","Conversión %","Productividad","Recorridos","Score","Estado"]].sort_values("Ranking")
-    st.dataframe(style_dataframe(rank), width="stretch", hide_index=True)
+    render_orion_table(rank)
 
 
 
@@ -2935,7 +3073,7 @@ with tab["13. Ranking de Tiendas"]:
         idx_colab["Score Recorridos"] = np.minimum((pd.to_numeric(idx_colab["Recorridos"], errors="coerce").fillna(0) / _max_recorridos_colab) * 100, 100) if _max_recorridos_colab else 0
         idx_colab["Índice Integral"] = (idx_colab["Score Productividad"] * 0.75) + (idx_colab["Score Recorridos"] * 0.25)
         idx_colab = idx_colab.sort_values("Índice Integral", ascending=False)
-        st.dataframe(style_dataframe(idx_colab), width="stretch", hide_index=True)
+        render_orion_table(idx_colab)
 # 14 Ranking Colaboradores
 with tab["14. Ranking de Colaboradores"]:
     st.subheader("Ranking de Colaboradores")
@@ -2945,7 +3083,7 @@ with tab["14. Ranking de Colaboradores"]:
         rc = op.groupby(["Ocurrencia","Nombre Real"], as_index=False).agg(Productividad=("Productividad Total","sum"), Recorridos=("Recorridos","sum"))
         rc["Score"] = (rc["Productividad"].rank(pct=True)*85 + rc["Recorridos"].rank(pct=True)*15).round(1)
         rc["Ranking"] = rc["Score"].rank(method="dense", ascending=False).astype(int)
-        st.dataframe(style_dataframe(rc.sort_values("Ranking")), width="stretch", hide_index=True)
+        render_orion_table(rc.sort_values("Ranking"))
 
 # 15 Índice Integral
 with tab["15. Índice Integral"]:
@@ -2957,7 +3095,7 @@ with tab["15. Índice Integral"]:
         "Peso": ["40%", "25%", "15%", "10%", "10%"],
         "Cumplimiento": [prod_pct, hab_pct, ubi_pct, conv_pct, recorr_pct]
     })
-    st.dataframe(style_dataframe(score_break), width="stretch", hide_index=True)
+    render_orion_table(score_break)
 
 # 16 Alertas
 with tab["16. Alertas Inteligentes"]:
@@ -2982,7 +3120,7 @@ with tab["16. Alertas Inteligentes"]:
     if alert_df.empty:
         st.success("Sin alertas críticas.")
     else:
-        st.dataframe(style_dataframe(alert_df), width="stretch", hide_index=True)
+        render_orion_table(alert_df)
 
 
 # 17 Corrección de Nombres
@@ -3048,7 +3186,7 @@ if "18. Configuración de Metas" in tab:
             st.rerun()
 
         st.write("Historial de metas")
-        st.dataframe(style_dataframe(get_historial_metas()), width="stretch", hide_index=True)
+        render_orion_table(get_historial_metas())
 
 # 18 Diagnóstico
 if "19. Diagnóstico de Datos" in tab:
