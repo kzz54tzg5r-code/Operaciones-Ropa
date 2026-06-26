@@ -1,8 +1,15 @@
-# ORION APP13 - Fix Conversión y Recuperación
+# ORION APP13 - Conversión Semanal Dev → Venta Final
 
 Cambios:
-- Conversión y Recuperación Económica ya no quedan vacías si el archivo comercial no trae Semana ISO.
-- Si existe Semana ISO, respeta la lógica semanal.
-- Si no existe Semana ISO, calcula acumulado disponible como Semana 0.
-- Reconoce alias de columnas: Dev Pzs, Ventas Netas Pzs, Vta_Imp, Costo Dev, Valor Recuperado, Valor Pendiente.
-- Estas pestañas siguen usando todas las tiendas.
+- Indicador Conversión Semanal Dev → Venta.
+- Regla: devolución sólo cuenta si la venta ocurrió en la misma Semana ISO.
+- Cálculo amarrado a Tienda + ID/Modelo + Color + Talla + Semana ISO.
+- Si se consultan varias semanas, calcula semana por semana y luego suma.
+- KPIs:
+  Dev Pzs Semana
+  Conversión Dev → Venta Pzs
+  Conversión Dev → Venta $
+  % Conversión Semanal Dev → Venta
+  Pendiente por Convertir Pzs
+- Recuperación Económica usa la misma lógica semanal.
+- Corrección de formato: Conv. Pzs y Conv. $ ya no se muestran como porcentaje.

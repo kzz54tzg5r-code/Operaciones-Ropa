@@ -741,7 +741,7 @@ def render_orion_table(df, group_day=False, max_rows=None):
             pass
         col_s = str(col)
         if isinstance(v, (int, float, np.integer, np.floating)):
-            if "%" in col_s or col_s.strip().lower().startswith("%") or "cumpl" in col_s.lower() or "conv." in col_s.lower():
+            if "%" in col_s or col_s.strip().lower().startswith("%") or "cumpl" in col_s.lower():
                 return f"{float(v):,.1f}%"
             return f"{float(v):,.0f}"
         return str(v)
@@ -2415,15 +2415,20 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
 
 
 
+
 def conversion_semanal_dev_venta(codf):
     """
-    Conversión Semanal Dev → Venta.
+    Indicador: Conversión Semanal Dev → Venta
 
-    Regla:
-    - Si existe Semana ISO, calcula semana por semana.
-    - Si el archivo comercial no trae Semana ISO, no deja la pestaña vacía:
-      calcula el acumulado disponible y lo marca como Semana 0.
-    - Usa todas las tiendas; esta pestaña NO se filtra por tiendas del proyecto.
+    Lógica:
+    Una devolución sólo cuenta como recuperada si la venta ocurrió dentro de la
+    misma Semana ISO en la que se devolvió.
+
+    El cálculo siempre se amarra a:
+    Tienda + ID/Modelo + Color + Talla + Semana ISO.
+
+    Si se consulta más de una semana o un mes, NO mezcla periodos:
+    calcula semana por semana y después suma resultados.
     """
     cols = [
         "Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla",
@@ -2442,52 +2447,71 @@ def conversion_semanal_dev_venta(codf):
         for p in posibles:
             if p in d.columns:
                 return p
-            if p.lower() in mapa:
-                return mapa[p.lower()]
+            key = str(p).strip().lower()
+            if key in mapa:
+                return mapa[key]
         return None
 
-    # Normalizar columnas numéricas con alias comunes
+    # Aliases numéricos
     alias_num = {
-        "Dev_Pzs": ["Dev_Pzs", "Dev Pzs", "Dev_pzs", "Devoluciones", "Piezas Devueltas", "Pzs Dev", "Dev"],
-        "Vta_Pzs": ["Vta_Pzs", "Ventas Netas Pzs", "Vta Pzs", "Venta Pzs", "Piezas Vendidas", "Vta_pzs"],
-        "Vta_Imp": ["Vta_Imp", "Venta $", "Vta Imp", "Venta Importe", "Importe Venta", "Ventas Netas $", "Vta_Importe"],
-        "Costo_Dev": ["Costo_Dev", "Costo Dev", "Costo Devolución", "Costo Devolucion", "Costo_Dev $", "Costo"],
+        "Dev_Pzs": [
+            "Dev_Pzs", "Dev Pzs", "Dev_pzs", "Dev pzs", "Devoluciones",
+            "Piezas Devueltas", "Pzs Dev", "Dev", "Devolución Pzs", "Devolucion Pzs"
+        ],
+        "Vta_Pzs": [
+            "Vta_Pzs", "Ventas Netas Pzs", "Vta Pzs", "Venta Pzs",
+            "Piezas Vendidas", "Vta_pzs", "Venta Neta Pzs", "Pzs Venta"
+        ],
+        "Vta_Imp": [
+            "Vta_Imp", "Venta $", "Vta Imp", "Venta Importe", "Importe Venta",
+            "Ventas Netas $", "Vta_Importe", "Venta Recuperada $", "Imp Venta"
+        ],
+        "Costo_Dev": [
+            "Costo_Dev", "Costo Dev", "Costo Devolución", "Costo Devolucion",
+            "Costo_Dev $", "Costo", "Costo Dev $", "Valor Devolución", "Valor Devolucion"
+        ],
     }
 
     for canon, aliases in alias_num.items():
         col = pick(aliases)
         if col is not None:
             d[canon] = pd.to_numeric(d[col], errors="coerce").fillna(0)
-        elif canon not in d.columns:
-            d[canon] = 0
-        else:
+        elif canon in d.columns:
             d[canon] = pd.to_numeric(d[canon], errors="coerce").fillna(0)
+        else:
+            d[canon] = 0
 
-    # Si no viene importe de venta, usar recuperación/valor recuperado como respaldo
+    # Respaldos para importes
     if d["Vta_Imp"].sum() == 0:
-        col_rec = pick(["Valor Recuperado", "Recuperacion", "Recuperación", "Venta Recuperada", "Importe Recuperado"])
+        col_rec = pick(["Valor Recuperado", "Recuperacion", "Recuperación", "Importe Recuperado"])
         if col_rec is not None:
             d["Vta_Imp"] = pd.to_numeric(d[col_rec], errors="coerce").fillna(0)
 
-    # Si no viene costo dev, usar valor pendiente + venta recuperada o costo disponible
     if d["Costo_Dev"].sum() == 0:
         col_pend = pick(["Valor Pendiente", "Pendiente", "Venta No Convertida $"])
         if col_pend is not None:
             d["Costo_Dev"] = pd.to_numeric(d[col_pend], errors="coerce").fillna(0) + d["Vta_Imp"]
 
-    # Semana
-    col_sem = pick(["Semana ISO", "Semana_ISO", "Semana", "SemanaISO", "Sem", "Semana Iso"])
+    # Semana ISO: requerida para respetar la regla semanal.
+    col_sem = pick(["Semana ISO", "Semana_ISO", "Semana", "SemanaISO", "Sem", "Semana Iso", "Año Semana", "Anio Semana"])
+    col_fecha = pick([
+        "Fecha Día", "Fecha", "Fecha_Origen", "Fecha Origen", "Fecha Devolución",
+        "Fecha Devolucion", "Fecha Dev", "Fecha Venta"
+    ])
+
     if col_sem is not None:
         d["Semana ISO"] = pd.to_numeric(d[col_sem], errors="coerce")
+    elif col_fecha is not None:
+        d["Semana ISO"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.isocalendar().week.astype("Float64")
     else:
-        col_fecha = pick(["Fecha Día", "Fecha", "Fecha_Origen", "Fecha Origen", "Fecha Devolución", "Fecha Devolucion"])
-        if col_fecha is not None:
-            d["Semana ISO"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.isocalendar().week.astype("Float64")
-        else:
-            # Fallback para no dejar Conversión/Recuperación vacías cuando el comercial no trae semana.
-            d["Semana ISO"] = 0
+        # Sin semana/fecha no se puede validar "misma semana".
+        # Se deja vacío para evitar mezclar todo el mes o todo el archivo.
+        return pd.DataFrame(columns=cols)
 
-    d["Semana ISO"] = pd.to_numeric(d["Semana ISO"], errors="coerce").fillna(0).astype(int)
+    d = d.dropna(subset=["Semana ISO"]).copy()
+    if d.empty:
+        return pd.DataFrame(columns=cols)
+    d["Semana ISO"] = d["Semana ISO"].astype(int)
 
     col_tienda = pick(["Tienda", "Sucursal"])
     col_modelo = pick(["ID", "Id", "id", "Modelo", "modelo", "ID Modelo", "Id Modelo", "Id Art", "ID Art", "Artículo", "Articulo"])
@@ -2499,7 +2523,6 @@ def conversion_semanal_dev_venta(codf):
     d["Color"] = d[col_color].astype(str).str.strip() if col_color else "Sin color"
     d["Talla"] = d[col_talla].astype(str).str.strip() if col_talla else "Sin talla"
 
-    # Mantener filas con alguna información útil
     d = d[(d["Dev_Pzs"] != 0) | (d["Vta_Pzs"] != 0) | (d["Vta_Imp"] != 0) | (d["Costo_Dev"] != 0)].copy()
     if d.empty:
         return pd.DataFrame(columns=cols)
@@ -2515,14 +2538,33 @@ def conversion_semanal_dev_venta(codf):
         }
     )
 
-    det["Conversión Dev → Venta Pzs"] = np.minimum(det["Dev Pzs Semana"], det["Venta Reportada Misma Semana Pzs"])
+    # Conversión válida: venta de la misma semana, sin exceder la devolución de esa misma semana.
+    det["Conversión Dev → Venta Pzs"] = np.minimum(
+        det["Dev Pzs Semana"],
+        det["Venta Reportada Misma Semana Pzs"]
+    )
+
+    # Importe vendido únicamente de la parte convertida dentro de la misma semana.
     ratio = sdiv(det["Conversión Dev → Venta Pzs"], det["Venta Reportada Misma Semana Pzs"])
     det["Conversión Dev → Venta $"] = det["Venta Reportada Misma Semana $"] * ratio
-    det["% Conversión Semanal Dev → Venta"] = sdiv(det["Conversión Dev → Venta Pzs"], det["Dev Pzs Semana"]) * 100
-    det["Pendiente por Convertir Pzs"] = (det["Dev Pzs Semana"] - det["Conversión Dev → Venta Pzs"]).clip(lower=0)
-    det["Venta No Convertida $"] = (det["Costo Dev Semana $"] - det["Conversión Dev → Venta $"]).clip(lower=0)
 
-    return det[cols].sort_values(["Semana ISO", "Tienda", "% Conversión Semanal Dev → Venta"], ascending=[False, True, False])
+    det["% Conversión Semanal Dev → Venta"] = sdiv(
+        det["Conversión Dev → Venta Pzs"],
+        det["Dev Pzs Semana"]
+    ) * 100
+
+    det["Pendiente por Convertir Pzs"] = (
+        det["Dev Pzs Semana"] - det["Conversión Dev → Venta Pzs"]
+    ).clip(lower=0)
+
+    det["Venta No Convertida $"] = (
+        det["Costo Dev Semana $"] - det["Conversión Dev → Venta $"]
+    ).clip(lower=0)
+
+    return det[cols].sort_values(
+        ["Semana ISO", "Tienda", "% Conversión Semanal Dev → Venta"],
+        ascending=[False, True, False]
+    )
 
 
 def resumen_conversion_semanal(conv_detalle):
@@ -2863,77 +2905,115 @@ with tab["2. Reporte Mensual"]:
         st.info("No hay meses disponibles con los filtros seleccionados.")
 
 
+
 # 3 Conversión
 with tab["3. Conversión"]:
     st.subheader("Conversión Semanal Dev → Venta")
 
-    conv_det = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
-    conv_res = resumen_conversion_semanal(conv_det)
+    conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
 
-    if conv_res.empty:
-        st.info("No hay información de conversión. Revisa que el archivo tenga columnas Dev_Pzs/Vta_Pzs/Vta_Imp/Costo_Dev o sus equivalentes.")
+    if conv_det_all.empty:
+        st.info("No hay información de conversión semanal. Para calcularla se requiere Semana ISO o una fecha que permita derivarla, además de Dev Pzs, Venta Pzs, Venta $ y Costo Dev.")
     else:
-        dev_pzs_sem = conv_res["Dev Pzs Semana"].sum()
-        conv_pzs = conv_res["Conversión Dev → Venta Pzs"].sum()
-        conv_pesos = conv_res["Conversión Dev → Venta $"].sum()
-        pct_conv = pct(conv_pzs, dev_pzs_sem)
-        pend_pzs = conv_res["Pendiente por Convertir Pzs"].sum()
-        venta_no_conv = conv_res["Venta No Convertida $"].sum()
+        semanas_conv = sorted(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").dropna().astype(int).unique().tolist())
+        modo_conv = st.radio("Periodo a consultar", ["Todas", "Semana", "Varias semanas"], horizontal=True, key="conv_periodo_tipo")
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Dev Pzs Semana", n0(dev_pzs_sem))
-        c2.metric("Conversión Dev → Venta Pzs", n0(conv_pzs))
-        c3.metric("Conversión Dev → Venta $", money(conv_pesos))
+        conv_det = conv_det_all.copy()
+        if modo_conv == "Semana":
+            sem_sel = st.selectbox("Semana ISO", semanas_conv, index=len(semanas_conv)-1, key="conv_semana_sel")
+            conv_det = conv_det[conv_det["Semana ISO"].astype(int) == int(sem_sel)]
+        elif modo_conv == "Varias semanas":
+            default_sems = semanas_conv[-4:] if len(semanas_conv) >= 4 else semanas_conv
+            sems_sel = st.multiselect("Semanas ISO", semanas_conv, default=default_sems, key="conv_semanas_sel")
+            if sems_sel:
+                conv_det = conv_det[conv_det["Semana ISO"].astype(int).isin([int(x) for x in sems_sel])]
 
-        c4, c5, c6 = st.columns(3)
-        c4.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
-        c5.metric("Pendiente por Convertir Pzs", n0(pend_pzs))
-        c6.metric("Venta No Convertida $", money(venta_no_conv))
+        conv_res = resumen_conversion_semanal(conv_det)
 
-        st.caption("Se calcula semana por semana. Sólo cuenta la venta si ocurrió dentro de la misma Semana ISO de la devolución.")
-        render_orion_table(conv_res)
-        render_orion_table(conv_det)
+        if conv_res.empty:
+            st.info("No hay información de conversión con el periodo seleccionado.")
+        else:
+            dev_pzs_sem = conv_res["Dev Pzs Semana"].sum()
+            conv_pzs = conv_res["Conversión Dev → Venta Pzs"].sum()
+            conv_pesos = conv_res["Conversión Dev → Venta $"].sum()
+            pct_conv = pct(conv_pzs, dev_pzs_sem)
+            pend_pzs = conv_res["Pendiente por Convertir Pzs"].sum()
+            venta_no_conv = conv_res["Venta No Convertida $"].sum()
 
-        fig_conv = go.Figure()
-        fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta Pzs"], name="Conversión Dev → Venta Pzs", marker_color="#0047B3", text=conv_res["Conversión Dev → Venta Pzs"], textposition="outside")
-        fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Pendiente por Convertir Pzs"], name="Pendiente por Convertir Pzs", marker_color="#EC007C", text=conv_res["Pendiente por Convertir Pzs"], textposition="outside")
-        fig_conv.update_layout(title="Conversión Semanal Dev → Venta por Tienda", barmode="group", height=430, legend=dict(orientation="h"))
-        st.plotly_chart(fig_conv, width="stretch", config={"responsive": True, "displayModeBar": True}, key="conv_semanal_dev_venta_v2")
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Dev Pzs Semana", n0(dev_pzs_sem))
+            c2.metric("Conversión Dev → Venta Pzs", n0(conv_pzs))
+            c3.metric("Conversión Dev → Venta $", money(conv_pesos))
 
-        export_buttons("conversion_semanal_dev_venta", {"Resumen Semana Tienda": conv_res, "Detalle Modelo Color Talla": conv_det})
+            c4, c5 = st.columns(2)
+            c4.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
+            c5.metric("Pendiente por Convertir Pzs", n0(pend_pzs))
+
+            st.caption("Regla: si una devolución ocurre en semana 25, sólo cuenta como conversión si la venta también ocurrió en semana 25. Si se vende en semana 26, no cuenta para semana 25.")
+            st.caption("El cálculo está amarrado a Tienda + ID/Modelo + Color + Talla + Semana ISO. Si consultas varias semanas, se calcula semana por semana y luego se suma.")
+
+            render_orion_table(conv_res)
+            render_orion_table(conv_det)
+
+            fig_conv = go.Figure()
+            fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta Pzs"], name="Conversión Dev → Venta Pzs", marker_color="#0047B3", text=conv_res["Conversión Dev → Venta Pzs"], textposition="outside")
+            fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Pendiente por Convertir Pzs"], name="Pendiente por Convertir Pzs", marker_color="#EC007C", text=conv_res["Pendiente por Convertir Pzs"], textposition="outside")
+            fig_conv.update_layout(title="Conversión Semanal Dev → Venta por Tienda", barmode="group", height=430, legend=dict(orientation="h"))
+            st.plotly_chart(fig_conv, width="stretch", config={"responsive": True, "displayModeBar": True}, key="conv_semanal_dev_venta_final")
+
+            export_buttons("conversion_semanal_dev_venta", {"Resumen Semana Tienda": conv_res, "Detalle Modelo Color Talla": conv_det})
+
 
 
 # 4 Recuperación Económica
 with tab["4. Recuperación Económica"]:
     st.subheader("Recuperación Económica Semanal Dev → Venta")
 
-    conv_det = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
-    conv_res = resumen_conversion_semanal(conv_det)
+    conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
 
-    if conv_res.empty:
-        st.info("No hay información de recuperación económica. Revisa que el archivo tenga columnas comerciales de devolución, venta e importe.")
+    if conv_det_all.empty:
+        st.info("No hay información de recuperación económica semanal. Para calcularla se requiere Semana ISO o fecha, además de columnas comerciales de devolución y venta.")
     else:
-        venta_recuperada = conv_res["Conversión Dev → Venta $"].sum()
-        venta_no_convertida = conv_res["Venta No Convertida $"].sum()
-        conv_pzs = conv_res["Conversión Dev → Venta Pzs"].sum()
-        dev_pzs_sem = conv_res["Dev Pzs Semana"].sum()
-        pct_conv = pct(conv_pzs, dev_pzs_sem)
+        semanas_rec = sorted(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").dropna().astype(int).unique().tolist())
+        modo_rec = st.radio("Periodo a consultar", ["Todas", "Semana", "Varias semanas"], horizontal=True, key="rec_periodo_tipo")
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Conversión Dev → Venta $", money(venta_recuperada))
-        c2.metric("Venta No Convertida $", money(venta_no_convertida))
-        c3.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
+        conv_det = conv_det_all.copy()
+        if modo_rec == "Semana":
+            sem_sel = st.selectbox("Semana ISO", semanas_rec, index=len(semanas_rec)-1, key="rec_semana_sel")
+            conv_det = conv_det[conv_det["Semana ISO"].astype(int) == int(sem_sel)]
+        elif modo_rec == "Varias semanas":
+            default_sems = semanas_rec[-4:] if len(semanas_rec) >= 4 else semanas_rec
+            sems_sel = st.multiselect("Semanas ISO", semanas_rec, default=default_sems, key="rec_semanas_sel")
+            if sems_sel:
+                conv_det = conv_det[conv_det["Semana ISO"].astype(int).isin([int(x) for x in sems_sel])]
 
-        st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO.")
-        render_orion_table(conv_res)
+        conv_res = resumen_conversion_semanal(conv_det)
 
-        fig_rec = go.Figure()
-        fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta $"], name="Conversión Dev → Venta $", marker_color="#0047B3")
-        fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Venta No Convertida $"], name="Venta No Convertida $", marker_color="#EC007C")
-        fig_rec.update_layout(title="Conversión Dev → Venta $ vs Venta No Convertida $", barmode="group", height=430, legend=dict(orientation="h"))
-        st.plotly_chart(fig_rec, width="stretch", config={"responsive": True, "displayModeBar": True}, key="recuperacion_sem_dev_venta_v2")
+        if conv_res.empty:
+            st.info("No hay información de recuperación económica con el periodo seleccionado.")
+        else:
+            venta_recuperada = conv_res["Conversión Dev → Venta $"].sum()
+            venta_no_convertida = conv_res["Venta No Convertida $"].sum()
+            conv_pzs = conv_res["Conversión Dev → Venta Pzs"].sum()
+            dev_pzs_sem = conv_res["Dev Pzs Semana"].sum()
+            pct_conv = pct(conv_pzs, dev_pzs_sem)
 
-        export_buttons("recuperacion_economica_semanal", {"Resumen Recuperación": conv_res, "Detalle Modelo Color Talla": conv_det})
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Conversión Dev → Venta $", money(venta_recuperada))
+            c2.metric("Venta No Convertida $", money(venta_no_convertida))
+            c3.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
+
+            st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO.")
+            render_orion_table(conv_res)
+
+            fig_rec = go.Figure()
+            fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta $"], name="Conversión Dev → Venta $", marker_color="#0047B3")
+            fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Venta No Convertida $"], name="Venta No Convertida $", marker_color="#EC007C")
+            fig_rec.update_layout(title="Conversión Dev → Venta $ vs Venta No Convertida $", barmode="group", height=430, legend=dict(orientation="h"))
+            st.plotly_chart(fig_rec, width="stretch", config={"responsive": True, "displayModeBar": True}, key="recuperacion_sem_dev_venta_final")
+
+            export_buttons("recuperacion_economica_semanal", {"Resumen Recuperación": conv_res, "Detalle Modelo Color Talla": conv_det})
+
 
 # 5 Productividad Colaborador
 with tab["5. Productividad por Colaborador"]:
