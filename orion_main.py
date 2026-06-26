@@ -202,6 +202,99 @@ thead tr th, thead tr th.blank, thead tr th.col_heading{
     text-align:center !important;
 }
 
+
+/* ===== Diseño global de tablas ORION ===== */
+/* Encabezado agrupador superior: azul con separadores blancos */
+.orion-table-group-header{
+    display:grid;
+    grid-template-columns: 120px 640px 1fr;
+    gap:0;
+    margin-top:8px;
+    border-radius:6px 6px 0 0;
+    overflow:hidden;
+    border:2px solid #FFFFFF;
+    border-bottom:none;
+}
+.orion-table-group-header div{
+    background:#2F4A8A !important;
+    color:#FFFFFF !important;
+    font-weight:950 !important;
+    text-align:center !important;
+    padding:7px 5px !important;
+    font-size:12px !important;
+    letter-spacing:.3px !important;
+    border-right:2px solid #FFFFFF !important;
+}
+.orion-table-group-header div:last-child{
+    border-right:none !important;
+}
+
+/* Encabezados de columnas: rosa */
+[data-testid="stDataFrame"] div[role="columnheader"]{
+    background-color:#EC007C !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border-right:2px solid #FFFFFF !important;
+    border-bottom:2px solid #FFFFFF !important;
+    font-size:12px !important;
+    padding:4px 5px !important;
+    line-height:1.05 !important;
+    text-align:center !important;
+    white-space:normal !important;
+}
+[data-testid="stDataFrame"] div[role="gridcell"]{
+    border-right:2px solid #FFFFFF !important;
+    border-bottom:2px solid #FFFFFF !important;
+    background-color:#FFFFFF !important;
+    color:#14172F !important;
+    font-size:12px !important;
+    padding:4px 5px !important;
+    line-height:1.05 !important;
+}
+[data-testid="stDataFrame"]{
+    border:1px solid #E5E7EB !important;
+    border-radius:8px !important;
+    overflow:hidden !important;
+}
+
+/* Tablas generadas con pandas Styler */
+thead tr th, thead tr th.blank, thead tr th.col_heading{
+    background-color:#EC007C !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border:2px solid #FFFFFF !important;
+    text-align:center !important;
+    vertical-align:middle !important;
+    font-size:11px !important;
+    padding:4px 5px !important;
+    line-height:1.05 !important;
+}
+tbody tr td{
+    border:2px solid #FFFFFF !important;
+    font-size:12px !important;
+    padding:4px 5px !important;
+}
+tbody tr:nth-child(even) td{
+    background:#F8FAFC !important;
+}
+
+/* En tarjetas/secciones conservar encabezado agrupador azul y columnas rosas */
+.boceto-section table th{
+    background:#EC007C !important;
+    color:#FFFFFF !important;
+    border:2px solid #FFFFFF !important;
+}
+
+@media(max-width:900px){
+    .orion-table-group-header{
+        grid-template-columns:90px 420px 1fr;
+    }
+    .orion-table-group-header div{
+        font-size:10px !important;
+        padding:4px 2px !important;
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -483,14 +576,13 @@ def compact_display_df(df):
     d.columns = [compact_column_name(c) for c in d.columns]
     return d
 
+
 def style_dataframe(df):
     if not isinstance(df, pd.DataFrame) or df.empty:
         return df
 
-    d = compact_display_df(df)
+    d = compact_display_df(df) if "compact_display_df" in globals() else df.copy()
 
-    # Sólo columnas explícitamente porcentuales se formatean como %.
-    # Acondicionado se mantiene como número, no porcentaje.
     percent_cols = [
         c for c in d.columns
         if "%" in str(c)
@@ -506,15 +598,15 @@ def style_dataframe(df):
             {
                 "selector": "th",
                 "props": [
-                    ("background-color", "#2F4A8A"),
+                    ("background-color", "#EC007C"),
                     ("color", "white"),
                     ("font-weight", "900"),
-                    ("border", "1px solid #2F4A8A"),
+                    ("border", "2px solid #FFFFFF"),
                     ("text-align", "center"),
                     ("vertical-align", "middle"),
                     ("font-size", "11px"),
                     ("line-height", "1.05"),
-                    ("padding", "3px 4px"),
+                    ("padding", "4px 5px"),
                     ("white-space", "normal"),
                     ("max-width", "95px"),
                     ("word-break", "break-word"),
@@ -523,13 +615,13 @@ def style_dataframe(df):
             {
                 "selector": "td",
                 "props": [
-                    ("border", "1px solid #E5E7EB"),
+                    ("border", "2px solid #FFFFFF"),
                     ("background-color", "#FFFFFF"),
                     ("color", "#14172F"),
                     ("text-align", "center"),
                     ("vertical-align", "middle"),
                     ("font-size", "12px"),
-                    ("padding", "3px 4px"),
+                    ("padding", "4px 5px"),
                     ("line-height", "1.05"),
                     ("white-space", "nowrap"),
                     ("max-width", "95px"),
@@ -539,7 +631,15 @@ def style_dataframe(df):
             },
             {
                 "selector": "tbody tr:nth-child(even) td",
-                "props": [("background-color", "#FCFCFD")],
+                "props": [("background-color", "#F8FAFC")],
+            },
+            {
+                "selector": "table",
+                "props": [
+                    ("border-collapse", "separate"),
+                    ("border-spacing", "0"),
+                    ("background-color", "#FFFFFF"),
+                ],
             },
         ])
         .format(fmt)
@@ -586,7 +686,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
         story.append(Paragraph(title, styles["Heading3"]))
         table = Table(prep(df), repeatRows=1)
         table.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),
+            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#EC007C")),
             ("TEXTCOLOR",(0,0),(-1,0),colors.white),
             ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
             ("FONTSIZE",(0,0),(-1,-1),6.2),
@@ -678,7 +778,7 @@ def pdf_generico_bytes(titulo, hojas):
         story.append(Paragraph(str(nombre), styles["Heading3"]))
         table = Table(prep(df), repeatRows=1)
         table.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),
+            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#EC007C")),
             ("TEXTCOLOR",(0,0),(-1,0),colors.white),
             ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
             ("FONTSIZE",(0,0),(-1,-1),7),

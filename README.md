@@ -1,12 +1,8 @@
-# ORION APP13 - Base usuario final estable
+# ORION APP13 - Tablas rosas con separadores blancos
 
-Base usada: ORION_APP13_RESTAURA_RESUMEN_4_SEMANAS(1).zip
-
-Cambios aplicados de forma controlada:
-- Helper único de ingresos para Día Anterior / Reporte Semanal / Reporte Mensual / Resumen Ejecutivo.
-- Ingresos = Dev_Pzs + Muertos Piso Venta + Cajas + Probador.
-- Muertos/Cajas/Probador sólo cuentan con Actividad Realizada = Recolección de muertos y Motivo de ingreso correspondiente.
-- Resumen Ejecutivo últimas 4 semanas filtrado por tiendas del proyecto.
-- Acondicionado muestra % contra ingresos.
-- Ubicado muestra % contra ingresos.
-- Encabezados azules en tablas y formato compacto.
+Cambios:
+- Encabezados de columnas en rosa (#EC007C).
+- Encabezados agrupadores superiores en azul (#2F4A8A).
+- Separadores blancos entre columnas y filas.
+- Diseño aplicado globalmente a tablas de todas las pestañas.
+- Ajuste también para tablas generadas con pandas Styler.
