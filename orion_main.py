@@ -941,51 +941,24 @@ def guardar_datos(op, co, daily, diag, filename):
     set_estado("diagnostico", json.dumps(diag, ensure_ascii=False, default=str))
 
 
-
 def tiendas_proyecto_activas():
-    """
-    Tiendas seleccionadas del proyecto Cambios y Muertos.
-    Lee varias llaves para ser compatible con versiones anteriores.
-    """
-    posibles_keys = [
-        "tiendas_proyecto_cambios_muertos",
-        "project_stores",
-        "tiendas_proyecto",
-        "stores_proyecto"
-    ]
-
-    for k in posibles_keys:
-        try:
-            if "get_estado" in globals():
-                raw = get_estado(k, "")
-                if raw:
-                    data = json.loads(raw)
-                    if isinstance(data, list) and data:
-                        return [str(x).strip() for x in data if str(x).strip()]
-        except Exception:
-            pass
-
     try:
         if "project_stores" in globals() and project_stores:
-            return [str(x).strip() for x in project_stores if str(x).strip()]
+            return [str(t) for t in project_stores]
     except Exception:
         pass
-
     try:
-        if "st" in globals() and "cfg_tiendas_proyecto_cambios_muertos" in st.session_state:
-            data = st.session_state.get("cfg_tiendas_proyecto_cambios_muertos", [])
-            if data:
-                return [str(x).strip() for x in data if str(x).strip()]
+        if "get_project_stores" in globals():
+            return [str(t) for t in get_project_stores([])]
     except Exception:
         pass
-
     return []
 
 def aplicar_filtro_proyecto(df):
     tiendas = tiendas_proyecto_activas()
     if df is None or df.empty or not tiendas or "Tienda" not in df.columns:
         return df
-    return df[df["Tienda"].astype(str).str.strip().isin(tiendas)].copy()
+    return df[df["Tienda"].astype(str).isin(tiendas)].copy()
 
 def cargar_mapa_plantilla_colaboradores():
     mapa = {}
@@ -1864,59 +1837,23 @@ score_integral = round(
 # ==========================================================
 # SCORE CARDS
 # ==========================================================
-
 def render_wow_cards(op_source):
-    """
-    Resumen Ejecutivo WoW.
-    IMPORTANTE: ingresos/acondicionado/ubicado/recorridos se calculan únicamente
-    con las tiendas seleccionadas del proyecto Cambios y Muertos.
-    """
-    if op_source is None or op_source.empty:
+    if op_source is None or op_source.empty or "Semana ISO" not in op_source.columns:
         return
-
-    tmp = asegurar_acondicionado_alias(op_source).copy()
-
-    # Filtro estricto por tiendas del proyecto
-    tiendas = tiendas_proyecto_activas()
-    if tiendas and "Tienda" in tmp.columns:
-        tmp = tmp[tmp["Tienda"].astype(str).str.strip().isin(tiendas)].copy()
-
-    if tmp.empty or "Semana ISO" not in tmp.columns:
-        st.info("No hay información del Resumen Ejecutivo para las tiendas seleccionadas del proyecto.")
-        return
-
-    for c in ["Productividad Total", "Acondicionado", "Ubicado", "Recorridos"]:
-        if c not in tmp.columns:
-            tmp[c] = 0
-        tmp[c] = pd.to_numeric(tmp[c], errors="coerce").fillna(0)
-
-    sem = (
-        tmp.groupby("Semana ISO", as_index=False)
-        .agg(
-            Piezas=("Productividad Total", "sum"),
-            Acondicionado=("Acondicionado", "sum"),
-            Ubicado=("Ubicado", "sum"),
-            Recorridos=("Recorridos", "sum"),
-        )
-        .sort_values("Semana ISO")
-        .tail(4)
-    )
-
+    tmp = asegurar_acondicionado_alias(op_source)
+    sem = tmp.groupby("Semana ISO", as_index=False).agg(Piezas=("Productividad Total","sum"), Acondicionado=("Acondicionado","sum"), Ubicado=("Ubicado","sum"), Recorridos=("Recorridos","sum")).sort_values("Semana ISO").tail(4)
     if sem.empty:
         return
-
     html = '<div class="wow-title">📊 Resumen Ejecutivo</div><div class="wow-row">'
     prev = None
-
     for _, r in sem.iterrows():
         def v(col):
             if prev is None or float(prev[col]) == 0:
                 return '<span class="wow-flat">—</span>'
-            pctv = (float(r[col]) - float(prev[col])) / float(prev[col]) * 100
+            pctv = (float(r[col])-float(prev[col]))/float(prev[col])*100
             cls = "wow-up" if pctv >= 0 else "wow-down"
             arrow = "▲" if pctv >= 0 else "▼"
             return f'<span class="{cls}">{arrow} {abs(pctv):.1f}%</span>'
-
         html += f'<div class="wow-card"><div class="wow-head">Sem {int(r["Semana ISO"])}</div><div class="wow-body">'
         html += f'<div class="wow-line"><div class="wow-lbl">INGRESOS</div><div class="wow-num">{float(r["Piezas"]):,.0f}</div><div class="wow-var">{v("Piezas")}</div></div>'
         html += f'<div class="wow-line"><div class="wow-lbl">ACONDICIONADO</div><div class="wow-num">{float(r["Acondicionado"]):,.0f}</div><div class="wow-var">{v("Acondicionado")}</div></div>'
@@ -1924,9 +1861,11 @@ def render_wow_cards(op_source):
         html += f'<div class="wow-line"><div class="wow-lbl">RECORRIDOS</div><div class="wow-num">{float(r["Recorridos"]):,.0f}</div><div class="wow-var">—</div></div>'
         html += '</div></div>'
         prev = r
-
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
+
+render_wow_cards(aplicar_filtro_proyecto(op_all))
+
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con lógica Día Anterior, respetando filtros globales."""
