@@ -2414,11 +2414,16 @@ def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
     exportar_pestana_pdf(periodo_nombre, {"Resumen General": resumen_general, "Detalle por Tienda": resumen[columnas]})
 
 
+
 def conversion_semanal_dev_venta(codf):
     """
     Conversión Semanal Dev → Venta.
-    Cuenta sólo ventas dentro de la misma Semana ISO de la devolución.
-    No mezcla semanas. Amarre: Tienda + ID/Modelo + Color + Talla + Semana ISO.
+
+    Regla:
+    - Si existe Semana ISO, calcula semana por semana.
+    - Si el archivo comercial no trae Semana ISO, no deja la pestaña vacía:
+      calcula el acumulado disponible y lo marca como Semana 0.
+    - Usa todas las tiendas; esta pestaña NO se filtra por tiendas del proyecto.
     """
     cols = [
         "Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla",
@@ -2426,15 +2431,11 @@ def conversion_semanal_dev_venta(codf):
         "Conversión Dev → Venta $", "% Conversión Semanal Dev → Venta",
         "Pendiente por Convertir Pzs", "Venta No Convertida $"
     ]
+
     if codf is None or codf.empty:
         return pd.DataFrame(columns=cols)
 
     d = codf.copy()
-
-    for c in ["Dev_Pzs", "Vta_Pzs", "Vta_Imp", "Costo_Dev"]:
-        if c not in d.columns:
-            d[c] = 0
-        d[c] = pd.to_numeric(d[c], errors="coerce").fillna(0)
 
     def pick(posibles):
         mapa = {str(c).strip().lower(): c for c in d.columns}
@@ -2445,22 +2446,63 @@ def conversion_semanal_dev_venta(codf):
                 return mapa[p.lower()]
         return None
 
-    col_sem = pick(["Semana ISO", "Semana_ISO", "Semana", "SemanaISO"])
+    # Normalizar columnas numéricas con alias comunes
+    alias_num = {
+        "Dev_Pzs": ["Dev_Pzs", "Dev Pzs", "Dev_pzs", "Devoluciones", "Piezas Devueltas", "Pzs Dev", "Dev"],
+        "Vta_Pzs": ["Vta_Pzs", "Ventas Netas Pzs", "Vta Pzs", "Venta Pzs", "Piezas Vendidas", "Vta_pzs"],
+        "Vta_Imp": ["Vta_Imp", "Venta $", "Vta Imp", "Venta Importe", "Importe Venta", "Ventas Netas $", "Vta_Importe"],
+        "Costo_Dev": ["Costo_Dev", "Costo Dev", "Costo Devolución", "Costo Devolucion", "Costo_Dev $", "Costo"],
+    }
+
+    for canon, aliases in alias_num.items():
+        col = pick(aliases)
+        if col is not None:
+            d[canon] = pd.to_numeric(d[col], errors="coerce").fillna(0)
+        elif canon not in d.columns:
+            d[canon] = 0
+        else:
+            d[canon] = pd.to_numeric(d[canon], errors="coerce").fillna(0)
+
+    # Si no viene importe de venta, usar recuperación/valor recuperado como respaldo
+    if d["Vta_Imp"].sum() == 0:
+        col_rec = pick(["Valor Recuperado", "Recuperacion", "Recuperación", "Venta Recuperada", "Importe Recuperado"])
+        if col_rec is not None:
+            d["Vta_Imp"] = pd.to_numeric(d[col_rec], errors="coerce").fillna(0)
+
+    # Si no viene costo dev, usar valor pendiente + venta recuperada o costo disponible
+    if d["Costo_Dev"].sum() == 0:
+        col_pend = pick(["Valor Pendiente", "Pendiente", "Venta No Convertida $"])
+        if col_pend is not None:
+            d["Costo_Dev"] = pd.to_numeric(d[col_pend], errors="coerce").fillna(0) + d["Vta_Imp"]
+
+    # Semana
+    col_sem = pick(["Semana ISO", "Semana_ISO", "Semana", "SemanaISO", "Sem", "Semana Iso"])
+    if col_sem is not None:
+        d["Semana ISO"] = pd.to_numeric(d[col_sem], errors="coerce")
+    else:
+        col_fecha = pick(["Fecha Día", "Fecha", "Fecha_Origen", "Fecha Origen", "Fecha Devolución", "Fecha Devolucion"])
+        if col_fecha is not None:
+            d["Semana ISO"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.isocalendar().week.astype("Float64")
+        else:
+            # Fallback para no dejar Conversión/Recuperación vacías cuando el comercial no trae semana.
+            d["Semana ISO"] = 0
+
+    d["Semana ISO"] = pd.to_numeric(d["Semana ISO"], errors="coerce").fillna(0).astype(int)
+
     col_tienda = pick(["Tienda", "Sucursal"])
-    col_modelo = pick(["ID", "Id", "id", "Modelo", "modelo", "ID Modelo", "Id Modelo"])
+    col_modelo = pick(["ID", "Id", "id", "Modelo", "modelo", "ID Modelo", "Id Modelo", "Id Art", "ID Art", "Artículo", "Articulo"])
     col_color = pick(["Color", "COLOR", "color"])
     col_talla = pick(["Talla", "TALLA", "talla"])
 
-    if col_sem is None:
-        return pd.DataFrame(columns=cols)
-
-    d["Semana ISO"] = pd.to_numeric(d[col_sem], errors="coerce")
-    d = d.dropna(subset=["Semana ISO"])
-    d["Semana ISO"] = d["Semana ISO"].astype(int)
     d["Tienda"] = d[col_tienda].astype(str).str.strip() if col_tienda else "Sin tienda"
     d["ID/Modelo"] = d[col_modelo].astype(str).str.strip() if col_modelo else "Sin modelo"
     d["Color"] = d[col_color].astype(str).str.strip() if col_color else "Sin color"
     d["Talla"] = d[col_talla].astype(str).str.strip() if col_talla else "Sin talla"
+
+    # Mantener filas con alguna información útil
+    d = d[(d["Dev_Pzs"] != 0) | (d["Vta_Pzs"] != 0) | (d["Vta_Imp"] != 0) | (d["Costo_Dev"] != 0)].copy()
+    if d.empty:
+        return pd.DataFrame(columns=cols)
 
     group_cols = ["Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla"]
 
@@ -2829,7 +2871,7 @@ with tab["3. Conversión"]:
     conv_res = resumen_conversion_semanal(conv_det)
 
     if conv_res.empty:
-        st.info("No hay información de conversión con los filtros seleccionados.")
+        st.info("No hay información de conversión. Revisa que el archivo tenga columnas Dev_Pzs/Vta_Pzs/Vta_Imp/Costo_Dev o sus equivalentes.")
     else:
         dev_pzs_sem = conv_res["Dev Pzs Semana"].sum()
         conv_pzs = conv_res["Conversión Dev → Venta Pzs"].sum()
@@ -2869,7 +2911,7 @@ with tab["4. Recuperación Económica"]:
     conv_res = resumen_conversion_semanal(conv_det)
 
     if conv_res.empty:
-        st.info("No hay información de recuperación económica con los filtros seleccionados.")
+        st.info("No hay información de recuperación económica. Revisa que el archivo tenga columnas comerciales de devolución, venta e importe.")
     else:
         venta_recuperada = conv_res["Conversión Dev → Venta $"].sum()
         venta_no_convertida = conv_res["Venta No Convertida $"].sum()

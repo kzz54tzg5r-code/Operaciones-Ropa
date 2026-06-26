@@ -1,8 +1,8 @@
-# ORION APP13 - Tablas HTML Rosa Global
+# ORION APP13 - Fix Conversión y Recuperación
 
 Cambios:
-- Reemplaza st.dataframe(style_dataframe(...)) por tablas HTML controladas.
-- Encabezados de columnas en rosa en todas las pestañas.
-- Separadores blancos alineados.
-- Detalle Día Anterior usa encabezado agrupado real con colspan (Tienda / Ingresos / Registros e Indicadores).
-- Se elimina el desfase del encabezado superior anterior.
+- Conversión y Recuperación Económica ya no quedan vacías si el archivo comercial no trae Semana ISO.
+- Si existe Semana ISO, respeta la lógica semanal.
+- Si no existe Semana ISO, calcula acumulado disponible como Semana 0.
+- Reconoce alias de columnas: Dev Pzs, Ventas Netas Pzs, Vta_Imp, Costo Dev, Valor Recuperado, Valor Pendiente.
+- Estas pestañas siguen usando todas las tiendas.
