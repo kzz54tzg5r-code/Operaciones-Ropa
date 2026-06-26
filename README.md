@@ -1,7 +1,5 @@
-# ORION APP13 - Encabezados ingresos / total / azul
+# ORION APP13 - Resumen Ejecutivo filtrado por proyecto
 
-Cambios:
-- Agrega franja superior "INGRESOS" sobre columnas de ingreso en Detalle Día Anterior.
-- Cambia encabezado compacto "Ingresos" de la columna Total ingresos a "Total".
-- Suma Pendiente Día Anterior al total consultado.
-- Encabezados de tablas en azul para todas las pestañas.
+Cambio:
+- Las tarjetas de Resumen Ejecutivo ahora filtran internamente por las tiendas seleccionadas del proyecto.
+- La lectura de tiendas del proyecto ahora soporta varias llaves guardadas para compatibilidad.
