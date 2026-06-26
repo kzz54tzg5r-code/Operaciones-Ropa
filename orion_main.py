@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import sqlite3
 import json
 import re
+import unicodedata
 import textwrap
 from pathlib import Path
 from io import BytesIO
@@ -2442,14 +2443,34 @@ def conversion_semanal_dev_venta(codf):
 
     d = codf.copy()
 
+    def _norm_col(x):
+        s = str(x).strip().lower()
+        try:
+            s = unicodedata.normalize("NFKD", s).encode("ascii", errors="ignore").decode("utf-8")
+        except Exception:
+            pass
+        return re.sub(r"[^a-z0-9]+", "", s)
+
     def pick(posibles):
-        mapa = {str(c).strip().lower(): c for c in d.columns}
+        mapa_exact = {str(c).strip().lower(): c for c in d.columns}
+        mapa_norm = {_norm_col(c): c for c in d.columns}
         for p in posibles:
             if p in d.columns:
                 return p
             key = str(p).strip().lower()
-            if key in mapa:
-                return mapa[key]
+            if key in mapa_exact:
+                return mapa_exact[key]
+            nkey = _norm_col(p)
+            if nkey in mapa_norm:
+                return mapa_norm[nkey]
+        return None
+
+    def pick_contains(tokens):
+        tokens_norm = [_norm_col(t) for t in tokens]
+        for c in d.columns:
+            cn = _norm_col(c)
+            if all(t in cn for t in tokens_norm):
+                return c
         return None
 
     # Aliases numéricos
@@ -2492,11 +2513,18 @@ def conversion_semanal_dev_venta(codf):
         if col_pend is not None:
             d["Costo_Dev"] = pd.to_numeric(d[col_pend], errors="coerce").fillna(0) + d["Vta_Imp"]
 
-    # Fecha para filtro por calendario
+    # Fecha para filtro por calendario y cálculo automático de Semana ISO.
+    # Se busca por alias y también por cualquier columna que contenga "fecha".
     col_fecha = pick([
-        "Fecha Día", "Fecha Dia", "Fecha", "Fecha_Origen", "Fecha Origen",
-        "Fecha Devolución", "Fecha Devolucion", "Fecha Dev", "Fecha Venta"
+        "Fecha Día", "Fecha Dia", "Fecha", "FECHA",
+        "Fecha_Origen", "Fecha Origen",
+        "Fecha Devolución", "Fecha Devolucion", "Fecha Dev",
+        "Fecha Venta", "Fecha_Venta", "Fecha de Venta",
+        "Fecha Vta", "Fecha_Vta", "Fecha Movimiento", "Fecha Mov",
+        "Día", "Dia", "DIA", "Date"
     ])
+    if col_fecha is None:
+        col_fecha = pick_contains(["fecha"])
     if col_fecha is not None:
         d["Fecha Día"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.date
     elif "Fecha Día" in d.columns:
@@ -2504,26 +2532,24 @@ def conversion_semanal_dev_venta(codf):
     else:
         d["Fecha Día"] = pd.NaT
 
-    # Semana ISO: requerida para respetar la regla semanal.
+    # Semana ISO: se calcula automáticamente con la fecha del dato.
     col_sem = pick(["Semana ISO", "Semana_ISO", "Semana", "SemanaISO", "Sem", "Semana Iso", "Año Semana", "Anio Semana"])
 
-    if col_sem is not None:
+    _fecha_tmp = pd.to_datetime(d["Fecha Día"], errors="coerce")
+
+    if _fecha_tmp.notna().any():
+        # Semana ISO calculada automáticamente con la fecha del dato.
+        d["Semana ISO"] = _fecha_tmp.dt.isocalendar().week.astype("Float64")
+        d["Fecha Día"] = _fecha_tmp.dt.date
+    elif col_sem is not None:
+        # Sólo usa Semana ISO del archivo si no hay fecha disponible.
         d["Semana ISO"] = pd.to_numeric(d[col_sem], errors="coerce")
-    elif col_fecha is not None:
-        d["Semana ISO"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.isocalendar().week.astype("Float64")
+        d["Fecha Día"] = datetime.now().date()
     else:
-        # Si el archivo comercial no trae semana ni fecha, no dejamos la pestaña vacía.
-        # Se muestra acumulado como Semana 0 para poder revisar Conversión y Recuperación.
         d["Semana ISO"] = 0
+        d["Fecha Día"] = datetime.now().date()
 
     d["Semana ISO"] = pd.to_numeric(d["Semana ISO"], errors="coerce").fillna(0).astype(int)
-
-    # Si no hay Fecha Día válida, crear una fecha base para que aparezca el calendario.
-    _fecha_tmp = pd.to_datetime(d["Fecha Día"], errors="coerce")
-    if _fecha_tmp.notna().any():
-        d["Fecha Día"] = _fecha_tmp.dt.date
-    else:
-        d["Fecha Día"] = datetime.now().date()
 
     col_tienda = pick(["Tienda", "Sucursal"])
     col_modelo = pick(["ID", "Id", "id", "Modelo", "modelo", "ID Modelo", "Id Modelo", "Id Art", "ID Art", "Artículo", "Articulo"])
@@ -2602,21 +2628,34 @@ def filtrar_conversion_por_periodo(conv_det_all, key_prefix):
     fecha_min = fechas.min().date()
     fecha_max = fechas.max().date()
 
+    semana_unica_cero = False
+    try:
+        semana_unica_cero = set(pd.to_numeric(d["Semana ISO"], errors="coerce").fillna(0).astype(int).unique().tolist()) == {0}
+    except Exception:
+        semana_unica_cero = False
+
+    if fecha_min == fecha_max and semana_unica_cero:
+        fecha_min_ui = fecha_min.replace(month=1, day=1)
+        fecha_max_ui = fecha_max.replace(month=12, day=31)
+    else:
+        fecha_min_ui = fecha_min
+        fecha_max_ui = fecha_max
+
     c1, c2, c3 = st.columns([1, 1, 3])
     with c1:
         fecha_inicio = st.date_input(
             "Fecha inicio",
             value=fecha_min,
-            min_value=fecha_min,
-            max_value=fecha_max,
+            min_value=fecha_min_ui,
+            max_value=fecha_max_ui,
             key=f"{key_prefix}_fecha_inicio"
         )
     with c2:
         fecha_fin = st.date_input(
             "Fecha final",
             value=fecha_max,
-            min_value=fecha_min,
-            max_value=fecha_max,
+            min_value=fecha_min_ui,
+            max_value=fecha_max_ui,
             key=f"{key_prefix}_fecha_fin"
         )
 
@@ -2982,9 +3021,7 @@ with tab["3. Conversión"]:
 
     conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
     if not conv_det_all.empty and set(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").fillna(0).astype(int).unique().tolist()) == {0}:
-        st.warning("El archivo comercial no trae Semana ISO ni Fecha. Se muestra el acumulado disponible como Semana 0; para validar estrictamente misma semana, agrega una columna de fecha o Semana ISO.")
-    if not conv_det_all.empty and set(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").fillna(0).astype(int).unique().tolist()) == {0}:
-        st.warning("El archivo comercial no trae Semana ISO ni Fecha. Se muestra el acumulado disponible como Semana 0; para validar estrictamente misma semana, agrega una columna de fecha o Semana ISO.")
+        st.warning("No se detectó una fecha válida en el archivo comercial. Se muestra acumulado como Semana 0. Para calcular Semana ISO automáticamente, valida que exista una columna de fecha en la hoja comercial.")
 
     if conv_det_all.empty:
         st.info("No hay información de conversión semanal. Para calcularla se requiere Semana ISO o una fecha que permita derivarla, además de Dev Pzs, Venta Pzs, Venta $ y Costo Dev.")
