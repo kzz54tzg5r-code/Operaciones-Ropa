@@ -181,6 +181,12 @@ thead tr th, thead tr th.blank, thead tr th.col_heading{
     .orion-table-group-header div{font-size:10px;padding:4px 2px;}
 }
 
+
+.wow-var{min-width:58px!important;text-align:right!important;font-size:12px!important;font-weight:900!important;}
+.wow-num{min-width:105px!important;text-align:right!important;}
+.wow-lbl{min-width:112px!important;}
+.wow-line{grid-template-columns:112px 105px 58px!important;}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1865,71 +1871,73 @@ score_integral = round(
 # SCORE CARDS
 # ==========================================================
 
-def render_wow_cards(op_source):
+
+def render_wow_cards(op_source=None):
     """
-    Resumen Ejecutivo WoW.
-    IMPORTANTE: ingresos/acondicionado/ubicado/recorridos se calculan únicamente
-    con las tiendas seleccionadas del proyecto Cambios y Muertos.
+    Resumen Ejecutivo WoW de últimas 4 semanas.
+    Usa la misma lógica de Reporte Semanal (construir_reporte_periodo),
+    por eso los ingresos coinciden con la semana consultada.
     """
-    if op_source is None or op_source.empty:
+    try:
+        base_op = op.copy() if "op" in globals() and isinstance(op, pd.DataFrame) else (op_source.copy() if isinstance(op_source, pd.DataFrame) else pd.DataFrame())
+        if base_op.empty or "Semana ISO" not in base_op.columns:
+            return
+
+        semanas = sorted(pd.to_numeric(base_op["Semana ISO"], errors="coerce").dropna().astype(int).unique().tolist())[-4:]
+        if not semanas:
+            return
+
+        rows = []
+        for sem_sel in semanas:
+            rep, etiqueta = construir_reporte_periodo("semanal", semana_sel=sem_sel)
+            if rep is None or rep.empty:
+                continue
+
+            ingresos = pd.to_numeric(rep.get("Piezas Ingresadas", rep.get("Total ingresos", 0)), errors="coerce").fillna(0).sum()
+            acondicionado = pd.to_numeric(rep.get("Acondicionado", rep.get("Piezas Acondicionadas", 0)), errors="coerce").fillna(0).sum()
+            ubicado = pd.to_numeric(rep.get("Ubicado", rep.get("Piezas Ubicadas", 0)), errors="coerce").fillna(0).sum()
+            recorridos = pd.to_numeric(rep.get("Recorridos", 0), errors="coerce").fillna(0).sum()
+
+            rows.append({
+                "Semana ISO": sem_sel,
+                "Piezas": ingresos,
+                "Acondicionado": acondicionado,
+                "Ubicado": ubicado,
+                "Recorridos": recorridos,
+                "% Acondicionado": pct(acondicionado, ingresos),
+                "% Ubicado": pct(ubicado, ingresos),
+            })
+
+        if not rows:
+            return
+
+        sem = pd.DataFrame(rows)
+
+        html = '<div class="wow-title">📊 Resumen Ejecutivo</div><div class="wow-row">'
+        prev = None
+
+        for _, r in sem.iterrows():
+            def v(col):
+                if prev is None or float(prev[col]) == 0:
+                    return '<span class="wow-flat">—</span>'
+                pctv = (float(r[col]) - float(prev[col])) / float(prev[col]) * 100
+                cls = "wow-up" if pctv >= 0 else "wow-down"
+                arrow = "▲" if pctv >= 0 else "▼"
+                return f'<span class="{cls}">{arrow} {abs(pctv):.1f}%</span>'
+
+            html += f'<div class="wow-card"><div class="wow-head">Sem {int(r["Semana ISO"])}</div><div class="wow-body">'
+            html += f'<div class="wow-line"><div class="wow-lbl">INGRESOS</div><div class="wow-num">{float(r["Piezas"]):,.0f}</div><div class="wow-var">{v("Piezas")}</div></div>'
+            html += f'<div class="wow-line"><div class="wow-lbl">ACONDICIONADO</div><div class="wow-num">{float(r["Acondicionado"]):,.0f}</div><div class="wow-var">{r["% Acondicionado"]:.1f}%</div></div>'
+            html += f'<div class="wow-line"><div class="wow-lbl">UBICADO</div><div class="wow-num">{float(r["Ubicado"]):,.0f}</div><div class="wow-var">{r["% Ubicado"]:.1f}%</div></div>'
+            html += f'<div class="wow-line"><div class="wow-lbl">RECORRIDOS</div><div class="wow-num">{float(r["Recorridos"]):,.0f}</div><div class="wow-var">—</div></div>'
+            html += '</div></div>'
+            prev = r
+
+        html += '</div>'
+        st.markdown(html, unsafe_allow_html=True)
+    except Exception:
         return
 
-    tmp = asegurar_acondicionado_alias(op_source).copy()
-
-    # Filtro estricto por tiendas del proyecto
-    tiendas = tiendas_proyecto_activas()
-    if tiendas and "Tienda" in tmp.columns:
-        tmp = tmp[tmp["Tienda"].astype(str).str.strip().isin(tiendas)].copy()
-
-    if tmp.empty or "Semana ISO" not in tmp.columns:
-        return
-
-    for c in ["Productividad Total", "Acondicionado", "Ubicado", "Recorridos"]:
-        if c not in tmp.columns:
-            tmp[c] = 0
-        tmp[c] = pd.to_numeric(tmp[c], errors="coerce").fillna(0)
-
-    sem = (
-        tmp.groupby("Semana ISO", as_index=False)
-        .agg(
-            Piezas=("Productividad Total", "sum"),
-            Acondicionado=("Acondicionado", "sum"),
-            Ubicado=("Ubicado", "sum"),
-            Recorridos=("Recorridos", "sum"),
-        )
-        .sort_values("Semana ISO")
-        .tail(4)
-    )
-
-    if sem.empty:
-        return
-
-    html = '<div class="wow-title">📊 Resumen Ejecutivo</div><div class="wow-row">'
-    prev = None
-
-    for _, r in sem.iterrows():
-        def v(col):
-            if prev is None or float(prev[col]) == 0:
-                return '<span class="wow-flat">—</span>'
-            pctv = (float(r[col]) - float(prev[col])) / float(prev[col]) * 100
-            cls = "wow-up" if pctv >= 0 else "wow-down"
-            arrow = "▲" if pctv >= 0 else "▼"
-            return f'<span class="{cls}">{arrow} {abs(pctv):.1f}%</span>'
-
-        html += f'<div class="wow-card"><div class="wow-head">Sem {int(r["Semana ISO"])}</div><div class="wow-body">'
-        html += f'<div class="wow-line"><div class="wow-lbl">INGRESOS</div><div class="wow-num">{float(r["Piezas"]):,.0f}</div><div class="wow-var">{v("Piezas")}</div></div>'
-        html += f'<div class="wow-line"><div class="wow-lbl">ACONDICIONADO</div><div class="wow-num">{float(r["Acondicionado"]):,.0f}</div><div class="wow-var">{v("Acondicionado")}</div></div>'
-        html += f'<div class="wow-line"><div class="wow-lbl">UBICADO</div><div class="wow-num">{float(r["Ubicado"]):,.0f}</div><div class="wow-var">{v("Ubicado")}</div></div>'
-        html += f'<div class="wow-line"><div class="wow-lbl">RECORRIDOS</div><div class="wow-num">{float(r["Recorridos"]):,.0f}</div><div class="wow-var">—</div></div>'
-        html += '</div></div>'
-        prev = r
-
-    html += '</div>'
-    st.markdown(html, unsafe_allow_html=True)
-
-
-# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con tiendas seleccionadas del proyecto
-render_wow_cards(op_all if "op_all" in globals() else op)
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con lógica Día Anterior, respetando filtros globales."""
@@ -1989,6 +1997,11 @@ def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
     resumen["Estatus"] = np.where(resumen["Pendiente Ubicar"] <= 0, "🟢 Completo", np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente"))
     return resumen.sort_values(["Pendiente Ubicar","Pendiente Acondicionar"], ascending=False), etiqueta
+
+
+# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con la misma lógica del Reporte Semanal
+render_wow_cards(op if "op" in globals() else (op_all if "op_all" in globals() else pd.DataFrame()))
+
 
 def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
     if resumen is None or resumen.empty:
