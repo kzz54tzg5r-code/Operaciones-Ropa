@@ -1,10 +1,7 @@
-# ORION APP13 - Reparado resumen seguro
-
-Base estable: ORION_APP13_HEADERS_INGRESOS_TOTAL_AZUL.
+# ORION APP13 - WOW coincide con Reporte Semanal
 
 Cambios:
-- Reparado sin dependencia circular.
-- Resumen Ejecutivo últimas 4 semanas usa tiendas del proyecto.
-- Ingresos = Dev_Pzs + Muertos + Cajas.
-- Acondicionado muestra % contra Ingresos.
-- Ubicado muestra % contra Ingresos.
+- Resumen Ejecutivo de últimas 4 semanas usa construir_reporte_periodo("semanal").
+- Los ingresos del WOW coinciden con el Reporte Semanal.
+- Acondicionado muestra % Acondicionado / Ingresos.
+- Ubicado muestra % Ubicado / Ingresos.
