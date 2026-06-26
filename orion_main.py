@@ -323,7 +323,7 @@ def normalize_store(x):
 def style_dataframe(df):
     if not isinstance(df, pd.DataFrame) or df.empty:
         return df
-    percent_cols = [c for c in df.columns if "%" in str(c) or "cumplimiento" in str(c).lower() or "acondicionado" in str(c).lower()]
+    percent_cols = [c for c in df.columns if "%" in str(c) or "cumplimiento" in str(c).lower()]
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     fmt = {c: ("{:,.1f}%" if c in percent_cols else "{:,.0f}") for c in numeric_cols}
     return (df.style
@@ -1400,6 +1400,67 @@ def total_dev_system(codf):
 
 
 
+
+def calcular_pendiente_dia_previo(temp_op_df, temp_daily_df, fecha_base, tiendas_base=None):
+    """
+    Calcula Pendiente Día Anterior por tienda con la misma lógica:
+    ingresos = Dev_Pzs + Muertos Piso Venta + Cajas + Probador
+    pendiente = ingresos - ubicado
+    """
+    try:
+        fecha_prev = (pd.to_datetime(fecha_base) - pd.Timedelta(days=1)).date()
+    except Exception:
+        return pd.DataFrame(columns=["Tienda", "Pendiente Día Anterior"])
+
+    tiendas = []
+    if tiendas_base is not None:
+        try:
+            tiendas = [str(t) for t in tiendas_base]
+        except Exception:
+            tiendas = []
+    base = pd.DataFrame({"Tienda": sorted(set(tiendas))}) if tiendas else pd.DataFrame(columns=["Tienda"])
+
+    op_prev = pd.DataFrame()
+    if temp_op_df is not None and not temp_op_df.empty and "Fecha Día" in temp_op_df.columns:
+        op_prev = temp_op_df[pd.to_datetime(temp_op_df["Fecha Día"], errors="coerce").dt.date == fecha_prev].copy()
+
+    daily_prev = pd.DataFrame()
+    if temp_daily_df is not None and not temp_daily_df.empty and "Fecha Día" in temp_daily_df.columns:
+        daily_prev = temp_daily_df[pd.to_datetime(temp_daily_df["Fecha Día"], errors="coerce").dt.date == fecha_prev].copy()
+
+    if not op_prev.empty and "Tienda" in op_prev.columns:
+        op_res = op_prev.groupby("Tienda", as_index=False).agg(Ubicado=("Ubicado", "sum"))
+    else:
+        op_res = pd.DataFrame(columns=["Tienda", "Ubicado"])
+
+    if not daily_prev.empty and "Tienda" in daily_prev.columns:
+        sys_res = daily_prev.groupby("Tienda", as_index=False).agg(Dev_Pzs=("Dev_Pzs", "sum"))
+    else:
+        sys_res = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
+
+    ing_res = clasificar_ingresos_recoleccion_dia(op_prev) if "clasificar_ingresos_recoleccion_dia" in globals() else pd.DataFrame()
+    if not ing_res.empty:
+        ing_res = ing_res.drop(columns=["Fecha Día"], errors="ignore")
+    else:
+        ing_res = pd.DataFrame(columns=["Tienda", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"])
+
+    if base.empty:
+        tiendas_all = []
+        for df in [op_res, sys_res, ing_res]:
+            if df is not None and not df.empty and "Tienda" in df.columns:
+                tiendas_all += df["Tienda"].astype(str).tolist()
+        base = pd.DataFrame({"Tienda": sorted(set(tiendas_all))})
+
+    out = base.merge(op_res, on="Tienda", how="left").merge(sys_res, on="Tienda", how="left").merge(ing_res, on="Tienda", how="left").fillna(0)
+    for c in ["Ubicado", "Dev_Pzs", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"]:
+        if c not in out.columns:
+            out[c] = 0
+        out[c] = pd.to_numeric(out[c], errors="coerce").fillna(0)
+
+    out["Ingresos Día Anterior Real"] = out["Dev_Pzs"] + out["Muertos Piso Venta"] + out["Ingresos Cajas"] + out["Ingresos Probador"]
+    out["Pendiente Día Anterior"] = (out["Ingresos Día Anterior Real"] - out["Ubicado"]).clip(lower=0)
+    return out[["Tienda", "Pendiente Día Anterior"]]
+
 def clasificar_ingresos_recoleccion_dia(opdf):
     """
     Clasifica ingresos operativos respetando estrictamente la condición:
@@ -1999,6 +2060,19 @@ with tab["0. Día Anterior / Pendiente"]:
                     np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente")
                 )
 
+                # Pendiente que venía del día anterior
+                _pend_prev = calcular_pendiente_dia_previo(
+                    temp_op if "temp_op" in globals() else pd.DataFrame(),
+                    temp_daily if "temp_daily" in globals() else pd.DataFrame(),
+                    fecha_consulta,
+                    resumen["Tienda"].astype(str).tolist() if "Tienda" in resumen.columns else None
+                )
+                if not _pend_prev.empty:
+                    resumen = resumen.merge(_pend_prev, on="Tienda", how="left")
+                if "Pendiente Día Anterior" not in resumen.columns:
+                    resumen["Pendiente Día Anterior"] = 0
+                resumen["Pendiente Día Anterior"] = pd.to_numeric(resumen["Pendiente Día Anterior"], errors="coerce").fillna(0)
+
                 resumen["Ranking Pendiente"] = resumen["Pendiente Ubicar"].rank(method="dense", ascending=False).astype(int)
                 resumen = resumen.sort_values(["Pendiente Ubicar", "Pendiente Acondicionar"], ascending=False)
 
@@ -2006,14 +2080,16 @@ with tab["0. Día Anterior / Pendiente"]:
                 total_aco_dia = resumen["Acondicionado"].sum()
                 total_ubi_dia = resumen["Ubicado"].sum()
                 total_pend_ubi_dia = resumen["Pendiente Ubicar"].sum()
+                total_pend_prev_dia = resumen["Pendiente Día Anterior"].sum() if "Pendiente Día Anterior" in resumen.columns else 0
                 pct_proc_dia = pct(total_aco_dia, total_ing_dia)
 
                 st.markdown(textwrap.dedent(f"""
-                <div class="boceto-card-row" style="grid-template-columns:repeat(5,1fr);">
+                <div class="boceto-card-row" style="grid-template-columns:repeat(6,1fr);">
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-magenta">↻</div><div><div class="boceto-card-title">Piezas Ingresadas</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_ing_dia)}</div><div class="boceto-card-foot">Dev + muertos + cajas + probador</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">✓</div><div><div class="boceto-card-title">Piezas Acondicionadas</div><div class="boceto-card-value" style="color:#0047B3;">{n0(total_aco_dia)}</div><div class="boceto-card-foot">Acondicionado</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">⌖</div><div><div class="boceto-card-title">Piezas Ubicadas</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_ubi_dia)}</div><div class="boceto-card-foot">Ubicado</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-green">⏳</div><div><div class="boceto-card-title">Pendientes por Ubicar</div><div class="boceto-card-value" style="color:#2F4A8A;">{n0(total_pend_ubi_dia)}</div><div class="boceto-card-foot">Ingreso - ubicado</div></div></div>
+                    <div class="boceto-kpi-card"><div class="boceto-big-icon big-orange">↩</div><div><div class="boceto-card-title">Pendiente Día Anterior</div><div class="boceto-card-value" style="color:#EC007C;">{n0(total_pend_prev_dia)}</div><div class="boceto-card-foot">Pendiente previo</div></div></div>
                     <div class="boceto-kpi-card"><div class="boceto-big-icon big-blue">%</div><div><div class="boceto-card-title">% Procesado</div><div class="boceto-card-value" style="color:#0047B3;">{p1(pct_proc_dia)}</div><div class="boceto-card-foot">Acondicionado / ingresadas</div></div></div>
                 </div>
                 """), unsafe_allow_html=True)
@@ -2025,6 +2101,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     "Ubicado": total_ubi_dia,
                     "Piezas Acondicionadas": total_aco_dia,
                     "Pendientes por Ubicar": total_pend_ubi_dia,
+                    "Pendiente Día Anterior": total_pend_prev_dia,
                     "% Procesado": pct_proc_dia
                 }])
                 columnas = [
@@ -2034,6 +2111,7 @@ with tab["0. Día Anterior / Pendiente"]:
                     "Ingresos Cajas",
                     "Ingresos Probador",
                     "Total ingresos",
+                    "Pendiente Día Anterior",
                     "Pzas Recolectadas",
                     "Pzas Habilitadas",
                     "Pendiente por Habilitar",
