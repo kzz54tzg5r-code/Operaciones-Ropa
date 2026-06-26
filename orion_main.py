@@ -2512,14 +2512,18 @@ def conversion_semanal_dev_venta(codf):
     elif col_fecha is not None:
         d["Semana ISO"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.isocalendar().week.astype("Float64")
     else:
-        # Sin semana/fecha no se puede validar "misma semana".
-        # Se deja vacío para evitar mezclar todo el mes o todo el archivo.
-        return pd.DataFrame(columns=cols)
+        # Si el archivo comercial no trae semana ni fecha, no dejamos la pestaña vacía.
+        # Se muestra acumulado como Semana 0 para poder revisar Conversión y Recuperación.
+        d["Semana ISO"] = 0
 
-    d = d.dropna(subset=["Semana ISO"]).copy()
-    if d.empty:
-        return pd.DataFrame(columns=cols)
-    d["Semana ISO"] = d["Semana ISO"].astype(int)
+    d["Semana ISO"] = pd.to_numeric(d["Semana ISO"], errors="coerce").fillna(0).astype(int)
+
+    # Si no hay Fecha Día válida, crear una fecha base para que aparezca el calendario.
+    _fecha_tmp = pd.to_datetime(d["Fecha Día"], errors="coerce")
+    if _fecha_tmp.notna().any():
+        d["Fecha Día"] = _fecha_tmp.dt.date
+    else:
+        d["Fecha Día"] = datetime.now().date()
 
     col_tienda = pick(["Tienda", "Sucursal"])
     col_modelo = pick(["ID", "Id", "id", "Modelo", "modelo", "ID Modelo", "Id Modelo", "Id Art", "ID Art", "Artículo", "Articulo"])
@@ -2977,6 +2981,10 @@ with tab["3. Conversión"]:
     st.subheader("Conversión Semanal Dev → Venta")
 
     conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
+    if not conv_det_all.empty and set(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").fillna(0).astype(int).unique().tolist()) == {0}:
+        st.warning("El archivo comercial no trae Semana ISO ni Fecha. Se muestra el acumulado disponible como Semana 0; para validar estrictamente misma semana, agrega una columna de fecha o Semana ISO.")
+    if not conv_det_all.empty and set(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").fillna(0).astype(int).unique().tolist()) == {0}:
+        st.warning("El archivo comercial no trae Semana ISO ni Fecha. Se muestra el acumulado disponible como Semana 0; para validar estrictamente misma semana, agrega una columna de fecha o Semana ISO.")
 
     if conv_det_all.empty:
         st.info("No hay información de conversión semanal. Para calcularla se requiere Semana ISO o una fecha que permita derivarla, además de Dev Pzs, Venta Pzs, Venta $ y Costo Dev.")
