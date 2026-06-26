@@ -181,6 +181,27 @@ thead tr th, thead tr th.blank, thead tr th.col_heading{
     .orion-table-group-header div{font-size:10px;padding:4px 2px;}
 }
 
+
+/* WOW compacto con porcentajes visibles */
+.wow-line{display:grid!important;grid-template-columns:120px 110px 70px!important;align-items:center!important;gap:6px!important;}
+.wow-var{min-width:70px!important;text-align:right!important;font-size:12px!important;font-weight:900!important;}
+.wow-num{text-align:right!important;}
+
+/* Encabezados azules en tablas */
+[data-testid="stDataFrame"] div[role="columnheader"]{
+    background-color:#2F4A8A !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border:1px solid #2F4A8A !important;
+}
+thead tr th, thead tr th.blank, thead tr th.col_heading{
+    background-color:#2F4A8A !important;
+    color:#FFFFFF !important;
+    font-weight:900 !important;
+    border:1px solid #2F4A8A !important;
+    text-align:center !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -941,24 +962,51 @@ def guardar_datos(op, co, daily, diag, filename):
     set_estado("diagnostico", json.dumps(diag, ensure_ascii=False, default=str))
 
 
+
 def tiendas_proyecto_activas():
+    """
+    Tiendas seleccionadas del proyecto Cambios y Muertos.
+    Lee varias llaves para ser compatible con versiones anteriores.
+    """
+    posibles_keys = [
+        "tiendas_proyecto_cambios_muertos",
+        "project_stores",
+        "tiendas_proyecto",
+        "stores_proyecto"
+    ]
+
+    for k in posibles_keys:
+        try:
+            if "get_estado" in globals():
+                raw = get_estado(k, "")
+                if raw:
+                    data = json.loads(raw)
+                    if isinstance(data, list) and data:
+                        return [str(x).strip() for x in data if str(x).strip()]
+        except Exception:
+            pass
+
     try:
         if "project_stores" in globals() and project_stores:
-            return [str(t) for t in project_stores]
+            return [str(x).strip() for x in project_stores if str(x).strip()]
     except Exception:
         pass
+
     try:
-        if "get_project_stores" in globals():
-            return [str(t) for t in get_project_stores([])]
+        if "st" in globals() and "cfg_tiendas_proyecto_cambios_muertos" in st.session_state:
+            data = st.session_state.get("cfg_tiendas_proyecto_cambios_muertos", [])
+            if data:
+                return [str(x).strip() for x in data if str(x).strip()]
     except Exception:
         pass
+
     return []
 
 def aplicar_filtro_proyecto(df):
     tiendas = tiendas_proyecto_activas()
     if df is None or df.empty or not tiendas or "Tienda" not in df.columns:
         return df
-    return df[df["Tienda"].astype(str).isin(tiendas)].copy()
+    return df[df["Tienda"].astype(str).str.strip().isin(tiendas)].copy()
 
 def cargar_mapa_plantilla_colaboradores():
     mapa = {}
@@ -1753,6 +1801,106 @@ def base_tiendas_proyecto_para_dia(op_resumen, sys_resumen):
     return pd.DataFrame({"Tienda": tiendas})
 
 
+
+def resumen_ingresos_periodo(base_op, base_daily):
+    """
+    Cálculo único de ingresos para Día Anterior, Semanal, Mensual y Resumen Ejecutivo.
+
+    Ingresos = Dev_Pzs
+             + Muertos Piso Venta
+             + Ingresos Cajas
+             + Ingresos Probador
+
+    Donde Muertos/Cajas/Probador sólo cuentan si:
+    Actividad Realizada = Recolección de muertos
+    y Motivo de ingreso = Muertos/Cajas/Probador.
+    """
+    if base_op is None:
+        base_op = pd.DataFrame()
+    if base_daily is None:
+        base_daily = pd.DataFrame()
+
+    tiendas = []
+    try:
+        tiendas = tiendas_proyecto_activas()
+    except Exception:
+        tiendas = []
+
+    if tiendas:
+        base = pd.DataFrame({"Tienda": [str(t) for t in tiendas]})
+    else:
+        tiendas_all = []
+        for df in [base_op, base_daily]:
+            if df is not None and not df.empty and "Tienda" in df.columns:
+                tiendas_all += df["Tienda"].astype(str).tolist()
+        base = pd.DataFrame({"Tienda": sorted(set(tiendas_all))})
+
+    # Operación
+    if base_op is not None and not base_op.empty and "Tienda" in base_op.columns:
+        op_tmp = asegurar_acondicionado_alias(base_op.copy()) if "asegurar_acondicionado_alias" in globals() else base_op.copy()
+        for c in ["Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos", "Productividad Total"]:
+            if c not in op_tmp.columns:
+                op_tmp[c] = 0
+            op_tmp[c] = pd.to_numeric(op_tmp[c], errors="coerce").fillna(0)
+
+        op_resumen = op_tmp.groupby("Tienda", as_index=False).agg(
+            Muertos=("Muertos", "sum"),
+            Cajas=("Cajas", "sum"),
+            Probador=("Probador", "sum"),
+            Acondicionado=("Acondicionado", "sum"),
+            Ubicado=("Ubicado", "sum"),
+            Recorridos=("Recorridos", "sum"),
+            Productividad=("Productividad Total", "sum"),
+        )
+    else:
+        op_resumen = pd.DataFrame(columns=["Tienda", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos", "Productividad"])
+
+    # Sistema/dev
+    if base_daily is not None and not base_daily.empty and "Tienda" in base_daily.columns and "Dev_Pzs" in base_daily.columns:
+        sys_resumen = base_daily.copy()
+        sys_resumen["Dev_Pzs"] = pd.to_numeric(sys_resumen["Dev_Pzs"], errors="coerce").fillna(0)
+        sys_resumen = sys_resumen.groupby("Tienda", as_index=False).agg(Dev_Pzs=("Dev_Pzs", "sum"))
+    else:
+        sys_resumen = pd.DataFrame(columns=["Tienda", "Dev_Pzs"])
+
+    # Recolección estricta por motivo
+    if base_op is not None and not base_op.empty and "clasificar_ingresos_recoleccion_dia" in globals():
+        rec = clasificar_ingresos_recoleccion_dia(base_op)
+        if rec is not None and not rec.empty:
+            rec = rec.groupby("Tienda", as_index=False).agg(
+                **{
+                    "Muertos Piso Venta": ("Muertos Piso Venta", "sum"),
+                    "Ingresos Cajas": ("Ingresos Cajas", "sum"),
+                    "Ingresos Probador": ("Ingresos Probador", "sum"),
+                }
+            )
+        else:
+            rec = pd.DataFrame(columns=["Tienda", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"])
+    else:
+        rec = pd.DataFrame(columns=["Tienda", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"])
+
+    resumen = base.merge(op_resumen, on="Tienda", how="left").merge(sys_resumen, on="Tienda", how="left").merge(rec, on="Tienda", how="left").fillna(0)
+
+    for c in ["Dev_Pzs", "Muertos", "Cajas", "Probador", "Acondicionado", "Ubicado", "Recorridos", "Productividad", "Muertos Piso Venta", "Ingresos Cajas", "Ingresos Probador"]:
+        if c not in resumen.columns:
+            resumen[c] = 0
+        resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
+
+    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos Piso Venta"] + resumen["Ingresos Cajas"] + resumen["Ingresos Probador"]
+    resumen["Total ingresos"] = resumen["Piezas Ingresadas"]
+    resumen["Pzas Recolectadas"] = resumen["Muertos Piso Venta"] + resumen["Ingresos Cajas"] + resumen["Ingresos Probador"]
+    resumen["Pzas Habilitadas"] = resumen["Acondicionado"]
+    resumen["Pzas Ubicadas"] = resumen["Ubicado"]
+    resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
+    resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
+    resumen["Pendiente por Habilitar"] = resumen["Pendiente Acondicionar"]
+    resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
+    resumen["Estatus"] = np.where(resumen["Pendiente Ubicar"] <= 0, "🟢 Completo", np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente"))
+
+    return resumen
+
+
 def store_summary(opdf, codf, only_registered=True):
     op_store = pd.DataFrame(columns=["Tienda"])
     if not opdf.empty:
@@ -1837,40 +1985,100 @@ score_integral = round(
 # ==========================================================
 # SCORE CARDS
 # ==========================================================
+
+
 def render_wow_cards(op_source):
+    """
+    Resumen Ejecutivo últimas 4 semanas.
+    Usa tiendas seleccionadas del proyecto y la misma fórmula de ingresos:
+    Dev_Pzs + Muertos Piso Venta + Cajas + Probador.
+    """
     if op_source is None or op_source.empty or "Semana ISO" not in op_source.columns:
         return
-    tmp = asegurar_acondicionado_alias(op_source)
-    sem = tmp.groupby("Semana ISO", as_index=False).agg(Piezas=("Productividad Total","sum"), Acondicionado=("Acondicionado","sum"), Ubicado=("Ubicado","sum"), Recorridos=("Recorridos","sum")).sort_values("Semana ISO").tail(4)
+
+    tmp = asegurar_acondicionado_alias(op_source).copy()
+
+    try:
+        tmp = aplicar_filtro_proyecto(tmp)
+    except Exception:
+        pass
+
+    if tmp.empty:
+        return
+
+    semanas = sorted(pd.to_numeric(tmp["Semana ISO"], errors="coerce").dropna().astype(int).unique().tolist())[-4:]
+    if not semanas:
+        return
+
+    base_daily_wow = daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame()
+    try:
+        base_daily_wow = aplicar_filtro_proyecto(base_daily_wow)
+    except Exception:
+        pass
+
+    rows = []
+    for sem_sel in semanas:
+        op_sem = tmp[pd.to_numeric(tmp["Semana ISO"], errors="coerce").fillna(-1).astype(int) == int(sem_sel)].copy()
+        daily_sem = base_daily_wow.copy()
+        if not daily_sem.empty and "Semana ISO" in daily_sem.columns:
+            daily_sem = daily_sem[pd.to_numeric(daily_sem["Semana ISO"], errors="coerce").fillna(-1).astype(int) == int(sem_sel)]
+
+        rep = resumen_ingresos_periodo(op_sem, daily_sem)
+        if rep.empty:
+            continue
+
+        ingresos = pd.to_numeric(rep["Piezas Ingresadas"], errors="coerce").fillna(0).sum()
+        acondicionado = pd.to_numeric(rep["Acondicionado"], errors="coerce").fillna(0).sum()
+        ubicado = pd.to_numeric(rep["Ubicado"], errors="coerce").fillna(0).sum()
+        recorridos = pd.to_numeric(rep["Recorridos"], errors="coerce").fillna(0).sum()
+
+        rows.append({
+            "Semana ISO": sem_sel,
+            "Piezas": ingresos,
+            "Acondicionado": acondicionado,
+            "Ubicado": ubicado,
+            "Recorridos": recorridos,
+            "% Acondicionado": pct(acondicionado, ingresos),
+            "% Ubicado": pct(ubicado, ingresos),
+        })
+
+    sem = pd.DataFrame(rows)
     if sem.empty:
         return
+
     html = '<div class="wow-title">📊 Resumen Ejecutivo</div><div class="wow-row">'
     prev = None
+
     for _, r in sem.iterrows():
-        def v(col):
-            if prev is None or float(prev[col]) == 0:
+        def v_ingresos():
+            if prev is None or float(prev["Piezas"]) == 0:
                 return '<span class="wow-flat">—</span>'
-            pctv = (float(r[col])-float(prev[col]))/float(prev[col])*100
+            pctv = (float(r["Piezas"]) - float(prev["Piezas"])) / float(prev["Piezas"]) * 100
             cls = "wow-up" if pctv >= 0 else "wow-down"
             arrow = "▲" if pctv >= 0 else "▼"
             return f'<span class="{cls}">{arrow} {abs(pctv):.1f}%</span>'
+
         html += f'<div class="wow-card"><div class="wow-head">Sem {int(r["Semana ISO"])}</div><div class="wow-body">'
-        html += f'<div class="wow-line"><div class="wow-lbl">INGRESOS</div><div class="wow-num">{float(r["Piezas"]):,.0f}</div><div class="wow-var">{v("Piezas")}</div></div>'
-        html += f'<div class="wow-line"><div class="wow-lbl">ACONDICIONADO</div><div class="wow-num">{float(r["Acondicionado"]):,.0f}</div><div class="wow-var">{v("Acondicionado")}</div></div>'
-        html += f'<div class="wow-line"><div class="wow-lbl">UBICADO</div><div class="wow-num">{float(r["Ubicado"]):,.0f}</div><div class="wow-var">{v("Ubicado")}</div></div>'
+        html += f'<div class="wow-line"><div class="wow-lbl">INGRESOS</div><div class="wow-num">{float(r["Piezas"]):,.0f}</div><div class="wow-var">{v_ingresos()}</div></div>'
+        html += f'<div class="wow-line"><div class="wow-lbl">ACONDICIONADO</div><div class="wow-num">{float(r["Acondicionado"]):,.0f}</div><div class="wow-var">{float(r["% Acondicionado"]):.1f}%</div></div>'
+        html += f'<div class="wow-line"><div class="wow-lbl">UBICADO</div><div class="wow-num">{float(r["Ubicado"]):,.0f}</div><div class="wow-var">{float(r["% Ubicado"]):.1f}%</div></div>'
         html += f'<div class="wow-line"><div class="wow-lbl">RECORRIDOS</div><div class="wow-num">{float(r["Recorridos"]):,.0f}</div><div class="wow-var">—</div></div>'
         html += '</div></div>'
         prev = r
+
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
-render_wow_cards(aplicar_filtro_proyecto(op_all))
+
+# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con tiendas seleccionadas del proyecto
+render_wow_cards(op_all if "op_all" in globals() else op)
 
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
-    """Resumen con lógica Día Anterior, respetando filtros globales."""
+    """Resumen con la misma lógica de Día Anterior, respetando filtros globales/proyecto."""
     base_op = op.copy() if "op" in globals() else pd.DataFrame()
     base_daily = daily.copy() if "daily" in globals() else pd.DataFrame()
+
     if base_op.empty:
         return pd.DataFrame(), ""
 
@@ -1878,10 +2086,10 @@ def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
         if "Semana ISO" not in base_op.columns or base_op["Semana ISO"].dropna().empty:
             return pd.DataFrame(), ""
         if semana_sel is None:
-            semana_sel = int(base_op["Semana ISO"].dropna().max())
-        base_op = base_op[base_op["Semana ISO"] == int(semana_sel)]
+            semana_sel = int(pd.to_numeric(base_op["Semana ISO"], errors="coerce").dropna().max())
+        base_op = base_op[pd.to_numeric(base_op["Semana ISO"], errors="coerce").fillna(-1).astype(int) == int(semana_sel)]
         if not base_daily.empty and "Semana ISO" in base_daily.columns:
-            base_daily = base_daily[base_daily["Semana ISO"] == int(semana_sel)]
+            base_daily = base_daily[pd.to_numeric(base_daily["Semana ISO"], errors="coerce").fillna(-1).astype(int) == int(semana_sel)]
         etiqueta = f"Semana {int(semana_sel)}"
     else:
         fechas = pd.to_datetime(base_op["Fecha Día"], errors="coerce").dropna()
@@ -1893,38 +2101,16 @@ def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
             base_daily = base_daily[pd.to_datetime(base_daily["Fecha Día"], errors="coerce").dt.to_period("M") == mes_periodo]
         etiqueta = f"Mes {mes_periodo}"
 
-    if base_op.empty:
+    if base_op.empty and base_daily.empty:
         return pd.DataFrame(), etiqueta
 
-    op_resumen = base_op.groupby("Tienda", as_index=False).agg(
-        Muertos=("Muertos","sum"),
-        Cajas=("Cajas","sum"),
-        Probador=("Probador","sum"),
-        Acondicionado=("Acondicionado","sum"),
-        Ubicado=("Ubicado","sum"),
-        Recorridos=("Recorridos","sum"),
-        Productividad=("Productividad Total","sum")
-    )
-    op_resumen["Productividad Registrada"] = op_resumen[["Muertos","Cajas","Probador","Acondicionado","Ubicado"]].sum(axis=1)
-    op_resumen = op_resumen[op_resumen["Productividad Registrada"] > 0]
-
-    if not base_daily.empty and "Tienda" in base_daily.columns:
-        sys_resumen = base_daily.groupby("Tienda", as_index=False).agg(Dev_Pzs=("Dev_Pzs","sum"))
-    else:
-        sys_resumen = pd.DataFrame(columns=["Tienda","Dev_Pzs"])
-
-    resumen = op_resumen.merge(sys_resumen, on="Tienda", how="left").fillna(0)
-    for c in ["Dev_Pzs","Muertos","Cajas","Probador","Acondicionado","Ubicado","Recorridos","Productividad"]:
-        resumen[c] = pd.to_numeric(resumen[c], errors="coerce").fillna(0)
+    resumen = resumen_ingresos_periodo(base_op, base_daily)
+    if resumen.empty:
+        return pd.DataFrame(), etiqueta
 
     resumen["Periodo"] = etiqueta
-    resumen["Piezas Ingresadas"] = resumen["Dev_Pzs"] + resumen["Muertos"] + resumen["Cajas"]
-    resumen["Pendiente Acondicionar"] = (resumen["Piezas Ingresadas"] - resumen["Acondicionado"]).clip(lower=0)
-    resumen["Pendiente Ubicar"] = (resumen["Piezas Ingresadas"] - resumen["Ubicado"]).clip(lower=0)
-    resumen["% Acondicionado"] = sdiv(resumen["Acondicionado"], resumen["Piezas Ingresadas"]) * 100
-    resumen["% Ubicado"] = sdiv(resumen["Ubicado"], resumen["Piezas Ingresadas"]) * 100
-    resumen["Estatus"] = np.where(resumen["Pendiente Ubicar"] <= 0, "🟢 Completo", np.where(resumen["% Ubicado"] >= 80, "🟡 En proceso", "🔴 Pendiente"))
     return resumen.sort_values(["Pendiente Ubicar","Pendiente Acondicionar"], ascending=False), etiqueta
+
 
 def render_reporte_periodo(resumen, titulo, periodo_nombre, etiqueta=""):
     if resumen is None or resumen.empty:
