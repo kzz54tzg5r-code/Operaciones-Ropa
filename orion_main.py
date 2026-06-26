@@ -2431,7 +2431,7 @@ def conversion_semanal_dev_venta(codf):
     calcula semana por semana y después suma resultados.
     """
     cols = [
-        "Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla",
+        "Fecha Día", "Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla",
         "Dev Pzs Semana", "Conversión Dev → Venta Pzs",
         "Conversión Dev → Venta $", "% Conversión Semanal Dev → Venta",
         "Pendiente por Convertir Pzs", "Venta No Convertida $"
@@ -2492,12 +2492,20 @@ def conversion_semanal_dev_venta(codf):
         if col_pend is not None:
             d["Costo_Dev"] = pd.to_numeric(d[col_pend], errors="coerce").fillna(0) + d["Vta_Imp"]
 
+    # Fecha para filtro por calendario
+    col_fecha = pick([
+        "Fecha Día", "Fecha Dia", "Fecha", "Fecha_Origen", "Fecha Origen",
+        "Fecha Devolución", "Fecha Devolucion", "Fecha Dev", "Fecha Venta"
+    ])
+    if col_fecha is not None:
+        d["Fecha Día"] = pd.to_datetime(d[col_fecha], errors="coerce").dt.date
+    elif "Fecha Día" in d.columns:
+        d["Fecha Día"] = pd.to_datetime(d["Fecha Día"], errors="coerce").dt.date
+    else:
+        d["Fecha Día"] = pd.NaT
+
     # Semana ISO: requerida para respetar la regla semanal.
     col_sem = pick(["Semana ISO", "Semana_ISO", "Semana", "SemanaISO", "Sem", "Semana Iso", "Año Semana", "Anio Semana"])
-    col_fecha = pick([
-        "Fecha Día", "Fecha", "Fecha_Origen", "Fecha Origen", "Fecha Devolución",
-        "Fecha Devolucion", "Fecha Dev", "Fecha Venta"
-    ])
 
     if col_sem is not None:
         d["Semana ISO"] = pd.to_numeric(d[col_sem], errors="coerce")
@@ -2527,7 +2535,7 @@ def conversion_semanal_dev_venta(codf):
     if d.empty:
         return pd.DataFrame(columns=cols)
 
-    group_cols = ["Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla"]
+    group_cols = ["Fecha Día", "Semana ISO", "Tienda", "ID/Modelo", "Color", "Talla"]
 
     det = d.groupby(group_cols, as_index=False).agg(
         **{
@@ -2565,6 +2573,63 @@ def conversion_semanal_dev_venta(codf):
         ["Semana ISO", "Tienda", "% Conversión Semanal Dev → Venta"],
         ascending=[False, True, False]
     )
+
+
+
+def filtrar_conversion_por_periodo(conv_det_all, key_prefix):
+    """
+    Filtro por calendario para Conversión y Recuperación Económica.
+    Selecciona fecha inicio y fecha final; después la lógica sigue respetando Semana ISO.
+    """
+    if conv_det_all is None or conv_det_all.empty:
+        return conv_det_all
+
+    d = conv_det_all.copy()
+
+    if "Fecha Día" not in d.columns:
+        st.warning("El archivo no tiene fecha para filtrar por calendario. Se mostrará todo el acumulado disponible.")
+        return d
+
+    fechas = pd.to_datetime(d["Fecha Día"], errors="coerce").dropna()
+    if fechas.empty:
+        st.warning("No se encontró fecha válida para filtrar por calendario. Se mostrará todo el acumulado disponible.")
+        return d
+
+    fecha_min = fechas.min().date()
+    fecha_max = fechas.max().date()
+
+    c1, c2, c3 = st.columns([1, 1, 3])
+    with c1:
+        fecha_inicio = st.date_input(
+            "Fecha inicio",
+            value=fecha_min,
+            min_value=fecha_min,
+            max_value=fecha_max,
+            key=f"{key_prefix}_fecha_inicio"
+        )
+    with c2:
+        fecha_fin = st.date_input(
+            "Fecha final",
+            value=fecha_max,
+            min_value=fecha_min,
+            max_value=fecha_max,
+            key=f"{key_prefix}_fecha_fin"
+        )
+
+    if fecha_inicio > fecha_fin:
+        st.error("La fecha inicio no puede ser mayor que la fecha final.")
+        return d.iloc[0:0].copy()
+
+    fechas_d = pd.to_datetime(d["Fecha Día"], errors="coerce").dt.date
+    filtrado = d[(fechas_d >= fecha_inicio) & (fechas_d <= fecha_fin)].copy()
+
+    with c3:
+        st.caption(
+            f"Periodo consultado: {fecha_inicio.strftime('%d/%m/%Y')} al {fecha_fin.strftime('%d/%m/%Y')}. "
+            "El cálculo sigue respetando Semana ISO por tienda, ID/modelo, color y talla."
+        )
+
+    return filtrado
 
 
 def resumen_conversion_semanal(conv_detalle):
@@ -2906,6 +2971,7 @@ with tab["2. Reporte Mensual"]:
 
 
 
+
 # 3 Conversión
 with tab["3. Conversión"]:
     st.subheader("Conversión Semanal Dev → Venta")
@@ -2915,19 +2981,7 @@ with tab["3. Conversión"]:
     if conv_det_all.empty:
         st.info("No hay información de conversión semanal. Para calcularla se requiere Semana ISO o una fecha que permita derivarla, además de Dev Pzs, Venta Pzs, Venta $ y Costo Dev.")
     else:
-        semanas_conv = sorted(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").dropna().astype(int).unique().tolist())
-        modo_conv = st.radio("Periodo a consultar", ["Todas", "Semana", "Varias semanas"], horizontal=True, key="conv_periodo_tipo")
-
-        conv_det = conv_det_all.copy()
-        if modo_conv == "Semana":
-            sem_sel = st.selectbox("Semana ISO", semanas_conv, index=len(semanas_conv)-1, key="conv_semana_sel")
-            conv_det = conv_det[conv_det["Semana ISO"].astype(int) == int(sem_sel)]
-        elif modo_conv == "Varias semanas":
-            default_sems = semanas_conv[-4:] if len(semanas_conv) >= 4 else semanas_conv
-            sems_sel = st.multiselect("Semanas ISO", semanas_conv, default=default_sems, key="conv_semanas_sel")
-            if sems_sel:
-                conv_det = conv_det[conv_det["Semana ISO"].astype(int).isin([int(x) for x in sems_sel])]
-
+        conv_det = filtrar_conversion_por_periodo(conv_det_all, "conv")
         conv_res = resumen_conversion_semanal(conv_det)
 
         if conv_res.empty:
@@ -2938,7 +2992,6 @@ with tab["3. Conversión"]:
             conv_pesos = conv_res["Conversión Dev → Venta $"].sum()
             pct_conv = pct(conv_pzs, dev_pzs_sem)
             pend_pzs = conv_res["Pendiente por Convertir Pzs"].sum()
-            venta_no_conv = conv_res["Venta No Convertida $"].sum()
 
             c1, c2, c3 = st.columns(3)
             c1.metric("Dev Pzs Semana", n0(dev_pzs_sem))
@@ -2950,7 +3003,7 @@ with tab["3. Conversión"]:
             c5.metric("Pendiente por Convertir Pzs", n0(pend_pzs))
 
             st.caption("Regla: si una devolución ocurre en semana 25, sólo cuenta como conversión si la venta también ocurrió en semana 25. Si se vende en semana 26, no cuenta para semana 25.")
-            st.caption("El cálculo está amarrado a Tienda + ID/Modelo + Color + Talla + Semana ISO. Si consultas varias semanas, se calcula semana por semana y luego se suma.")
+            st.caption("El cálculo está amarrado a Tienda + ID/Modelo + Color + Talla + Semana ISO. Si consultas varias fechas, se calcula semana por semana y luego se suma.")
 
             render_orion_table(conv_res)
             render_orion_table(conv_det)
@@ -2959,7 +3012,7 @@ with tab["3. Conversión"]:
             fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta Pzs"], name="Conversión Dev → Venta Pzs", marker_color="#0047B3", text=conv_res["Conversión Dev → Venta Pzs"], textposition="outside")
             fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Pendiente por Convertir Pzs"], name="Pendiente por Convertir Pzs", marker_color="#EC007C", text=conv_res["Pendiente por Convertir Pzs"], textposition="outside")
             fig_conv.update_layout(title="Conversión Semanal Dev → Venta por Tienda", barmode="group", height=430, legend=dict(orientation="h"))
-            st.plotly_chart(fig_conv, width="stretch", config={"responsive": True, "displayModeBar": True}, key="conv_semanal_dev_venta_final")
+            st.plotly_chart(fig_conv, width="stretch", config={"responsive": True, "displayModeBar": True}, key="conv_semanal_dev_venta_calendario")
 
             export_buttons("conversion_semanal_dev_venta", {"Resumen Semana Tienda": conv_res, "Detalle Modelo Color Talla": conv_det})
 
@@ -2974,19 +3027,7 @@ with tab["4. Recuperación Económica"]:
     if conv_det_all.empty:
         st.info("No hay información de recuperación económica semanal. Para calcularla se requiere Semana ISO o fecha, además de columnas comerciales de devolución y venta.")
     else:
-        semanas_rec = sorted(pd.to_numeric(conv_det_all["Semana ISO"], errors="coerce").dropna().astype(int).unique().tolist())
-        modo_rec = st.radio("Periodo a consultar", ["Todas", "Semana", "Varias semanas"], horizontal=True, key="rec_periodo_tipo")
-
-        conv_det = conv_det_all.copy()
-        if modo_rec == "Semana":
-            sem_sel = st.selectbox("Semana ISO", semanas_rec, index=len(semanas_rec)-1, key="rec_semana_sel")
-            conv_det = conv_det[conv_det["Semana ISO"].astype(int) == int(sem_sel)]
-        elif modo_rec == "Varias semanas":
-            default_sems = semanas_rec[-4:] if len(semanas_rec) >= 4 else semanas_rec
-            sems_sel = st.multiselect("Semanas ISO", semanas_rec, default=default_sems, key="rec_semanas_sel")
-            if sems_sel:
-                conv_det = conv_det[conv_det["Semana ISO"].astype(int).isin([int(x) for x in sems_sel])]
-
+        conv_det = filtrar_conversion_por_periodo(conv_det_all, "rec")
         conv_res = resumen_conversion_semanal(conv_det)
 
         if conv_res.empty:
@@ -3003,14 +3044,14 @@ with tab["4. Recuperación Económica"]:
             c2.metric("Venta No Convertida $", money(venta_no_convertida))
             c3.metric("% Conversión Semanal Dev → Venta", p1(pct_conv))
 
-            st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO.")
+            st.caption("Venta recuperada $ = importe vendido de piezas devueltas dentro de la misma Semana ISO y dentro del periodo consultado.")
             render_orion_table(conv_res)
 
             fig_rec = go.Figure()
             fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta $"], name="Conversión Dev → Venta $", marker_color="#0047B3")
             fig_rec.add_bar(x=conv_res["Tienda"], y=conv_res["Venta No Convertida $"], name="Venta No Convertida $", marker_color="#EC007C")
             fig_rec.update_layout(title="Conversión Dev → Venta $ vs Venta No Convertida $", barmode="group", height=430, legend=dict(orientation="h"))
-            st.plotly_chart(fig_rec, width="stretch", config={"responsive": True, "displayModeBar": True}, key="recuperacion_sem_dev_venta_final")
+            st.plotly_chart(fig_rec, width="stretch", config={"responsive": True, "displayModeBar": True}, key="recuperacion_sem_dev_venta_calendario")
 
             export_buttons("recuperacion_economica_semanal", {"Resumen Recuperación": conv_res, "Detalle Modelo Color Talla": conv_det})
 
