@@ -1,7 +1,5 @@
-# ORION APP13 - WOW coincide con Reporte Semanal
+# ORION APP13 - Resumen Ejecutivo filtrado por proyecto
 
-Cambios:
-- Resumen Ejecutivo de últimas 4 semanas usa construir_reporte_periodo("semanal").
-- Los ingresos del WOW coinciden con el Reporte Semanal.
-- Acondicionado muestra % Acondicionado / Ingresos.
-- Ubicado muestra % Ubicado / Ingresos.
+Cambio:
+- Las tarjetas de Resumen Ejecutivo ahora filtran internamente por las tiendas seleccionadas del proyecto.
+- La lectura de tiendas del proyecto ahora soporta varias llaves guardadas para compatibilidad.
