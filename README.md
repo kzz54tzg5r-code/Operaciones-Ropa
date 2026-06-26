@@ -1,5 +1,5 @@
-# ORION APP13 - Resumen Ejecutivo filtrado por proyecto
+# ORION APP13 - Restaura Resumen Ejecutivo 4 semanas
 
 Cambio:
-- Las tarjetas de Resumen Ejecutivo ahora filtran internamente por las tiendas seleccionadas del proyecto.
-- La lectura de tiendas del proyecto ahora soporta varias llaves guardadas para compatibilidad.
+- Vuelve a mostrar las tarjetas de Resumen Ejecutivo de últimas 4 semanas.
+- Los datos se calculan con las tiendas seleccionadas del proyecto.

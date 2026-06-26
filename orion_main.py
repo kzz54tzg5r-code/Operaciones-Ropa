@@ -1882,7 +1882,6 @@ def render_wow_cards(op_source):
         tmp = tmp[tmp["Tienda"].astype(str).str.strip().isin(tiendas)].copy()
 
     if tmp.empty or "Semana ISO" not in tmp.columns:
-        st.info("No hay información del Resumen Ejecutivo para las tiendas seleccionadas del proyecto.")
         return
 
     for c in ["Productividad Total", "Acondicionado", "Ubicado", "Recorridos"]:
@@ -1927,6 +1926,10 @@ def render_wow_cards(op_source):
 
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
+
+
+# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con tiendas seleccionadas del proyecto
+render_wow_cards(op_all if "op_all" in globals() else op)
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con lógica Día Anterior, respetando filtros globales."""
