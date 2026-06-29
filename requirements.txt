@@ -4,3 +4,5 @@ numpy
 openpyxl
 plotly
 pyarrow
+reportlab
+matplotlib

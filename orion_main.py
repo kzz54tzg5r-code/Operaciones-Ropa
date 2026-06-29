@@ -367,15 +367,6 @@ tbody tr:nth-child(even) td{
     border-bottom:2px solid #FFFFFF !important;
 }
 
-
-/* === ORION estabilización visual === */
-.block-container{ padding-top: 3.2rem !important; }
-h1, h2, h3, .wow-title, .wow-card, .wow-head, .wow-body{
-    overflow: visible !important;
-    line-height: 1.18 !important;
-}
-.wow-row{ margin-top: 22px !important; }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -1346,15 +1337,7 @@ def colaboradores_activos_por_tienda(opdf):
 def get_project_stores_safe(default=None):
     """
     Tiendas seleccionadas en Configuración de Metas para el proyecto Cambios y Muertos.
-    Estabilizado: session_state tiene prioridad para evitar recargas forzadas.
     """
-    try:
-        ss_val = st.session_state.get("orion_project_stores_runtime", None)
-        if isinstance(ss_val, list) and ss_val:
-            return [str(x) for x in ss_val if str(x).strip()]
-    except Exception:
-        pass
-
     try:
         if "get_estado" in globals():
             raw = get_estado("tiendas_proyecto_cambios_muertos", "")
@@ -1364,26 +1347,19 @@ def get_project_stores_safe(default=None):
                     return [str(x) for x in data if str(x).strip()]
     except Exception:
         pass
-
     try:
         if "project_stores" in globals() and project_stores:
             return [str(x) for x in project_stores if str(x).strip()]
     except Exception:
         pass
-
     return list(default or [])
 
 def set_project_stores_safe(stores):
     stores = [str(x) for x in stores if str(x).strip()]
     try:
-        st.session_state["orion_project_stores_runtime"] = list(stores)
-    except Exception:
-        pass
-    try:
         set_estado("tiendas_proyecto_cambios_muertos", json.dumps(stores, ensure_ascii=False))
     except Exception:
         pass
-
 
 def tiendas_proyecto_activas():
     return get_project_stores_safe([])
@@ -1697,7 +1673,7 @@ render_orion_header()
 # ==========================================================
 with st.sidebar:
     st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Administrador"], horizontal=True)
+    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
 
     is_admin = False
     is_manager = False
@@ -1749,7 +1725,7 @@ with st.sidebar:
                         op_new, co_new, daily_new, diag = procesar_excel(uploaded)
                         guardar_datos(op_new, co_new, daily_new, diag, uploaded.name)
                         st.success("Archivo procesado y guardado correctamente.")
-                        st.info("Cambio guardado. Si no ves el ajuste de inmediato, cambia de pestaña o actualiza la página una sola vez.")
+                        st.rerun()
                     except Exception as e:
                         st.error(f"No se pudo procesar el archivo: {e}")
             st.caption("Si cambiaste de versión y la app conserva datos viejos, borra la persistencia y vuelve a cargar el Excel.")
@@ -1763,7 +1739,7 @@ with st.sidebar:
             set_estado("archivo", "Sin archivo cargado")
             set_estado("ultima_actualizacion", "Sin actualización")
             st.success("Datos persistidos borrados. Vuelve a cargar el Excel.")
-            st.info("Cambio guardado. Si no ves el ajuste de inmediato, cambia de pestaña o actualiza la página una sola vez.")
+            st.rerun()
 
     else:
         st.caption("Este rol no puede cargar ni reemplazar archivos.")
@@ -1799,7 +1775,7 @@ with st.sidebar:
 
     # Semana default: última semana disponible
     semanas_disponibles = sorted([int(x) for x in op_all.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if not op_all.empty else []
-    default_semana = []  # estabilizado: sin selección automática para evitar recálculos pesados
+    default_semana = [max(semanas_disponibles)] if semanas_disponibles else []
 
     meses = sorted(set(op_all.get("Mes", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Mes_Origen", pd.Series(dtype=str)).dropna().astype(str).tolist()))
     tiendas = sorted(set(TIENDAS_OFICIALES + op_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist() + co_all.get("Tienda", pd.Series(dtype=str)).dropna().astype(str).tolist()))
@@ -3372,7 +3348,7 @@ if "17. Corrección de Nombres" in tab:
                 mapping = dict(zip(edit["Ocurrencia"].astype(str), edit["Nombre_actual"].astype(str)))
                 save_nombre_map(mapping)
                 st.success("Nombres actualizados correctamente.")
-                st.info("Cambio guardado. Si no ves el ajuste de inmediato, cambia de pestaña o actualiza la página una sola vez.")
+                st.rerun()
 
 
 # 17 Configuración
@@ -3400,14 +3376,9 @@ if "18. Configuración de Metas" in tab:
             key="cfg_tiendas_proyecto_cambios_muertos"
         )
         if st.button("Guardar tiendas del proyecto", key="btn_guardar_tiendas_proyecto"):
-            try:
-                set_project_stores_safe(_tiendas_sel)
-                st.session_state["orion_project_stores_runtime"] = list(_tiendas_sel)
-                project_stores = list(_tiendas_sel)
-                st.success("Tiendas del proyecto actualizadas. La información se filtrará en todas las pestañas excepto Conversión, Recuperación Económica y Ranking de Tiendas.")
-                st.info("No se recargará automáticamente para evitar que la sesión se caiga. Cambia de pestaña o presiona Actualizar del navegador una sola vez.")
-            except Exception as e:
-                st.error(f"No se pudieron guardar las tiendas del proyecto: {e}")
+            set_project_stores_safe(_tiendas_sel)
+            st.success("Tiendas del proyecto actualizadas. La información se filtrará en todas las pestañas excepto Conversión, Recuperación Económica y Ranking de Tiendas.")
+            st.rerun()
 
 
         cols = st.columns(3)
@@ -3420,7 +3391,7 @@ if "18. Configuración de Metas" in tab:
                 if float(v) != float(metas[k]):
                     update_meta(k, v)
             st.success("Metas actualizadas.")
-            st.info("Cambio guardado. Si no ves el ajuste de inmediato, cambia de pestaña o actualiza la página una sola vez.")
+            st.rerun()
 
         st.write("Historial de metas")
         render_orion_table(get_historial_metas())
