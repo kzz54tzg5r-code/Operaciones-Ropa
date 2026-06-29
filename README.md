@@ -1,10 +1,9 @@
-# ORION APP13 - Versión única estable
+# ORION APP13 - Versión única estable ligera
 
-Incluye:
-- Resumen Ejecutivo independiente de filtros globales.
-- Resumen Ejecutivo protegido para no romper Configuración de Metas.
-- Tiendas de proyecto respetadas en WOW.
-- Conversión y Recuperación con calendario.
-- Semana ISO automática desde fecha cuando exista.
-- Si no hay fecha comercial, muestra acumulado Semana 0 sin vaciar pestaña.
-- Tablas HTML con encabezados rosa y separadores blancos.
+Correcciones:
+- Evita caída de Streamlit Cloud por tablas HTML o PDFs demasiado grandes.
+- Tablas muestran máximo 300 filas en pantalla.
+- Detalle de Conversión se muestra sólo si marcas el checkbox.
+- Exportación PDF limitada a 300 filas por hoja.
+- Resumen Ejecutivo no detiene la app si tiene error.
+- app.py muestra traceback cuando existe un error real de Python.

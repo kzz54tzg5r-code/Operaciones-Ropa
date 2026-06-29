@@ -724,19 +724,21 @@ def style_dataframe(df):
 
 
 
-def render_orion_table(df, group_day=False, max_rows=None):
+
+def render_orion_table(df, group_day=False, max_rows=300):
     """
-    Renderiza tablas ORION en HTML para garantizar:
-    - encabezados rosa en TODAS las pestañas,
-    - separadores blancos alineados,
-    - encabezado agrupado real por colspan cuando aplica.
+    Renderiza tablas ORION de forma ligera.
+    Evita que Streamlit Cloud se caiga cuando el dataframe es muy grande.
     """
     if not isinstance(df, pd.DataFrame) or df.empty:
         st.info("Sin información para mostrar.")
         return
 
+    total_rows = len(df)
     d = compact_display_df(df) if "compact_display_df" in globals() else df.copy()
-    if max_rows is not None:
+
+    if max_rows is not None and total_rows > max_rows:
+        st.caption(f"Mostrando primeras {max_rows:,} filas de {total_rows:,}. Para evitar que la app se cierre, el detalle completo se descarga en PDF/Excel.")
         d = d.head(max_rows)
 
     def _fmt_val(v, col):
@@ -756,23 +758,19 @@ def render_orion_table(df, group_day=False, max_rows=None):
 
     if group_day:
         cols = list(d.columns)
-        # Después de compactar:
-        # Tienda | Dev pzs | Muertos | Cajas | Probador | Total | Pend. Ant. | ...
         tienda_cols = 1 if cols and cols[0] == "Tienda" else 0
         ingreso_names = {"Dev pzs", "Muertos", "Cajas", "Probador", "Total", "Pend. Ant."}
         ingreso_count = sum(1 for c in cols[tienda_cols:] if c in ingreso_names)
         registro_count = max(len(cols) - tienda_cols - ingreso_count, 0)
 
-        html.append("<thead>")
-        html.append("<tr class='orion-group-row'>")
+        html.append("<thead><tr class='orion-group-row'>")
         if tienda_cols:
             html.append("<th colspan='1'>Tienda</th>")
         if ingreso_count:
             html.append(f"<th colspan='{ingreso_count}'>INGRESOS</th>")
         if registro_count:
             html.append(f"<th colspan='{registro_count}'>REGISTROS / INDICADORES</th>")
-        html.append("</tr>")
-        html.append("<tr class='orion-head-row'>")
+        html.append("</tr><tr class='orion-head-row'>")
     else:
         html.append("<thead><tr class='orion-head-row'>")
 
@@ -788,6 +786,7 @@ def render_orion_table(df, group_day=False, max_rows=None):
 
     html.append("</tbody></table></div>")
     st.markdown("".join(html), unsafe_allow_html=True)
+
 
 
 def excel_export(sheets):
@@ -943,13 +942,27 @@ def exportar_pestana_pdf(nombre, hojas):
         mime="application/pdf"
     , key=f"pdf_pestana_{nombre}")
 
+
 def export_buttons(name, sheets):
+    """
+    Exportación segura.
+    Para evitar caída de Streamlit Cloud, el PDF se limita a 300 filas por hoja.
+    """
+    safe_sheets = {}
+    for k, v in sheets.items():
+        if isinstance(v, pd.DataFrame):
+            safe_sheets[k] = v.head(300)
+        else:
+            safe_sheets[k] = v
+
     st.download_button(
         f"⬇️ Exportar {name} PDF",
-        data=pdf_generico_bytes(name, sheets),
+        data=pdf_generico_bytes(name, safe_sheets),
         file_name=f"{name}.pdf",
-        mime="application/pdf"
+        mime="application/pdf",
+        key=f"export_pdf_{str(name).replace(' ', '_').replace('/', '_')}"
     )
+
 
 def current_or_latest_week(df):
     if df.empty or "Semana ISO" not in df.columns:
@@ -3072,7 +3085,8 @@ with tab["3. Conversión"]:
             st.caption("El cálculo está amarrado a Tienda + ID/Modelo + Color + Talla + Semana ISO. Si consultas varias fechas, se calcula semana por semana y luego se suma.")
 
             render_orion_table(conv_res)
-            render_orion_table(conv_det)
+            if st.checkbox("Ver detalle por modelo/color/talla", value=False, key="ver_detalle_conversion"):
+                render_orion_table(conv_det, max_rows=300)
 
             fig_conv = go.Figure()
             fig_conv.add_bar(x=conv_res["Tienda"], y=conv_res["Conversión Dev → Venta Pzs"], name="Conversión Dev → Venta Pzs", marker_color="#0047B3", text=conv_res["Conversión Dev → Venta Pzs"], textposition="outside")
@@ -3080,7 +3094,7 @@ with tab["3. Conversión"]:
             fig_conv.update_layout(title="Conversión Semanal Dev → Venta por Tienda", barmode="group", height=430, legend=dict(orientation="h"))
             st.plotly_chart(fig_conv, width="stretch", config={"responsive": True, "displayModeBar": True}, key="conv_semanal_dev_venta_calendario")
 
-            export_buttons("conversion_semanal_dev_venta", {"Resumen Semana Tienda": conv_res, "Detalle Modelo Color Talla": conv_det})
+            export_buttons("conversion_semanal_dev_venta", {"Resumen Semana Tienda": conv_res, "Detalle Modelo Color Talla": conv_det.head(300)})
 
 
 
@@ -3119,7 +3133,7 @@ with tab["4. Recuperación Económica"]:
             fig_rec.update_layout(title="Conversión Dev → Venta $ vs Venta No Convertida $", barmode="group", height=430, legend=dict(orientation="h"))
             st.plotly_chart(fig_rec, width="stretch", config={"responsive": True, "displayModeBar": True}, key="recuperacion_sem_dev_venta_calendario")
 
-            export_buttons("recuperacion_economica_semanal", {"Resumen Recuperación": conv_res, "Detalle Modelo Color Talla": conv_det})
+            export_buttons("recuperacion_economica_semanal", {"Resumen Recuperación": conv_res, "Detalle Modelo Color Talla": conv_det.head(300)})
 
 
 # 5 Productividad Colaborador
