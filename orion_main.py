@@ -376,6 +376,26 @@ tbody tr:nth-child(even) td{
     display:none !important;
 }
 
+
+/* === ORION Cloud Safe: navegación ligera tipo pestañas === */
+div[role="radiogroup"]{
+    display:flex;
+    gap:18px;
+    border-bottom:1px solid #D5D8E0;
+    padding-bottom:8px;
+    margin-bottom:18px;
+    overflow-x:auto;
+}
+div[role="radiogroup"] label{
+    white-space:nowrap;
+    padding:8px 10px;
+}
+div[role="radiogroup"] label:has(input:checked){
+    border-bottom:4px solid #EC007C;
+    color:#EC007C !important;
+    font-weight:700;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -2748,12 +2768,19 @@ if not can_config and "18. Configuración de Metas" in tabs_names:
     tabs_names.remove("18. Configuración de Metas")
 if not can_view_diagnostics and "19. Diagnóstico de Datos" in tabs_names:
     tabs_names.remove("19. Diagnóstico de Datos")
-tabs = st.tabs(tabs_names)
-tab = dict(zip(tabs_names, tabs))
+# Navegación estable: sólo se renderiza la pestaña seleccionada.
+# Esto evita que Streamlit calcule las 20 pestañas al mismo tiempo y se caiga en Cloud.
+selected_tab = st.radio(
+    "Selecciona una pestaña",
+    tabs_names,
+    horizontal=True,
+    label_visibility="collapsed",
+    key="orion_selected_tab"
+)
 
 
 # 0 Día Anterior / Pendiente
-with tab["0. Día Anterior / Pendiente"]:
+if selected_tab == "0. Día Anterior / Pendiente":
     st.subheader("Día Anterior | Ingresos y Pendiente por Procesar")
     st.caption("Muestra únicamente tiendas con productividad registrada. Formato: piezas con coma, pesos con $, porcentajes con %.")
 
@@ -3045,7 +3072,7 @@ with tab["0. Día Anterior / Pendiente"]:
 
 
 # 1 Reporte Semanal
-with tab["1. Reporte Semanal"]:
+if selected_tab == "1. Reporte Semanal":
     semanas_disp_reporte = sorted([int(x) for x in op.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if "op" in globals() and not op.empty else []
     if semanas_disp_reporte:
         semana_default = max(semanas_disp_reporte)
@@ -3059,7 +3086,7 @@ with tab["1. Reporte Semanal"]:
 
 
 # 2 Reporte Mensual
-with tab["2. Reporte Mensual"]:
+if selected_tab == "2. Reporte Mensual":
     fechas_mes = pd.to_datetime(op.get("Fecha Día", pd.Series(dtype=str)), errors="coerce").dropna() if "op" in globals() and not op.empty else pd.Series(dtype="datetime64[ns]")
     meses_disp = sorted(fechas_mes.dt.to_period("M").astype(str).unique().tolist()) if not fechas_mes.empty else []
     if meses_disp:
@@ -3076,7 +3103,7 @@ with tab["2. Reporte Mensual"]:
 
 
 # 3 Conversión
-with tab["3. Conversión"]:
+if selected_tab == "3. Conversión":
     st.subheader("Conversión Semanal Dev → Venta")
 
     conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
@@ -3124,7 +3151,7 @@ with tab["3. Conversión"]:
 
 
 # 4 Recuperación Económica
-with tab["4. Recuperación Económica"]:
+if selected_tab == "4. Recuperación Económica":
     st.subheader("Recuperación Económica Semanal Dev → Venta")
 
     conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
@@ -3162,7 +3189,7 @@ with tab["4. Recuperación Económica"]:
 
 
 # 5 Productividad Colaborador
-with tab["5. Productividad por Colaborador"]:
+if selected_tab == "5. Productividad por Colaborador":
     st.subheader("Ranking de Productividad por Colaborador")
     if op.empty:
         st.warning("Sin datos operativos.")
@@ -3192,7 +3219,7 @@ with tab["5. Productividad por Colaborador"]:
                                title="Top colaboradores por productividad"), width="stretch", key="orion_plot_5")
 
 # 6 Productividad Actividad
-with tab["6. Productividad por Actividad"]:
+if selected_tab == "6. Productividad por Actividad":
     st.subheader("Productividad por Actividad")
     if op.empty:
         st.warning("Sin operación.")
@@ -3218,7 +3245,7 @@ with tab["6. Productividad por Actividad"]:
                         width="stretch", key="orion_plot_7")
 
 # 7 Eficiencia Operativa
-with tab["7. Eficiencia Operativa"]:
+if selected_tab == "7. Eficiencia Operativa":
     st.subheader("Eficiencia Operativa | Solo tiendas con registro")
     c1,c2,c3,c4,c5 = st.columns(5)
     c1.metric("Piezas Ingresadas", n0(total_ingresos))
@@ -3232,7 +3259,7 @@ with tab["7. Eficiencia Operativa"]:
     render_orion_table(ef)
 
 # 8 Cumplimiento Recorridos
-with tab["8. Cumplimiento de Recorridos"]:
+if selected_tab == "8. Cumplimiento de Recorridos":
     st.subheader("Cumplimiento de Recorridos")
     rec = ss[["Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos"]].copy()
     rec["Estatus"] = np.where(rec["% Recorridos"] >= 100, "🟢 Cumple", np.where(rec["% Recorridos"] >= 80, "🟡 Atención", "🔴 Bajo"))
@@ -3245,7 +3272,7 @@ with tab["8. Cumplimiento de Recorridos"]:
     st.plotly_chart(fig, width="stretch", key="orion_plot_8")
 
 # 9 Indicadores Diarios
-with tab["9. Indicadores Diarios"]:
+if selected_tab == "9. Indicadores Diarios":
     st.subheader("Indicadores Diarios")
     if op.empty:
         st.warning("Sin datos.")
@@ -3268,7 +3295,7 @@ with tab["9. Indicadores Diarios"]:
         render_orion_table(diaria)
 
 # 10 Top Modelos
-with tab["10. Top 30 Modelos"]:
+if selected_tab == "10. Top 30 Modelos":
     st.subheader("Top 30 Modelos")
     if co.empty:
         st.warning("Sin información comercial.")
@@ -3290,7 +3317,7 @@ with tab["10. Top 30 Modelos"]:
                         width="stretch", key="orion_plot_9")
 
 # 11 Categoría
-with tab["11. Análisis por Categoría"]:
+if selected_tab == "11. Análisis por Categoría":
     st.subheader("Análisis por Categoría")
     if co.empty:
         st.warning("Sin información comercial.")
@@ -3302,7 +3329,7 @@ with tab["11. Análisis por Categoría"]:
                                color_discrete_sequence=["#0047B3"]), width="stretch", key="orion_plot_10")
 
 # 12 Subcategoría
-with tab["12. Análisis por Subcategoría"]:
+if selected_tab == "12. Análisis por Subcategoría":
     st.subheader("Análisis por Subcategoría")
     if co.empty:
         st.warning("Sin información comercial.")
@@ -3314,7 +3341,7 @@ with tab["12. Análisis por Subcategoría"]:
                                color_discrete_sequence=["#EC007C"]), width="stretch", key="orion_plot_11")
 
 # 13 Ranking Tiendas
-with tab["13. Ranking de Tiendas"]:
+if selected_tab == "13. Ranking de Tiendas":
     st.subheader("Ranking de Tiendas")
     rank = ss_all.copy()
     rank["Score"] = (
@@ -3343,7 +3370,7 @@ with tab["13. Ranking de Tiendas"]:
         idx_colab = idx_colab.sort_values("Índice Integral", ascending=False)
         render_orion_table(idx_colab)
 # 14 Ranking Colaboradores
-with tab["14. Ranking de Colaboradores"]:
+if selected_tab == "14. Ranking de Colaboradores":
     st.subheader("Ranking de Colaboradores")
     if op.empty:
         st.warning("Sin datos.")
@@ -3354,7 +3381,7 @@ with tab["14. Ranking de Colaboradores"]:
         render_orion_table(rc.sort_values("Ranking"))
 
 # 15 Índice Integral
-with tab["15. Índice Integral"]:
+if selected_tab == "15. Índice Integral":
     st.subheader("Índice Integral ORION")
     st.metric("Score Integral", f"{score_integral:,.1f}/100")
     st.progress(min(score_integral/100, 1.0))
@@ -3366,7 +3393,7 @@ with tab["15. Índice Integral"]:
     render_orion_table(score_break)
 
 # 16 Alertas
-with tab["16. Alertas Inteligentes"]:
+if selected_tab == "16. Alertas Inteligentes":
     st.subheader("Alertas Inteligentes")
     alerts = []
     if conv_pct < metas["conversion"]:
@@ -3474,7 +3501,7 @@ if "19. Diagnóstico de Datos" in tab:
             st.dataframe(op_all.isna().sum().reset_index().rename(columns={"index":"Columna",0:"Nulos"}), width="stretch", hide_index=True)
 
 # 19 Compartir
-with tab["20. Compartir ORION"]:
+if selected_tab == "20. Compartir ORION":
     st.subheader("Compartir ORION")
     url = st.text_input("URL pública de ORION", value="https://operaciones-ropa.streamlit.app")
     st.code(url)
