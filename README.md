@@ -1,12 +1,9 @@
-# Diagnóstico de arranque ORION
+# Diagnóstico ORION MAIN
 
-Sube únicamente estos archivos para validar si Streamlit está leyendo app.py.
+Este paquete confirma:
+1. Que Streamlit lee app.py.
+2. Que orion_main.py existe.
+3. Que orion_main.py compila.
+4. Al presionar el botón, ejecuta ORION y muestra el error exacto.
 
-Si aparece la pantalla verde:
-- Streamlit sí lee app.py.
-- El problema está dentro de orion_main.py.
-
-Si sigue apareciendo "Oh no":
-- Streamlit no está apuntando a app.py.
-- O está usando otra rama.
-- O falló la instalación de requirements.
+Usarlo sólo para diagnóstico.

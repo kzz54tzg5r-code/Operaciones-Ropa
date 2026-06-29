@@ -367,15 +367,6 @@ tbody tr:nth-child(even) td{
     border-bottom:2px solid #FFFFFF !important;
 }
 
-
-/* === ORION ajuste seguro de margen === */
-.block-container{ padding-top: 3.2rem !important; }
-h1, h2, h3, .wow-title, .wow-card, .wow-head, .wow-body{
-    overflow: visible !important;
-    line-height: 1.18 !important;
-}
-.wow-row{ margin-top: 22px !important; }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -805,27 +796,18 @@ def excel_export(sheets):
 
 def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     import matplotlib.pyplot as plt
 
     bio = BytesIO()
-    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=34, leftMargin=34, topMargin=34, bottomMargin=30)
+    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=22, leftMargin=22, topMargin=22, bottomMargin=22)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("orion_title", parent=styles["Title"], textColor=colors.HexColor("#14172F"), fontSize=18)
     sub_style = ParagraphStyle("orion_sub", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"), fontSize=12)
-    story = []
-    try:
-        from pathlib import Path
-        logo_path = Path("assets/logo.png")
-        if logo_path.exists():
-            story.append(RLImage(str(logo_path), width=1.15*inch, height=0.55*inch))
-            story.append(Spacer(1, 4))
-    except Exception:
-        pass
-    story += [Paragraph("Recuperación Cambios y Muertos", title_style), Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", sub_style), Spacer(1, 10)]
+    story = [Paragraph("Recuperación Cambios y Muertos", title_style), Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", sub_style), Spacer(1, 10)]
 
     def prep(df, max_rows=28, max_cols=14):
         d = compact_display_df(df).iloc[:max_rows, :max_cols]
@@ -894,7 +876,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             ax.tick_params(axis="y", labelsize=8); ax.grid(axis="y", alpha=0.25)
             ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=3, frameon=False, fontsize=8)
             fig.tight_layout(); img = BytesIO(); fig.savefig(img, format="png", dpi=170, bbox_inches="tight"); plt.close(fig); img.seek(0)
-            story.append(PageBreak()); story.append(Paragraph(title, styles["Heading3"])); story.append(RLImage(img, width=9.6*inch, height=3.9*inch)); story.append(Spacer(1, 10))
+            story.append(Paragraph(title, styles["Heading3"])); story.append(RLImage(img, width=9.6*inch, height=3.9*inch)); story.append(Spacer(1, 10))
         except Exception:
             pass
 
@@ -1691,32 +1673,47 @@ render_orion_header()
 # ==========================================================
 with st.sidebar:
     st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Administrador"], horizontal=True)
+    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
 
     is_admin = False
     is_manager = False
     can_upload = False
     can_config = False
-    can_names = False
+    can_edit_names = False
     can_view_diagnostics = False
 
     if rol == "Administrador":
-        clave_admin = st.text_input("Clave administrador", type="password")
-        if clave_admin == ADMIN_PASSWORD:
-            is_admin = True
+        clave = st.text_input("Clave administrador", type="password")
+        is_admin = clave == st.secrets.get("ADMIN_PASSWORD", "orion_admin")
+        if is_admin:
             can_upload = True
             can_config = True
-            can_names = True
+            can_edit_names = True
             can_view_diagnostics = True
-        elif clave_admin:
+        elif clave:
             st.warning("Clave incorrecta.")
+
+    elif rol == "Gerente":
+        clave_gerente = st.text_input("Clave gerente", type="password")
+        is_manager = clave_gerente == st.secrets.get("GERENTE_PASSWORD", "orion_gerente")
+        if is_manager:
+            can_edit_names = True
+            can_view_diagnostics = True
+        elif clave_gerente:
+            st.warning("Clave de gerente incorrecta.")
+
     else:
         st.caption("Modo consulta: solo visualización.")
 
     st.caption(f"Rol activo: {rol}")
     if is_admin:
         st.success("Permisos: carga, metas, nombres y diagnóstico.")
+    elif is_manager:
+        st.success("Permisos: consulta, corrección de nombres y diagnóstico.")
+    elif rol == "Consulta":
+        st.info("Permisos: solo consulta.")
 
+    st.divider()
     st.header("📂 Fuente de datos")
     if can_upload:
         uploaded = st.file_uploader("Cargar/Reemplazar Excel", type=["xlsx"])
@@ -2239,15 +2236,6 @@ def render_wow_cards(op_source):
         return
 
     tmp = asegurar_acondicionado_alias(op_source).copy()
-    try:
-        tiendas_wow = tiendas_proyecto_activas()
-        if tiendas_wow and "Tienda" in tmp.columns:
-            tmp = tmp[tmp["Tienda"].astype(str).str.strip().isin([str(t).strip() for t in tiendas_wow])].copy()
-        if tiendas_wow and "base_daily_wow" in locals() and isinstance(base_daily_wow, pd.DataFrame) and not base_daily_wow.empty and "Tienda" in base_daily_wow.columns:
-            base_daily_wow = base_daily_wow[base_daily_wow["Tienda"].astype(str).str.strip().isin([str(t).strip() for t in tiendas_wow])].copy()
-    except Exception:
-        pass
-
 
     try:
         tmp = aplicar_filtro_proyecto(tmp)
@@ -2261,7 +2249,7 @@ def render_wow_cards(op_source):
     if not semanas:
         return
 
-    base_daily_wow = daily_all.copy() if "daily_all" in globals() and isinstance(daily_all, pd.DataFrame) else (daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame())
+    base_daily_wow = daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame()
     try:
         base_daily_wow = aplicar_filtro_proyecto(base_daily_wow)
     except Exception:

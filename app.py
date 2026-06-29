@@ -1,16 +1,37 @@
 import streamlit as st
-import sys
-import os
+import traceback
 from pathlib import Path
 
-st.set_page_config(page_title="Diagnóstico ORION", page_icon="✅", layout="wide")
+st.set_page_config(page_title="Diagnóstico ORION Main", page_icon="🧪", layout="wide")
 
-st.success("✅ Streamlit sí está leyendo este app.py correctamente")
+st.success("✅ app.py está cargando correctamente")
+st.write("Ahora vamos a validar `orion_main.py` sin ejecutar toda la app de golpe.")
 
-st.write("Python:", sys.version)
-st.write("Carpeta actual:", os.getcwd())
+main_file = Path("orion_main.py")
 
-st.subheader("Archivos encontrados en la raíz")
-st.write([p.name for p in Path(".").iterdir()])
+if not main_file.exists():
+    st.error("No existe orion_main.py en la raíz del repositorio.")
+    st.stop()
 
-st.info("Si ves esta pantalla, el despliegue funciona. El problema está dentro de orion_main.py. Si sigues viendo 'Oh no', Streamlit NO está leyendo este app.py o falló la instalación de requirements.")
+code_text = main_file.read_text(encoding="utf-8")
+st.write("Tamaño de orion_main.py:", f"{len(code_text):,} caracteres")
+
+try:
+    compiled = compile(code_text, "orion_main.py", "exec")
+    st.success("✅ orion_main.py compila correctamente. No es error de sintaxis.")
+except Exception:
+    st.error("❌ Error de sintaxis/compilación en orion_main.py")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
+st.warning("Presiona el botón para ejecutar ORION. Si falla, aquí debe aparecer el error exacto.")
+
+if st.button("🚀 Ejecutar ORION ahora"):
+    try:
+        exec(compiled, globals())
+    except BaseException:
+        st.error("❌ ORION falló al ejecutarse. Copia este error completo.")
+        st.code(traceback.format_exc(), language="python")
+        st.stop()
+else:
+    st.info("Aún no se ejecutó ORION. Presiona el botón para obtener el error exacto sin que Streamlit lo oculte.")
