@@ -1,8 +1,6 @@
 import streamlit as st
 import traceback
-
 st.set_page_config(page_title="Recuperación Cambios y Muertos", page_icon="🚀", layout="wide")
-
 try:
     code = compile(open("orion_main.py", "r", encoding="utf-8").read(), "orion_main.py", "exec")
     exec(code, globals())
