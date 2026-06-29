@@ -367,6 +367,11 @@ tbody tr:nth-child(even) td{
     border-bottom:2px solid #FFFFFF !important;
 }
 
+
+/* WOW estable: porcentajes visibles y sin encimarse */
+.wow-line{display:grid!important;grid-template-columns:120px 110px 70px!important;align-items:center!important;gap:6px!important;}
+.wow-var{min-width:70px!important;text-align:right!important;font-size:12px!important;font-weight:900!important;overflow:visible!important;}
+.wow-num{text-align:right!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1745,6 +1750,20 @@ with st.sidebar:
         st.caption("Este rol no puede cargar ni reemplazar archivos.")
 
 op_all, co_all, daily_all = cargar_datos()
+
+# Copias completas protegidas para secciones independientes de filtros
+try:
+    op_all = op_all.copy(deep=True) if isinstance(op_all, pd.DataFrame) else pd.DataFrame()
+except Exception:
+    op_all = pd.DataFrame()
+try:
+    co_all = co_all.copy(deep=True) if isinstance(co_all, pd.DataFrame) else pd.DataFrame()
+except Exception:
+    co_all = pd.DataFrame()
+try:
+    daily_all = daily_all.copy(deep=True) if isinstance(daily_all, pd.DataFrame) else pd.DataFrame()
+except Exception:
+    daily_all = pd.DataFrame()
 project_stores = get_project_stores_safe([])
 
 # FILTRO GLOBAL POR TIENDAS DEL PROYECTO
@@ -2235,7 +2254,7 @@ def render_wow_cards(op_source):
     if op_source is None or op_source.empty or "Semana ISO" not in op_source.columns:
         return
 
-    tmp = asegurar_acondicionado_alias(op_source).copy()
+    tmp = asegurar_acondicionado_alias(op_source).copy() if op_source is not None else pd.DataFrame()
 
     try:
         tmp = aplicar_filtro_proyecto(tmp)
@@ -2309,9 +2328,11 @@ def render_wow_cards(op_source):
     st.markdown(html, unsafe_allow_html=True)
 
 
-# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con tiendas seleccionadas del proyecto; independiente de filtros globales
-render_wow_cards(op_all if "op_all" in globals() else op)
-
+# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas independiente de filtros globales
+try:
+    render_wow_cards(op_all if "op_all" in globals() else (op if "op" in globals() else pd.DataFrame()))
+except Exception as _wow_error:
+    st.warning(f"Resumen Ejecutivo no disponible temporalmente: {_wow_error}")
 
 def construir_reporte_periodo(periodo="semanal", semana_sel=None, mes_sel=None):
     """Resumen con la misma lógica de Día Anterior, respetando filtros globales/proyecto."""

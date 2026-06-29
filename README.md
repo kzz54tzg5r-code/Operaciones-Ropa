@@ -1,6 +1,10 @@
-# ORION APP13 - Resumen Ejecutivo independiente de filtros
+# ORION APP13 - Versión única estable
 
-Cambio:
-- El Resumen Ejecutivo de últimas 4 semanas ya no cambia al seleccionar Semana ISO/Mes en filtros globales.
-- Sigue respetando únicamente las tiendas seleccionadas del proyecto.
-- Corrección principal: usa daily_all en vez de daily para los Dev_Pzs del WOW.
+Incluye:
+- Resumen Ejecutivo independiente de filtros globales.
+- Resumen Ejecutivo protegido para no romper Configuración de Metas.
+- Tiendas de proyecto respetadas en WOW.
+- Conversión y Recuperación con calendario.
+- Semana ISO automática desde fecha cuando exista.
+- Si no hay fecha comercial, muestra acumulado Semana 0 sin vaciar pestaña.
+- Tablas HTML con encabezados rosa y separadores blancos.
