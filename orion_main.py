@@ -2249,7 +2249,7 @@ def render_wow_cards(op_source):
     if not semanas:
         return
 
-    base_daily_wow = daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame()
+    base_daily_wow = daily_all.copy() if "daily_all" in globals() and isinstance(daily_all, pd.DataFrame) else (daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame())
     try:
         base_daily_wow = aplicar_filtro_proyecto(base_daily_wow)
     except Exception:
@@ -2309,7 +2309,7 @@ def render_wow_cards(op_source):
     st.markdown(html, unsafe_allow_html=True)
 
 
-# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con tiendas seleccionadas del proyecto
+# Mostrar Resumen Ejecutivo WoW de últimas 4 semanas con tiendas seleccionadas del proyecto; independiente de filtros globales
 render_wow_cards(op_all if "op_all" in globals() else op)
 
 
