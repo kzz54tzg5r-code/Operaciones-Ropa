@@ -1,9 +1,13 @@
-# Diagnóstico ORION MAIN
+# ORION APP13 - Paso 2C seguro
 
-Este paquete confirma:
-1. Que Streamlit lee app.py.
-2. Que orion_main.py existe.
-3. Que orion_main.py compila.
-4. Al presionar el botón, ejecuta ORION y muestra el error exacto.
+Base: versión que ya ejecutó correctamente en el diagnóstico.
 
-Usarlo sólo para diagnóstico.
+Cambios mínimos:
+- Más margen superior para evitar letras cortadas.
+- Acceso sólo con Consulta y Administrador.
+
+No se modificó:
+- Configuración de Metas.
+- Resumen Ejecutivo.
+- PDF.
+- Conversión.

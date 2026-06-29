@@ -367,6 +367,19 @@ tbody tr:nth-child(even) td{
     border-bottom:2px solid #FFFFFF !important;
 }
 
+
+/* === ORION ajuste visual seguro === */
+.block-container{
+    padding-top: 3.2rem !important;
+}
+h1, h2, h3, .wow-title, .wow-card, .wow-head, .wow-body{
+    overflow: visible !important;
+    line-height: 1.18 !important;
+}
+.wow-row{
+    margin-top: 22px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1673,7 +1686,7 @@ render_orion_header()
 # ==========================================================
 with st.sidebar:
     st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
+    rol = st.radio("Rol", ["Consulta", "Administrador"], horizontal=True)
 
     is_admin = False
     is_manager = False
@@ -1693,23 +1706,12 @@ with st.sidebar:
         elif clave:
             st.warning("Clave incorrecta.")
 
-    elif rol == "Gerente":
-        clave_gerente = st.text_input("Clave gerente", type="password")
-        is_manager = clave_gerente == st.secrets.get("GERENTE_PASSWORD", "orion_gerente")
-        if is_manager:
-            can_edit_names = True
-            can_view_diagnostics = True
-        elif clave_gerente:
-            st.warning("Clave de gerente incorrecta.")
-
     else:
         st.caption("Modo consulta: solo visualización.")
 
     st.caption(f"Rol activo: {rol}")
     if is_admin:
         st.success("Permisos: carga, metas, nombres y diagnóstico.")
-    elif is_manager:
-        st.success("Permisos: consulta, corrección de nombres y diagnóstico.")
     elif rol == "Consulta":
         st.info("Permisos: solo consulta.")
 
