@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -364,36 +365,6 @@ tbody tr:nth-child(even) td{
 [data-testid="stDataFrame"] div[role="gridcell"]{
     border-right:2px solid #FFFFFF !important;
     border-bottom:2px solid #FFFFFF !important;
-}
-
-
-/* === Fix Streamlit 1.58: header sin iframe/components === */
-.orion-header-wrap{
-    margin-top: 18px !important;
-    margin-bottom: 18px !important;
-}
-.orion-header-wrap iframe{
-    display:none !important;
-}
-
-
-/* === ORION Cloud Safe: navegación ligera tipo pestañas === */
-div[role="radiogroup"]{
-    display:flex;
-    gap:18px;
-    border-bottom:1px solid #D5D8E0;
-    padding-bottom:8px;
-    margin-bottom:18px;
-    overflow-x:auto;
-}
-div[role="radiogroup"] label{
-    white-space:nowrap;
-    padding:8px 10px;
-}
-div[role="radiogroup"] label:has(input:checked){
-    border-bottom:4px solid #EC007C;
-    color:#EC007C !important;
-    font-weight:700;
 }
 
 </style>
@@ -825,14 +796,14 @@ def excel_export(sheets):
 
 def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     import matplotlib.pyplot as plt
 
     bio = BytesIO()
-    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=28)
+    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=22, leftMargin=22, topMargin=22, bottomMargin=22)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("orion_title", parent=styles["Title"], textColor=colors.HexColor("#14172F"), fontSize=18)
     sub_style = ParagraphStyle("orion_sub", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"), fontSize=12)
@@ -878,7 +849,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             d = df.copy().head(18)
             x = d["Tienda"].astype(str).tolist()
             idx = np.arange(len(x)); width = 0.34
-            fig, ax = plt.subplots(figsize=(12.8, 5.7))
+            fig, ax = plt.subplots(figsize=(13.2, 5.1))
             ingresos = _numcol(d, ["Total ingresos", "Piezas Ingresadas"])
             if mode == "pendiente":
                 y1 = _numcol(d, ["Pendiente por Habilitar", "Pendiente Acondicionar"])
@@ -903,22 +874,9 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
                     ax.text(i, v+(ymax*.075 if ymax else 1), f"{v:,.0f}", ha="center", va="bottom", fontsize=8, color="#2F4A8A", fontweight="bold")
             ax.set_xticks(idx); ax.set_xticklabels(x, rotation=45, ha="right", fontsize=8)
             ax.tick_params(axis="y", labelsize=8); ax.grid(axis="y", alpha=0.25)
-            ax.set_title(title, fontsize=14, fontweight='bold', color='#14172F', pad=18)
-            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=3, frameon=False, fontsize=8)
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=3, frameon=False, fontsize=8)
             fig.tight_layout(); img = BytesIO(); fig.savefig(img, format="png", dpi=170, bbox_inches="tight"); plt.close(fig); img.seek(0)
-            
-            story.append(PageBreak())
-            chart_title_style = ParagraphStyle(
-                "chart_title_" + str(len(story)),
-                parent=styles["Heading3"],
-                textColor=colors.HexColor("#14172F"),
-                fontSize=13,
-                leading=16,
-                spaceAfter=10
-            )
-            story.append(Paragraph(title, chart_title_style))
-            story.append(RLImage(img, width=9.35*inch, height=4.55*inch))
-            story.append(Spacer(1, 8))
+            story.append(Paragraph(title, styles["Heading3"])); story.append(RLImage(img, width=9.6*inch, height=3.9*inch)); story.append(Spacer(1, 10))
         except Exception:
             pass
 
@@ -1704,7 +1662,7 @@ def render_orion_header():
         </div>
     </body></html>
     """
-    st.markdown(header_html, unsafe_allow_html=True)
+    components.html(header_html, height=205, scrolling=False)
 
 render_orion_header()
 
@@ -2768,19 +2726,12 @@ if not can_config and "18. Configuración de Metas" in tabs_names:
     tabs_names.remove("18. Configuración de Metas")
 if not can_view_diagnostics and "19. Diagnóstico de Datos" in tabs_names:
     tabs_names.remove("19. Diagnóstico de Datos")
-# Navegación estable: sólo se renderiza la pestaña seleccionada.
-# Esto evita que Streamlit calcule las 20 pestañas al mismo tiempo y se caiga en Cloud.
-selected_tab = st.radio(
-    "Selecciona una pestaña",
-    tabs_names,
-    horizontal=True,
-    label_visibility="collapsed",
-    key="orion_selected_tab"
-)
+tabs = st.tabs(tabs_names)
+tab = dict(zip(tabs_names, tabs))
 
 
 # 0 Día Anterior / Pendiente
-if selected_tab == "0. Día Anterior / Pendiente":
+with tab["0. Día Anterior / Pendiente"]:
     st.subheader("Día Anterior | Ingresos y Pendiente por Procesar")
     st.caption("Muestra únicamente tiendas con productividad registrada. Formato: piezas con coma, pesos con $, porcentajes con %.")
 
@@ -2999,44 +2950,6 @@ if selected_tab == "0. Día Anterior / Pendiente":
 
                 render_orion_table(resumen[columnas], group_day=True)
                 st.markdown("</div>", unsafe_allow_html=True)
-
-                # Detalle operativo con filtro por tienda: visible sólo en app, no se integra al PDF.
-                st.markdown("<div class='boceto-section'><h3>DETALLE DE REGISTROS CARGADOS POR TIENDA</h3>", unsafe_allow_html=True)
-                _tiendas_detalle = sorted(resumen["Tienda"].astype(str).dropna().unique().tolist()) if "Tienda" in resumen.columns else []
-                _tiendas_sel_detalle = st.multiselect(
-                    "Filtrar tienda para revisar registros cargados",
-                    _tiendas_detalle,
-                    default=_tiendas_detalle[:1] if _tiendas_detalle else [],
-                    key="dia_anterior_detalle_tienda"
-                )
-
-                _resumen_filtrado_detalle = resumen[columnas].copy()
-                if _tiendas_sel_detalle:
-                    _resumen_filtrado_detalle = _resumen_filtrado_detalle[
-                        _resumen_filtrado_detalle["Tienda"].astype(str).isin(_tiendas_sel_detalle)
-                    ].copy()
-
-                st.caption("Resumen por tienda filtrado con el mismo formato del PDF.")
-                render_orion_table(_resumen_filtrado_detalle, group_day=True)
-
-                _registros_dia = op_dia.copy() if "op_dia" in locals() and isinstance(op_dia, pd.DataFrame) else pd.DataFrame()
-                if _tiendas_sel_detalle and not _registros_dia.empty and "Tienda" in _registros_dia.columns:
-                    _registros_dia = _registros_dia[_registros_dia["Tienda"].astype(str).isin(_tiendas_sel_detalle)].copy()
-
-                if not _registros_dia.empty:
-                    _cols_det = [
-                        "Fecha Día", "Tienda", "Ocurrencia", "Nombre Real", "Nombre",
-                        "Actividad Realizada", "Motivo de ingreso", "Área",
-                        "Número de Piezas", "Muertos", "Cajas", "Probador",
-                        "Acondicionado", "Ubicado", "Recorridos"
-                    ]
-                    _cols_det = [c for c in _cols_det if c in _registros_dia.columns]
-                    st.caption("Detalle de registros que se subieron en la fecha consultada. Esta tabla no se descarga en PDF.")
-                    render_orion_table(_registros_dia[_cols_det])
-                else:
-                    st.info("No hay registros operativos para la tienda seleccionada en la fecha consultada.")
-                st.markdown("</div>", unsafe_allow_html=True)
-
                 chart_col1, chart_col2 = st.columns(2)
                 with chart_col1:
                     st.markdown("<div class='boceto-section'><h3>INGRESO vs ACONDICIONADO vs UBICADO POR TIENDA</h3>", unsafe_allow_html=True)
@@ -3072,7 +2985,7 @@ if selected_tab == "0. Día Anterior / Pendiente":
 
 
 # 1 Reporte Semanal
-if selected_tab == "1. Reporte Semanal":
+with tab["1. Reporte Semanal"]:
     semanas_disp_reporte = sorted([int(x) for x in op.get("Semana ISO", pd.Series(dtype=float)).dropna().unique()]) if "op" in globals() and not op.empty else []
     if semanas_disp_reporte:
         semana_default = max(semanas_disp_reporte)
@@ -3086,7 +2999,7 @@ if selected_tab == "1. Reporte Semanal":
 
 
 # 2 Reporte Mensual
-if selected_tab == "2. Reporte Mensual":
+with tab["2. Reporte Mensual"]:
     fechas_mes = pd.to_datetime(op.get("Fecha Día", pd.Series(dtype=str)), errors="coerce").dropna() if "op" in globals() and not op.empty else pd.Series(dtype="datetime64[ns]")
     meses_disp = sorted(fechas_mes.dt.to_period("M").astype(str).unique().tolist()) if not fechas_mes.empty else []
     if meses_disp:
@@ -3103,7 +3016,7 @@ if selected_tab == "2. Reporte Mensual":
 
 
 # 3 Conversión
-if selected_tab == "3. Conversión":
+with tab["3. Conversión"]:
     st.subheader("Conversión Semanal Dev → Venta")
 
     conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
@@ -3151,7 +3064,7 @@ if selected_tab == "3. Conversión":
 
 
 # 4 Recuperación Económica
-if selected_tab == "4. Recuperación Económica":
+with tab["4. Recuperación Económica"]:
     st.subheader("Recuperación Económica Semanal Dev → Venta")
 
     conv_det_all = conversion_semanal_dev_venta(co_all if "co_all" in globals() else co)
@@ -3189,7 +3102,7 @@ if selected_tab == "4. Recuperación Económica":
 
 
 # 5 Productividad Colaborador
-if selected_tab == "5. Productividad por Colaborador":
+with tab["5. Productividad por Colaborador"]:
     st.subheader("Ranking de Productividad por Colaborador")
     if op.empty:
         st.warning("Sin datos operativos.")
@@ -3219,7 +3132,7 @@ if selected_tab == "5. Productividad por Colaborador":
                                title="Top colaboradores por productividad"), width="stretch", key="orion_plot_5")
 
 # 6 Productividad Actividad
-if selected_tab == "6. Productividad por Actividad":
+with tab["6. Productividad por Actividad"]:
     st.subheader("Productividad por Actividad")
     if op.empty:
         st.warning("Sin operación.")
@@ -3245,7 +3158,7 @@ if selected_tab == "6. Productividad por Actividad":
                         width="stretch", key="orion_plot_7")
 
 # 7 Eficiencia Operativa
-if selected_tab == "7. Eficiencia Operativa":
+with tab["7. Eficiencia Operativa"]:
     st.subheader("Eficiencia Operativa | Solo tiendas con registro")
     c1,c2,c3,c4,c5 = st.columns(5)
     c1.metric("Piezas Ingresadas", n0(total_ingresos))
@@ -3259,7 +3172,7 @@ if selected_tab == "7. Eficiencia Operativa":
     render_orion_table(ef)
 
 # 8 Cumplimiento Recorridos
-if selected_tab == "8. Cumplimiento de Recorridos":
+with tab["8. Cumplimiento de Recorridos"]:
     st.subheader("Cumplimiento de Recorridos")
     rec = ss[["Tienda","Estado","Recorridos","Meta Recorridos","% Recorridos"]].copy()
     rec["Estatus"] = np.where(rec["% Recorridos"] >= 100, "🟢 Cumple", np.where(rec["% Recorridos"] >= 80, "🟡 Atención", "🔴 Bajo"))
@@ -3272,7 +3185,7 @@ if selected_tab == "8. Cumplimiento de Recorridos":
     st.plotly_chart(fig, width="stretch", key="orion_plot_8")
 
 # 9 Indicadores Diarios
-if selected_tab == "9. Indicadores Diarios":
+with tab["9. Indicadores Diarios"]:
     st.subheader("Indicadores Diarios")
     if op.empty:
         st.warning("Sin datos.")
@@ -3295,7 +3208,7 @@ if selected_tab == "9. Indicadores Diarios":
         render_orion_table(diaria)
 
 # 10 Top Modelos
-if selected_tab == "10. Top 30 Modelos":
+with tab["10. Top 30 Modelos"]:
     st.subheader("Top 30 Modelos")
     if co.empty:
         st.warning("Sin información comercial.")
@@ -3317,7 +3230,7 @@ if selected_tab == "10. Top 30 Modelos":
                         width="stretch", key="orion_plot_9")
 
 # 11 Categoría
-if selected_tab == "11. Análisis por Categoría":
+with tab["11. Análisis por Categoría"]:
     st.subheader("Análisis por Categoría")
     if co.empty:
         st.warning("Sin información comercial.")
@@ -3329,7 +3242,7 @@ if selected_tab == "11. Análisis por Categoría":
                                color_discrete_sequence=["#0047B3"]), width="stretch", key="orion_plot_10")
 
 # 12 Subcategoría
-if selected_tab == "12. Análisis por Subcategoría":
+with tab["12. Análisis por Subcategoría"]:
     st.subheader("Análisis por Subcategoría")
     if co.empty:
         st.warning("Sin información comercial.")
@@ -3341,7 +3254,7 @@ if selected_tab == "12. Análisis por Subcategoría":
                                color_discrete_sequence=["#EC007C"]), width="stretch", key="orion_plot_11")
 
 # 13 Ranking Tiendas
-if selected_tab == "13. Ranking de Tiendas":
+with tab["13. Ranking de Tiendas"]:
     st.subheader("Ranking de Tiendas")
     rank = ss_all.copy()
     rank["Score"] = (
@@ -3370,7 +3283,7 @@ if selected_tab == "13. Ranking de Tiendas":
         idx_colab = idx_colab.sort_values("Índice Integral", ascending=False)
         render_orion_table(idx_colab)
 # 14 Ranking Colaboradores
-if selected_tab == "14. Ranking de Colaboradores":
+with tab["14. Ranking de Colaboradores"]:
     st.subheader("Ranking de Colaboradores")
     if op.empty:
         st.warning("Sin datos.")
@@ -3381,7 +3294,7 @@ if selected_tab == "14. Ranking de Colaboradores":
         render_orion_table(rc.sort_values("Ranking"))
 
 # 15 Índice Integral
-if selected_tab == "15. Índice Integral":
+with tab["15. Índice Integral"]:
     st.subheader("Índice Integral ORION")
     st.metric("Score Integral", f"{score_integral:,.1f}/100")
     st.progress(min(score_integral/100, 1.0))
@@ -3393,7 +3306,7 @@ if selected_tab == "15. Índice Integral":
     render_orion_table(score_break)
 
 # 16 Alertas
-if selected_tab == "16. Alertas Inteligentes":
+with tab["16. Alertas Inteligentes"]:
     st.subheader("Alertas Inteligentes")
     alerts = []
     if conv_pct < metas["conversion"]:
@@ -3501,7 +3414,7 @@ if "19. Diagnóstico de Datos" in tab:
             st.dataframe(op_all.isna().sum().reset_index().rename(columns={"index":"Columna",0:"Nulos"}), width="stretch", hide_index=True)
 
 # 19 Compartir
-if selected_tab == "20. Compartir ORION":
+with tab["20. Compartir ORION"]:
     st.subheader("Compartir ORION")
     url = st.text_input("URL pública de ORION", value="https://operaciones-ropa.streamlit.app")
     st.code(url)

@@ -1,11 +1,11 @@
-# ORION APP13 SAFE START DEBUG
+# ORION APP13 - Retorno a diseño completo
 
-Esta versión no ejecuta ORION automáticamente.
-Sirve para confirmar si el fallo ocurre al arrancar o al ejecutar orion_main.py.
+Regresa al diseño APP13 completo:
+- Navegación completa con todas las pestañas.
+- Diseño anterior.
+- Descargas PDF existentes.
+- Tablas y gráficos del diseño original.
+- app.py corregido.
+- requirements.txt corregido.
 
-Pasos:
-1. Subir todos los archivos.
-2. Abrir la app.
-3. Debe aparecer “ORION Safe Start cargó correctamente”.
-4. Presionar “Ejecutar ORION con diagnóstico”.
-5. Si falla, copiar el error que aparece en pantalla.
+No usa la arquitectura simplificada APP14.
