@@ -1,17 +1,16 @@
 import streamlit as st
-import traceback
+import sys
+import os
+from pathlib import Path
 
-st.set_page_config(
-    page_title="Recuperación Cambios y Muertos",
-    page_icon="🚀",
-    layout="wide"
-)
+st.set_page_config(page_title="Diagnóstico ORION", page_icon="✅", layout="wide")
 
-try:
-    with open("orion_main.py", "r", encoding="utf-8") as f:
-        code = compile(f.read(), "orion_main.py", "exec")
-    exec(code, globals())
-except Exception:
-    st.error("La app no pudo iniciar. Copia este error y envíalo para corregirlo exacto.")
-    st.code(traceback.format_exc(), language="python")
-    st.stop()
+st.success("✅ Streamlit sí está leyendo este app.py correctamente")
+
+st.write("Python:", sys.version)
+st.write("Carpeta actual:", os.getcwd())
+
+st.subheader("Archivos encontrados en la raíz")
+st.write([p.name for p in Path(".").iterdir()])
+
+st.info("Si ves esta pantalla, el despliegue funciona. El problema está dentro de orion_main.py. Si sigues viendo 'Oh no', Streamlit NO está leyendo este app.py o falló la instalación de requirements.")
