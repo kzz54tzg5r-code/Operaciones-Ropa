@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -365,6 +364,16 @@ tbody tr:nth-child(even) td{
 [data-testid="stDataFrame"] div[role="gridcell"]{
     border-right:2px solid #FFFFFF !important;
     border-bottom:2px solid #FFFFFF !important;
+}
+
+
+/* === Fix Streamlit 1.58: header sin iframe/components === */
+.orion-header-wrap{
+    margin-top: 18px !important;
+    margin-bottom: 18px !important;
+}
+.orion-header-wrap iframe{
+    display:none !important;
 }
 
 </style>
@@ -1675,7 +1684,7 @@ def render_orion_header():
         </div>
     </body></html>
     """
-    components.html(header_html, height=205, scrolling=False)
+    st.markdown(header_html, unsafe_allow_html=True)
 
 render_orion_header()
 

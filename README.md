@@ -1,9 +1,11 @@
-# ORION APP13 - PDF y detalle Día Anterior
+# ORION APP13 - Fix Oh No por components.html
 
-Cambios:
-- En PDF Día Anterior cada gráfica queda en su propia hoja, con el título arriba de la gráfica.
-- Se ajustó tamaño/margen para evitar que el título quede en una hoja y la gráfica en otra.
-- En pestaña Día Anterior se agregó una sección para filtrar tienda y ver:
-  1) el resumen por tienda con el mismo formato del PDF,
-  2) el detalle de registros cargados de esa tienda.
-- El detalle de registros NO se incluye en PDF.
+Cambio:
+- Se eliminó el uso de `components.html(...)`.
+- El header se renderiza con `st.markdown(..., unsafe_allow_html=True)`.
+- Esto evita el aviso/fallo por `st.components.v1.html` en Streamlit 1.58.
+
+Mantiene:
+- Diseño APP13 completo.
+- Pestañas anteriores.
+- PDF y detalle de registros del último ZIP.
