@@ -1,13 +1,14 @@
-# ORION APP13 - Paso 2C seguro
+# ORION Diagnóstico Runtime
 
-Base: versión que ya ejecutó correctamente en el diagnóstico.
+Usa esta versión para encontrar el error exacto.
 
-Cambios mínimos:
-- Más margen superior para evitar letras cortadas.
-- Acceso sólo con Consulta y Administrador.
+Qué hace:
+- Ejecuta ORION normalmente.
+- Si falla al filtrar tiendas, recalcular o cambiar pestañas, muestra el traceback completo.
+- Guarda el último error en `orion_runtime_error.txt` para verlo en la barra lateral al recargar.
 
-No se modificó:
-- Configuración de Metas.
-- Resumen Ejecutivo.
-- PDF.
-- Conversión.
+Sube todos los archivos del ZIP al repositorio:
+- app.py
+- orion_main.py
+- requirements.txt
+- assets/logo.png
