@@ -796,14 +796,14 @@ def excel_export(sheets):
 
 def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     import matplotlib.pyplot as plt
 
     bio = BytesIO()
-    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=22, leftMargin=22, topMargin=22, bottomMargin=22)
+    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=28)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("orion_title", parent=styles["Title"], textColor=colors.HexColor("#14172F"), fontSize=18)
     sub_style = ParagraphStyle("orion_sub", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"), fontSize=12)
@@ -849,7 +849,7 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             d = df.copy().head(18)
             x = d["Tienda"].astype(str).tolist()
             idx = np.arange(len(x)); width = 0.34
-            fig, ax = plt.subplots(figsize=(13.2, 5.1))
+            fig, ax = plt.subplots(figsize=(12.8, 5.7))
             ingresos = _numcol(d, ["Total ingresos", "Piezas Ingresadas"])
             if mode == "pendiente":
                 y1 = _numcol(d, ["Pendiente por Habilitar", "Pendiente Acondicionar"])
@@ -874,9 +874,22 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
                     ax.text(i, v+(ymax*.075 if ymax else 1), f"{v:,.0f}", ha="center", va="bottom", fontsize=8, color="#2F4A8A", fontweight="bold")
             ax.set_xticks(idx); ax.set_xticklabels(x, rotation=45, ha="right", fontsize=8)
             ax.tick_params(axis="y", labelsize=8); ax.grid(axis="y", alpha=0.25)
-            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=3, frameon=False, fontsize=8)
+            ax.set_title(title, fontsize=14, fontweight='bold', color='#14172F', pad=18)
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.12), ncol=3, frameon=False, fontsize=8)
             fig.tight_layout(); img = BytesIO(); fig.savefig(img, format="png", dpi=170, bbox_inches="tight"); plt.close(fig); img.seek(0)
-            story.append(Paragraph(title, styles["Heading3"])); story.append(RLImage(img, width=9.6*inch, height=3.9*inch)); story.append(Spacer(1, 10))
+            
+            story.append(PageBreak())
+            chart_title_style = ParagraphStyle(
+                "chart_title_" + str(len(story)),
+                parent=styles["Heading3"],
+                textColor=colors.HexColor("#14172F"),
+                fontSize=13,
+                leading=16,
+                spaceAfter=10
+            )
+            story.append(Paragraph(title, chart_title_style))
+            story.append(RLImage(img, width=9.35*inch, height=4.55*inch))
+            story.append(Spacer(1, 8))
         except Exception:
             pass
 
@@ -2950,6 +2963,44 @@ with tab["0. Día Anterior / Pendiente"]:
 
                 render_orion_table(resumen[columnas], group_day=True)
                 st.markdown("</div>", unsafe_allow_html=True)
+
+                # Detalle operativo con filtro por tienda: visible sólo en app, no se integra al PDF.
+                st.markdown("<div class='boceto-section'><h3>DETALLE DE REGISTROS CARGADOS POR TIENDA</h3>", unsafe_allow_html=True)
+                _tiendas_detalle = sorted(resumen["Tienda"].astype(str).dropna().unique().tolist()) if "Tienda" in resumen.columns else []
+                _tiendas_sel_detalle = st.multiselect(
+                    "Filtrar tienda para revisar registros cargados",
+                    _tiendas_detalle,
+                    default=_tiendas_detalle[:1] if _tiendas_detalle else [],
+                    key="dia_anterior_detalle_tienda"
+                )
+
+                _resumen_filtrado_detalle = resumen[columnas].copy()
+                if _tiendas_sel_detalle:
+                    _resumen_filtrado_detalle = _resumen_filtrado_detalle[
+                        _resumen_filtrado_detalle["Tienda"].astype(str).isin(_tiendas_sel_detalle)
+                    ].copy()
+
+                st.caption("Resumen por tienda filtrado con el mismo formato del PDF.")
+                render_orion_table(_resumen_filtrado_detalle, group_day=True)
+
+                _registros_dia = op_dia.copy() if "op_dia" in locals() and isinstance(op_dia, pd.DataFrame) else pd.DataFrame()
+                if _tiendas_sel_detalle and not _registros_dia.empty and "Tienda" in _registros_dia.columns:
+                    _registros_dia = _registros_dia[_registros_dia["Tienda"].astype(str).isin(_tiendas_sel_detalle)].copy()
+
+                if not _registros_dia.empty:
+                    _cols_det = [
+                        "Fecha Día", "Tienda", "Ocurrencia", "Nombre Real", "Nombre",
+                        "Actividad Realizada", "Motivo de ingreso", "Área",
+                        "Número de Piezas", "Muertos", "Cajas", "Probador",
+                        "Acondicionado", "Ubicado", "Recorridos"
+                    ]
+                    _cols_det = [c for c in _cols_det if c in _registros_dia.columns]
+                    st.caption("Detalle de registros que se subieron en la fecha consultada. Esta tabla no se descarga en PDF.")
+                    render_orion_table(_registros_dia[_cols_det])
+                else:
+                    st.info("No hay registros operativos para la tienda seleccionada en la fecha consultada.")
+                st.markdown("</div>", unsafe_allow_html=True)
+
                 chart_col1, chart_col2 = st.columns(2)
                 with chart_col1:
                     st.markdown("<div class='boceto-section'><h3>INGRESO vs ACONDICIONADO vs UBICADO POR TIENDA</h3>", unsafe_allow_html=True)
