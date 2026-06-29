@@ -1,7 +1,10 @@
-# ORION APP13 - PASO 1 BASE VALIDADA
+# ORION APP13 - Fix arranque GitHub
 
-Esta versión usa exactamente el ZIP que subiste como base.
-Cambios realizados:
-- Se eliminó la carpeta __pycache__.
-- Se validó sintaxis de app.py y orion_main.py.
-- No se modificó la lógica funcional para confirmar estabilidad antes de nuevos cambios.
+Corrección crítica:
+- app.py con saltos de línea reales.
+- requirements.txt con una dependencia por línea.
+
+Motivo:
+En GitHub el app.py estaba en una sola línea:
+`import streamlit as st import traceback ...`
+Eso genera SyntaxError antes de que Streamlit pueda mostrar el traceback, por eso aparecía "Oh no".

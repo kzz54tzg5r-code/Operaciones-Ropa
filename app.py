@@ -1,8 +1,15 @@
 import streamlit as st
 import traceback
-st.set_page_config(page_title="Recuperación Cambios y Muertos", page_icon="🚀", layout="wide")
+
+st.set_page_config(
+    page_title="Recuperación Cambios y Muertos",
+    page_icon="🚀",
+    layout="wide"
+)
+
 try:
-    code = compile(open("orion_main.py", "r", encoding="utf-8").read(), "orion_main.py", "exec")
+    with open("orion_main.py", "r", encoding="utf-8") as f:
+        code = compile(f.read(), "orion_main.py", "exec")
     exec(code, globals())
 except Exception:
     st.error("La app no pudo iniciar. Copia este error y envíalo para corregirlo exacto.")
