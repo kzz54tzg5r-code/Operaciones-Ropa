@@ -1,13 +1,11 @@
-# ORION APP13 - Cloud Safe Lazy Tabs
+# ORION APP13 SAFE START DEBUG
 
-Mantiene el diseño APP13 y las pestañas completas, pero cambia la navegación para que sólo se renderice una pestaña a la vez.
+Esta versión no ejecuta ORION automáticamente.
+Sirve para confirmar si el fallo ocurre al arrancar o al ejecutar orion_main.py.
 
-Motivo:
-Streamlit Cloud estaba mostrando "Oh no" sin traceback. Los logs no muestran excepción, lo que indica caída de sesión/proceso por carga pesada al renderizar todas las pestañas al mismo tiempo.
-
-Cambios:
-- st.tabs reemplazado por navegación horizontal con st.radio.
-- Sólo se ejecuta/renderiza la pestaña seleccionada.
-- components.html eliminado.
-- app.py captura BaseException para mostrar traceback si existe.
-- Mantiene PDF y detalle de registros del último paquete.
+Pasos:
+1. Subir todos los archivos.
+2. Abrir la app.
+3. Debe aparecer “ORION Safe Start cargó correctamente”.
+4. Presionar “Ejecutar ORION con diagnóstico”.
+5. Si falla, copiar el error que aparece en pantalla.
