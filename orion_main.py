@@ -367,6 +367,25 @@ tbody tr:nth-child(even) td{
     border-bottom:2px solid #FFFFFF !important;
 }
 
+
+/* === Ajuste solicitado: margen y textos sin corte === */
+.block-container{
+    padding-top: 3.6rem !important;
+}
+section.main > div{
+    padding-top: 18px !important;
+}
+h1, h2, h3, .wow-title, .wow-card, .wow-head, .wow-body, .hero-title, .hero-subtitle{
+    overflow: visible !important;
+    line-height: 1.18 !important;
+}
+.wow-row{
+    margin-top: 22px !important;
+}
+.wow-card{
+    min-height: 228px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -794,23 +813,47 @@ def excel_export(sheets):
     return bio.getvalue()
 
 
+
 def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
     from reportlab.lib.pagesizes import letter, landscape
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage, PageBreak
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
+    from pathlib import Path
     import matplotlib.pyplot as plt
 
     bio = BytesIO()
-    doc = SimpleDocTemplate(bio, pagesize=landscape(letter), rightMargin=22, leftMargin=22, topMargin=22, bottomMargin=22)
+    doc = SimpleDocTemplate(
+        bio,
+        pagesize=landscape(letter),
+        rightMargin=34,
+        leftMargin=34,
+        topMargin=34,
+        bottomMargin=30
+    )
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle("orion_title", parent=styles["Title"], textColor=colors.HexColor("#14172F"), fontSize=18)
-    sub_style = ParagraphStyle("orion_sub", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"), fontSize=12)
-    story = [Paragraph("Recuperación Cambios y Muertos", title_style), Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", sub_style), Spacer(1, 10)]
+    title_style = ParagraphStyle("orion_title", parent=styles["Title"], textColor=colors.HexColor("#14172F"), fontSize=18, leading=22)
+    sub_style = ParagraphStyle("orion_sub", parent=styles["Heading2"], textColor=colors.HexColor("#EC007C"), fontSize=12, leading=15)
+    h3_style = ParagraphStyle("orion_h3", parent=styles["Heading3"], textColor=colors.HexColor("#14172F"), fontSize=11, leading=14, spaceAfter=8)
+
+    story = []
+
+    # Logo Price Shoes
+    logo_path = Path("assets/logo.png")
+    if logo_path.exists():
+        try:
+            story.append(RLImage(str(logo_path), width=1.15*inch, height=0.55*inch))
+            story.append(Spacer(1, 4))
+        except Exception:
+            pass
+
+    story.append(Paragraph("Recuperación Cambios y Muertos", title_style))
+    story.append(Paragraph(f"Operaciones Ropa | Día anterior / Pendiente {fecha_texto}", sub_style))
+    story.append(Spacer(1, 12))
 
     def prep(df, max_rows=28, max_cols=14):
-        d = compact_display_df(df).iloc[:max_rows, :max_cols]
+        d = compact_display_df(df).iloc[:max_rows, :max_cols].copy()
         for col in d.columns:
             if pd.api.types.is_numeric_dtype(d[col]):
                 if "%" in str(col):
@@ -819,22 +862,76 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
                     d[col] = d[col].apply(lambda x: f"{x:,.0f}")
         return [list(d.columns)] + d.astype(str).values.tolist()
 
-    def add_table(title, df):
+    def prep_day_detail_with_groups(df, max_rows=28):
+        d = compact_display_df(df).iloc[:max_rows, :].copy()
+        for col in d.columns:
+            if pd.api.types.is_numeric_dtype(d[col]):
+                if "%" in str(col):
+                    d[col] = d[col].apply(lambda x: f"{x:,.1f}%")
+                else:
+                    d[col] = d[col].apply(lambda x: f"{x:,.0f}")
+
+        cols = list(d.columns)
+        tienda_cols = 1 if cols and cols[0] == "Tienda" else 0
+        ingreso_names = {"Dev pzs", "Muertos", "Cajas", "Probador", "Total", "Pend. Ant."}
+        ingreso_count = sum(1 for c in cols[tienda_cols:] if c in ingreso_names)
+        reg_count = max(len(cols) - tienda_cols - ingreso_count, 0)
+
+        row1 = []
+        spans = []
+        col_idx = 0
+        if tienda_cols:
+            row1.append("Tienda")
+            spans.append((col_idx, col_idx))
+            col_idx += 1
+        if ingreso_count:
+            row1.append("INGRESOS")
+            row1 += [""] * (ingreso_count - 1)
+            spans.append((col_idx, col_idx + ingreso_count - 1))
+            col_idx += ingreso_count
+        if reg_count:
+            row1.append("REGISTROS / INDICADORES")
+            row1 += [""] * (reg_count - 1)
+            spans.append((col_idx, col_idx + reg_count - 1))
+
+        return [row1, cols] + d.astype(str).values.tolist(), spans
+
+    def add_table(title, df, grouped=False):
         if not isinstance(df, pd.DataFrame) or df.empty:
             return
-        story.append(Paragraph(title, styles["Heading3"]))
-        table = Table(prep(df), repeatRows=1)
-        table.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#EC007C")),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-            ("FONTSIZE",(0,0),(-1,-1),6.2),
-            ("GRID",(0,0),(-1,-1),.25,colors.HexColor("#D1D5DB")),
-            ("ALIGN",(0,0),(-1,-1),"CENTER"),
-            ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white, colors.HexColor("#F8F9FB")]),
-        ]))
+        story.append(Paragraph(title, h3_style))
+
+        if grouped:
+            data, spans = prep_day_detail_with_groups(df)
+            table = Table(data, repeatRows=2)
+            style_cmds = [
+                ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2F4A8A")),
+                ("BACKGROUND",(0,1),(-1,1),colors.HexColor("#EC007C")),
+                ("TEXTCOLOR",(0,0),(-1,1),colors.white),
+                ("FONTNAME",(0,0),(-1,1),"Helvetica-Bold"),
+                ("FONTSIZE",(0,0),(-1,-1),5.8),
+                ("GRID",(0,0),(-1,-1),.35,colors.white),
+                ("ALIGN",(0,0),(-1,-1),"CENTER"),
+                ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
+                ("ROWBACKGROUNDS",(0,2),(-1,-1),[colors.white, colors.HexColor("#F8F9FB")]),
+            ]
+            for a,b in spans:
+                if b > a:
+                    style_cmds.append(("SPAN",(a,0),(b,0)))
+            table.setStyle(TableStyle(style_cmds))
+        else:
+            table = Table(prep(df), repeatRows=1)
+            table.setStyle(TableStyle([
+                ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#EC007C")),
+                ("TEXTCOLOR",(0,0),(-1,0),colors.white),
+                ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
+                ("FONTSIZE",(0,0),(-1,-1),6.2),
+                ("GRID",(0,0),(-1,-1),.35,colors.white),
+                ("ALIGN",(0,0),(-1,-1),"CENTER"),
+                ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white, colors.HexColor("#F8F9FB")]),
+            ]))
         story.append(table)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 12))
 
     def _numcol(d, names):
         for name in names:
@@ -849,42 +946,56 @@ def pdf_dia_anterior_bytes(resumen_general, detalle, fecha_texto=""):
             d = df.copy().head(18)
             x = d["Tienda"].astype(str).tolist()
             idx = np.arange(len(x)); width = 0.34
-            fig, ax = plt.subplots(figsize=(13.2, 5.1))
-            ingresos = _numcol(d, ["Total ingresos", "Piezas Ingresadas"])
+            fig, ax = plt.subplots(figsize=(13.4, 5.8))
+            ingresos = _numcol(d, ["Total ingresos", "Piezas Ingresadas", "Total"])
             if mode == "pendiente":
-                y1 = _numcol(d, ["Pendiente por Habilitar", "Pendiente Acondicionar"])
-                y2 = _numcol(d, ["Pendiente Ubicar"])
+                y1 = _numcol(d, ["Pendiente por Habilitar", "Pendiente Acondicionar", "Pend. Hab."])
+                y2 = _numcol(d, ["Pendiente Ubicar", "Pend. Ub."])
                 l1, l2 = "Pendiente por Habilitar", "Pendiente por Ubicar"
             else:
-                y1 = _numcol(d, ["Pzas Habilitadas", "Piezas Acondicionadas", "Acondicionado"])
-                y2 = _numcol(d, ["Pzas Ubicadas", "Piezas Ubicadas", "Ubicado"])
+                y1 = _numcol(d, ["Pzas Habilitadas", "Piezas Acondicionadas", "Acondicionado", "Habilitadas"])
+                y2 = _numcol(d, ["Pzas Ubicadas", "Piezas Ubicadas", "Ubicado", "Ubicadas"])
                 l1, l2 = "Pzas Habilitadas", "Pzas Ubicadas"
+
             bars1 = ax.bar(idx - width/2, y1, width, label=l1, color="#0047B3")
             bars2 = ax.bar(idx + width/2, y2, width, label=l2, color="#EC007C")
             ax.plot(idx, ingresos, color="#2F4A8A", marker="o", linewidth=3, label="Total ingresos")
             ymax = max(float(y1.max()) if len(y1) else 0, float(y2.max()) if len(y2) else 0, float(ingresos.max()) if len(ingresos) else 0)
-            ax.set_ylim(0, ymax*1.40 if ymax else 10)
+            ax.set_ylim(0, ymax*1.45 if ymax else 10)
+
             for bars in [bars1, bars2]:
                 for bar in bars:
                     h = bar.get_height()
                     if h:
-                        ax.text(bar.get_x()+bar.get_width()/2, h+(ymax*.025 if ymax else 1), f"{h:,.0f}", ha="center", va="bottom", fontsize=8, color="#6B7280", fontweight="bold")
+                        ax.text(bar.get_x()+bar.get_width()/2, h+(ymax*.025 if ymax else 1), f"{h:,.0f}", ha="center", va="bottom", fontsize=8, color="#14172F", fontweight="bold")
             for i, v in enumerate(ingresos):
                 if v:
                     ax.text(i, v+(ymax*.075 if ymax else 1), f"{v:,.0f}", ha="center", va="bottom", fontsize=8, color="#2F4A8A", fontweight="bold")
-            ax.set_xticks(idx); ax.set_xticklabels(x, rotation=45, ha="right", fontsize=8)
+
+            ax.set_title(title, fontsize=14, fontweight="bold", color="#14172F", pad=20)
+            ax.set_xticks(idx); ax.set_xticklabels(x, rotation=40, ha="right", fontsize=8)
             ax.tick_params(axis="y", labelsize=8); ax.grid(axis="y", alpha=0.25)
-            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.22), ncol=3, frameon=False, fontsize=8)
-            fig.tight_layout(); img = BytesIO(); fig.savefig(img, format="png", dpi=170, bbox_inches="tight"); plt.close(fig); img.seek(0)
-            story.append(Paragraph(title, styles["Heading3"])); story.append(RLImage(img, width=9.6*inch, height=3.9*inch)); story.append(Spacer(1, 10))
+            ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=3, frameon=False, fontsize=8)
+            fig.tight_layout()
+            img = BytesIO()
+            fig.savefig(img, format="png", dpi=170, bbox_inches="tight")
+            plt.close(fig)
+            img.seek(0)
+
+            story.append(PageBreak())
+            story.append(Paragraph(title, h3_style))
+            story.append(RLImage(img, width=9.8*inch, height=4.25*inch))
         except Exception:
             pass
 
     add_table("Indicadores Día Anterior", resumen_general)
-    add_table("Detalle por tienda - Día anterior", detalle)
+    add_table("Detalle por tienda - Día anterior", detalle, grouped=True)
     add_chart("Ingreso vs Habilitado vs Ubicado por tienda", detalle, "procesado")
     add_chart("Pendientes por procesar", detalle, "pendiente")
-    doc.build(story); bio.seek(0); return bio.getvalue()
+
+    doc.build(story)
+    bio.seek(0)
+    return bio.getvalue()
 
 
 def pdf_generico_bytes(titulo, hojas):
@@ -1673,7 +1784,7 @@ render_orion_header()
 # ==========================================================
 with st.sidebar:
     st.header("🔐 Acceso")
-    rol = st.radio("Rol", ["Consulta", "Gerente", "Administrador"], horizontal=True)
+    rol = st.radio("Rol", ["Consulta", "Administrador"], horizontal=True)
 
     is_admin = False
     is_manager = False
@@ -1693,7 +1804,7 @@ with st.sidebar:
         elif clave:
             st.warning("Clave incorrecta.")
 
-    elif rol == "Gerente":
+    elif rol == "Consulta":
         clave_gerente = st.text_input("Clave gerente", type="password")
         is_manager = clave_gerente == st.secrets.get("GERENTE_PASSWORD", "orion_gerente")
         if is_manager:
@@ -2236,6 +2347,15 @@ def render_wow_cards(op_source):
         return
 
     tmp = asegurar_acondicionado_alias(op_source).copy()
+    # Sólo tiendas seleccionadas en Configuración de Metas / Proyecto.
+    # No aplica filtros globales de Semana/Mes.
+    try:
+        tiendas_wow = tiendas_proyecto_activas()
+        if tiendas_wow and "Tienda" in tmp.columns:
+            tmp = tmp[tmp["Tienda"].astype(str).str.strip().isin([str(t).strip() for t in tiendas_wow])].copy()
+    except Exception:
+        pass
+
 
     try:
         tmp = aplicar_filtro_proyecto(tmp)
@@ -2249,7 +2369,7 @@ def render_wow_cards(op_source):
     if not semanas:
         return
 
-    base_daily_wow = daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame()
+    base_daily_wow = daily_all.copy() if "daily_all" in globals() and isinstance(daily_all, pd.DataFrame) else (daily.copy() if "daily" in globals() and isinstance(daily, pd.DataFrame) else pd.DataFrame())
     try:
         base_daily_wow = aplicar_filtro_proyecto(base_daily_wow)
     except Exception:

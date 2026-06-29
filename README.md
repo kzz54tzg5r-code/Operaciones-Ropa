@@ -1,10 +1,13 @@
-# ORION APP13 - Fix arranque GitHub
+# ORION APP13 - PASO 2
 
-Corrección crítica:
-- app.py con saltos de línea reales.
-- requirements.txt con una dependencia por línea.
+Base: ORION_APP13_FIX_ARRANQUE_GITHUB.
 
-Motivo:
-En GitHub el app.py estaba en una sola línea:
-`import streamlit as st import traceback ...`
-Eso genera SyntaxError antes de que Streamlit pueda mostrar el traceback, por eso aparecía "Oh no".
+Cambios:
+1. Más margen superior para evitar letras cortadas.
+2. Roles de acceso sólo Administrador y Consulta.
+3. Resumen Ejecutivo reforzado para usar tiendas seleccionadas del proyecto y no filtros globales.
+4. PDF Día Anterior:
+   - logo Price Shoes,
+   - margen aumentado,
+   - encabezados agrupados INGRESOS / REGISTROS-INDICADORES,
+   - cada gráfica en hoja separada con título.
