@@ -1,0 +1,39 @@
+# -*- coding: utf-8 -*-
+import streamlit as st
+
+PRIMARY = "#3366CC"
+ACCENT = "#FF99FF"
+
+
+def setup_page(title: str) -> None:
+    st.set_page_config(page_title=title, page_icon="📊", layout="wide")
+    st.markdown(
+        f"""
+        <style>
+        .main {{ background: #FFFFFF; }}
+        div[data-testid="stMetric"] {{
+            background: #F6F7FB;
+            border: 1px solid #E5E7EB;
+            padding: 16px;
+            border-radius: 16px;
+        }}
+        .orion-card {{
+            background: linear-gradient(135deg, {PRIMARY} 0%, {ACCENT} 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def section_title(text: str) -> None:
+    st.markdown(f"### {text}")
+    st.divider()
+
+
+def kpi_card(label: str, value: str, help_text: str | None = None) -> None:
+    st.metric(label=label, value=value, help=help_text)
