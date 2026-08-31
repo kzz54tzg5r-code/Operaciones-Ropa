@@ -4,8 +4,9 @@ Plataforma Integral de Gestión Operativa del área de Operaciones Ropa.
 
 ## Versión
 
-- Versión: `V70`
-- Build: `ORION Mobile · navegación compacta y métricas corregidas`
+- Streamlit: `V75 · Acordeón Comercial + corrección de escritorio`
+- Web / Render: `V47 · experiencia móvil`
+- Validación del repositorio: `30 pruebas aprobadas`
 
 ## Ejecutar localmente
 

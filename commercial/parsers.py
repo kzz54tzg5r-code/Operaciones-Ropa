@@ -809,9 +809,27 @@ def _extract_structured_pdf(path: Path, store: str) -> tuple[dict, list[dict], l
                         if header_index is not None:
                             location_left = [wide[location_title][:19], wide[header_index][:19]] + [row[:19] for row in wide[header_index + 1:]]
                             breakdowns["location"] = _parse_metric_table(location_left, "location", store)
-                table_kinds = ["section", "category", "product_type", "status"]
-                for kind, table in zip(table_kinds, first_tables[1:5]):
-                    breakdowns[kind] = _parse_metric_table(table, kind, store)
+                # Los PDF no siempre conservan el mismo orden de tablas. En el
+                # formato original, ``Ventas por Ubicación`` es la sexta tabla;
+                # en otros cortes puede moverse. Identificar cada bloque por su
+                # título evita que las ubicaciones queden vacías al reprocesar.
+                metric_titles = {
+                    "VENTAS POR SECCION": "section",
+                    "VENTAS POR CATEGORIA": "category",
+                    "VENTAS POR TIPO DE PRODUCTO": "product_type",
+                    "VENTAS POR ESTATUS": "status",
+                    "VENTAS POR UBICACION": "location",
+                }
+                for table in first_tables[1:]:
+                    if not table or not table[0]:
+                        continue
+                    title = norm_text(table[0][0])
+                    kind = next(
+                        (value for label, value in metric_titles.items() if label in title),
+                        None,
+                    )
+                    if kind:
+                        breakdowns[kind] = _parse_metric_table(table, kind, store)
 
             # Página 13: detalle físico por Mesa / Rack / Pasillo.
             # Se guarda como physical_location para una tabla independiente.

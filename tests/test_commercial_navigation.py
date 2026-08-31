@@ -18,7 +18,7 @@ def _summary_app(monkeypatch):
 
 def test_sidebar_navigation_does_not_mutate_an_instantiated_widget(monkeypatch):
     app = _summary_app(monkeypatch)
-    upload_button = next(button for button in app.sidebar.button if button.label == "Carga PDF")
+    upload_button = next(button for button in app.sidebar.button if button.label == "Carga comercial")
     upload_button.click().run()
 
     assert not app.exception
@@ -28,7 +28,7 @@ def test_sidebar_navigation_does_not_mutate_an_instantiated_widget(monkeypatch):
 
 def test_sidebar_navigation_uses_deferred_request(monkeypatch):
     app = _summary_app(monkeypatch)
-    catalog_button = next(button for button in app.sidebar.button if button.label == "Qué vendo")
+    catalog_button = next(button for button in app.sidebar.button if button.label == "Tiendas")
     catalog_button.click().run()
 
     assert not app.exception
@@ -46,7 +46,7 @@ def test_summary_has_week_filter_and_visual_blocks(monkeypatch):
     assert not app.exception
     assert [item.label for item in app.selectbox][1:3] == ["Periodo", "Tienda"]
     assert len(app.get("plotly_chart")) == 1
-    assert len(app.dataframe) == 1
+    assert any("ac-decision-table" in (item.value or "") for item in app.markdown)
 
 
 def test_macro_to_micro_navigation_reaches_model_detail(monkeypatch):
@@ -59,7 +59,7 @@ def test_macro_to_micro_navigation_reaches_model_detail(monkeypatch):
 
     assert not app.exception
     assert len(app.get("plotly_chart")) == 1
-    assert len(app.dataframe) == 1
+    assert any("ac-decision-table" in (item.value or "") for item in app.markdown)
 
 
 def test_pending_pdf_entries_only_returns_retryable_files_for_week(monkeypatch, tmp_path):

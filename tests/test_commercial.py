@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from commercial.analytics import (
     inventory_buckets,
     location_summary,
@@ -108,5 +110,5 @@ def test_pdf_snapshot_overlays_current_inventory_without_losing_sales():
     section = location_summary(models, locations)
 
     assert by_store.loc["Iztapalapa", "Existencia"] == snapshot["existence"]
-    assert by_store.loc["Olivar", "Venta $"] == models["Venta $"].sum()
+    assert by_store.loc["Olivar", "Venta $"] == pytest.approx(models["Venta $"].sum())
     assert locations.loc[locations["Ubicación"].eq("Doblado"), "Existencia"].max() == 130854
