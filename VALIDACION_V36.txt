@@ -1,0 +1,58 @@
+OPERACIONES ROPA V36 - VALIDACION DEL PARSER OPERATIVO
+Fecha de validacion: 2026-08-28
+
+ALCANCE IMPLEMENTADO
+- Consolida todas las hojas cuyo nombre normalizado inicia con:
+  * Resultados productividad
+  * Resultados de productividad
+- Las hojas mensuales no alimentan Muertos, Probadores/Aduana, Cajas,
+  Piezas recolectadas, Acondicionado, Ubicado ni Recorridos.
+- Numero de Piezas no numerico se rechaza y queda en el reporte de errores.
+- Recorridos = occurrence unicos con Tabla=Recorrido, llave Tienda+Fecha+occurrence.
+- La deduplicacion de piezas se hace solo para filas completamente iguales;
+  occurrence repetido por si solo NO elimina renglones.
+- Motivos de ingreso se clasifican solamente dentro de Recoleccion de muertos.
+- Acondicionado y Ubicado se toman de Actividad Realizada.
+- Pendiente de acondicionar = max(Piezas recolectadas - Acondicionado, 0).
+- Pendiente de ubicar = max(Acondicionado - Ubicado, 0).
+- Meta semanal de recorridos usa configuracion editable; semana completa 47 por tienda.
+  Dias y semanas parciales suman las metas diarias configuradas.
+
+PRUEBAS AUTOMATIZADAS REALIZADAS
+1. Deteccion de hojas:
+   Resultados productividad + Resultados productividad 2 = OK
+2. Duplicado exacto entre hojas:
+   eliminado una sola vez = OK
+3. Occurrence 29743979 con cuatro renglones 25 + 15 + 3 + 11:
+   Muertos = 54 piezas = OK
+   Recorridos = 1 = OK
+4. Clasificacion de motivo solo en Recoleccion:
+   Muertos = 54 = OK
+   Probadores/Aduana = 9 = OK
+   Cajas = 7 = OK
+   Sistema/Devoluciones = 5 = OK
+   Sin clasificar = 4 = OK
+   Piezas recolectadas = 79 = OK
+5. Actividades:
+   Acondicionado = 133 = OK
+   Ubicado = 90 = OK
+6. Recorridos unicos del libro de prueba = 7 = OK
+7. Pendientes:
+   Pendiente acondicionar = 0 = OK
+   Pendiente ubicar = 43 = OK
+8. Meta recorridos:
+   Lunes consultado = 5 = OK
+   Lunes-miercoles = 15 = OK
+   Semana completa = 47 = OK
+9. Fecha en espanol "lunes, 20 de abril de 2026" = 2026-04-20 = OK
+10. Python compila = OK
+11. JavaScript valida sintaxis = OK
+
+IMPORTANTE
+La validacion automatizada se realizo con un Excel de prueba construido con la
+misma estructura mostrada en la captura y con el ejemplo 29743979 solicitado.
+El Excel original no estaba adjunto en el turno actual ni se encontro disponible
+entre los archivos accesibles de la conversacion. Por ello esta version NO afirma
+una conciliacion numerica contra todo el archivo original. Para esa ultima
+validacion debe cargarse el Excel original en el chat y compararse directamente.
+12. Arranque Uvicorn local en puerto 8350 y GET /health = 200 OK, version V36 = OK

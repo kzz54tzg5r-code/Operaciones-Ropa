@@ -1,0 +1,29 @@
+OPERACIONES ROPA V38 - VALIDACION LOCAL
+
+Validaciones realizadas:
+- Python web_app.py: OK
+- JavaScript index.html: OK
+- Arranque Uvicorn 127.0.0.1:8370: OK
+- /health: 200 OK, version V38
+- Consolidación Resultados productividad + Resultados productividad 2: OK
+- Duplicado exacto entre hojas eliminado: OK
+- Muertos por Motivo de ingreso: OK
+- Probadores/Aduana por Motivo de ingreso: OK
+- Cajas por Motivo de ingreso: OK
+- Piezas recolectadas = total Recolección de muertos: OK
+- Acondicionado: OK
+- Ubicado: OK
+- Recorridos occurrence únicos: OK
+- Filtro project_only: OK
+- Productividad por colaborador: OK
+- PDF operativo generado: OK
+- Checklist score promedio 4 criterios: OK
+- Checklist sin respuestas = 0%: OK
+- PDF resumen checklist: OK
+
+Prueba sintética utilizada:
+Muertos 40, Probadores/Aduana 15, Cajas 12, Ingresos 67,
+Acondicionado 38, Ubicado 20, Recorridos 4.
+Tiendas proyecto devueltas: Vallejo y Ecatepec.
+
+Nota: el Excel original del usuario no está adjunto en este turno; la validación numérica se hizo con un libro de prueba que reproduce la estructura indicada.

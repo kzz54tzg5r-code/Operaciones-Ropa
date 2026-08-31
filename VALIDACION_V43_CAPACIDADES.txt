@@ -1,0 +1,20 @@
+VALIDACION V43 - EXCEL CAPACIDADES
+==================================
+Archivo probado: Reporte de capacidades nuevo 28.08.26.xlsx
+Tamaño aproximado: 58 MB
+Registros normalizados: 195,858
+Tiendas detectadas: 21
+Venta semanal total detectada (VTA EN $ 7): $81,060,190
+TIPO CATALOGO MAX VIG detectado: VIGENTE, IMPULSO, PROXIMO A SALIR, DESCONTINUADO
+
+Prueba de rendimiento en entorno de validación:
+- Lectura/normalización completa después de optimización: ~16.4 segundos.
+- Recarga desde catálogo normalizado persistente: ~0.1 segundos en prueba previa.
+
+Correcciones técnicas:
+- Ya no usa openpyxl para recorrer las 195 mil filas del XLSX de capacidades.
+- Lee únicamente las columnas necesarias directamente del XML interno del XLSX.
+- La carga corre fuera del hilo principal de Uvicorn para evitar congelar la aplicación.
+- Al terminar crea un catálogo normalizado persistente (.pkl).
+- Las siguientes consultas usan el catálogo normalizado.
+- El detalle comercial reutiliza el mismo catálogo y deja de reabrir el XLSX en cada consulta.

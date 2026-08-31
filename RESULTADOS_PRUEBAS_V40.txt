@@ -1,0 +1,44 @@
+OPERACIONES ROPA V40 - VALIDACIÓN
+=================================
+
+Arranque
+- Python compile web_app.py: OK
+- JavaScript index.html: OK (node --check)
+- Uvicorn: OK
+- GET /health: 200 OK / version V40
+
+Excel real validado: Base de datos muertos y cambios(4).xlsx
+- Hoja Resultados productividad: 10,472 filas válidas / 112 rechazadas
+- Hoja Resultados productividad 2: 862 filas válidas / 10 rechazadas
+- Plantilla usada para homologar abreviaturas/nómina a nombre completo: OK
+- Muertos hoja 1: 28,610
+- Cajas hoja 1: 30,805
+- Probador hoja 1: 42,049
+- Piezas recolectadas hoja 1: 102,731
+- Recorridos hoja 1 (columna RECORRIDOS): 1,255
+- Hoja 2: RECORRIDOS no existe en el archivo actual, por lo que reporta 0 hasta que se agregue.
+
+Control occurrence 29743979 en hoja 1
+- Piezas Muertos: 25 + 15 + 35 + 11 = 86
+- Columna RECORRIDOS: 1 + 0 + 1 + 0 = 2
+
+Nombres homologados detectados, entre otros:
+- Sonia Ruiz Romero
+- Vanessa Iveth Cervantes Vazquez
+- Celinda del Rosario Vidal Jimenez
+- Jiovana Fabiola Valdez Leon
+- Maria Teresa Rodriguez Salazar
+- Ivonne Torres Garduño
+- Ubaldo Cruz Arteaga
+- Habibeth Esmeralda Luna Sanchez
+- Eloisa Flores Camacho
+- Margarita Hernandez Tovar
+
+Interfaz V40
+- Top 3 / Oportunidades productividad: porcentaje
+- Recorridos: por día + recolecciones por día/hora
+- Login con fondo solicitado, sin políticas/redes
+- Checklist Lentos: selector de tienda para Admin/Super Admin en vista Compañía
+- Jeans y Mezclilla: agrupación Jeans
+- Tabla Macro ubicación: ubicación real + botones Todas/Dama/Caballero/Infantil
+- PDF: exportador visual corporativo con KPIs, tablas y gráficas

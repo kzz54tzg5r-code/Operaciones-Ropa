@@ -1,0 +1,21 @@
+PS Operaciones Ropa V53 · Validación final
+Fecha: 2026-08-16
+
+- Compilación de app.py, legacy_app.py, commercial, core, services y pages_app: OK
+- Pruebas automatizadas: 22 aprobadas
+- Lectura de capacidades .xls: 6,761 filas, tienda Olivar: OK
+- Compatibilidad del .xls con Calamine y XLrd: OK
+- Clasificación de ubicaciones: Doblado, Colgado, Jeans y Lencería: OK
+- Clasificación de secciones: Dama, Caballero e Infantil: OK
+- Lectura de AC_IZT.pdf: Iztapalapa, 2024-W14, 23 páginas: OK
+- Totales PDF: 7,615 modelos, 291,307 piezas, VPD 3,326, DDI 88: OK
+- Prueba de humo de las nueve pantallas comerciales con Streamlit 1.59.1: OK
+- Navegación lateral y superior con `project_nav_selector` ya creado: OK
+- Acceso a Carga comercial sin modificar la llave del widget instanciado: OK
+- Regla CSS comercial con prioridad sobre capas V30/V31/V33: OK
+- Menú lateral con nueve accesos e iconos: OK
+- Reconocimiento de códigos de tienda en nombres de PDF: OK
+- Selección de semana ISO sobre la etiqueta "Sin semana": OK
+- Pantalla inicial completa de app.py: sin excepciones
+
+Resultado: APROBADO PARA ENTREGA.
