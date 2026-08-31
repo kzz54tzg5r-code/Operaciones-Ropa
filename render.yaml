@@ -2,6 +2,7 @@ services:
   - type: web
     name: operaciones-ropa
     runtime: docker
+    plan: starter
     autoDeploy: true
     envVars:
       - key: OPERACIONES_ROPA_DATA
