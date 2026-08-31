@@ -1,0 +1,8 @@
+OPERACIONES ROPA V39
+
+1. Descomprime la carpeta completa.
+2. Ejecuta INICIAR_OPERACIONES_ROPA.bat.
+3. V39 abre en http://127.0.0.1:8380/
+4. La ventana del servidor debe quedar abierta mientras uses la aplicacion.
+
+Si ves V38 o el puerto 8370, ejecutaste una carpeta anterior.

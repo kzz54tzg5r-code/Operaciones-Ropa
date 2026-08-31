@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: operaciones-ropa
+    runtime: docker
+    autoDeploy: true
+    envVars:
+      - key: OPERACIONES_ROPA_DATA
+        value: /var/data/operaciones-ropa
+      - key: OPERACIONES_ROPA_HTTPS_ONLY
+        value: "1"
+      - key: OPERACIONES_ROPA_SESSION_SECRET
+        generateValue: true
+    disk:
+      name: operaciones-ropa-data
+      mountPath: /var/data
+      sizeGB: 1

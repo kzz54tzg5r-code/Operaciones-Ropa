@@ -1,0 +1,19 @@
+OPERACIONES ROPA V22 - ESTABLE WMI
+
+Base funcional: V22_CORRECCIONES_PUBLICACION_RUBRO_UBICACION_CHECKLIST.
+
+Incluye los cambios V22:
+- Publicación de Cambios y Muertos reutilizando el archivo ya validado.
+- Escritura atómica: un fallo no elimina la fuente anterior.
+- Error real de servidor mostrado en pantalla.
+- Checklist de Lentos con permisos por tienda/rol.
+- Sección/Rubro consolidado según Compañía o sección.
+- Ubicación/Área separando Colgado, Doblado y Jeans correctamente.
+
+Ajustes de arranque para este equipo:
+- Evita bloqueo de platform.machine()/WMI antes de importar pandas.
+- NO crea .venv.
+- NO ejecuta pip.
+- Corrige el paso de OPERACIONES_ROPA_DATA sin espacio final.
+- No cierra Chrome ni Edge.
+- Puerto local: 8210.

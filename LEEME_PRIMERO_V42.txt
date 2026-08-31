@@ -1,0 +1,9 @@
+OPERACIONES ROPA V42
+
+1. Descomprime TODO el ZIP.
+2. Abre la carpeta descomprimida.
+3. Da doble clic en INICIAR_OPERACIONES_ROPA.bat.
+4. No ejecutes el BAT desde dentro del ZIP.
+
+El servidor local de V42 usa http://127.0.0.1:8400
+Los datos persistentes se conservan en %USERPROFILE%\OperacionesRopaData

@@ -1,0 +1,22 @@
+OPERACIONES ROPA V40
+====================
+
+1. Descomprime COMPLETA la carpeta antes de abrirla.
+2. Cierra versiones anteriores con CERRAR_VERSIONES_ANTERIORES.bat si siguen abiertas.
+3. Ejecuta INICIAR_OPERACIONES_ROPA.bat.
+4. V40 abre en: http://127.0.0.1:8390/
+
+Cambios principales V40:
+- Excel Cambios y Muertos: lectura de las dos hojas Resultados productividad.
+- Plantilla: homologa nombres abreviados a nombre completo.
+- Recorridos: usa la columna RECORRIDOS explícita del Excel.
+- Productividad: Top 3 y Oportunidades en porcentaje.
+- Recorridos: vista por día + recolecciones por día y hora.
+- PDF: diseño corporativo con tarjetas, tablas y gráficas, no PDF plano.
+- Análisis Comercial: detalle por ubicación real, filtros Dama/Caballero/Infantil y Jeans + Mezclilla agrupados como Jeans.
+- Lentos: captura Sí / No para checklist según permisos y tienda a evaluar.
+- Inicio de sesión: nuevo fondo solicitado y sin políticas/redes sociales.
+
+IMPORTANTE SOBRE RECORRIDOS:
+Si una de las hojas Resultados productividad no contiene la columna RECORRIDOS,
+los recorridos de esa hoja quedan en 0 hasta que se agregue dicha columna, tal como se solicitó.

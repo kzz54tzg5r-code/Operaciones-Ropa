@@ -1,0 +1,24 @@
+OPERACIONES ROPA V44
+====================
+
+INICIO: doble clic en INICIAR_OPERACIONES_ROPA.bat
+Puerto local: 8420
+
+IMPORTANTE CAPACIDADES:
+La primera carga del Excel de capacidades de ~58 MB procesa ~195,858 registros y puede tardar entre 20 y 90 segundos según el equipo. El sistema mostrará “Procesando Excel…” y seguirá respondiendo. Al terminar crea un catálogo normalizado persistente para que las siguientes consultas sean rápidas.
+
+ORION WEB - INICIO FACIL
+
+1. Descomprime ORION_WEB_FACIL_V2.zip.
+2. Abre la carpeta ORION_WEB_FACIL_V2.
+3. Haz doble clic en INICIAR_ORION.bat.
+4. La primera vez ORION instala automaticamente lo necesario.
+5. Después se abre ORION en tu navegador.
+
+IMPORTANTE:
+- Necesitas tener Python instalado en Windows.
+- Si no lo tienes, el mismo iniciador abre la pagina oficial de Python.
+- Al instalar Python, activa la opcion "Add Python to PATH".
+- En las siguientes ocasiones solo haz doble clic en INICIAR_ORION.bat.
+
+No necesitas escribir comandos pip ni abrir CMD manualmente.

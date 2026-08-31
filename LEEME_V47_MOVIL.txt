@@ -1,0 +1,10 @@
+OPERACIONES ROPA V47 · BASE MOVIL
+
+1. Descomprime el ZIP completo.
+2. Abre INICIAR_OPERACIONES_ROPA.bat.
+3. La PC abre http://127.0.0.1:8450/
+4. La ventana muestra una liga MOVIL con la IP de tu PC, por ejemplo http://192.168.1.25:8450/
+5. Conecta el celular al mismo Wi-Fi y abre esa liga.
+6. Si Windows pregunta por Firewall, permite Python/Operaciones Ropa en redes PRIVADAS.
+
+La V47 conserva los cálculos y fuentes de V46. Los cambios son de experiencia móvil y acceso por Wi-Fi.
