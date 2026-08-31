@@ -1,0 +1,4 @@
+{
+  "deprecated": true,
+  "message": "Los usuarios se administran en data/config/usuarios.db. Este archivo no contiene credenciales."
+}

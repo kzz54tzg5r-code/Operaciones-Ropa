@@ -1,0 +1,31 @@
+{
+  "nombre": "PS Operaciones Ropa",
+  "subtitulo": "Plataforma Integral de Gestión Operativa",
+  "tiendas_proyecto": [
+    "Arco Norte",
+    "Ecatepec",
+    "Miravalle",
+    "Puebla Sur",
+    "Vallejo"
+  ],
+  "pestanas": [
+    "Dashboard",
+    "Por Día",
+    "Reporte Semanal",
+    "Reporte Mensual",
+    "Conversión",
+    "Recuperación Económica",
+    "Productividad",
+    "Recorridos",
+    "Rankings",
+    "Macro",
+    "Diagnóstico",
+    "Configuración",
+    "Usuarios"
+  ],
+  "lema": "Información confiable. Control total. Decisiones oportunas.",
+  "area": "Operaciones Ropa",
+  "direccion_funcional": "Dirección Ropa",
+  "version": "30.0.0",
+  "build": "2026.08.030"
+}
