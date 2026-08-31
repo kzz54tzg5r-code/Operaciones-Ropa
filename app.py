@@ -1,43 +1,61 @@
-import streamlit as st
-import pandas as pd
-from modules.ui import setup_page, header, kpi, money, pct
-from modules.auth import require_login
-from modules.loader import read_excel
-from modules.indicadores import compute_summary, by_store, by_person
-from modules.pdf import create_simple_pdf
+"""PS Operaciones Ropa — entrada de producción V24.0.1.
 
-setup_page('ORION PRO v3')
-user = require_login()
-header('Panel Ejecutivo Nacional')
+Este archivo fuerza la raíz del proyecto al inicio de ``sys.path`` antes de
+importar los paquetes locales. Streamlit Cloud puede ejecutar ``app.py`` con un
+contexto de importación diferente y, sin esta protección, no encuentra
+``core.bootstrap`` aunque la carpeta ``core`` exista en el repositorio.
+"""
+from __future__ import annotations
 
-st.sidebar.markdown('---')
-uploaded = st.sidebar.file_uploader('Carga tu Excel de operación', type=['xlsx','xls'])
+import sys
+import time
+from pathlib import Path
 
-if uploaded:
-    op, com, sheets = read_excel(uploaded)
-    st.session_state['op'] = op
-    st.session_state['com'] = com
-    st.sidebar.success(f'Archivo cargado · {len(sheets)} hojas')
-else:
-    op = st.session_state.get('op', pd.DataFrame())
-    com = st.session_state.get('com', pd.DataFrame())
+PROJECT_ROOT = Path(__file__).resolve().parent
+project_root_text = str(PROJECT_ROOT)
+if project_root_text not in sys.path:
+    sys.path.insert(0, project_root_text)
 
-if op.empty and com.empty:
-    st.info('Carga tu archivo Excel desde el menú lateral para iniciar el análisis.')
-    st.stop()
+# Comprobación explícita para entregar un error útil cuando se sube solamente
+# app.py y se omiten las carpetas del proyecto.
+required_paths = (
+    PROJECT_ROOT / "core" / "bootstrap.py",
+    PROJECT_ROOT / "core" / "settings.py",
+    PROJECT_ROOT / "legacy_app.py",
+)
+missing = [str(path.relative_to(PROJECT_ROOT)) for path in required_paths if not path.exists()]
+if missing:
+    raise RuntimeError(
+        "La instalación está incompleta. Faltan estos archivos del proyecto: "
+        + ", ".join(missing)
+        + ". Sube el contenido completo del ZIP a la raíz del repositorio, "
+          "incluidas las carpetas core, services, pages_app y assets."
+    )
 
-summary = compute_summary(op, com)
-cols = st.columns(4)
-with cols[0]: kpi('Conversión Dev→Venta', pct(summary['conversion_pct']))
-with cols[1]: kpi('Recuperación económica', money(summary['venta_imp']))
-with cols[2]: kpi('Piezas habilitadas', f"{summary['habilitado']:,.0f}")
-with cols[3]: kpi('Piezas ubicadas', f"{summary['ubicado']:,.0f}")
+from core.bootstrap import initialize_application
 
-st.subheader('Resumen por tienda')
-st.dataframe(by_store(op), use_container_width=True)
+_boot_started = time.perf_counter()
+print("[BOOT] app.py iniciado", flush=True)
+try:
+    initialize_application()
+    print(f"[BOOT] bootstrap listo en {time.perf_counter()-_boot_started:.2f}s", flush=True)
+except Exception as exc:
+    print(f"[BOOT][ERROR] bootstrap: {type(exc).__name__}: {exc}", flush=True)
+    raise
 
-st.subheader('Productividad por colaborador')
-st.dataframe(by_person(op).head(20), use_container_width=True)
-
-pdf = create_simple_pdf('ORION PRO - Resumen Ejecutivo', summary)
-st.download_button('Descargar resumen PDF', data=pdf, file_name='orion_resumen.pdf', mime='application/pdf')
+# Ejecuta la capa compatible en el mismo contexto de Streamlit.
+_source = PROJECT_ROOT / "legacy_app.py"
+try:
+    print("[BOOT] iniciando legacy_app.py", flush=True)
+    _legacy_text = _source.read_text(encoding="utf-8")
+    exec(compile(_legacy_text, str(_source), "exec"), globals(), globals())
+    print(f"[BOOT] legacy_app.py finalizó en {time.perf_counter()-_boot_started:.2f}s", flush=True)
+except Exception as exc:
+    print(f"[BOOT][ERROR] legacy_app.py: {type(exc).__name__}: {exc}", flush=True)
+    try:
+        import streamlit as st
+        st.error("No fue posible iniciar PS Operaciones Ropa.")
+        st.exception(exc)
+        st.stop()
+    except Exception:
+        raise

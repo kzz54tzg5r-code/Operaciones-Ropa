@@ -1,0 +1,21 @@
+# Operaciones Ropa V36 — Lectura operativa completa
+
+- Consolida todas las hojas que comienzan con `Resultados productividad` / `Resultados de productividad`, incluyendo sufijos como `2`.
+- Las hojas mensuales no alimentan indicadores operativos; se conservan sólo para la lógica comercial de conversión/recuperación existente.
+- Reconoce Fecha s, Fecha, occurrence/Ocurrencia, Tienda, Tabla, Actividad Realizada, Área, Número de Piezas, Hora Inicio, Hora Fin, Nombre y Motivo de ingreso, normalizando acentos, espacios y mayúsculas internamente.
+- Número de Piezas no numérico se rechaza y queda registrado; no se convierte silenciosamente a cero.
+- Muertos, Probadores/Aduana, Cajas, Sistema/Devoluciones y Sin clasificar se clasifican desde Motivo de ingreso exclusivamente en filas de Recolección de muertos.
+- Piezas recolectadas = suma total de Recolección de muertos.
+- Acondicionado = Acondicionado/Habilitado/Habilitar por Actividad Realizada.
+- Ubicado = Ubicado/Ubicar por Actividad Realizada.
+- Recorridos = occurrence únicos de filas con Tabla=Recorrido, usando Tienda + Fecha + occurrence.
+- Una occurrence repetida en varias líneas o en ambas hojas cuenta una sola vez como recorrido, sin perder sus piezas.
+- Deduplicación de piezas sólo para filas completamente iguales; occurrence repetido no elimina líneas legítimas.
+- Pendiente de acondicionar = max(Recolección - Acondicionado, 0).
+- Pendiente de ubicar = max(Acondicionado - Ubicado, 0).
+- Metas de recorridos: semana completa usa meta semanal editable; día/semana parcial usa metas diarias editables.
+- Filtros operativos: periodo, tienda, área, actividad, fecha desde y fecha hasta.
+- Tabla de detalle operativo con ranking y tabla de detalle por actividad, occurrence únicos, colaboradores y horas válidas.
+- Centro Ejecutivo conserva gráficas, recuperación y tablas existentes, incorporando las nuevas cifras operativas.
+- El parser acepta también fechas escritas en español como `lunes, 20 de abril de 2026`.
+- Puerto local: `http://127.0.0.1:8350`.

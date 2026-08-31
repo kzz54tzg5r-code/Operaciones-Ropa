@@ -1,0 +1,2224 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operaciones Ropa</title>
+<style>
+:root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--text)}button,select,input{font:inherit}
+.hidden{display:none!important}.login{min-height:100vh;display:grid;place-items:center;background:linear-gradient(145deg,#0b2d5c,#1769e8)}
+.loginbox{width:min(430px,calc(100% - 28px));background:#fff;border-radius:22px;padding:26px;box-shadow:0 30px 80px #061a3a66}
+.brand{display:flex;align-items:center;gap:12px}.mark{width:50px;height:50px;border-radius:15px;background:linear-gradient(145deg,var(--navy),var(--blue));position:relative;box-shadow:inset -12px 0 0 var(--pink)}
+.mark:after{content:"R";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:24px;font-weight:1000}.brand h1{font-size:22px;margin:0}.brand p{margin:3px 0 0;font-size:11px;color:var(--muted)}
+.loginbox h2{font-size:16px;margin:24px 0 12px}.field{margin:10px 0}.field label{font-size:9px;font-weight:900;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase}
+.field input,.field select{width:100%;padding:12px;border:1px solid #ccd6e2;border-radius:10px;color:var(--text);background:#fff}.primary{border:0;background:var(--blue);color:#fff;font-weight:900;border-radius:10px;padding:11px 14px;cursor:pointer}.full{width:100%}.msg{font-size:11px;color:var(--red);margin-top:8px;white-space:pre-wrap}
+.shell{display:grid;grid-template-columns:218px minmax(0,1fr);min-height:100vh}.side{background:#fff;border-right:1px solid var(--line);padding:15px 10px;display:flex;flex-direction:column;gap:5px;position:sticky;top:0;height:100vh}
+.sidebrand{display:flex;align-items:center;gap:9px;padding:5px 7px 15px}.sidebrand .mark{width:39px;height:39px;border-radius:11px}.sidebrand .mark:after{font-size:19px}.sidebrand b{font-size:14px}.sidebrand small{display:block;color:var(--muted);font-size:8px}
+.group{font-size:8px;text-transform:uppercase;color:#98a2b3;font-weight:950;padding:11px 10px 3px;letter-spacing:.7px}.nav{border:0;background:transparent;text-align:left;padding:10px;border-radius:9px;color:#344054;font-size:10px;font-weight:850;cursor:pointer}.nav:hover{background:#f1f5fb}.nav.active{background:var(--blue);color:#fff}.nav small{display:block;font-size:7.5px;opacity:.72;margin-top:2px}.profile{margin-top:auto;border-top:1px solid var(--line);padding:10px 8px 2px}.profile b{font-size:10px}.profile small{display:block;color:var(--muted);font-size:8px}.logout{margin-top:7px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 9px;font-size:9px;cursor:pointer}
+.main{padding:13px 17px 82px;min-width:0}.hero{background:linear-gradient(135deg,#10366b,#194a87);color:#fff;border-radius:17px;padding:17px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;box-shadow:0 8px 24px #0b2d5c1c}.hero h1{margin:0;font-size:23px}.hero p{margin:5px 0 0;color:#cbdaf1;font-size:10px}.badge{background:#ffffff18;border:1px solid #ffffff26;border-radius:9px;padding:7px 9px;font-size:8px;font-weight:900}
+.filters{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px;margin:9px 0;display:flex;gap:7px;align-items:end;flex-wrap:wrap}.filter label{display:block;font-size:7.5px;color:var(--muted);font-weight:900;margin-bottom:4px;text-transform:uppercase}.filter select,.filter input{min-height:35px;border:1px solid #d3dce7;border-radius:8px;background:#fff;color:var(--text);padding:6px 25px 6px 8px;font-size:10px}
+.page{display:none}.page.active{display:block}.title{font-size:15px;font-weight:950;margin:13px 0 8px}.subtitle{font-size:9px;color:var(--muted);margin:-5px 0 10px}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.kpi{background:#fff;border:1px solid #e0e6ef;border-radius:12px;padding:11px 10px;position:relative;overflow:hidden;min-height:98px}.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--a)}.lab{font-size:7.5px;color:var(--muted);font-weight:950;text-transform:uppercase}.val{font-size:21px;font-weight:1000;margin:7px 0 4px}.note{font-size:8px;color:var(--muted);line-height:1.35}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.card,.panel{background:#fff;border:1px solid #e0e6ef;border-radius:12px;padding:11px}.card h3{font-size:12px;margin:0}.big{font-size:19px;font-weight:1000;margin:6px 0}.card small{font-size:8px;color:var(--muted);line-height:1.4}.mini3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}.mini{background:#f6f8fb;border-radius:8px;padding:7px}.mini span{display:block;font-size:6.5px;color:var(--muted);text-transform:uppercase;font-weight:900}.mini b{font-size:9px}
+.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(250px,.7fr);gap:9px}.switches{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}.switch{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:5px 8px;font-size:7.5px;font-weight:900;cursor:pointer}.switch.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.bars{display:grid;gap:6px}.bar{display:grid;grid-template-columns:88px minmax(0,1fr) 50px;gap:7px;align-items:center;font-size:8px}.track{height:13px;background:#edf1f5;border-radius:5px;overflow:hidden}.fill{height:100%;background:var(--blue);border-radius:5px}.fill.g{background:var(--green)}.fill.y{background:var(--yellow)}.fill.r{background:var(--red)}.bar b{text-align:right}
+.tablewrap{overflow:auto;border:1px solid #d8e0eb;border-radius:10px;background:#fff}.model-scroll-30{max-height:1020px;overflow-y:auto}.model-scroll-30 .table th{position:sticky;top:0;z-index:3}.pareto-total{font-weight:950;background:#eef5ff!important}.filter-caption{font-size:7px;color:var(--muted);font-weight:950;text-transform:uppercase;margin:5px 0 4px}.table{border-collapse:collapse;width:100%;min-width:760px;font-size:8.5px}.table th{background:var(--navy);color:#fff;text-align:left;padding:9px;white-space:nowrap}.table td{padding:8px 9px;border-bottom:1px solid #e7ebf0;white-space:nowrap}.table tr:nth-child(even) td{background:#f8fafd}.status{display:inline-block;border-radius:6px;padding:4px 6px;font-weight:950}.ok{background:#dcfce7;color:#14532d}.warn{background:#fff1bf;color:#8a5c00}.bad{background:#fee2e2;color:#a31515}
+.accordion{display:grid;gap:7px}.acc{background:#fff;border:1px solid var(--line);border-radius:11px;overflow:hidden}.acc>button{width:100%;border:0;background:#fff;color:var(--text);padding:12px;text-align:left;font-size:10px;font-weight:950;display:flex;justify-content:space-between;cursor:pointer}.accbody{display:none;padding:0 12px 12px}.acc.open .accbody{display:block}
+.infoempty{padding:18px;border:1px dashed #c9d3df;border-radius:10px;background:#fafbfd;color:var(--muted);font-size:10px;text-align:center}.uploadgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.drop{background:#fff;border:1px dashed #b9c6d6;border-radius:12px;padding:13px}.drop h3{font-size:11px;margin:0 0 4px}.drop p{font-size:8px;color:var(--muted);line-height:1.4}.drop input{width:100%;font-size:9px;margin:5px 0}.log{white-space:pre-wrap;background:#0e1c2d;color:#dce8f8;border-radius:10px;padding:11px;font:10px Consolas,monospace;min-height:70px}.mobile{display:none}
+.usergrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.useritem{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}.useritem b{font-size:10px}.useritem small{display:block;font-size:8px;color:var(--muted);margin-top:3px}
+@media(max-width:900px){.shell{display:block}.side{display:none}.main{padding:8px 8px 74px}.hero{padding:12px;border-radius:12px}.hero h1{font-size:18px}.hero p{font-size:8.5px}.badge{display:none}.filters{padding:7px}.filter{flex:1 1 115px}.filter select,.filter input{width:100%}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi{min-height:85px}.val{font-size:18px}.cards{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.uploadgrid{grid-template-columns:1fr}.usergrid{grid-template-columns:repeat(2,1fr)}.mobile{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:5px;z-index:20}.mnav{border:0;background:transparent;color:var(--muted);font-size:7.5px;font-weight:900;padding:8px 2px;min-height:48px;border-radius:8px}.mnav.active{background:#eaf2ff;color:var(--blue);box-shadow:inset 0 3px 0 var(--blue)}}
+
+.sidebar-toggle{border:1px solid var(--line);background:#fff;color:var(--navy);width:34px;height:34px;border-radius:9px;cursor:pointer;font-weight:950;margin:0 0 7px 4px}
+.shell.sidebar-collapsed{grid-template-columns:72px minmax(0,1fr)}
+.shell.sidebar-collapsed .side{padding-left:8px;padding-right:8px}
+.shell.sidebar-collapsed .sidebrand{justify-content:center;padding-left:0;padding-right:0}
+.shell.sidebar-collapsed .sidebrand img{width:48px!important}
+.shell.sidebar-collapsed .sidebrand-text,.shell.sidebar-collapsed .group,.shell.sidebar-collapsed .nav small,.shell.sidebar-collapsed .profile b,.shell.sidebar-collapsed .profile small{display:none!important}
+.shell.sidebar-collapsed .nav{font-size:0;text-align:center;padding:11px 4px;min-height:42px}
+.shell.sidebar-collapsed .nav:before{font-size:18px;display:block}
+.shell.sidebar-collapsed .nav[data-main="operativo"]:before{content:"↻"}
+.shell.sidebar-collapsed .nav[data-main="analysis"]:before{content:"▦"}
+.shell.sidebar-collapsed .nav[data-main="upload"]:before{content:"↑"}
+.shell.sidebar-collapsed .nav[data-main="share"]:before{content:"↗"}
+.shell.sidebar-collapsed .profile{text-align:center}
+.shell.sidebar-collapsed .logout{font-size:0;width:38px}.shell.sidebar-collapsed .logout:before{content:"↪";font-size:16px}
+
+.report-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:9px;margin-bottom:12px}
+.report-kpi{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 14px;position:relative;overflow:hidden}
+.report-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rk,#1769e8)}
+.report-kpi .rk-label{font-size:8px;font-weight:950;text-transform:uppercase;letter-spacing:.04em;color:#667085}
+.report-kpi .rk-value{font-size:24px;line-height:1.1;font-weight:950;color:var(--navy);margin:6px 0 3px}
+.report-kpi .rk-sub{font-size:8px;color:#667085}
+.metric-good{color:#169b52!important}.metric-warn{color:#d89b00!important}.metric-bad{color:#d92d20!important}
+.chart-box{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:12px}
+.chart-title{font-size:12px;font-weight:950;color:var(--navy);margin-bottom:8px}
+.groupbar{display:grid;grid-template-columns:120px 1fr 1fr 1fr;gap:7px;align-items:center;margin:6px 0;font-size:8px}
+.groupbar .gb-label{font-weight:850;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gb-track{height:18px;border-radius:6px;background:#eaf0f7;overflow:hidden;position:relative}
+.gb-fill{height:100%;border-radius:6px;min-width:1px}
+.gb-fill.in{background:#2f6fd8}.gb-fill.ac{background:#7c3aed}.gb-fill.ub{background:#ec007c}
+.gb-track span{position:absolute;right:4px;top:3px;font-size:7px;font-weight:900;color:#0f2f5f}
+.donut-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.donut{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--dc,#19a55a) calc(var(--p)*1%),#e9eef5 0)}
+.donut:after{content:attr(data-label);width:82px;height:82px;background:white;border-radius:50%;display:grid;place-items:center;font-size:16px;font-weight:950;color:var(--navy)}
+.report-note{background:#f7f9fc;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:8px;color:#667085;margin-bottom:10px}
+@media(max-width:760px){
+  .groupbar{grid-template-columns:86px 1fr;gap:5px}.groupbar .gb-track:nth-of-type(n+2){display:none}
+  .report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+.project-row td{background:#eaf3ff!important}
+.project-row td:first-child{border-left:4px solid #2f6fd8;font-weight:950}
+.report-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.report-actions button{border:0;border-radius:11px;background:#173B73;color:#fff;font-weight:900;padding:12px;cursor:pointer}
+.report-actions button:hover{filter:brightness(1.08)}
+.op-tabs .switch{flex:0 0 auto}
+.module-note{font-size:8px;color:#64748b}
+@media(max-width:760px){.report-actions{grid-template-columns:1fr}.op-tabs{padding-bottom:10px}}
+
+.login-v15{position:fixed;inset:0;z-index:8000;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:auto;background:#111827;font-family:Inter,Segoe UI,Arial,sans-serif}
+.login-v15.hidden{display:none!important}
+.login-v15-bg{position:absolute;inset:0;background-image:url("/static/login_background.png");background-size:contain;background-position:center center;background-repeat:no-repeat;background-color:#dfe5ef}
+.login-v15-bg:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,9,15,.42),rgba(5,9,15,.62) 50%,rgba(5,9,15,.42))}
+.login-v15-shade{position:absolute;inset:0;background:rgba(3,7,12,.38)}
+.login-v15-card{position:relative;width:min(440px,calc(100vw - 34px));padding:34px 34px 30px;color:white;text-align:center;background:rgba(9,14,22,.60);border:1px solid rgba(255,255,255,.08);box-shadow:0 28px 80px rgba(0,0,0,.34);backdrop-filter:blur(2px)}
+.login-logo-v15{width:190px;max-width:58vw;height:auto;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.45));margin-bottom:8px}
+.login-brand-v15{font-family:Georgia,serif;font-size:34px;font-weight:800;letter-spacing:.3px;margin-top:6px}
+.login-sub-v15{font-size:12px;color:rgba(255,255,255,.72);margin:4px 0 28px}
+.login-form-v15{display:grid;gap:14px}
+.login-field-v15{display:grid;grid-template-columns:42px 1fr;align-items:center;border-bottom:2px solid rgba(255,255,255,.86);padding:5px 0 8px}
+.login-icon-v15{font-size:22px;text-align:center;filter:grayscale(1) brightness(4)}
+.login-field-v15 input{border:0!important;background:transparent!important;color:white!important;outline:none!important;font-size:17px!important;padding:10px 8px!important;width:100%;box-shadow:none!important}
+.login-field-v15 input::placeholder{color:rgba(255,255,255,.55)}
+.login-btn-v15{margin-top:14px;border:0;border-radius:0;background:#ec007c;color:#fff;font-size:18px;font-weight:900;padding:16px 18px;cursor:pointer;width:100%;box-shadow:0 10px 24px rgba(236,0,124,.22)}
+.login-btn-v15:hover{filter:brightness(1.07)}
+.login-msg-v15{min-height:20px;color:#ffb4d8;font-size:12px;margin-top:12px}
+.server-msg-v15{min-height:18px;color:rgba(255,255,255,.62);font-size:10px;margin-top:4px}
+.login-help-v15{display:flex;flex-direction:column;text-align:left;gap:13px;margin-top:22px;color:rgba(255,255,255,.72);font-size:13px}
+.login-footer-v15{display:flex;justify-content:space-between;gap:12px;margin-top:32px;padding-top:18px;border-top:1px solid rgba(255,255,255,.13);font-size:10px;color:rgba(255,255,255,.52)}
+.login-owner-title{font-size:16px;font-weight:900;margin-bottom:4px}
+@media(max-width:600px){.login-v15{align-items:flex-start;padding-top:7vh}.login-v15-card{padding:24px 26px}.login-logo-v15{width:165px}.login-brand-v15{font-size:31px}.login-field-v15 input{font-size:16px!important}.login-btn-v15{font-size:17px}}
+
+.login-link-v17{border:0;background:transparent;color:rgba(255,255,255,.86);padding:0;text-align:left;font:inherit;cursor:pointer}
+.login-link-v17:hover{color:#fff;text-decoration:underline}
+.recovery-panel-v17{display:grid;gap:12px;margin-top:4px;padding:16px 0 4px;border-top:1px solid rgba(255,255,255,.18)}
+.recovery-title-v17{font-size:18px;font-weight:950;text-align:left}
+.recovery-note-v17{font-size:11px;line-height:1.5;color:rgba(255,255,255,.78);text-align:left}
+.recovery-actions-v17{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch}
+.recovery-actions-v17 .login-btn-v15{margin-top:0}
+.recovery-cancel-v17{border:1px solid rgba(255,255,255,.48);background:transparent;color:#fff;padding:0 18px;font-weight:800;cursor:pointer}
+.recovery-cancel-v17:hover{background:rgba(255,255,255,.10)}
+.op-tabs .switch.adminOnly{border-style:dashed}.uploadgrid .drop{min-height:210px}
+.hero-greeting{display:flex;flex-direction:column;text-align:right;color:#fff;gap:2px}
+.hero-greeting b{font-size:13px}.hero-greeting span{font-size:9px;opacity:.85}
+.compact-filter{padding:9px 12px!important;margin:8px 0 12px}
+.compact-filter .filter{max-width:340px}
+.filters-inline{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.action-row{display:flex;gap:5px;flex-wrap:wrap}
+.action-sm{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 8px;font-size:8px;font-weight:800;cursor:pointer}
+.action-sm.danger{border-color:#f5b4b0;color:#b42318}
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}
+.preview-item{background:#f6f9fd;border:1px solid var(--line);border-radius:10px;padding:10px}
+.preview-item b{display:block;font-size:16px;color:var(--navy);margin-top:4px}
+.area-block{margin:14px 0}.area-block .title{margin:0 0 7px}
+@media(max-width:760px){.hero-greeting{display:none}.filters-inline{align-items:stretch}.filters-inline .filter{width:100%;max-width:none}}
+
+.compare-selected .fill{box-shadow:0 0 0 3px var(--pink) inset,0 0 0 1px var(--pink)}
+.compare-selected>span,.compare-selected>b{color:var(--pink)!important;font-weight:950}
+.rank-selected{background:#fff0f7!important;box-shadow:inset 4px 0 0 var(--pink)}
+.dropzone{border:2px dashed #a9bdd8;border-radius:14px;padding:22px;text-align:center;background:#f8fbff;cursor:pointer;transition:.2s}
+.dropzone.drag{border-color:var(--pink);background:#fff1f7}
+.progress-shell{height:10px;background:#e8eef6;border-radius:999px;overflow:hidden;margin:10px 0}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--pink));transition:width .25s}
+.upload-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(3,13,27,.66);display:flex;align-items:center;justify-content:center;z-index:12000;padding:18px}
+.modal-card{width:min(460px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.modal-card h2{color:var(--navy);margin:0 0 8px}.modal-card p{color:#5f6f82}
+.modal-card input{width:100%;padding:12px;margin:6px 0;border:1px solid var(--line);border-radius:10px}
+.temp-pass-box{background:#fff7fb;border:1px solid #ffc5e3;border-radius:12px;padding:12px;margin-top:10px}
+.combo-svg,.recovery-svg{width:100%;min-width:820px;height:auto;display:block}
+.chart-scroll{overflow-x:auto}
+@media(max-width:760px){.combo-svg,.recovery-svg{min-width:700px}.upload-actions .primary{width:100%}.dropzone{padding:16px}.modal-card{border-radius:14px}}
+
+.bar-rank{display:inline-block;min-width:24px;margin-right:5px;font-weight:950;color:var(--navy)}
+.model-check{min-width:76px;padding:6px;border:1px solid var(--line);border-radius:8px;background:#fff;font-weight:800}
+.model-check.saved-check{outline:2px solid #18a957}
+.check-yes{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#d9f8e5;color:#087a36;font-size:18px;font-weight:950}
+.check-no{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#ffe1df;color:#c72f25;font-size:18px;font-weight:950}
+.check-na{color:#8792a5}
+.summary-cell{width:100%;border:0;background:transparent;cursor:pointer;font-weight:900;color:var(--navy);padding:6px}
+.summary-cell small{display:block;font-size:8px;color:#718096;font-weight:600;margin-top:3px}
+.summary-cell.has-no{background:#fff6f5;border-radius:8px;color:#b42318}
+#checklistMissing{margin-top:10px}
+.peak-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:4px 0 10px}.peak-legend span{display:flex;align-items:center;gap:5px}.peak-legend i{display:inline-block;width:11px;height:7px;border-radius:4px}
+
+
+.check-score{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:900}
+.score-ok{background:#dcfce7;color:#166534}
+.score-warn{background:#fef3c7;color:#92400e}
+.score-bad{background:#fee2e2;color:#b91c1c}
+
+
+
+/* ============================================================
+   V47 · EXPERIENCIA MÓVIL
+   Sólo modifica pantallas <= 900px. Escritorio conserva V46.
+   ============================================================ */
+html{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%}
+body{max-width:100%;overflow-x:hidden}
+.mnav-icon{display:block;font-size:17px;line-height:18px;margin-bottom:2px}
+
+@media(max-width:900px){
+  body{background:#f2f5f9;overscroll-behavior-y:none}
+  .shell{display:block;min-height:100dvh}
+  .side{display:none!important}
+  .main{width:100%;max-width:100vw;padding:6px 7px calc(76px + env(safe-area-inset-bottom));overflow-x:hidden}
+  .hero{min-height:66px;padding:11px 12px;border-radius:13px;margin-bottom:6px;box-shadow:none}
+  .hero h1{font-size:17px;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88vw}
+  .hero p{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88vw;margin-top:4px}
+  .hero-greeting,.badge{display:none!important}
+
+  /* Navegación secundaria tipo app: una sola fila desplazable */
+  #operativoNav,#analysisNav{position:sticky;top:0;z-index:80;display:flex!important;flex-wrap:nowrap!important;gap:5px!important;overflow-x:auto!important;overflow-y:hidden;white-space:nowrap;padding:5px!important;margin:0 0 7px!important;border-radius:11px!important;box-shadow:0 3px 12px rgba(18,59,115,.08);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #operativoNav.hidden,#analysisNav.hidden{display:none!important}
+  #operativoNav::-webkit-scrollbar,#analysisNav::-webkit-scrollbar{display:none}
+  #operativoNav>div{margin-left:0!important;display:flex!important;gap:5px!important}
+  .op-tabs .switch,#analysisNav .switch{flex:0 0 auto;min-height:34px;padding:7px 10px;font-size:9px;scroll-snap-align:start}
+
+  /* Filtros principales compactos */
+  .filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:7px;margin:6px 0 8px;align-items:end}
+  .filters.hidden{display:none!important}
+  .filters .filter{min-width:0!important;max-width:none!important;width:100%;flex:none}
+  .filter label{font-size:7px;margin-bottom:3px}
+  .filter select,.filter input{width:100%!important;min-width:0!important;min-height:38px;padding:6px 25px 6px 8px;font-size:10px}
+  .filters>.primary{grid-column:1/-1;width:100%;min-height:40px;font-size:13px}
+  #operativoPeriodBar{padding:7px}
+  #operativoPeriodBar>div{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px!important;align-items:end!important}
+  #operativoPeriodBar .filter{min-width:0!important;width:100%!important}
+  #operativoPeriodBar .primary{grid-column:1/-1;width:100%;min-height:40px}
+
+  /* Tipografía / jerarquía */
+  .title{font-size:14px;margin:10px 1px 6px;line-height:1.15}
+  .subtitle{font-size:8px;margin:-2px 1px 7px;line-height:1.35}
+  .panel{padding:8px;border-radius:10px}
+  .panel-head{gap:5px}
+
+  /* KPIs compactos: 2 por fila */
+  .kpis,.report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+  .kpi,.report-kpi{min-height:78px;padding:9px 8px;border-radius:10px}
+  .lab,.report-kpi .rk-label{font-size:6.8px;line-height:1.2}
+  .val,.report-kpi .rk-value{font-size:18px;margin:5px 0 3px}
+  .note,.report-kpi .rk-note{font-size:7.2px;line-height:1.25}
+
+  /* Tarjetas: 2 columnas para lectura rápida */
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px}
+  .card{padding:9px;border-radius:10px;min-width:0}
+  .card h3{font-size:10px;line-height:1.2}
+  .big{font-size:17px;margin:5px 0}
+  .card small{font-size:7.3px;line-height:1.35}
+  .mini3{gap:4px}.mini{padding:6px}.mini span{font-size:6px}.mini b{font-size:8px}
+  .grid{grid-template-columns:1fr!important;gap:6px}
+
+  /* Botones tipo chip */
+  .switches{gap:4px;margin-bottom:7px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .switches::-webkit-scrollbar{display:none}
+  .switches .switch{flex:0 0 auto;min-height:32px;padding:7px 9px;font-size:8px}
+
+  /* Tablas: scroll dentro de la tabla, no de toda la página */
+  .tablewrap{width:100%;max-width:100%;overflow:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;border-radius:9px;touch-action:pan-x pan-y}
+  .table{font-size:8px;min-width:720px}
+  .table th{padding:8px 7px;font-size:7.5px;position:sticky;top:0;z-index:3}
+  .table td{padding:7px;line-height:1.2}
+  .model-scroll-30{max-height:62dvh!important;overflow:auto!important}
+  .model-scroll-30 .table{min-width:860px}
+  .model-check{min-width:68px;padding:5px;font-size:8px}
+
+  /* Barras y gráficas */
+  .bar{grid-template-columns:72px minmax(0,1fr) 42px;font-size:7.5px;gap:5px}
+  .track{height:12px}
+  .chart-scroll{max-width:100%;overflow:auto!important;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;overscroll-behavior:contain}
+  .combo-svg,.recovery-svg{min-width:620px!important;max-height:62dvh}
+  .chart-title{font-size:11px}
+  .peak-legend{font-size:8px;gap:8px}
+
+  /* Carga y administración */
+  .uploadgrid{grid-template-columns:1fr!important;gap:7px}
+  .drop{min-height:0!important;padding:10px;border-radius:10px}
+  .drop h3{font-size:10px}.drop p{font-size:7.5px}.drop input{font-size:8px}
+  .upload-actions{display:grid;grid-template-columns:1fr;gap:6px}
+  .upload-actions .primary,.report-actions button{width:100%;min-height:40px}
+  .usergrid{grid-template-columns:1fr!important}
+
+  /* Acordeón */
+  .accordion{gap:6px}.acc{border-radius:10px}.acc>button{padding:10px;font-size:10px}.accbody{padding:0 8px 9px}
+
+  /* Barra inferior de app */
+  .mobile{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:500;min-height:64px;padding:5px 6px calc(5px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #dbe3ed;box-shadow:0 -5px 18px rgba(11,45,92,.10);backdrop-filter:blur(10px)}
+  .mnav{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:50px;padding:4px 2px;border-radius:9px;font-size:7.5px;line-height:1.05}
+  .mnav.active{background:#eaf2ff;color:var(--blue);box-shadow:inset 0 3px 0 var(--blue)}
+
+  /* Evita el vacío al final y elementos fuera del viewport */
+  section.page{max-width:100%;overflow:visible}
+  img,svg,canvas{max-width:100%}
+  input,select,button{max-width:100%}
+  .infoempty{padding:13px;font-size:8.5px}
+}
+
+@media(max-width:520px){
+  .main{padding-left:5px;padding-right:5px}
+  .hero{min-height:60px;padding:9px 10px}.hero h1{font-size:16px}.hero p{font-size:7.5px}
+  .filters{grid-template-columns:1fr 1fr;gap:5px}
+  #operativoPeriodBar>div{grid-template-columns:1fr 1fr}
+  .kpis,.report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .card h3{font-size:9px}.big{font-size:16px}
+  .table{min-width:680px}
+  .mobile{min-height:62px}
+}
+
+@media(max-width:370px){
+  .filters,#operativoPeriodBar>div{grid-template-columns:1fr}
+  .filters>.primary,#operativoPeriodBar .primary{grid-column:auto}
+  .kpis,.report-kpis,.cards{grid-template-columns:1fr!important}
+}
+
+</style></head>
+<body>
+
+<section id="loginView" class="login-v15">
+  <div class="login-v15-bg"></div>
+  <div class="login-v15-shade"></div>
+  <div class="login-v15-card">
+    <img src="/static/price_shoes_logo.png" class="login-logo-v15" alt="Price Shoes">
+    <div class="login-brand-v15">Portal Web</div>
+    <div class="login-sub-v15">Operaciones Ropa</div>
+
+    <div id="ownerSetup" class="hidden login-form-v15">
+      <div class="login-owner-title">Crear propietario del sistema</div>
+      <div class="login-field-v15"><span class="login-icon-v15">👤</span><input id="ownerUser" autocomplete="username" placeholder="Usuario propietario"></div>
+      <div class="login-field-v15"><span class="login-icon-v15">🔒</span><input id="ownerPass" type="password" autocomplete="new-password" placeholder="Contraseña"></div>
+      <button id="createOwner" class="login-btn-v15">Crear propietario</button>
+    </div>
+
+    <div id="normalLogin" class="login-form-v15">
+      <div class="login-field-v15"><span class="login-icon-v15">👤</span><input id="loginUser" autocomplete="username" placeholder="Usuario, correo o nómina"></div>
+      <div class="login-field-v15"><span class="login-icon-v15">🔒</span><input id="loginPass" type="password" autocomplete="current-password" placeholder="Contraseña"></div>
+      <button id="loginBtn" class="login-btn-v15">Iniciar sesión</button>
+    </div>
+
+
+    <div id="recoveryPanel" class="hidden recovery-panel-v17">
+      <div class="recovery-title-v17">Recuperar contraseña</div>
+      <div class="recovery-note-v17">Desde esta computadora puedes recuperar el acceso del propietario. Ingresa usuario, correo o nómina y define una nueva contraseña.</div>
+      <div class="login-field-v15"><span class="login-icon-v15">👤</span><input id="recoveryUser" autocomplete="username" placeholder="Usuario, correo o nómina"></div>
+      <div class="login-field-v15"><span class="login-icon-v15">🔒</span><input id="recoveryPass" type="password" autocomplete="new-password" placeholder="Nueva contraseña"></div>
+      <div class="login-field-v15"><span class="login-icon-v15">🔒</span><input id="recoveryPass2" type="password" autocomplete="new-password" placeholder="Confirmar contraseña"></div>
+      <div class="recovery-actions-v17">
+        <button type="button" id="recoverySave" class="login-btn-v15">Cambiar contraseña</button>
+        <button type="button" id="recoveryCancel" class="recovery-cancel-v17">Cancelar</button>
+      </div>
+      <div id="recoveryMsg" class="login-msg-v15"></div>
+    </div>
+    <div id="loginMsg" class="login-msg-v15"></div>
+    <div id="serverMsg" class="server-msg-v15">Validando servidor…</div>
+
+    <div class="login-help-v15">
+      <button type="button" id="forgotPasswordBtn" class="login-link-v17">¿Olvidaste tu contraseña?</button>
+    </div>
+  </div>
+</section>
+
+<div id="forcePasswordModal" class="modal-backdrop hidden">
+  <div class="modal-card">
+    <h2>Cambia tu contraseña</h2>
+    <p>La contraseña temporal debe reemplazarse antes de continuar.</p>
+    <input id="forceNewPass" type="password" placeholder="Nueva contraseña">
+    <input id="forceNewPass2" type="password" placeholder="Confirmar contraseña">
+    <button class="primary" id="forcePassSave">Guardar nueva contraseña</button>
+    <div class="msg" id="forcePassMsg"></div>
+  </div>
+</div>
+
+<div id="appView" class="hidden"><div class="shell"><aside class="side" id="sidebar"><button id="sidebarToggle" class="sidebar-toggle" title="Contraer / expandir menú">☰</button><div class="sidebrand"><img src="/static/price_shoes_logo.png" alt="Price Shoes" style="width:88px;height:auto;object-fit:contain"><div class="sidebrand-text"><b>Operaciones Ropa</b><small>Producto Ropa</small></div></div><div class="group">Menú principal</div>
+<button class="nav active" data-main="operativo">Cambios y Muertos<small>Recuperación, recolección y conversión</small></button>
+<button class="nav" data-main="analysis">Análisis Comercial<small>Venta, sugerido y utilidad</small></button>
+<button class="nav adminOnly" data-main="users">Usuarios<small>Administración de accesos</small></button>
+<button class="nav adminOnly" data-main="share">Compartir sistema<small>Liga para móvil y usuarios</small></button>
+<div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
+<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div></div><div class="filters hidden" id="globalFilters"><div class="filter"><label id="globalPeriodLabel">Periodo</label><select id="week"></select></div><div class="filter" id="globalStoreFilter"><label>Tienda</label><select id="store"><option>Compañía</option></select></div><div class="filter commercialFilter" id="globalSectionFilter"><label>Sección</label><select id="section"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter commercialFilter" id="globalCatalogFilter"><label>Tipo catálogo</label><select id="catalog"><option>Todos</option><option>VIGENTE</option><option>DESCONTINUADO</option><option>PROXIMO A SALIR</option><option>IMPULSO</option></select></div><button class="primary" id="refresh">Actualizar</button></div>
+<div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
+  <button class="switch active" data-opview="Centro Ejecutivo">Centro Ejecutivo</button>
+  <button class="switch" data-opview="Operación Diaria">Día</button>
+  <button class="switch" data-opview="Reporte Semanal">Semanal</button>
+  <button class="switch" data-opview="Reporte Mensual">Mensual</button>
+  <button class="switch" data-opview="Conversión">Conversión</button>
+  <button class="switch" data-opview="Recuperación Económica">Recuperación $</button>
+  <button class="switch" data-opview="Productividad por Colaborador">Productividad</button>
+  <button class="switch" data-opview="Cumplimiento de Recorridos">Recorridos</button>
+  <button class="switch" data-opview="Índice Integral">Score</button>
+  <button class="switch" data-opview="Alertas Inteligentes">Alertas</button>
+  <div style="margin-left:auto;display:flex;gap:5px">
+    <button class="switch adminOnly" data-opview="Carga de datos">Carga de datos</button>
+    <button class="switch" id="openGoalsBtn">Metas y tiendas</button>
+  </div>
+</div>
+<div id="analysisNav" class="hidden" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;flex-wrap:wrap">
+  <button class="switch active" data-sub="macro">Macro compañía</button>
+  <button class="switch" data-sub="accordion">Acordeón comercial</button>
+  <button class="switch" data-sub="stores">Tiendas</button>
+  <button class="switch" data-sub="sections">Sección / Rubro</button>
+  <button class="switch" data-sub="areas">Ubicación / Área</button>
+  <button class="switch" data-sub="more">Más opciones</button>
+  <button class="switch adminOnly" data-sub="analysis-upload">Carga de datos</button>
+</div>
+
+<section class="page active" id="page-operativo">
+  
+  <div id="operativoCentro">
+    <div class="title">Centro Ejecutivo · Cambios y Muertos</div>
+    <div id="operativoSource" class="panel" style="margin-bottom:10px">
+      <div class="panel-head"><b>Fuente operativa</b><span class="status ok" id="opSourceState">Sin cargar</span></div>
+      <div class="note" id="opSourceDetail">Carga el Excel desde la pestaña “Carga de datos”.</div>
+    </div>
+
+    <div class="subtitle">Recuperación, conversión, recolección y seguimiento operativo</div>
+    
+    <div class="kpis" style="grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:10px">
+      <div class="kpi" style="--a:var(--pink)"><div class="lab">Muertos</div><div class="val" id="opMuertos">—</div><div class="note">Recolección · motivo Muertos</div></div>
+      <div class="kpi" style="--a:var(--orange)"><div class="lab">Probador</div><div class="val" id="opProbador">—</div><div class="note">Recolección · Probador</div></div>
+      <div class="kpi" style="--a:var(--purple)"><div class="lab">Cajas</div><div class="val" id="opCajas">—</div><div class="note">Recolección · Cajas</div></div>
+      <div class="kpi" style="--a:var(--blue)"><div class="lab">Piezas recolectadas</div><div class="val" id="opIngresos">—</div><div class="note">Total Recolección de muertos</div></div>
+      <div class="kpi" style="--a:var(--green)"><div class="lab">Recorridos realizados</div><div class="val" id="opRecorridos">—</div><div class="note" id="opRecorridosPct">—</div></div>
+      <div class="kpi" style="--a:var(--blue)"><div class="lab">Acondicionado</div><div class="val" id="opAcondicionado">—</div><div class="note" id="opAcondicionadoPct">—</div></div>
+      <div class="kpi" style="--a:var(--pink)"><div class="lab">Ubicado</div><div class="val" id="opUbicado">—</div><div class="note" id="opUbicadoPct">—</div></div>
+      <div class="kpi" style="--a:var(--orange)"><div class="lab">Pendiente de acondicionar</div><div class="val" id="opPendAcond">—</div><div class="note">Recolectadas - Acondicionado</div></div>
+      <div class="kpi" style="--a:var(--green)"><div class="lab">Pendiente de ubicar</div><div class="val" id="opPendiente">—</div><div class="note">Acondicionado - Ubicado</div></div>
+    </div>
+    <div class="cards" style="margin-bottom:10px">
+      <div class="card"><h3>Conversión Dev → Venta</h3><div class="big" id="opConversion">—</div><small id="opConversionNote">Misma semana ISO cuando existe detalle diario</small></div>
+      <div class="card"><h3>Recuperación económica</h3><div class="big" id="opRecovery">—</div><small id="opRecoveryNote">Valor recuperado / costo devolución</small></div>
+      <div class="card"><h3>Score integral</h3><div class="big" id="opScore">—</div><small>Conversión 40% · Productividad 40% · Recorridos 20%</small></div>
+    </div>
+    <div class="cards" style="margin-bottom:10px">
+      <div class="card"><h3>Cambios</h3><div class="big" id="cambiosPiecesTop">—</div><small>Piezas identificadas</small></div>
+      <div class="card"><h3>Muertos</h3><div class="big" id="muertosPiecesTop">—</div><small>Piezas identificadas</small></div>
+      <div class="card"><h3>Productividad total</h3><div class="big" id="operativoTotalTop">—</div><small>Ingresos + Acondicionado + Ubicado</small></div>
+    </div>
+
+    <div class="grid">
+      <div class="panel"><div class="panel-head"><b>Cambios · Recuperación</b></div><div id="cambiosContent"></div></div>
+      <div class="panel"><div class="panel-head"><b>Muertos · Recolección</b></div><div id="muertosContent"></div></div>
+    </div>
+    <div class="title">Comparativo conjunto por tienda</div>
+    <div class="panel"><div class="switches"><button class="switch active" data-opmetric="total">Total</button><button class="switch" data-opmetric="cambios">Cambios</button><button class="switch" data-opmetric="muertos">Muertos</button></div><div class="bars" id="operativoBars"></div></div>
+    <div class="title">Detalle por tienda</div>
+    <div class="tablewrap"><table class="table"><thead><tr><th>Ranking</th><th>Tienda</th><th>Muertos</th><th>Probador</th><th>Cajas</th><th>Piezas recolectadas</th><th>Recorridos realizados</th><th>Acondicionado</th><th>Ubicado</th><th>Pend. Acond.</th><th>Pend. Ubicar</th></tr></thead><tbody id="operativoTable"></tbody></table></div>
+  </div>
+
+  <div id="operativoDynamic" class="hidden">
+    <div class="title" id="operativoDynamicTitle">Operación Diaria</div>
+    <div class="subtitle" id="operativoDynamicSub">Cambios y Muertos</div>
+    <div id="operativoPeriodBar" class="panel" style="margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+        <div class="filter hidden" id="operPeriodModeWrap" style="min-width:170px"><label id="operPeriodModeLabel">Vista periodo</label><select id="operPeriodMode" style="width:100%"></select></div>
+        <div class="filter" style="min-width:220px"><label id="operPeriodLabel">Periodo</label><select id="operPeriodSelect" style="width:100%"></select></div>
+        <div class="filter" style="min-width:220px"><label>Tienda</label><select id="operStoreSelect" style="width:100%"><option>Compañía</option></select></div>
+        <div class="filter" style="min-width:160px"><label>Área</label><select id="operAreaSelect" style="width:100%"><option value="">Todas</option></select></div>
+        <div class="filter" style="min-width:210px"><label>Actividad</label><select id="operActivitySelect" style="width:100%"><option value="">Todas</option></select></div>
+        <div class="filter hidden" id="operStartWrap" style="min-width:150px"><label>Desde</label><input id="operStartDate" type="date" style="width:100%"></div>
+        <div class="filter hidden" id="operEndWrap" style="min-width:150px"><label>Hasta</label><input id="operEndDate" type="date" style="width:100%"></div>
+        <button class="primary" id="operPeriodApply">Consultar</button>
+      </div>
+    </div>
+    <div id="operativoDynamicContent"></div>
+  </div>
+</section>
+
+
+
+<section class="page adminOnly" id="page-analysis-upload">
+  <div class="title">Carga de datos · Análisis Comercial</div>
+  <div class="subtitle">Fuentes exclusivas del módulo · visible sólo para Administrador y Super Administrador</div>
+
+  <div class="uploadgrid">
+    <div class="drop">
+      <h3>PDF · Análisis Comercial · opcional</h3>
+      <p>Fuente histórica opcional. Los reportes comerciales ya no dependen de este PDF.</p>
+      <input id="analysisPdfFiles" type="file" accept=".pdf,application/pdf" multiple>
+      <button class="primary" id="analysisPdfUploadBtn">Procesar PDF</button>
+    </div>
+
+    <div class="drop">
+      <h3>Excel · Capacidades / Existencias · fuente principal</h3>
+      <p>Alimenta venta, SUG 7, DDI 7, capacidad, existencias, secciones, rubros, ubicaciones, catálogo y modelos 80/20.</p>
+      <input id="analysisCapFile" type="file" accept=".xls,.xlsx">
+      <button class="primary" id="analysisCapUploadBtn">Procesar Excel</button>
+    </div>
+
+    <div class="drop">
+      <h3>PDF · Ventas mensuales · opcional</h3>
+      <p>Ya no es obligatorio: el Excel de capacidades aporta VTA EN $ 7 y VTA ACUM MES EN $.</p>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="analysisSalesYear" type="number" value="2026" style="width:45%">
+        <input id="analysisSalesMonth" type="number" min="1" max="12" value="8" style="width:45%">
+      </div>
+      <input id="analysisSalesFiles" type="file" accept=".pdf,application/pdf" multiple>
+      <button class="primary" id="analysisSalesUploadBtn">Procesar ventas</button>
+    </div>
+  </div>
+
+  <div class="title">Resultado de carga</div>
+  <div class="log" id="analysisUploadLog">Selecciona una fuente para comenzar.</div>
+</section>
+
+<section class="page" id="page-macro"><div class="title" id="macroTitle">Análisis Comercial · Macro Compañía</div><div class="subtitle">Compañía → Sección → Catálogo → Rubro → Modelo · <span id="pdfCoverage"></span></div><div class="kpis"><div class="kpi" style="--a:var(--purple)"><div class="lab">Existencia total</div><div class="val" id="kExist">—</div><div class="note" id="kExistNote"></div></div><div class="kpi" style="--a:#08a9d6"><div class="lab">Sugerido compañía</div><div class="val" id="kSug">—</div><div class="note" id="kSugNote"></div></div><div class="kpi" style="--a:var(--yellow)"><div class="lab">DDI compañía</div><div class="val" id="kDdi">—</div><div class="note" id="kDdiNote"></div></div><div class="kpi" style="--a:var(--blue)"><div class="lab">Capacidad · Curva</div><div class="val" id="kCap">—</div><div class="note" id="kCapNote"></div></div><div class="kpi" style="--a:var(--green)"><div class="lab">Ocupación</div><div class="val" id="kOcc">—</div><div class="note" id="kOccNote"></div></div></div><div class="title">Macro sección</div><div class="cards" id="sectionSummary"></div><div class="title" id="macroRankingTitle">Comparativo de tiendas</div><div class="panel"><div class="switches" id="metricSwitch"><button class="switch active" data-metric="suggested">Sugerido</button><button class="switch" data-metric="existence">Existencia</button><button class="switch" data-metric="floor">Piso</button><button class="switch" data-metric="warehouse">Bodega</button><button class="switch" data-metric="ddi">DDI</button></div><div class="bars" id="bars"></div><div class="note" id="ddiLegend"></div></div><div class="title" id="macroSectionTableTitle">Macro sección · Compañía</div><div class="tablewrap"><table class="table"><thead><tr><th>Sección</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th><th>% Part. utilidad</th><th>% Part. piezas</th><th>% Part. inventario</th></tr></thead><tbody id="sectionTable"></tbody></table></div><div class="title" id="macroAreaTitle">Macro ubicación · Compañía</div>
+<div class="subtitle">Agrupado por Colgado, Doblado, Jeans y Lencería. La sección se filtra con los botones siguientes.</div>
+<div class="panel compact-filter"><div class="switches" id="macroAreaSectionSwitch"><button class="switch active" data-area-section="Todas">Todas</button><button class="switch" data-area-section="Dama">Dama</button><button class="switch" data-area-section="Caballero">Caballero</button><button class="switch" data-area-section="Infantil">Infantil</button></div></div>
+<div class="tablewrap"><table class="table">
+<thead><tr><th>Ubicación</th><th>Pasillo / Mesa</th><th>Modelos</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th></tr></thead>
+<tbody id="macroAreaTable"><tr><td colspan="12">Cargando...</td></tr></tbody>
+</table></div>
+<div class="title">Macro 80/20 · participación de venta</div>
+<div class="panel compact-filter">
+  <div class="filter-caption">Desglose</div>
+  <div class="switches" id="paretoGroupSwitch">
+    <button class="switch active" data-pareto-group="section">Sección</button><button class="switch" data-pareto-group="area">Área</button><button class="switch" data-pareto-group="catalog">Tipo catálogo</button><button class="switch" data-pareto-group="general">Macro</button>
+  </div>
+  <div class="note" id="paretoSummaryNote"></div>
+</div>
+<div class="tablewrap"><table class="table"><thead><tr><th>Desglose</th><th>% Part. venta</th><th>Modelos 80%</th><th>Modelos 20%</th><th>Total modelos</th><th>Vta pzas</th><th>Venta $</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th></tr></thead><tbody id="paretoSummaryTable"><tr><td colspan="11">Cargando...</td></tr></tbody></table></div>
+<div class="title" id="champTitle">Modelos 80/20 · Compañía · Todas</div>
+<div class="panel compact-filter">
+  <div class="filter-caption">Filtrar detalle por sección</div><div class="switches" id="champSectionSwitch"><button class="switch active" data-champ-section="Todas">Todas</button><button class="switch" data-champ-section="Dama">Dama</button><button class="switch" data-champ-section="Caballero">Caballero</button><button class="switch" data-champ-section="Infantil">Infantil</button></div>
+  <select id="champSection" class="hidden"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select>
+</div>
+<div class="tablewrap model-scroll-30"><table class="table"><thead><tr><th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th></tr></thead><tbody id="champTable"></tbody></table></div><div class="title" id="slowTitle">Modelos lentos · Compañía · Todas</div><div class="panel compact-filter"><div class="filter"><label>Sección · Modelos lentos</label><select id="slowSection"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter hidden" id="checklistStoreWrap"><label>Tienda a evaluar · solo checklist</label><select id="checklistStoreSelect"></select></div><div id="slowTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. CEDIS</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="slowTable"></tbody></table></div><div class="title" id="zeroTitle">Modelos con sugerido 0 / sin venta 30 días</div><div class="panel compact-filter"><div id="zeroTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. CEDIS</th><th>Venta pzas 30</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="zeroTable"></tbody></table></div><div id="checklistSummaryWrap" class="hidden"><div class="title" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Resumen checklist de modelos lentos por tienda</span><button class="primary" id="downloadChecklistPdf" style="width:auto;padding:8px 14px">Descargar PDF</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>Score checklist</th></tr></thead><tbody id="checklistSummary"></tbody></table></div><div id="checklistMissing" class="panel hidden"></div></div></section>
+
+<section class="page" id="page-accordion"><div class="title">Acordeón comercial</div><div class="subtitle">Resumen comercial moderno por periodo y tienda</div><div class="accordion" id="accordion"></div></section>
+<section class="page" id="page-stores"><div class="title">Tiendas</div><div class="kpis"><div class="kpi" style="--a:var(--purple)"><div class="lab">Existencia</div><div class="val" id="tExist">—</div></div><div class="kpi" style="--a:#08a9d6"><div class="lab">Sugerido</div><div class="val" id="tSug">—</div></div><div class="kpi" style="--a:var(--blue)"><div class="lab">Piso</div><div class="val" id="tFloor">—</div></div><div class="kpi" style="--a:var(--pink)"><div class="lab">Bodega</div><div class="val" id="tWh">—</div></div></div><div class="title">Ranking de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Sugerido</th><th>Capacidad (Curva)</th><th>Existencia total</th><th>% Ocupación</th><th>Piso</th><th>Bodega</th><th>DDI</th><th>Bodega %</th><th>Estatus</th></tr></thead><tbody id="storeTable"></tbody></table></div></section>
+<section class="page" id="page-sections">
+  <div class="title">Sección / Rubro</div>
+  <div class="subtitle">Usa los filtros superiores de Periodo, Tienda y Sección.</div>
+  <div class="cards" id="sectionCards"></div>
+  <div class="title" id="rubroTitle">Detalle de Rubro · Compañía</div>
+  <div id="rubroWarning" class="note"></div>
+  <div class="tablewrap"><table class="table"><thead><tr>
+    <th>Sección</th><th>Rubro / Subcategoría</th><th>Modelos</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th>
+  </tr></thead><tbody id="rubroTable"></tbody></table></div>
+</section>
+<section class="page" id="page-areas">
+  <div class="title">Ubicación / Área</div>
+  <div class="subtitle">Usa los filtros superiores de Periodo, Tienda y Sección.</div>
+  <div class="cards" id="areaCards"></div>
+  <div id="areaTables"></div>
+</section>
+<section class="page" id="page-more"><div class="title">Más opciones</div><div class="cards"><div class="card"><h3>Dinero y utilidad</h3><div class="big">Participación</div><small>Venta $, utilidad y piezas por sección cuando exista fuente.</small></div><div class="card"><h3>Mi evolución</h3><div class="big">Histórico</div><small>Comparativo de semanas y meses procesados.</small></div><div class="card adminOnly"><h3>Usuarios y accesos</h3><div class="big">Roles</div><small>Propietario, Administrador, Director/Consulta y Tienda.</small><div style="margin-top:9px"><button class="primary" data-open-admin="users">Administrar usuarios</button></div></div></div></section>
+
+<section class="page adminOnly" id="page-upload"><div class="title">Carga de archivos</div><div class="cards" style="margin-bottom:10px"><div class="card"><h3>Fuentes comerciales</h3><div class="big">PDF</div><small>Análisis Comercial · 17 tiendas + 2 Darkstore · Ventas mensuales</small></div><div class="card"><h3>Fuentes estructurales</h3><div class="big">Excel</div><small>Capacidades y existencias</small></div><div class="card"><h3>Fuente operativa</h3><div class="big">Excel</div><small>Cambios y Muertos</small></div></div><div class="uploadgrid"><div class="drop"><h3>PDF · Análisis Comercial</h3><p>Desde 2026-W35: hasta 19 PDF por corte (17 tiendas + 2 Darkstore). Se conserva histórico.</p><input id="pdfFiles" type="file" accept="application/pdf,.pdf" multiple><div class="note" id="pdfSelection">Ningún PDF seleccionado</div><input id="pdfWeek" placeholder="Semana opcional: 2026-W34"><button class="primary" id="uploadPdf">Procesar PDF</button></div><div class="drop"><h3>Excel · Capacidades / existencias</h3><p>Curva, existencia, piso, bodega, sugerido, DDI y utilidad cuando estén disponibles.</p><input id="capFile" type="file" accept=".xls,.xlsx"><div class="note" id="capSelection">Ningún Excel seleccionado</div><button class="primary" id="uploadCap">Procesar Excel</button></div><div class="drop"><h3>PDF · Ventas mensuales</h3><p>Selecciona año, mes y el/los PDF de ventas. La versión más reciente del mismo periodo queda vigente.</p><div style="display:flex;gap:5px"><input id="salesYear" type="number" value="2026" min="2020" max="2100"><input id="salesMonth" type="number" value="8" min="1" max="12"></div><input id="salesFiles" type="file" accept="application/pdf,.pdf" multiple><div class="note" id="salesSelection">Ningún PDF seleccionado</div><button class="primary" id="uploadSales">Procesar PDF de ventas</button></div><div class="drop"><h3>Excel · Base de datos Muertos y Cambios</h3><p>Fuente exclusiva del módulo Cambios y Muertos. Consolida todas las hojas Resultados productividad / Resultados de productividad. Las hojas mensuales se conservan sólo para conversión y recuperación.</p><input id="opsFile" type="file" accept=".xls,.xlsx"><div class="note" id="opsSelection">Ningún Excel seleccionado</div><button class="primary" id="uploadOps">Procesar operativo</button></div></div><div class="subtitle">Módulo independiente para Super Administrador y Administrador. No forma parte de Cambios y Muertos ni de Análisis Comercial.</div><div class="title">Resultado</div><div class="log" id="log">V47 móvil listo para recibir archivos.</div><div style="margin-top:10px"><button class="primary" id="openUsersFromUpload">Usuarios y accesos</button></div></section>
+
+
+<section class="page adminOnly" id="page-share">
+  <div class="title">Compartir Operaciones Ropa</div>
+  <div class="subtitle">Disponible únicamente para Super Administrador y Administrador.</div>
+  <div class="cards">
+    <div class="card"><h3>Liga pública</h3><div class="big" style="font-size:14px" id="publicShareUrl">No configurada en este equipo</div><small>Acceso desde cualquier red cuando el sistema esté desplegado.</small><div style="margin-top:9px"><button class="primary" id="copyPublicUrl">Copiar liga pública</button></div></div>
+    <div class="card"><h3>Prueba en el mismo Wi‑Fi</h3><div class="big" style="font-size:14px" id="lanShareUrl">—</div><small>Abre esta liga en el celular conectado al mismo Wi‑Fi.</small><div style="margin-top:9px"><button class="primary" id="copyLanUrl">Copiar liga Wi‑Fi</button><button class="primary" id="shareBestUrl" style="margin-top:6px">Compartir enlace</button><button class="primary" id="whatsappShare" style="margin-top:6px">Enviar por WhatsApp</button></div></div>
+    <div class="card"><h3>Actualizaciones</h3><div class="big">Misma liga</div><small>Al actualizar reportes o diseño no cambia la URL; los usuarios sólo refrescan la página.</small></div>
+  </div>
+  <div class="title">Estado</div><div class="panel" id="shareSourceInfo">Cargando...</div>
+  <div class="title">Uso</div><div class="panel"><div class="note" style="font-size:10px;line-height:1.7">1. Liga Wi‑Fi: prueba interna.<br>2. Liga pública: para tiendas y móviles desde cualquier lugar.<br>3. La liga pública se puede mandar por WhatsApp, correo o QR.</div></div>
+</section>
+<section class="page adminOnly" id="page-users">
+  <div class="title">Usuarios</div><div class="panel superOnly"><button class="primary" id="changeMyPasswordBtn">Cambiar mi contraseña</button><div class="msg" id="myPasswordMsg"></div></div>
+  <div class="subtitle">Administración independiente de accesos · permisos validados también en servidor</div>
+  <div class="panel">
+    <div class="uploadgrid">
+      <div class="field"><label>Usuario</label><input id="newUser"></div>
+      <div class="field"><label>Contraseña temporal</label><input id="newPass" type="password" autocomplete="new-password"></div>
+      <div class="field"><label>Rol</label><select id="newRole"><option value="tienda">Tienda</option><option value="director">Director / Consulta</option><option value="admin">Administrador</option></select></div>
+      <div class="field"><label>Tienda asignada</label><select id="newStore"><option value="">Seleccionar</option></select></div>
+    </div>
+    <button class="primary" id="createUser">Crear usuario</button>
+    <div class="msg" id="userMsg"></div>
+  </div>
+  <div class="title">Usuarios registrados</div>
+  <div class="tablewrap"><table class="table"><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody id="userTable"></tbody></table></div>
+  <div class="panel superOnly" id="systemControl">
+    <div class="title" style="margin-top:0">Control del sistema · Propietario</div>
+    <div class="subtitle">Suspender o eliminar la plataforma requiere tu contraseña.</div>
+    <div class="cards"><div class="card"><h3>Suspender</h3><button class="primary" id="suspendSystem">Suspender</button></div><div class="card"><h3>Reactivar</h3><button class="primary" id="activateSystem">Reactivar</button></div><div class="card"><h3>Eliminar sistema</h3><button class="primary" id="deleteSystem" style="background:#b42318">Eliminar sistema</button></div></div>
+    <div class="msg" id="systemMsg"></div>
+  </div>
+</section>
+</main></div><nav class="mobile" id="mobileMainNav" style="grid-template-columns:repeat(4,1fr)">
+<button class="mnav active" data-main="operativo"><span class="mnav-icon">↻</span><span>Cambios</span></button>
+<button class="mnav" data-main="analysis"><span class="mnav-icon">▦</span><span>Comercial</span></button>
+<button class="mnav adminOnly" data-main="users"><span class="mnav-icon">♙</span><span>Usuarios</span></button>
+<button class="mnav adminOnly" data-main="share"><span class="mnav-icon">↗</span><span>Compartir</span></button>
+</nav></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+
+const shell=document.querySelector('.shell');
+const sidebarToggle=document.getElementById('sidebarToggle');
+if(sidebarToggle&&shell){
+  if(localStorage.getItem('operacionesRopaSidebar')==='collapsed')shell.classList.add('sidebar-collapsed');
+  sidebarToggle.onclick=()=>{shell.classList.toggle('sidebar-collapsed');localStorage.setItem('operacionesRopaSidebar',shell.classList.contains('sidebar-collapsed')?'collapsed':'expanded')};
+}
+
+const fmt=n=>Number(n||0).toLocaleString('es-MX',{maximumFractionDigits:0}), dec2=n=>Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}), pct=n=>n==null?'Información no disponible':Number(n).toLocaleString('es-MX',{maximumFractionDigits:1})+'%', money=n=>'$'+fmt(n), textSafe=v=>(v===undefined||v===null||v==='undefined')?'Información no disponible':String(v);
+let USER=null,DASH=null,METRIC='suggested';
+const roleLabel={superadmin:'Super Administrador · Propietario',admin:'Administrador',director:'Director / Consulta',tienda:'Tienda'};
+function state(ddi){return ddi>=121?['Exceso','bad']:ddi>=91?['Atención','warn']:['Óptimo','ok']}
+async function api(url,opt={}){
+  const controller=new AbortController();
+  // Respeta timeoutMs. Para cargas pesadas se pasan 900000 ms (15 min).
+  const timeoutMs=Number(opt.timeoutMs ?? 30000);
+  const timer=timeoutMs>0 ? setTimeout(()=>controller.abort(),timeoutMs) : null;
+  try{
+    const cfg={...opt,signal:controller.signal};
+    delete cfg.timeoutMs;
+    const r=await fetch(url,cfg);
+    const raw=await r.text();let j={};try{j=raw?JSON.parse(raw):{}}catch(e){}
+    if(!r.ok)throw new Error(j.detail||j.message||raw||('Error HTTP '+r.status));
+    return j;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error('El servidor tardó demasiado en responder.');
+    throw e;
+  }finally{
+    if(timer)clearTimeout(timer);
+  }
+}
+async function start(){
+  $('#loginView').classList.remove('hidden');
+  $('#appView').classList.add('hidden');
+  $('#serverMsg').textContent='Validando servidor…';
+  try{
+    const b=await api('/api/bootstrap');
+    $('#serverMsg').textContent='Sistema conectado';
+    if(b.needs_owner){
+      $('#ownerSetup').classList.remove('hidden');
+      $('#normalLogin').classList.add('hidden');
+    }else{
+      $('#ownerSetup').classList.add('hidden');
+      $('#normalLogin').classList.remove('hidden');
+      if(b.user){await enter(b.user);if(b.user.must_change_password)showForcedPasswordChange();}
+    }
+  }catch(e){
+    $('#serverMsg').textContent='Servidor: '+e.message;
+    $('#ownerSetup').classList.add('hidden');
+    $('#normalLogin').classList.remove('hidden');
+  }
+}
+
+$('#createOwner').onclick=async()=>{
+  try{
+    await api('/api/bootstrap-owner',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:$('#ownerUser').value,password:$('#ownerPass').value})
+    });
+    $('#ownerSetup').classList.add('hidden');
+    $('#normalLogin').classList.remove('hidden');
+    $('#loginMsg').textContent='Propietario creado. Inicia sesión.';
+  }catch(e){
+    $('#loginMsg').textContent=e.message;
+  }
+};
+
+$('#loginBtn').onclick=async()=>{
+  try{
+    $('#loginMsg').textContent='Ingresando…';
+    $('#loginMsg').textContent='';const r=await api('/api/login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:$('#loginUser').value,password:$('#loginPass').value})
+    });
+    await enter(r.user);
+    $('#loginMsg').textContent='';
+    if(r.must_change_password)showForcedPasswordChange();
+  }catch(e){
+    $('#loginMsg').textContent=e.message;
+  }
+};
+
+['loginUser','loginPass'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('keydown',e=>{
+    if(e.key==='Enter')document.getElementById('loginBtn')?.click();
+  });
+});
+
+
+$('#forgotPasswordBtn').onclick=()=>{
+  $('#normalLogin').classList.add('hidden');
+  $('#recoveryPanel').classList.remove('hidden');
+  $('#loginMsg').textContent='';
+  $('#recoveryMsg').textContent='';
+  $('#recoveryUser').value=$('#loginUser').value||'';
+};
+$('#recoveryCancel').onclick=()=>{
+  $('#recoveryPanel').classList.add('hidden');
+  $('#normalLogin').classList.remove('hidden');
+  $('#recoveryMsg').textContent='';
+};
+$('#recoverySave').onclick=async()=>{
+  const btn=$('#recoverySave');
+  btn.disabled=true;
+  btn.textContent='Actualizando…';
+  try{
+    const r=await api('/api/recovery/reset-local',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        username:$('#recoveryUser').value,
+        new_password:$('#recoveryPass').value,
+        confirm_password:$('#recoveryPass2').value
+      })
+    });
+    $('#recoveryMsg').style.color='#b7f7cf';
+    $('#recoveryMsg').textContent=r.message||'Contraseña actualizada';
+    $('#loginUser').value=r.username||$('#recoveryUser').value;
+    $('#loginPass').value='';
+    setTimeout(()=>{
+      $('#recoveryPanel').classList.add('hidden');
+      $('#normalLogin').classList.remove('hidden');
+      $('#loginMsg').textContent='Contraseña actualizada. Inicia sesión.';
+    },900);
+  }catch(e){
+    $('#recoveryMsg').style.color='#ffb4d8';
+    $('#recoveryMsg').textContent=e.message;
+  }finally{
+    btn.disabled=false;
+    btn.textContent='Cambiar contraseña';
+  }
+};
+
+$('#logout').onclick=async()=>{
+  try{await api('/api/logout',{method:'POST'})}catch(e){}
+  location.reload();
+};
+
+
+
+function showForcedPasswordChange(){
+  $('#forcePasswordModal').classList.remove('hidden');
+}
+$('#forcePassSave')?.addEventListener('click',async()=>{
+  try{
+    const r=await api('/api/me/complete-temporary-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({new_password:$('#forceNewPass').value,confirm_password:$('#forceNewPass2').value})});
+    $('#forcePassMsg').style.color='var(--green)';$('#forcePassMsg').textContent=r.message;
+    setTimeout(()=>$('#forcePasswordModal').classList.add('hidden'),600);
+  }catch(e){$('#forcePassMsg').style.color='var(--red)';$('#forcePassMsg').textContent='Error: '+e.message}
+});
+
+function mexicoNowParts(){
+  const now=new Date();
+  const timeFmt=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',hour12:false});
+  const parts=timeFmt.formatToParts(now);
+  const hour=Number(parts.find(p=>p.type==='hour')?.value||0);
+  const greeting=(hour>=5&&hour<12)?'Buen día':(hour>=12&&hour<19)?'Buena tarde':'Buena noche';
+  const dateText=new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(now).replace(',', '');
+  return {greeting,dateText};
+}
+function refreshHeaderClock(){
+  const x=mexicoNowParts();
+  if($('#heroGreeting'))$('#heroGreeting').textContent=`${x.greeting}, ${USER?.username||''}`;
+  if($('#heroDate'))$('#heroDate').textContent=x.dateText;
+}
+setInterval(refreshHeaderClock,60000);
+
+async function enter(u){
+  USER=u;
+  $('#loginView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+  $('#profileName').textContent=u.username;
+  $('#profileRole').textContent=roleLabel[u.role]||u.role; $('#profileMeta').textContent='V47 · versión móvil'; refreshHeaderClock();
+  $$('.superOnly').forEach(x=>x.classList.toggle('hidden',u.role!=='superadmin'));
+
+  if(!['superadmin','admin'].includes(u.role)){
+    $$('.adminOnly').forEach(x=>x.classList.add('hidden'));
+    const mn=$('#mobileMainNav');
+    if(mn)mn.style.gridTemplateColumns='repeat(2,1fr)';
+  }else{
+    const mn=$('#mobileMainNav');
+    if(mn)mn.style.gridTemplateColumns='repeat(4,1fr)';
+  }
+
+  // Carga diferida: al iniciar sesión sólo se abre Cambios y Muertos.
+  // Análisis Comercial se consulta únicamente cuando el usuario entra a ese módulo.
+  await goMain('operativo');
+  if(['superadmin','admin'].includes(u.role))loadUsers();
+}
+
+const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
+let MAIN='operativo', SUB='macro';
+function showPage(p){
+  $$('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));
+  const tt=titles[p]||titles[MAIN]||['Operaciones Ropa','']; $('#heroTitle').textContent=tt[0]; $('#heroSub').textContent=tt[1];
+  $('.commercialFilter').style.display=['macro','accordion','stores','sections','areas','more'].includes(p)?'block':'none';
+  $$('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
+  if(p==='users') loadUsers();
+}
+async function goMain(m){
+  MAIN=m;
+  $$('[data-main]').forEach(x=>x.classList.toggle('active',x.dataset.main===m));
+  const analysis=m==='analysis', operativo=m==='operativo';
+  $('#analysisNav').classList.toggle('hidden',!analysis);
+  $('#operativoNav').classList.toggle('hidden',!operativo);
+  $('#globalFilters').classList.toggle('hidden',!analysis);
+  
+  if(operativo){
+    OP_VIEW='Centro Ejecutivo';
+    showPage('operativo');
+    if(!OPSDATA) await refreshOperativoMeta();
+    await renderOperativoView('Centro Ejecutivo',false);
+  }else if(analysis){
+    SUB='macro';
+    await loadDash('Compañía',$('#section')?.value||'Todas');
+    showPage('macro');
+  }else if(m==='share'){
+    showPage('share');
+    renderShareInfo();
+  }else if(m==='users'){
+    showPage('users');
+    loadUsers();
+  }
+}
+function goSub(p){
+  SUB=p;MAIN='analysis';
+  $('#globalFilters').classList.remove('hidden');
+  $$('[data-main]').forEach(x=>x.classList.toggle('active',x.dataset.main==='analysis'));
+  $('#analysisNav').classList.remove('hidden');$('#operativoNav').classList.add('hidden');
+  const storeFilter=$('#globalStoreFilter');
+  if(storeFilter)storeFilter.style.display=p==='stores'?'none':'';
+  if(p==='stores'&&$('#store'))$('#store').value='Compañía';
+  showPage(p);
+  if(p==='stores')loadDash('Compañía',$('#section')?.value||'Todas');
+  if(p==='sections')loadCommercialDetail('rubro');
+  if(p==='areas')loadCommercialDetail('area');
+  if(p==='accordion')renderAccordion();
+}
+$$('[data-main]').forEach(b=>b.onclick=()=>goMain(b.dataset.main));
+$$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));
+
+let OP_VIEW='Centro Ejecutivo';
+$$('[data-opview]').forEach(b=>b.onclick=async()=>{
+  OP_VIEW=b.dataset.opview;
+  $$('[data-opview]').forEach(x=>x.classList.toggle('active',x===b));
+  OPER_PERIOD={type:'all',value:''};
+
+  // Cambiar el contenido visual inmediatamente, antes de consultar datos.
+  const centro=$('#operativoCentro'), dyn=$('#operativoDynamic');
+  if(centro) centro.classList.add('hidden');
+  if(dyn) dyn.classList.remove('hidden');
+  if($('#operativoDynamicTitle')) $('#operativoDynamicTitle').textContent=OP_VIEW;
+  if($('#operativoDynamicSub')) $('#operativoDynamicSub').textContent='Cargando información...';
+  if($('#operativoDynamicContent')) {
+    $('#operativoDynamicContent').innerHTML='<div class="infoempty">Cargando reporte...</div>';
+  }
+
+  try{
+    // Usar la metadata ya cargada; cada reporte hace sólo la consulta que necesita.
+    await renderOperativoView(OP_VIEW,false);
+  }catch(e){
+    console.error('Error al cambiar reporte operativo:',e);
+    if($('#operativoDynamicSub')) $('#operativoDynamicSub').textContent='No fue posible abrir el reporte';
+    if($('#operativoDynamicContent')) {
+      $('#operativoDynamicContent').innerHTML=`<div class="infoempty">Error al abrir ${OP_VIEW}: ${e.message||e}</div>`;
+    }
+  }
+});
+$('#openGoalsBtn').onclick=async()=>{await renderGoalsConfig()};
+
+
+
+$$('[data-open-admin]').forEach(b=>b.onclick=()=>goSub(b.dataset.openAdmin));
+async function loadDash(storeOverride=null,sectionOverride=null){
+  const sectionValue=sectionOverride||($('#section')?.value||'Todas');
+  let selectedStore;
+  if(SUB==='stores') selectedStore='Compañía';
+  else selectedStore=storeOverride||($('#store')?.value||'Compañía');
+
+  const catalogValue=$('#catalog')?.value||'Todos';
+  const d=await api('/api/dashboard?week='+encodeURIComponent($('#week').value||'')+
+                    '&store='+encodeURIComponent(selectedStore)+
+                    '&section='+encodeURIComponent(sectionValue)+
+                    '&catalog='+encodeURIComponent(catalogValue));
+  DASH=d;
+
+  if(!$('#week').options.length){
+    d.weeks.forEach(w=>$('#week').add(new Option(w,w)));
+    $('#week').value=d.week;
+  }
+
+  const selectors=['store','newStore'];
+  selectors.forEach(id=>{
+    const el=$('#'+id); if(!el)return;
+    const old=el.value;
+    const first=(id==='newStore')?'<option value="">Seleccionar</option>':'<option value="Compañía">Compañía / Todas las tiendas</option>';
+    el.innerHTML=first;
+    (d.stores_available||[]).forEach(s=>el.add(new Option(s,s)));
+    if([...el.options].some(o=>o.value===old))el.value=old;
+  });
+
+  if(USER.role==='tienda'){
+    ['store'].forEach(id=>{
+      const el=$('#'+id);if(!el)return;el.innerHTML='<option>'+USER.store+'</option>';el.disabled=true;
+    });
+  }
+
+  renderDash(d);
+  if(SUB==='macro') await loadMacroAreaDetail();
+  $('#profileMeta').textContent=`V47 · Móvil · Excel capacidades · ${d.week||'sin periodo'}`;
+  refreshHeaderClock();
+  return d;
+}
+function sec(name){return (DASH.sections||[]).find(x=>String(x.section).toLowerCase().startsWith(name.toLowerCase()))}
+function sm(v,formatter=fmt){return v==null?'Información no disponible':formatter(v)}
+function renderDash(d){
+  let k=d.kpis, dama=sec('Dama'),cab=sec('Caballero'),inf=sec('Infantil');
+  $('#pdfCoverage').textContent=d.source_file?`Fuente: ${d.source_file}`:'Carga el Excel de capacidades';
+  const scope=(d.selected_store&&d.selected_store!=='Compañía')?d.selected_store:'Compañía';
+  $('#macroTitle').textContent=`Análisis Comercial · Macro ${scope}`;
+  $('#macroRankingTitle').textContent=`Comparativo Compañía`;
+  if($('#macroSectionTableTitle'))$('#macroSectionTableTitle').textContent=`Macro sección · ${scope}`;
+
+  $('#kExist').textContent=fmt(k.existence);
+  $('#kExistNote').textContent='Piso '+pct(k.existence?k.floor/k.existence*100:0)+' · Bodega '+pct(k.existence?k.warehouse/k.existence*100:0);
+  $('#kSug').textContent=fmt(k.suggested);
+  $('#kSugNote').textContent='Dama '+sm(dama?.suggested)+' · Cab. '+sm(cab?.suggested)+' · Inf. '+sm(inf?.suggested);
+  $('#kDdi').textContent=fmt(k.ddi)+' días';
+  $('#kDdiNote').textContent='Dama '+sm(dama?.ddi)+' · Cab. '+sm(cab?.ddi)+' · Inf. '+sm(inf?.ddi);
+  $('#kCap').textContent=fmt(k.capacity);
+  $('#kCapNote').textContent='Dama '+sm(dama?.capacity)+' · Cab. '+sm(cab?.capacity)+' · Inf. '+sm(inf?.capacity);
+  $('#kOcc').textContent=pct(k.occupancy);
+  $('#kOccNote').textContent='Dama '+sm(dama?.occupancy,pct)+' · Cab. '+sm(cab?.occupancy,pct)+' · Inf. '+sm(inf?.occupancy,pct);
+
+  $('#sectionSummary').innerHTML=(d.sections||[]).filter(s=>['dama','caballero','infantil'].some(x=>s.section.toLowerCase().startsWith(x))).map(s=>`<div class="card"><h3>${s.section}</h3><div class="big">${fmt(s.suggested)}</div><small>Sugerido</small><div class="mini3"><div class="mini"><span>% Part. piezas</span><b>${pct(s.part_pieces)}</b></div><div class="mini"><span>% Part. utilidad</span><b>${pct(s.utility)}</b></div><div class="mini"><span>% Part. inventario</span><b>${pct(s.part_inventory)}</b></div></div></div>`).join('')||'<div class="infoempty">Información no disponible</div>';
+  $('#sectionTable').innerHTML=(d.sections||[]).map(s=>`<tr><td><b>${s.section}</b></td><td>${fmt(s.capacity)}</td><td>${fmt(s.floor)}</td><td>${fmt(s.warehouse)}</td><td>${fmt(s.existence)}</td><td>${dec2(s.suggested)}</td><td>${fmt(s.ddi)}</td><td>${fmt(s.sales_pzas)}</td><td>${money(s.sales_value)}</td><td>${pct(s.occupancy)}</td><td>${pct(s.utility)}</td><td>${pct(s.part_pieces)}</td><td>${pct(s.part_inventory)}</td></tr>`).join('');
+
+  $('#tExist').textContent=fmt(k.existence);$('#tSug').textContent=fmt(k.suggested);$('#tFloor').textContent=fmt(k.floor);$('#tWh').textContent=fmt(k.warehouse);
+  renderStoreRanking(d.stores||[]);
+  $('#sectionCards').innerHTML=d.sections.map(s=>`<div class="card"><h3>${s.section}</h3><div class="big">${fmt(s.suggested)}</div><small>Existencia ${fmt(s.existence)} · Piso ${fmt(s.floor)} · Bodega ${fmt(s.warehouse)} · DDI ${fmt(s.ddi)} · Capacidad ${fmt(s.capacity)} · Utilidad ${pct(s.utility)}</small></div>`).join('');
+  $('#areaCards').innerHTML=d.locations.map(s=>`<div class="card"><h3>${s.location}</h3><div class="big">${fmt(s.suggested)}</div><small>Existencia ${fmt(s.existence)} · Piso ${fmt(s.floor)} · Bodega ${fmt(s.warehouse)} · DDI ${fmt(s.ddi)}</small></div>`).join('')||'<div class="infoempty">Información no disponible</div>';
+
+  loadModelTables();
+  renderBars();
+  renderAccordion();
+}
+
+
+function checklistIcon(v,editable,field,idArt){
+  const val=(v===1||v===true)?'1':(v===0||v===false)?'0':'';
+  if(editable){
+    return `<select class="model-check" data-field="${field}" data-id="${idArt}">
+      <option value="" ${val===''?'selected':''}>—</option>
+      <option value="1" ${val==='1'?'selected':''}>✓ Sí</option>
+      <option value="0" ${val==='0'?'selected':''}>✕ No</option>
+    </select>`;
+  }
+  if(val==='1')return '<span class="check-yes">✓</span>';
+  if(val==='0')return '<span class="check-no">✕</span>';
+  return '<span class="check-na">—</span>';
+}
+function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',scope='Compañía',checkMap={},checkEditable=false,checkStore=''){
+  $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec}`;
+  $('#slowTitle').textContent=`Modelos lentos · ${scope} · ${slowSec}`;
+  $('#zeroTitle').textContent=`Modelos con sugerido 0 / sin venta 30 días · ${scope} · ${slowSec}`;
+  const slowPanel=$('#slowTotals')?.parentElement;if(slowPanel){let help=slowPanel.querySelector('.check-help');if(!help){help=document.createElement('div');help.className='note check-help';slowPanel.appendChild(help)}help.textContent=(scope==='Compañía'&&['admin','superadmin'].includes(USER?.role))?'Selecciona la tienda a evaluar en el control de checklist para capturar Sí / No. El resumen de Compañía permanece visible por tienda.':'';}
+  $('#champTable').innerHTML=(champs||[]).map(x=>`<tr><td><b>#${x.rank||''}</b></td><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||x.area||''}</td><td>${x.exhibition||'—'}</td><td>${fmt(x.sales_pzas)}</td><td>${money(x.sales_value)}</td><td>${fmt(x.existence)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.ddi)}</td><td>${fmt(x.capacity)}</td><td>${x.occupancy==null?'N/D':pct(x.occupancy)}</td><td>${pct(x.cum_share)}</td></tr>`).join('')||'<tr><td colspan="16">Información no disponible</td></tr>';
+
+  const canAnswer=!!checkStore&&checkEditable;
+  $('#slowTable').innerHTML=(slows||[]).map(x=>{
+    const ck=checkMap[String(x.id_art)]||{};
+    const hint=!checkStore?' title="Selecciona una tienda para capturar el checklist"':'';
+    return `<tr data-model-id="${x.id_art}"><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||''}</td><td>${x.exhibition||'—'}</td><td>${x.ultima_cedis||'—'}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td>
+      <td${hint}>${checklistIcon(ck.en_ubicacion,canAnswer,'en_ubicacion',x.id_art)}</td>
+      <td${hint}>${checklistIcon(ck.cenefa_correcta,canAnswer,'cenefa_correcta',x.id_art)}</td>
+      <td${hint}>${checklistIcon(ck.todas_tallas,canAnswer,'todas_tallas',x.id_art)}</td>
+      <td${hint}>${checklistIcon(ck.exhibido,canAnswer,'exhibido',x.id_art)}</td></tr>`;
+  }).join('')||'<tr><td colspan="14">Información no disponible</td></tr>';
+
+  $('#zeroTable').innerHTML=(zeros||[]).map(x=>{const ck=checkMap[String(x.id_art)]||{};const hint=!checkStore?' title="Selecciona una tienda para capturar el checklist"':'';return `<tr data-model-id="${x.id_art}"><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||''}</td><td>${x.exhibition||'—'}</td><td>${x.ultima_cedis||'—'}</td><td>${fmt(x.sales_pzas_30)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td><td${hint}>${checklistIcon(ck.en_ubicacion,canAnswer,'en_ubicacion',x.id_art)}</td><td${hint}>${checklistIcon(ck.cenefa_correcta,canAnswer,'cenefa_correcta',x.id_art)}</td><td${hint}>${checklistIcon(ck.todas_tallas,canAnswer,'todas_tallas',x.id_art)}</td><td${hint}>${checklistIcon(ck.exhibido,canAnswer,'exhibido',x.id_art)}</td></tr>`}).join('')||'<tr><td colspan="15">Información no disponible</td></tr>';
+
+  if($('#slowTotals')){
+    const sr=slows||[];
+    $('#slowTotals').textContent=`${sr.length} modelos · Sugerido ${dec2(sr.reduce((a,x)=>a+Number(x.suggested||0),0))} · Existencia ${fmt(sr.reduce((a,x)=>a+Number(x.existence||0),0))}`;
+  }
+  if($('#zeroTotals')){
+    const zr=zeros||[];
+    $('#zeroTotals').textContent=`${zr.length} modelos · Existencia ${fmt(zr.reduce((a,x)=>a+Number(x.existence||0),0))}`;
+  }
+
+  if(canAnswer){
+    $$('.model-check').forEach(sel=>sel.onchange=()=>saveModelChecklist(sel,slows,checkStore));
+  }
+}
+
+let PARETO_GROUP='section';
+async function loadParetoSummary(){
+  if(!DASH||!$('#paretoSummaryTable'))return;
+  const scope=(DASH.selected_store&&DASH.selected_store!=='Compañía')?DASH.selected_store:'Compañía';
+  const topSection=$('#section')?.value||'Todas';
+  const cat=$('#catalog')?.value||'Todos';
+  $('#paretoSummaryTable').innerHTML='<tr><td colspan="11">Calculando 80/20 desde el Excel de capacidades...</td></tr>';
+  try{
+    const d=await api(`/api/model-8020-summary?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(topSection)}&catalog=${encodeURIComponent(cat)}&group_by=${encodeURIComponent(PARETO_GROUP)}`,{timeoutMs:120000});
+    $('#paretoSummaryNote').textContent=`${fmt(d.models_80)} modelos generan el 80% de la venta · ${fmt(d.models_20)} modelos forman el 20% restante · Total ${fmt(d.total_models)} modelos · Ordenado de mayor a menor participación.`;
+    $('#paretoSummaryTable').innerHTML=(d.rows||[]).map(r=>`<tr class="${PARETO_GROUP==='general'?'pareto-total':''}"><td><b>${r.label}</b></td><td>${pct(r.participation)}</td><td><b>${fmt(r.models_80)}</b></td><td>${fmt(r.models_20)}</td><td>${fmt(r.models)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${dec2(r.suggested)}</td><td>${fmt(r.ddi)}</td><td>${fmt(r.capacity)}</td><td>${r.occupancy==null?'N/D':pct(r.occupancy)}</td></tr>`).join('')||'<tr><td colspan="11">Información no disponible</td></tr>';
+  }catch(e){$('#paretoSummaryTable').innerHTML=`<tr><td colspan="11">No fue posible calcular el 80/20: ${e.message||e}</td></tr>`}
+}
+$$('[data-pareto-group]').forEach(btn=>btn.onclick=()=>{PARETO_GROUP=btn.dataset.paretoGroup||'section';$$('[data-pareto-group]').forEach(x=>x.classList.toggle('active',x===btn));loadParetoSummary()});
+$$('[data-champ-section]').forEach(btn=>btn.onclick=()=>{const v=btn.dataset.champSection||'Todas';if($('#champSection'))$('#champSection').value=v;$$('[data-champ-section]').forEach(x=>x.classList.toggle('active',x===btn));loadModelTables()});
+
+async function saveModelChecklist(sel,slows,scope){
+  const id=sel.dataset.id,row=(slows||[]).find(x=>String(x.id_art)===String(id));
+  if(!row)return;
+  const tr=sel.closest('tr');
+  const body={week:$('#week').value,store:scope,id_art:id,model:row.model,section:row.section,rubro:row.rubro};
+  ['en_ubicacion','cenefa_correcta','todas_tallas','exhibido'].forEach(f=>{
+    const s=tr.querySelector(`[data-field="${f}"]`);
+    body[f]=s?.value===''?null:s?.value==='1';
+  });
+  try{
+    await api('/api/model-checklist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    sel.classList.add('saved-check');
+    setTimeout(()=>sel.classList.remove('saved-check'),700);
+    loadChecklistSummary();
+  }catch(e){
+    alert('No se pudo guardar el checklist: '+e.message);
+  }
+}
+
+let CHECKLIST_CAPTURE_STORE='';
+async function loadModelTables(){
+  if(!DASH)return;
+  const scope=(DASH.selected_store&&DASH.selected_store!=='Compañía')?DASH.selected_store:'Compañía';
+  const champSec=$('#champSection')?.value||'Todas',slowSec=$('#slowSection')?.value||'Todas';
+  const wrap=$('#checklistStoreWrap'), sel=$('#checklistStoreSelect');
+  let target='';
+  if(USER.role==='tienda'){
+    target=USER.store||'';
+    if(wrap)wrap.classList.add('hidden');
+  }else if(['admin','superadmin'].includes(USER.role)){
+    if(scope!=='Compañía'){
+      target=scope;if(wrap)wrap.classList.add('hidden');
+    }else{
+      const stores=(DASH.stores||[]).filter(x=>x.available!==false).map(x=>x.store).filter(Boolean).sort((a,b)=>a.localeCompare(b,'es'));
+      if(wrap&&sel){
+        wrap.classList.remove('hidden');
+        if(!CHECKLIST_CAPTURE_STORE||!stores.includes(CHECKLIST_CAPTURE_STORE))CHECKLIST_CAPTURE_STORE=stores[0]||'';
+        sel.innerHTML=stores.map(s=>`<option value="${s}">${s}</option>`).join('');
+        sel.value=CHECKLIST_CAPTURE_STORE;
+        sel.onchange=()=>{CHECKLIST_CAPTURE_STORE=sel.value;loadModelTables()};
+        target=CHECKLIST_CAPTURE_STORE;
+      }
+    }
+  }else if(wrap){wrap.classList.add('hidden')}
+
+  try{
+    const cat=$('#catalog')?.value||'Todos';
+    const calls=[
+      api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(champSec)}&catalog=${encodeURIComponent(cat)}&mode=80_20`,{timeoutMs:120000}),
+      api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(slowSec)}&catalog=${encodeURIComponent(cat)}&mode=slow`,{timeoutMs:120000}),
+      api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(slowSec)}&catalog=${encodeURIComponent(cat)}&mode=suggested_zero`,{timeoutMs:120000})
+    ];
+    if(target)calls.push(api(`/api/model-checklist?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(target)}`));
+    const out=await Promise.all(calls),c=out[0],s=out[1],z=out[2],ck=out[3]||{rows:[],editable:false};
+    const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
+    renderModelRows(c.rows||[],s.rows||[],z.rows||[],champSec,slowSec,scope,map,!!ck.editable,target);
+    loadParetoSummary();
+    loadChecklistSummary();
+  }catch(e){
+    $('#champTable').innerHTML='<tr><td colspan="16">Error: '+e.message+'</td></tr>';
+    $('#slowTable').innerHTML='<tr><td colspan="14">Error: '+e.message+'</td></tr>';
+    $('#zeroTable').innerHTML='<tr><td colspan="15">Error: '+e.message+'</td></tr>';
+  }
+}
+
+async function loadChecklistSummary(){
+  const wrap=$('#checklistSummaryWrap');
+  if(!wrap)return;
+  const canSee=['superadmin','admin','director'].includes(USER?.role);
+  wrap.classList.toggle('hidden',!canSee);
+  if(!canSee)return;
+  try{
+    const d=await api(`/api/model-checklist/summary?week=${encodeURIComponent($('#week').value||'')}`);
+    const fields=['en_ubicacion','cenefa_correcta','todas_tallas','exhibido'];
+    $('#checklistSummary').innerHTML=(d.rows||[]).map(r=>`<tr><td><b>${r.store}</b></td>${fields.map(f=>{
+      const c=r.criteria[f],txt=c.pct==null?'Sin respuesta':pct(c.pct);
+      return `<td><button class="summary-cell ${c.no?'has-no':''}" data-store="${r.store}" data-field="${f}">${txt}<small>${c.answered} respuestas${c.no?' · '+c.no+' No':''}</small></button></td>`;
+    }).join('')}<td><b class="check-score ${(Number(r.score||0)>=90?'score-ok':Number(r.score||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.score||0))}</b><small>${r.score_answered||0} respuestas totales</small></td></tr>`).join('');
+    const pdfBtn=$('#downloadChecklistPdf');if(pdfBtn)pdfBtn.onclick=()=>downloadChecklistSummaryPdf(pdfBtn);
+    $$('.summary-cell').forEach(btn=>btn.onclick=()=>{
+      const row=(d.rows||[]).find(r=>r.store===btn.dataset.store),c=row?.criteria?.[btn.dataset.field];
+      if(!c)return;
+      const box=$('#checklistMissing');box.classList.remove('hidden');
+      box.innerHTML=`<div class="title">${c.label} · ${row.store}</div>${c.missing?.length?
+        `<div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Sección</th><th>Rubro</th></tr></thead><tbody>${c.missing.map(m=>`<tr><td>${m.id_art}</td><td>${m.model}</td><td>${m.section}</td><td>${m.rubro}</td></tr>`).join('')}</tbody></table></div>`:
+        '<div class="note">No hay modelos contestados como No.</div>'}`;
+    });
+  }catch(e){
+    $('#checklistSummary').innerHTML=`<tr><td colspan="6">Información no disponible: ${e.message}</td></tr>`;
+  }
+}
+
+async function downloadChecklistSummaryPdf(button){
+  const week=$('#week')?.value||'';
+  const old=button?.textContent||'Descargar PDF';
+  try{
+    if(button){button.disabled=true;button.textContent='Generando PDF...'}
+    const res=await fetch(`/api/export/checklist-summary?week=${encodeURIComponent(week)}`,{credentials:'same-origin'});
+    if(!res.ok){let msg=`Error ${res.status}`;try{const j=await res.json();msg=j.detail||msg}catch(_){}throw new Error(msg)}
+    const blob=await res.blob();const obj=URL.createObjectURL(blob);const a=document.createElement('a');a.href=obj;a.download=`checklist_${week||'periodo'}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),1500);
+    if(button)button.textContent='Descargado ✓';
+  }catch(e){alert('No fue posible descargar el PDF del checklist: '+(e.message||e))}
+  finally{setTimeout(()=>{if(button){button.disabled=false;button.textContent=old}},1200)}
+}
+
+function loginNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
+$('#champSection')?.addEventListener('change',loadModelTables);
+$('#slowSection')?.addEventListener('change',loadModelTables);
+
+function metricValue(s){
+  const v=s?.[METRIC];
+  return (v===null||v===undefined||Number.isNaN(Number(v)))?null:Number(v);
+}
+function sortedComparativeRows(){
+  return [...(DASH?.stores||[])].sort((a,b)=>{
+    const av=metricValue(a),bv=metricValue(b);
+    if(av===null&&bv===null)return String(a.store).localeCompare(String(b.store),'es');
+    if(av===null)return 1;if(bv===null)return -1;
+    return bv-av;
+  });
+}
+
+function renderStoreRanking(rows){
+  const ordered=[...rows].sort((a,b)=>{
+    const av=a.suggested==null?-Infinity:Number(a.suggested), bv=b.suggested==null?-Infinity:Number(b.suggested);
+    return bv-av;
+  });
+  $('#storeTable').innerHTML=ordered.map((s,i)=>{
+    if(!s.available)return `<tr><td>${i+1}</td><td><b>${s.store}</b></td><td colspan="8">Información no disponible</td></tr>`;
+    let st=state(s.ddi),bp=s.existence?s.warehouse/s.existence*100:0,occ=Number(s.capacity||0)>0?pct(Number(s.existence||0)/Number(s.capacity)*100):'N/D';
+    return `<tr><td><b>${i+1}</b></td><td><b>${s.store}</b></td><td>${fmt(s.suggested)}</td><td>${Number(s.capacity||0)>0?fmt(s.capacity):'N/D'}</td><td>${fmt(s.existence)}</td><td>${occ}</td><td>${fmt(s.floor)}</td><td>${fmt(s.warehouse)}</td><td><span class="${st[1]}">${fmt(s.ddi)}</span></td><td>${pct(bp)}</td><td><span class="status ${st[1]}">${st[0]}</span></td></tr>`;
+  }).join('');
+}
+function renderBars(){
+  const rows=sortedComparativeRows();
+  const numeric=rows.map(metricValue).filter(v=>v!==null);
+  const max=Math.max(1,...numeric);
+  const selected=DASH?.selected_store||'Compañía';
+  const rankByStore={};
+  if(METRIC==='ddi'){
+    // Visualmente se conserva mayor → menor, pero el mejor DDI recibe #1.
+    const asc=[...rows].filter(r=>metricValue(r)!==null).sort((a,b)=>metricValue(a)-metricValue(b));
+    asc.forEach((r,i)=>rankByStore[r.store]=i+1);
+  }else{
+    rows.filter(r=>metricValue(r)!==null).forEach((r,i)=>rankByStore[r.store]=i+1);
+  }
+
+  $('#bars').innerHTML=rows.map(s=>{
+    const v=metricValue(s),rank=rankByStore[s.store];
+    const rankText=rank?`<span class="bar-rank">#${rank}</span>`:'';
+    if(v===null)return `<div class="bar ${selected!=='Compañía'&&s.store===selected?'compare-selected':''}"><span>${rankText}${s.store}</span><div class="track"></div><b>N/D</b></div>`;
+    let c=METRIC==='ddi'?(v>=121?'r':v>=91?'y':'g'):'';
+    const selectedCls=selected!=='Compañía'&&s.store===selected?'compare-selected':'';
+    const fillExtra=(selectedCls&&METRIC!=='ddi')?' style="width:'+Math.max(1,v/max*100)+'%;background:var(--pink)"':' style="width:'+Math.max(1,v/max*100)+'%"';
+    return `<div class="bar ${selectedCls}"><span>${rankText}${s.store}</span><div class="track"><div class="fill ${c}"${fillExtra}></div></div><b>${fmt(v)}</b></div>`;
+  }).join('');
+  $('#ddiLegend').textContent=METRIC==='ddi'?'DDI ordenado de mayor a menor · Ranking invertido: el DDI más bajo es #1 y el más alto recibe la última posición · 0–90 verde · 91–120 amarillo · 121 o más rojo':'';
+}
+
+$$('#metricSwitch .switch').forEach(b=>b.onclick=()=>{$$('#metricSwitch .switch').forEach(x=>x.classList.remove('active'));b.classList.add('active');METRIC=b.dataset.metric;renderBars()})
+$$('[data-opmetric]').forEach(b=>b.onclick=()=>{$$('[data-opmetric]').forEach(x=>x.classList.remove('active'));b.classList.add('active');OPMETRIC=b.dataset.opmetric;if(OPSDATA)renderCombinedOps(OPSDATA)})
+function acc(title,html,open=false){return `<div class="acc ${open?'open':''}"><button>${title}<span>${open?'−':'+'}</span></button><div class="accbody">${html}</div></div>`}
+
+async function loadCommercialDetail(mode){
+  const store=$('#store')?.value||'Compañía';
+  const section=$('#section')?.value||'Todas';
+  const d=await api(`/api/commercial-detail?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(section)}&catalog=${encodeURIComponent($('#catalog')?.value||'Todos')}`);
+  if(mode==='rubro'){
+    $('#rubroTitle').textContent=`Detalle de Rubro · ${store==='Compañía'?'Compañía':store}${section!=='Todas'?' · '+section:''}`;
+    $('#rubroWarning').textContent=(d.warnings||[]).join(' · ');
+    $('#rubroTable').innerHTML=(d.rubros||[]).map(r=>{const ds=state(Number(r.ddi||0))[1],oc=r.occupancy==null?'N/D':`<span class="${Number(r.occupancy)>100?'bad':'ok'}">${pct(r.occupancy)}</span>`;return `<tr><td>${r.section}</td><td><b>${r.rubro}</b></td><td>${fmt(r.models)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.warehouse)}</td><td>${fmt(r.existence)}</td><td>${dec2(r.suggested)}</td><td><span class="${ds}">${fmt(r.ddi)}</span></td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${oc}</td></tr>`}).join('')||'<tr><td colspan="12">Información no disponible en el Excel de capacidades para este filtro.</td></tr>';
+  }else{
+    const groups=['Colgado','Doblado','Jeans','Lencería'];
+    $('#areaTables').innerHTML=groups.map(g=>{
+      const rows=(d.locations||[]).filter(x=>x.group===g);
+      const title=`${g} · ${store==='Compañía'?'Compañía · Sugerido mayor a menor':store}`;
+      if(!rows.length)return `<div class="area-block"><div class="title">${title}</div><div class="infoempty">Información no disponible para esta ubicación.</div></div>`;
+      const showStore=store==='Compañía';
+      return `<div class="area-block"><div class="title">${title}</div><div class="tablewrap"><table class="table"><thead><tr>${showStore?'<th>Tienda</th>':''}<th>Pasillo / Mesa</th><th>Modelos</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th></tr></thead><tbody>${rows.map(r=>`<tr>${showStore?`<td>${r.store}</td>`:''}<td><b>${r.location}</b></td><td>${fmt(r.ids)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.warehouse)}</td><td>${fmt(r.existence)}</td><td>${dec2(r.suggested)}</td><td>${fmt(r.ddi)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${r.occupancy==null?'N/D':pct(r.occupancy)}</td></tr>`).join('')}</tbody></table></div></div>`;
+    }).join('');
+  }
+}
+
+
+let MACRO_AREA_SECTION='Todas';
+async function loadMacroAreaDetail(){
+  const store=(DASH?.selected_store)||($('#store')?.value||'Compañía');
+  const week=$('#week')?.value||'';
+  const titleScope=store==='Compañía'?'Compañía':store;
+  if($('#macroAreaTitle')) $('#macroAreaTitle').textContent=`Macro ubicación · ${titleScope}${MACRO_AREA_SECTION!=='Todas'?' · '+MACRO_AREA_SECTION:''}`;
+  if($('#macroAreaTable')) $('#macroAreaTable').innerHTML='<tr><td colspan="12">Cargando detalle por ubicación...</td></tr>';
+  try{
+    const d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(MACRO_AREA_SECTION)}&catalog=${encodeURIComponent($('#catalog')?.value||'Todos')}`,{timeoutMs:120000});
+    const groups=['Colgado','Doblado','Jeans','Lencería'];
+    const order={Colgado:1,Doblado:2,Jeans:3,Lencería:4};
+    const src=(d.locations||[]).filter(x=>groups.includes(x.group));
+    const rows=[...src].sort((a,b)=>(order[a.group]||99)-(order[b.group]||99)||Number(b.suggested||0)-Number(a.suggested||0)||String(a.location).localeCompare(String(b.location),'es'));
+    if($('#macroAreaTable')){
+      const company=store==='Compañía';
+      const head=$('#macroAreaTable')?.closest('table')?.querySelector('thead tr');
+      if(head)head.innerHTML=`${company?'<th>Tienda</th>':''}<th>Ubicación</th><th>Pasillo / Mesa</th><th>Modelos</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th>`;
+      $('#macroAreaTable').innerHTML=rows.length?rows.map(r=>{
+        const ddi=r.ddi==null?'N/D':fmt(r.ddi),occ=r.occupancy==null?'N/D':`<span class="${Number(r.occupancy)>100?'bad':'ok'}">${pct(r.occupancy)}</span>`;
+        return `<tr>${company?`<td><b>${r.store}</b></td>`:''}<td><b>${r.group}</b></td><td><b>${r.location}</b></td><td>${fmt(r.ids)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.warehouse)}</td><td>${fmt(r.existence)}</td><td>${dec2(r.suggested)}</td><td>${ddi}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${occ}</td></tr>`;
+      }).join(''):`<tr><td colspan="${company?13:12}">Información no disponible para esta ubicación.</td></tr>`;
+    }
+  }catch(e){if($('#macroAreaTable'))$('#macroAreaTable').innerHTML=`<tr><td colspan="12">No fue posible consultar el detalle por ubicación: ${e.message||e}</td></tr>`}
+}
+$$('[data-area-section]').forEach(btn=>btn.onclick=()=>{MACRO_AREA_SECTION=btn.dataset.areaSection||'Todas';$$('[data-area-section]').forEach(x=>x.classList.toggle('active',x===btn));loadMacroAreaDetail()});
+
+async function renderAccordion(){
+  const root=$('#accordion');if(!root||!DASH)return;
+  root.innerHTML='<div class="infoempty">Cargando información del Excel de capacidades...</div>';
+  const store=DASH?.selected_store||$('#store')?.value||'Compañía';
+  const section=$('#section')?.value||'Todas';
+  const week=$('#week')?.value||'';
+  const catalog=$('#catalog')?.value||'Todos';
+  try{
+    const d=await api(`/api/commercial-accordion?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(section)}&catalog=${encodeURIComponent(catalog)}`,{timeoutMs:120000});
+    const k=d.general||{};
+    const mini=(label,value,note='')=>`<div class="mini"><span>${label}</span><b>${value}</b>${note?`<small>${note}</small>`:''}</div>`;
+    const simpleTable=(headers,rows)=>`<div class="tablewrap"><table class="table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.join('')||`<tr><td colspan="${headers.length}">Información no disponible.</td></tr>`}</tbody></table></div>`;
+    const brandRows=(d.brands||[]).map((r,i)=>`<tr><td>${i+1}</td><td><b>${r.brand}</b></td><td>${dec2(r.suggested)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${fmt(r.ddi)}</td><td>${r.occupancy==null?'N/D':pct(r.occupancy)}</td></tr>`);
+    const sectionRows=(d.sections||[]).map(r=>`<tr><td><b>${r.section}</b></td><td>${dec2(r.suggested)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${fmt(r.existence)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.ddi)}</td><td>${pct(r.occupancy||0)}</td></tr>`);
+    const rubroRows=(d.rubros||[]).map((r,i)=>`<tr><td>${i+1}</td><td>${r.section}</td><td><b>${r.rubro}</b></td><td>${fmt(r.models)}</td><td>${dec2(r.suggested)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${fmt(r.ddi)}</td></tr>`);
+    const areaRows=(d.areas||[]).map(r=>`<tr><td><b>${r.location}</b></td><td>${dec2(r.suggested)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${fmt(r.existence)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.ddi)}</td><td>${pct(r.occupancy||0)}</td></tr>`);
+    const catalogRows=(d.catalogs||[]).map(r=>`<tr><td><b>${r.catalog}</b></td><td>${dec2(r.suggested)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${fmt(r.existence)}</td></tr>`);
+    root.innerHTML=
+      acc('Resumen general',`<div class="mini3">${mini('Existencia',fmt(k.existence))}${mini('Sugerido 7',dec2(k.suggested))}${mini('Venta pzas',fmt(k.sales_pzas))}${mini('Venta $',money(k.sales_value))}${mini('DDI 7',fmt(k.ddi))}${mini('Capacidad',fmt(k.capacity))}${mini('% Ocupación',pct(k.occupancy||0))}</div>`,true)+
+      acc('Secciones',simpleTable(['Sección','Sugerido 7','Vta pzas','Venta $','Existencia','Capacidad','DDI 7','% Ocupación'],sectionRows))+
+      acc('Marcas campeonas',simpleTable(['#','Marca','Sugerido 7','Vta pzas','Venta $','DDI 7','% Ocupación'],brandRows))+
+      acc('Rubros campeones',simpleTable(['#','Sección','Rubro','Modelos','Sugerido 7','Vta pzas','Venta $','DDI 7'],rubroRows))+
+      acc('Ubicaciones',simpleTable(['Área','Sugerido 7','Vta pzas','Venta $','Existencia','Capacidad','DDI 7','% Ocupación'],areaRows))+
+      acc('Modelos 80/20',`<div class="mini3">${mini('Modelos que hacen 80%',fmt(d.models_8020||0))}${mini('Modelos del 20%',fmt(d.models_20||0))}${mini('Modelos totales',fmt(d.models_total||0))}</div>`)+
+      acc('Tipo de catálogo',simpleTable(['Tipo catálogo','Sugerido 7','Vta pzas','Venta $','Existencia'],catalogRows));
+    $$('.acc>button').forEach(b=>b.onclick=()=>{let a=b.parentElement;a.classList.toggle('open');b.querySelector('span').textContent=a.classList.contains('open')?'−':'+'});
+  }catch(e){root.innerHTML=`<div class="infoempty">No fue posible consultar el Acordeón Comercial: ${e.message||e}</div>`}
+}
+
+const OPER_TITLES={
+  'Centro Ejecutivo':'Vista integral · operación, recuperación, productividad y recorridos',
+  'Operación Diaria':'Consulta por fecha · ingresos, pendientes y avance por tienda',
+  'Reporte Semanal':'Semana ISO · operación, conversión, recuperación, productividad y recorridos',
+  'Reporte Mensual':'Mes seleccionado · operación y desempeño consolidado',
+  'Conversión':'Devoluciones convertidas a venta dentro de la misma semana ISO',
+  'Recuperación Económica':'Valor de devolución, valor recuperado y pendiente',
+  'Productividad por Colaborador':'Ranking por piezas procesadas, días trabajados y meta',
+  'Productividad por Actividad':'Volumen procesado por tipo de actividad',
+  'Eficiencia Operativa':'Acondicionado, ubicado y pendientes por tienda',
+  'Cumplimiento de Recorridos':'Realizados vs meta configurada',
+  'Indicadores Diarios':'KPIs por fecha y tienda',
+  'Ranking de Tiendas':'Comparativo integral de las 17 tiendas del proyecto',
+  'Ranking de Colaboradores':'Top y oportunidades por cumplimiento de productividad',
+  'Índice Integral':'Score combinado de conversión, recuperación, productividad, recorridos y pendiente',
+  'Alertas Inteligentes':'Desviaciones contra metas con datos reales',
+  'Carga de datos':'Carga exclusiva de la Base de datos Muertos y Cambios',
+  'Detalle por Tienda':'Radiografía de operación y recuperación',
+  'Perfil de Usuario':'Datos del usuario y alcance',
+  'Inteligencia Operativa':'Prioridades y lectura ejecutiva basada en datos'
+};
+
+function normText(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+function fmtMoney(v){return '$'+Number(v||0).toLocaleString('es-MX',{maximumFractionDigits:0})}
+function conversionMap(rec){
+  const m={};
+  (rec||[]).forEach(x=>m[String(x.store||'')]=Number(x.conversion_pct||0));
+  return m;
+}
+function orderByConversion(rows,rec){
+  const cm=conversionMap(rec);
+  return [...(rows||[])].sort((a,b)=>
+    (cm[String(b.store||'')]-cm[String(a.store||'')]) ||
+    String(a.store||'').localeCompare(String(b.store||''))
+  );
+}
+
+function kpiCard(label,value,sub='',tone='#1769e8',cls=''){
+  return `<div class="report-kpi" style="--rk:${tone}"><div class="rk-label">${label}</div><div class="rk-value ${cls}">${value}</div><div class="rk-sub">${sub}</div></div>`;
+}
+function reportKpis(items){return `<div class="report-kpis">${items.join('')}</div>`}
+function opTable(rows,rec=[]){
+  const ordered=orderByConversion(rows,rec), cm=conversionMap(rec);
+  return `<div class="tablewrap"><table class="table"><thead><tr>
+  <th>#</th><th>Tienda</th><th>Conversión</th><th>Dev Pzs</th><th>Muertos</th><th>Cajas</th><th>Probador</th><th>Ingresos</th>
+  <th>Acondicionado (Habilitado)</th><th>Pend. Acond.</th><th>% Acond.</th><th>Ubicado</th><th>Pend. Ubicar</th><th>% Ubicado</th><th>Recorridos</th>
+  </tr></thead><tbody>${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+  <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td><b>${pct(cm[String(r.store)]||0)}</b></td>
+  <td>${fmt(r.dev_pzs)}</td><td>${fmt(r.muertos)}</td><td>${fmt(r.cajas)}</td><td>${fmt(r.probador)}</td><td><b>${fmt(r.ingresos)}</b></td>
+  <td>${fmt(r.acondicionado)}</td><td>${fmt(r.pendiente_acondicionar)}</td><td>${pct(r.pct_acondicionado)}</td>
+  <td>${fmt(r.ubicado)}</td><td>${fmt(r.pendiente_ubicar)}</td><td>${pct(r.pct_ubicado)}</td><td>${fmt(r.recorridos)}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+function operationalDetailTable(rows,rec=[]){
+  const ordered=orderByConversion(rows,rec), cm=conversionMap(rec);
+  return `<div class="tablewrap"><table class="table"><thead><tr>
+    <th>Ranking</th><th>Tienda</th><th>Muertos</th><th>Probador</th><th>Cajas</th><th>Piezas recolectadas</th>
+    <th>Recorridos realizados</th><th>Acondicionado</th><th>Ubicado</th><th>Pendiente de acondicionar</th><th>Pendiente de ubicar</th>
+  </tr></thead><tbody>${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+    <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.muertos)}</td><td>${fmt(r.probador)}</td><td>${fmt(r.cajas)}</td>
+    <td><b>${fmt(r.recolectadas)}</b></td><td>${fmt(r.recorridos)}</td><td>${fmt(r.acondicionado)}</td><td>${fmt(r.ubicado)}</td>
+    <td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+function activityDetailTable(rows){
+  return `<div class="tablewrap"><table class="table"><thead><tr>
+    <th>Tienda</th><th>Actividad Realizada</th><th>Área</th><th>Número de piezas</th><th>Occurrence únicos</th><th>Colaboradores participantes</th><th>Horas utilizadas</th>
+  </tr></thead><tbody>${(rows||[]).map(r=>`<tr><td><b>${r.store}</b></td><td>${r.activity}</td><td>${r.area}</td>
+    <td>${fmt(r.pieces)}</td><td>${fmt(r.occurrences)}</td><td title="${(r.collaborator_names||[]).join(', ')}">${fmt(r.collaborators)}${r.collaborators?' · '+(r.collaborator_names||[]).slice(0,3).join(', '):''}</td>
+    <td>${r.hours_used==null?'Información no disponible':Number(r.hours_used).toFixed(2)+' h'}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function combinedStoreChart(rows){
+  const max=Math.max(1,...rows.flatMap(r=>[Number(r.ingresos||0),Number(r.acondicionado||0),Number(r.ubicado||0)]));
+  return `<div class="chart-box"><div class="chart-title">Ingreso vs Acondicionado vs Ubicado por tienda</div>
+  <div class="report-note">Azul = Ingresos · Morado = Acondicionado · Rosa = Ubicado</div>
+  ${rows.map(r=>`<div class="groupbar"><div class="gb-label">${r.store}</div>
+    <div class="gb-track"><div class="gb-fill in" style="width:${Number(r.ingresos||0)/max*100}%"></div><span>${fmt(r.ingresos)}</span></div>
+    <div class="gb-track"><div class="gb-fill ac" style="width:${Number(r.acondicionado||0)/max*100}%"></div><span>${fmt(r.acondicionado)}</span></div>
+    <div class="gb-track"><div class="gb-fill ub" style="width:${Number(r.ubicado||0)/max*100}%"></div><span>${fmt(r.ubicado)}</span></div>
+  </div>`).join('')}</div>`;
+}
+
+function recoveryHorizontalChart(rows,period,scope){
+  const data=(rows||[]).filter(r=>Number(r.dev_pzs||0)>0||Number(r.converted_pieces||0)>0)
+    .sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0)||Number(b.recovery_pct||0)-Number(a.recovery_pct||0));
+  if(!data.length)return '<div class="infoempty">Información no disponible para Devolución y recuperación.</div>';
+  const rowH=48,left=145,right=300,top=58,bottom=30,w=1320,h=top+bottom+data.length*rowH;
+  const max=Math.max(1,...data.flatMap(r=>[Number(r.dev_pzs||0),Number(r.converted_pieces||0)]));
+  const plotW=w-left-right,halo='paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round';
+  let svg=`<svg class="recovery-svg" viewBox="0 0 ${w} ${h}" role="img"><text x="20" y="26" font-size="18" font-weight="800" fill="#173B73">Devolución y recuperación · ${scope} · ${period||'Histórico'}</text>`;
+  data.forEach((r,i)=>{
+    const y=top+i*rowH,dev=Number(r.dev_pzs||0),rec=Number(r.converted_pieces||0),dw=dev/max*plotW,rw=rec/max*plotW;
+    svg+=`<text x="${left-12}" y="${y+19}" text-anchor="end" font-size="11" fill="#5c6d82">#${i+1} · ${r.store}</text>`;
+    svg+=`<rect x="${left}" y="${y}" width="${dw}" height="15" rx="3" fill="#173B73"></rect><rect x="${left}" y="${y+20}" width="${rw}" height="15" rx="3" fill="#EC007C"></rect>`;
+    svg+=`<text x="${left+Math.min(dw+8,plotW-5)}" y="${y+12}" font-size="10" font-weight="700" fill="#173B73" style="${halo}">${fmt(dev)}</text>`;
+    svg+=`<text x="${left+Math.min(rw+8,plotW-5)}" y="${y+32}" font-size="10" font-weight="700" fill="#EC007C" style="${halo}">${fmt(rec)}</text>`;
+    svg+=`<text x="${left+plotW+22}" y="${y+24}" font-size="10.5" fill="#173B73">Conv. ${pct(r.conversion_pct)} · Econ. ${pct(r.recovery_pct)}</text>`;
+  });
+  svg+=`<rect x="${left}" y="34" width="12" height="12" fill="#173B73"></rect><text x="${left+18}" y="44" font-size="10">Dev Pzs</text><rect x="${left+95}" y="34" width="12" height="12" fill="#EC007C"></rect><text x="${left+113}" y="44" font-size="10">Recup. Pzs</text></svg>`;
+  return `<div class="chart-box chart-scroll">${svg}</div>`;
+}
+
+function opsComboSvg(rows,period,scope,rec=[]){
+  const cm=conversionMap(rec);
+  const data=(rows||[]).filter(r=>Number(r.ingresos||0)>0||Number(r.acondicionado||0)>0||Number(r.ubicado||0)>0)
+    .sort((a,b)=>(cm[String(b.store)]||0)-(cm[String(a.store)]||0));
+  if(!data.length)return '<div class="infoempty">Información no disponible para Ingreso vs Acondicionado vs Ubicado.</div>';
+  const w=Math.max(1120,data.length*112+150),h=500,left=72,right=38,top=72,bottom=108,plotH=h-top-bottom,plotW=w-left-right;
+  const max=Math.max(1,...data.flatMap(r=>[Number(r.ingresos||0),Number(r.acondicionado||0),Number(r.ubicado||0)]));
+  const step=plotW/data.length,barW=Math.min(27,step*.25);
+  const y=v=>top+plotH-(Number(v||0)/max*plotH);
+  const halo='paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round';
+  let svg=`<svg class="combo-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet"><text x="22" y="30" font-size="18" font-weight="800" fill="#173B73">Ingreso vs Acondicionado vs Ubicado · ${scope} · ${period||'Histórico'}</text>`;
+  for(let t=0;t<=4;t++){const val=max*t/4,yy=y(val);svg+=`<line x1="${left}" x2="${w-right}" y1="${yy}" y2="${yy}" stroke="#e3eaf3"/><text x="${left-10}" y="${yy+4}" text-anchor="end" font-size="9" fill="#718096">${fmt(val)}</text>`}
+  const pts=[];
+  data.forEach((r,i)=>{
+    const cx=left+step*i+step/2,ac=Number(r.acondicionado||0),ub=Number(r.ubicado||0),ing=Number(r.ingresos||0);
+    const ah=plotH*ac/max,uh=plotH*ub/max;
+    svg+=`<rect x="${cx-barW-3}" y="${top+plotH-ah}" width="${barW}" height="${ah}" fill="#173B73" rx="2"></rect>`;
+    svg+=`<rect x="${cx+3}" y="${top+plotH-uh}" width="${barW}" height="${uh}" fill="#EC007C" rx="2"></rect>`;
+    let ay=y(ac)-7,uy=y(ub)-7;
+    if(Math.abs(ay-uy)<15){ay-=9;uy+=9;}
+    svg+=`<text x="${cx-barW/2-3}" y="${Math.max(top+10,ay)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#173B73" style="${halo}">${fmt(ac)}</text>`;
+    svg+=`<text x="${cx+barW/2+3}" y="${Math.max(top+10,uy)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#EC007C" style="${halo}">${fmt(ub)}</text>`;
+    pts.push(`${cx},${y(ing)}`);
+    svg+=`<text transform="translate(${cx},${h-bottom+24}) rotate(-35)" text-anchor="end" font-size="9" fill="#5c6d82">#${i+1} · ${r.store}</text>`;
+    let iy=y(ing)-14;if(Math.abs(iy-ay)<14||Math.abs(iy-uy)<14)iy-=12;
+    svg+=`<text x="${cx}" y="${Math.max(top+8,iy)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1769e8" style="${halo}">Ing. ${fmt(ing)}</text>`;
+  });
+  svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#1769e8" stroke-width="3"></polyline>`;
+  pts.forEach(p=>{const [x,yv]=p.split(',');svg+=`<circle cx="${x}" cy="${yv}" r="4.5" fill="#1769e8" stroke="#fff" stroke-width="1.5"></circle>`});
+  svg+=`<rect x="${left}" y="44" width="11" height="11" fill="#173B73"></rect><text x="${left+16}" y="53" font-size="9">Acondicionado</text><rect x="${left+106}" y="44" width="11" height="11" fill="#EC007C"></rect><text x="${left+122}" y="53" font-size="9">Ubicado</text><line x1="${left+188}" x2="${left+218}" y1="49" y2="49" stroke="#1769e8" stroke-width="3"></line><circle cx="${left+203}" cy="49" r="4" fill="#1769e8"></circle><text x="${left+224}" y="53" font-size="9">Ingresos</text></svg>`;
+  return `<div class="chart-box chart-scroll">${svg}</div>`;
+}
+
+function recoveryTable(rows){
+  const ordered=[...(rows||[])].sort((a,b)=>
+    Number(b.conversion_pct||0)-Number(a.conversion_pct||0) ||
+    Number(b.recovery_pct||0)-Number(a.recovery_pct||0)
+  );
+  return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>Conversión</th><th>Valor devolución</th><th>Recuperación $</th><th>Recup. %</th><th>Pend. Pzs</th><th>Pend. $</th></tr></thead><tbody>
+  ${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(r.return_value)}</td><td>${fmtMoney(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoney(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function activityRows(rows){
+  const map={};
+  rows.forEach(r=>{const k=r.activity||r.reason||'Sin actividad';map[k]=(map[k]||0)+Number(r.pieces||0)});
+  return Object.entries(map).map(([name,pieces])=>({name,pieces})).sort((a,b)=>b.pieces-a.pieces);
+}
+function simpleBars(rows){
+  const max=Math.max(1,...rows.map(x=>Number(x.pieces||0)));
+  return `<div class="bars">${rows.map(x=>`<div class="bar"><span>${x.name}</span><div class="track"><div class="fill" style="width:${Math.max(1,Number(x.pieces||0)/max*100)}%"></div></div><b>${fmt(x.pieces)}</b></div>`).join('')}</div>`;
+}
+function simplePercentBars(rows){
+  const max=Math.max(100,...rows.map(x=>Number(x.pieces||0)));
+  return `<div class="bars">${rows.map(x=>`<div class="bar"><span>${x.name}</span><div class="track"><div class="fill" style="width:${Math.max(1,Number(x.pieces||0)/max*100)}%"></div></div><b>${pct(x.pieces)}</b></div>`).join('')}</div>`;
+}
+function peakStackBars(rows,labelField='date'){
+  const total=x=>Number(x.muertos||0)+Number(x.cajas||0)+Number(x.probador||0);
+  const max=Math.max(1,...rows.map(total));
+  const label=x=>labelField==='hour'?String(x.hour).padStart(2,'0')+':00':String(x.date||'');
+  return `<div class="peak-legend"><span><i style="background:#EC007C"></i>Muertos</span><span><i style="background:#7C3AED"></i>Cajas</span><span><i style="background:#F59E0B"></i>Probador</span></div><div class="bars">${rows.map(x=>{const t=total(x),w=t/max*100;const m=t?Number(x.muertos||0)/t*100:0,c=t?Number(x.cajas||0)/t*100:0,p=t?Number(x.probador||0)/t*100:0;return `<div class="bar"><span>${label(x)}</span><div class="track"><div style="display:flex;width:${Math.max(1,w)}%;height:100%;overflow:hidden;border-radius:999px"><div style="width:${m}%;background:#EC007C"></div><div style="width:${c}%;background:#7C3AED"></div><div style="width:${p}%;background:#F59E0B"></div></div></div><b>${fmt(t)}</b></div>`}).join('')}</div>`;
+}
+function metricClass(v,good=90,warn=70){return Number(v)>=good?'metric-good':Number(v)>=warn?'metric-warn':'metric-bad'}
+
+let OPER_PERIOD={type:'all',value:''};
+
+function fixedPeriodTypeForView(name){
+  if(name==='Carga de datos')return 'all';
+  if(name==='Operación Diaria'||name==='Indicadores Diarios')return 'day';
+  if(name==='Reporte Semanal')return 'week';
+  if(name==='Reporte Mensual')return 'month';
+  if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'period';
+  return 'flex';
+}
+function currentPeriodTypeForView(name){
+  const fixed=fixedPeriodTypeForView(name);
+  if(fixed==='flex' || fixed==='period') return $('#operPeriodMode')?.value || 'month';
+  return fixed;
+}
+function setPeriodSelector(name,d){
+  const bar=$('#operativoPeriodBar'), sel=$('#operPeriodSelect'), lab=$('#operPeriodLabel');
+  const modeWrap=$('#operPeriodModeWrap'), modeSel=$('#operPeriodMode');
+  const startWrap=$('#operStartWrap'), endWrap=$('#operEndWrap');
+  if(startWrap)startWrap.classList.add('hidden');
+  if(endWrap)endWrap.classList.add('hidden');
+  if(name==='Carga de datos'){bar.classList.add('hidden');OPER_PERIOD.value='';OPER_PERIOD.type='all';return}
+  bar.classList.remove('hidden');
+  const fixed=fixedPeriodTypeForView(name);
+  if(modeWrap && modeSel){
+    let opts=[];
+    if(fixed==='flex') opts=[['week','Semanal'],['month','Mensual']];
+    else if(fixed==='period') opts=[['week','Semanal'],['month','Mensual'],['day','Diario']];
+    if(opts.length){
+      modeWrap.classList.remove('hidden');
+      const current=(opts.some(o=>o[0]===modeSel.value)?modeSel.value:(OPER_PERIOD.type||opts[0][0]));
+      modeSel.innerHTML=opts.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('');
+      modeSel.value=opts.some(o=>o[0]===current)?current:opts[0][0];
+    }else{
+      modeWrap.classList.add('hidden');
+      modeSel.innerHTML='';
+    }
+  }
+  const t=currentPeriodTypeForView(name);
+  OPER_PERIOD.type=t;
+  const list=t==='day'?(d.available_dates||[]):t==='week'?(d.available_weeks||[]):(d.available_months||[]);
+  lab.textContent=t==='day'?'Fecha':t==='week'?'Semana ISO':'Mes';
+  const current=OPER_PERIOD.value&&list.includes(OPER_PERIOD.value)?OPER_PERIOD.value:(list.at(-1)||'');
+  sel.innerHTML=list.map(v=>`<option value="${v}">${v}</option>`).join('');
+  sel.value=current;OPER_PERIOD.value=current;
+}
+async function fetchOpsForView(name){
+  const type=currentPeriodTypeForView(name);
+  const value=OPER_PERIOD.value||'';
+  const store=$('#operStoreSelect')?.value||'Compañía';
+  const area=$('#operAreaSelect')?.value||'';
+  const activity=$('#operActivitySelect')?.value||'';
+  const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
+  return await api(`/api/operations?store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&compact=true&project_only=${projectOnly?'true':'false'}`,{timeoutMs:180000});
+}
+async function refreshOperativoMeta(){
+  const d=await api('/api/operations/meta',{timeoutMs:30000});
+  OPSDATA=d;
+  const areaSel=$('#operAreaSelect'), actSel=$('#operActivitySelect');
+  if(areaSel){const cur=areaSel.value||'';areaSel.innerHTML='<option value="">Todas</option>'+(d.areas_available||[]).map(x=>`<option>${x}</option>`).join('');if([...areaSel.options].some(o=>o.value===cur))areaSel.value=cur;}
+  if(actSel){const cur=actSel.value||'';actSel.innerHTML='<option value="">Todas</option>'+(d.activities_available||[]).map(x=>`<option>${x}</option>`).join('');if([...actSel.options].some(o=>o.value===cur))actSel.value=cur;}
+  const sel=$('#operStoreSelect');
+  if(sel){
+    if(USER.role==='tienda'){
+      sel.innerHTML=`<option>${USER.store}</option>`;sel.disabled=true;
+    }else{
+      const current=sel.value||'Compañía';
+      sel.disabled=false;
+      sel.innerHTML='<option>Compañía</option>'+d.stores_available.map(s=>`<option>${s}</option>`).join('');
+      if([...sel.options].some(o=>o.value===current))sel.value=current;
+    }
+  }
+  return d;
+}
+
+function scoreStatus(v){v=Number(v||0);return v>=85?'Sobresaliente':v>=70?'En meta':v>=55?'En riesgo':'Crítico'}
+function reportDownloadBar(name){
+  return `<div class="report-actions"><button onclick="downloadCurrentReport('pdf','${name.replaceAll("'","\\'")}',this)">Descargar PDF</button><button onclick="downloadCurrentReport('xlsx','${name.replaceAll("'","\\'")}',this)">Descargar Excel</button></div>`;
+}
+async function downloadCurrentReport(format,name,button){
+  const type=currentPeriodTypeForView(name);
+  const value=OPER_PERIOD.value||'';
+  const store=$('#operStoreSelect')?.value||'Compañía';
+  const area=$('#operAreaSelect')?.value||'';
+  const activity=$('#operActivitySelect')?.value||'';
+  const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
+  const url=`/api/export/operations?format=${encodeURIComponent(format)}&report=${encodeURIComponent(name)}&store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&project_only=${projectOnly?'true':'false'}`;
+  const old=button?.textContent||'Descargar';
+  if(button){button.disabled=true;button.textContent=format==='pdf'?'Generando PDF...':'Generando Excel...'}
+  try{
+    const res=await fetch(url,{credentials:'same-origin'});
+    if(!res.ok){
+      let msg=`Error ${res.status}`;
+      try{const j=await res.json();msg=j.detail||msg}catch(_){try{msg=(await res.text())||msg}catch(__){}}
+      throw new Error(msg);
+    }
+    const blob=await res.blob();
+    if(format==='pdf' && blob.type && !blob.type.includes('pdf'))throw new Error('El servidor no devolvió un PDF válido.');
+    const cd=res.headers.get('content-disposition')||'';
+    const match=cd.match(/filename="?([^"]+)"?/i);
+    const filename=match?.[1]||`${String(name).replace(/[^a-z0-9]+/gi,'_').toLowerCase()}.${format}`;
+    const obj=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=obj;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(obj),1500);
+    if(button)button.textContent='Descargado ✓';
+    setTimeout(()=>{if(button){button.disabled=false;button.textContent=old}},1400);
+  }catch(e){
+    if(button){button.disabled=false;button.textContent=old}
+    alert(`No fue posible descargar ${format.toUpperCase()}: ${e.message||e}`);
+  }
+}
+
+async function renderOperativoView(name,force=false){
+  const centro=$('#operativoCentro'), dyn=$('#operativoDynamic');
+
+  // Nunca dejar visible la pantalla anterior mientras se consulta el nuevo reporte.
+  if(centro) centro.classList.add('hidden');
+  if(dyn) dyn.classList.remove('hidden');
+  if($('#operativoDynamicTitle')) $('#operativoDynamicTitle').textContent=name;
+  if($('#operativoDynamicSub')) $('#operativoDynamicSub').textContent='Cargando información...';
+  if($('#operativoDynamicContent')) $('#operativoDynamicContent').innerHTML='<div class="infoempty">Cargando reporte...</div>';
+
+  // Carga de datos debe abrir de inmediato: no consulta ni recalcula el Excel.
+  if(name==='Carga de datos'){
+    centro.classList.add('hidden');dyn.classList.remove('hidden');
+    $('#operativoDynamicTitle').textContent='Carga de datos';
+    $('#operativoDynamicSub').textContent='Base de datos Muertos y Cambios · Administrador y Super Administrador';
+    $('#operativoPeriodBar').classList.add('hidden');
+    let cur={available:false};
+    try{cur=await api('/api/upload/operations/current')}catch(e){}
+    const currentHtml=cur.available?`<div class="preview-grid">
+      <div class="preview-item">Archivo actual<b>${cur.file}</b></div>
+      <div class="preview-item">Fecha de carga<b>${cur.uploaded_at||'Información no disponible'}</b></div>
+      <div class="preview-item">Usuario<b>${cur.uploaded_by||'Información no disponible'}</b></div>
+      <div class="preview-item">Periodo<b>${cur.period||'Información no disponible'}</b></div>
+      <div class="preview-item">Registros<b>${fmt(cur.rows||0)}</b></div>
+      <div class="preview-item">Hojas operativas<b>${(cur.operational_sheets||[cur.operational_sheet]).filter(Boolean).join(', ')||'Información no disponible'}</b></div>
+      <div class="preview-item">Duplicados exactos eliminados<b>${fmt(cur.duplicate_rows_removed||0)}</b></div>
+    </div>`:'<div class="infoempty">No hay una Base de datos Muertos y Cambios publicada.</div>';
+    $('#operativoDynamicContent').innerHTML=`<div class="panel" style="border-left:5px solid var(--pink)">
+      <div class="panel-head"><b>Carga de datos · Cambios y Muertos</b><span class="status">${cur.available?'ok':''}">${cur.available?'Archivo publicado':'Sin archivo'}</span></div>
+      ${currentHtml}
+      <div id="opsDropzone" class="dropzone"><b>Arrastra aquí el Excel .xlsx</b><br><small>o haz clic para seleccionarlo</small><input id="opsModuleFile" type="file" accept=".xlsx" class="hidden"></div>
+      <div class="progress-shell"><div class="progress-bar" id="opsProgress"></div></div>
+      <div class="upload-actions"><button class="primary" id="opsModuleUploadBtn">Cargar archivo</button><button class="primary hidden" id="publishOpsFile" disabled>Procesar y publicar</button><button class="primary" id="replaceOpsFile" ${cur.available?'':'disabled'}>Reemplazar archivo actual</button></div>
+      <div class="log" id="opsModuleUploadMsg">Carga directa estable. El archivo sólo se reemplaza cuando el procesamiento termina correctamente.</div>
+      <div id="opsPreview" class="hidden" style="margin-top:12px"></div>
+    </div>`;
+    bindOperationalUpload(cur.available);
+    return;
+  }
+
+  let base=OPSDATA;
+  if(!base) base=await refreshOperativoMeta();
+  setPeriodSelector(name,base);
+
+  if(name==='Centro Ejecutivo'){
+    $('#operativoDynamicTitle').textContent='Centro Ejecutivo';
+    $('#operativoDynamicSub').textContent='Indicadores acumulados · operación, conversión, productividad y recorridos';
+    let d;
+    try{
+      d=await fetchOpsForView(name);
+    }catch(e){
+      $('#operativoDynamicContent').innerHTML=`<div class="infoempty">No fue posible consultar Centro Ejecutivo: ${e.message||e}</div>`;
+      return;
+    }
+    const mt=d.metrics||{}, stores=d.stores||[], rec=[...(d.recovery_by_store||[])].sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0));
+    const projectNames=new Set((d.project_stores||[]).map(String));
+    const projectStores=orderByConversion(
+      stores.filter(x=>x.is_project || projectNames.has(String(x.store))),
+      rec
+    );
+    let out=reportKpis([
+      kpiCard('Conversión',pct(mt.conversion_pct),'FIFO diario · misma semana ISO','#7C3AED',metricClass(mt.conversion_pct,80,60)),
+      kpiCard('Pzas recuperadas',fmt(mt.converted_pieces||0),'Sólo ventas posteriores a la devolución','#10B981'),
+      kpiCard('Recuperación económica',pct(mt.recovery_pct),'Recuperación $ / Valor devolución','#EC007C',metricClass(mt.recovery_pct,80,60)),
+      kpiCard('Valor de la devolución',fmtMoney(mt.return_value||0),'Devoluciones del periodo consultado','#3366CC'),
+      kpiCard('Recuperación $',fmtMoney(mt.recovered_value||0),'Misma semana ISO','#10B981'),
+      kpiCard('Pendiente $',fmtMoney(mt.pending_recovery_value||0),'Valor devolución − Recuperación $','#EF4444')
+    ]);
+    out+=`<div class="subtitle" style="margin-top:-4px;margin-bottom:14px">
+      Regla de recuperación: una devolución sólo recupera venta del mismo ID/SKU y tienda desde la fecha de devolución hasta el domingo de esa misma semana ISO.
+    </div>`;
+    const scope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
+    out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;
+    out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Histórico',scope);
+    out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>${projectStores.length?operationalDetailTable(projectStores,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto. Selecciónalas en Metas y tiendas y pulsa Guardar selección.</div>'}`;
+    out+=projectStores.length?opsComboSvg(projectStores,OPER_PERIOD.value||d.period_value||'Histórico',scope,rec):'';
+    out+=reportDownloadBar(name);
+    $('#operativoDynamicContent').innerHTML=out;return;
+  }
+  centro.classList.add('hidden');dyn.classList.remove('hidden');
+  $('#operativoDynamicTitle').textContent=name;
+  $('#operativoDynamicSub').textContent=OPER_TITLES[name]||'Cambios y Muertos';
+
+  const d=await fetchOpsForView(name);
+  const mt=d.metrics||{}, rows=d.rows||[], stores=d.stores||[], rec=d.recovery_by_store||[], prod=d.productivity||[], activityDetail=d.activity_detail||[];
+
+  if(!d.available){
+    $('#operativoDynamicContent').innerHTML='<div class="infoempty">No hay una Base de datos Muertos y Cambios procesada. Cárgala desde la pestaña Carga de datos.</div>';return;
+  }
+  let out='';
+
+
+  if(name==='Operación Diaria'){
+    const dailyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
+    const orderedDaily=orderByConversion(stores.filter(x=>x.is_project),rec);
+    out=reportKpis([
+      kpiCard('Muertos',fmt(mt.muertos),'Recolección · motivo Muertos','#EC007C'),
+      kpiCard('Probador',fmt(mt.probador),'Motivo Probador','#F59E0B'),
+      kpiCard('Cajas',fmt(mt.cajas),'Recolección · Cajas','#7C3AED'),
+      kpiCard('Piezas recolectadas',fmt(mt.recolectadas),'Total Recolección de muertos','#3366CC'),
+      kpiCard('Recorridos realizados',fmt(mt.recorridos),`${pct(mt.pct_recorridos)} · meta ${fmt(mt.meta_recorridos)}`,'#10B981'),
+      kpiCard('Acondicionado',fmt(mt.acondicionado),pct(mt.pct_acondicionado),'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('Ubicado',fmt(mt.ubicado),pct(mt.pct_ubicado),'#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('Pendiente de acondicionar',fmt(mt.pendiente_acondicionar),'Recolectadas - Acondicionado','#F59E0B'),
+      kpiCard('Pendiente de ubicar',fmt(mt.pendiente_ubicar),'Acondicionado - Ubicado','#EF4444')
+    ]);
+    out+=`<div class="title">Detalle operativo · ${OPER_PERIOD.value||'Día consultado'}</div>${operationalDetailTable(orderedDaily,rec)}`;
+    out+=opsComboSvg(orderedDaily,OPER_PERIOD.value||d.period_value||'Día consultado',dailyScope,rec);
+  }else if(name==='Reporte Semanal'){
+    const weeklyProjects=orderByConversion(stores.filter(x=>x.is_project),rec);
+    const weeklyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
+    out=reportKpis([
+      kpiCard('Piezas ingresadas',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
+      kpiCard('Acondicionado',pct(mt.pct_acondicionado),fmt(mt.acondicionado),'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('Ubicado',pct(mt.pct_ubicado),fmt(mt.ubicado),'#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('Conversión',pct(mt.conversion_pct),`${fmt(mt.converted_pieces)} piezas`,'#10B981',metricClass(mt.conversion_pct,80,60)),
+      kpiCard('Recuperación económica',pct(mt.recovery_pct),fmtMoney(mt.recovered_value),'#173B73',metricClass(mt.recovery_pct,80,60)),
+      kpiCard('Productividad',pct(mt.productivity_pct),`${fmt(mt.productivity_daily)} pzs/día`,'#F59E0B',metricClass(mt.productivity_pct,100,80)),
+      kpiCard('Recorridos',pct(mt.pct_recorridos),`${fmt(mt.recorridos)} / ${fmt(mt.meta_recorridos)}`,'#EF4444',metricClass(mt.pct_recorridos,100,80))
+    ]);
+    out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
+    out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope);
+    out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
+    out+=weeklyProjects.length?opsComboSvg(weeklyProjects,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope,rec):'';
+  }else if(name==='Reporte Mensual'){
+    out=reportKpis([
+      kpiCard('Ingresos mes',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
+      kpiCard('Acondicionado',pct(mt.pct_acondicionado),fmt(mt.acondicionado),'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('Ubicado',pct(mt.pct_ubicado),fmt(mt.ubicado),'#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('Conversión mensual',pct(mt.conversion_pct),`${fmt(mt.converted_pieces)} piezas`,'#10B981',metricClass(mt.conversion_pct,80,60)),
+      kpiCard('Recuperación económica',pct(mt.recovery_pct),fmtMoney(mt.recovered_value),'#173B73',metricClass(mt.recovery_pct,80,60)),
+      kpiCard('Productividad',pct(mt.productivity_pct),`${fmt(mt.productivity_daily)} pzs/día`,'#F59E0B',metricClass(mt.productivity_pct,100,80)),
+      kpiCard('Recorridos',pct(mt.pct_recorridos),`${fmt(mt.recorridos)} realizados`,'#EF4444',metricClass(mt.pct_recorridos,100,80))
+    ]);
+    const monthlyProjects=orderByConversion(stores.filter(x=>x.is_project),rec);
+    out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
+    out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'));
+    out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>`+(monthlyProjects.length?operationalDetailTable(monthlyProjects,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
+    out+=monthlyProjects.length?opsComboSvg(monthlyProjects,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'),rec):'';
+  }else if(name==='Conversión'){
+    out=reportKpis([
+      kpiCard('Dev Pzs',fmt(mt.dev_pzs),'Devoluciones detectadas','#3366CC'),
+      kpiCard('Piezas convertidas',fmt(mt.converted_pieces),'Venta validada misma semana','#10B981'),
+      kpiCard('% Conversión',pct(mt.conversion_pct),'Convertidas / Dev Pzs','#10B981',metricClass(mt.conversion_pct,80,60)),
+      kpiCard('Pendiente',fmt(mt.pending_recovery_pieces),'Dev - convertidas','#EF4444')
+    ])+recoveryTable(rec);
+  }else if(name==='Recuperación Económica'){
+    out=reportKpis([
+      kpiCard('Valor devolución',fmtMoney(mt.return_value),'Precio unitario neto × Dev Pzs','#3366CC'),
+      kpiCard('Recuperación $',fmtMoney(mt.recovered_value),'Venta recuperada','#10B981'),
+      kpiCard('% Recuperación',pct(mt.recovery_pct),'Recuperado / valor devolución','#10B981',metricClass(mt.recovery_pct,80,60)),
+      kpiCard('Pendiente $',fmtMoney(mt.pending_recovery_value),'Valor aún no recuperado','#EF4444')
+    ])+recoveryTable(rec);
+  }else if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores'){
+    const top=prod.slice(0,3), bottom=[...prod].sort((a,b)=>a.pct-b.pct).slice(0,3);
+    out=reportKpis([
+      kpiCard('Piezas procesadas',fmt(prod.reduce((a,x)=>a+Number(x.pieces||0),0)),'Actividades productivas','#3366CC'),
+      kpiCard('Productividad',fmt(mt.productivity_daily),'Piezas / colaborador-día','#F59E0B'),
+      kpiCard('Cumplimiento',pct(mt.productivity_pct),'Meta diaria configurada','#10B981',metricClass(mt.productivity_pct,100,80))
+    ])+`<div class="grid"><div class="panel"><div class="panel-head"><b>Top 3</b></div>${simplePercentBars(top.map(x=>({name:x.name,pieces:x.pct})))}</div><div class="panel"><div class="panel-head"><b>Oportunidades</b></div>${simplePercentBars(bottom.map(x=>({name:x.name,pieces:x.pct})))}</div></div>
+    <div class="title">Ranking completo</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Días</th><th>Prod. diaria</th><th>Meta</th><th>Cumplimiento</th><th>Faltante</th></tr></thead><tbody>${prod.map((x,i)=>`<tr><td>${i+1}</td><td><b>${x.name}</b></td><td>${x.store}</td><td>${fmt(x.pieces)}</td><td>${fmt(x.days)}</td><td>${fmt(x.daily)}</td><td>${fmt(x.target)}</td><td>${pct(x.pct)}</td><td>${fmt(x.missing)}</td></tr>`).join('')}</tbody></table></div>`;
+  }else if(name==='Productividad por Actividad'){
+    const acts=activityRows(rows).slice(0,30);
+    out=reportKpis([kpiCard('Piezas registradas',fmt(acts.reduce((a,x)=>a+x.pieces,0)),'Por actividad','#3366CC')])+`<div class="chart-box"><div class="chart-title">Volumen por actividad</div>${simpleBars(acts)}</div>`;
+  }else if(name==='Eficiencia Operativa'){
+    out=reportKpis([
+      kpiCard('% Acondicionado',pct(mt.pct_acondicionado),`${fmt(mt.acondicionado)} piezas`,'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('% Ubicado / Ingresos',pct(mt.pct_ubicado),`${fmt(mt.ubicado)} piezas`,'#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('% Ubicado / Acond.',pct(mt.pct_ubicado_acondicionado),'Avance sobre acondicionado','#10B981'),
+      kpiCard('Pendiente ubicar',fmt(mt.pendiente_ubicar),'Por tienda, sin compensar','#EF4444')
+    ])+combinedStoreChart(stores)+opTable(stores);
+  }else if(name==='Cumplimiento de Recorridos'){
+    const daily=(d.daily_peaks||[]).map(x=>({...x,name:x.date,pieces:Number(x.recorridos||0)}));
+    const hourly=(d.hourly_peaks||[]).filter(x=>Number(x.recolectadas||0)>0);
+    out=reportKpis([
+      kpiCard('Meta consolidada',fmt(mt.meta_recorridos),'Meta proporcional al periodo','#3366CC'),
+      kpiCard('Realizados',fmt(mt.recorridos),'Columna RECORRIDOS del Excel','#7C3AED'),
+      kpiCard('Cumplimiento',pct(mt.pct_recorridos),'Realizados / meta','#10B981',metricClass(mt.pct_recorridos,100,80)),
+      kpiCard('Faltante',fmt(mt.faltante_recorridos),'Meta - realizados','#EF4444')
+    ]);
+    out+=`<div class="chart-box"><div class="chart-title">Recorridos por día</div>${simpleBars(daily)}</div>`;
+    out+=`<div class="chart-box"><div class="chart-title">Recolecciones por día · horas y días pico</div>${peakStackBars(d.daily_peaks||[],'date')}</div>`;
+    out+=`<div class="chart-box"><div class="chart-title">Recolecciones por hora · Muertos, Cajas y Probador</div>${peakStackBars(hourly,'hour')}</div>`;
+  }else if(name==='Indicadores Diarios'){
+    out=reportKpis([
+      kpiCard('Ingresos',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
+      kpiCard('Acondicionado / Ingresos',pct(mt.pct_acondicionado),'KPI diario','#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('Ubicado / Acondicionado',pct(mt.pct_ubicado_acondicionado),'KPI diario','#10B981'),
+      kpiCard('Ubicado / Ingresos',pct(mt.pct_ubicado),'KPI diario','#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('Recorridos',fmt(mt.recorridos),pct(mt.pct_recorridos),'#EF4444')
+    ])+opTable(stores);
+  }else if(name==='Ranking de Tiendas'){
+    const rr=[...(d.recovery_by_store||[])].sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0)||Number(b.recovery_pct||0)-Number(a.recovery_pct||0));
+    out=reportKpis([
+      kpiCard('Tiendas del proyecto',fmt(rr.length),'Comparativo por conversión + recuperación','#3366CC'),
+      kpiCard('Conversión compañía',pct(mt.conversion_pct),'Dev Pzs convertidas','#10B981'),
+      kpiCard('Recuperación compañía',pct(mt.recovery_pct),'Recuperación económica','#EC007C')
+    ])+recoveryTable(rr);
+  }else if(name==='Índice Integral'){
+    const scoreRows=(d.score_by_store||[]).filter(x=>x.is_project).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    out=`<div class="donut-row"><div class="donut" style="--p:${Math.min(100,mt.score_integral||0)};--dc:#1769e8" data-label="${Number(mt.score_integral||0).toFixed(1)}"></div>
+    <div style="flex:1;min-width:250px">${reportKpis([
+      kpiCard('Conversión',pct(mt.conversion_pct),'40% del índice','#10B981'),
+      kpiCard('Productividad',pct(mt.productivity_pct),'40% del índice','#F59E0B'),
+      kpiCard('Recorridos',pct(mt.pct_recorridos),'20% del índice','#EF4444'),
+      kpiCard('Score integral',Number(mt.score_integral||0).toFixed(1)+'/100',scoreStatus(mt.score_integral),'#1769e8')
+    ])}</div></div>
+    <div class="title">Score por tienda del proyecto</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Conversión 40%</th><th>Productividad 40%</th><th>Recorridos 20%</th><th>Score</th><th>Estatus</th></tr></thead><tbody>${scoreRows.map((r,i)=>`<tr class="project-row"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${pct(r.conversion_pct)}</td><td>${pct(r.productivity_pct)}</td><td>${pct(r.recorridos_pct)}</td><td><b>${Number(r.score||0).toFixed(1)}</b></td><td>${scoreStatus(r.score)}</td></tr>`).join('')||'<tr><td colspan="7">Información no disponible</td></tr>'}</tbody></table></div>`;
+  }else if(name==='Alertas Inteligentes'){
+    const alerts=[];
+    const g=d.goals||{};
+    if(mt.pct_acondicionado<Number(g.acondicionado_ingresos||85))alerts.push(['Acondicionado bajo',`${pct(mt.pct_acondicionado)} vs meta ${pct(g.acondicionado_ingresos||85)}`,'#fff3cd']);
+    if(mt.pct_ubicado<Number(g.ubicado_ingresos||80))alerts.push(['Ubicado bajo',`${pct(mt.pct_ubicado)} vs meta ${pct(g.ubicado_ingresos||80)}`,'#fde8e8']);
+    if(mt.conversion_pct<Number(g.conversion||80))alerts.push(['Conversión bajo meta',`${pct(mt.conversion_pct)} vs meta ${pct(g.conversion||80)}`,'#fff3cd']);
+    if(mt.pct_recorridos<100)alerts.push(['Recorridos pendientes',`${fmt(mt.faltante_recorridos)} recorridos faltantes`,'#fde8e8']);
+    stores.filter(s=>s.ingresos===0).slice(0,5).forEach(s=>alerts.push(['Tienda sin ingresos',s.store,'#f5f7fa']));
+    out=alerts.length?`<div class="cards">${alerts.map(a=>`<div class="card" style="background:${a[2]}"><h3>${a[0]}</h3><small>${a[1]}</small></div>`).join('')}</div>`:'<div class="infoempty">Sin alertas con el periodo consultado.</div>';
+  }else if(name==='Detalle por Tienda'){
+    out=reportKpis([
+      kpiCard('Muertos',fmt(mt.muertos),'Motivo Muertos','#EC007C'),
+      kpiCard('Probador',fmt(mt.probador),'Motivo Probador','#F59E0B'),
+      kpiCard('Cajas',fmt(mt.cajas),'Motivo Cajas','#7C3AED'),
+      kpiCard('Piezas recolectadas',fmt(mt.recolectadas),'Total Recolección de muertos','#3366CC'),
+      kpiCard('Recorridos realizados',fmt(mt.recorridos),`${pct(mt.pct_recorridos)} · meta ${fmt(mt.meta_recorridos)}`,'#10B981'),
+      kpiCard('Acondicionado',fmt(mt.acondicionado),'Acondicionado/Habilitado','#7C3AED'),
+      kpiCard('Ubicado',fmt(mt.ubicado),'Ubicado/Ubicar','#EC007C'),
+      kpiCard('Pendiente de acondicionar',fmt(mt.pendiente_acondicionar),'Recolectadas - Acondicionado','#F59E0B'),
+      kpiCard('Pendiente de ubicar',fmt(mt.pendiente_ubicar),'Acondicionado - Ubicado','#EF4444')
+    ]);
+    out+=operationalDetailTable(stores,rec)+`<div class="title">Detalle por actividad</div>`+activityDetailTable(activityDetail)+`<div class="title">Recuperación</div>`+recoveryTable(rec);
+  }else if(name==='Perfil de Usuario'){
+    out=`<div class="card"><h3>${USER?.username||'Usuario'}</h3><div class="big">${roleLabel[USER?.role]||USER?.role||''}</div><small>${USER?.store?'Tienda asignada: '+USER.store:'Alcance: Compañía'}</small></div>`;
+  }else if(name==='Inteligencia Operativa'){
+    const worst=[...stores].sort((a,b)=>b.pendiente_ubicar-a.pendiente_ubicar).slice(0,5);
+    const bestRec=[...rec].sort((a,b)=>b.recovery_pct-a.recovery_pct).slice(0,5);
+    out=reportKpis([
+      kpiCard('Volumen ingresado',fmt(mt.ingresos),'Periodo consultado','#3366CC'),
+      kpiCard('Pendiente ubicar',fmt(mt.pendiente_ubicar),'Prioridad operativa','#EF4444'),
+      kpiCard('Pendiente recuperación',fmtMoney(mt.pending_recovery_value),'Prioridad económica','#F59E0B'),
+      kpiCard('Score',Number(mt.score_integral||0).toFixed(1)+'/100','Lectura integral','#10B981')
+    ])+`<div class="grid"><div class="panel"><div class="panel-head"><b>Mayor pendiente operativo</b></div>${simpleBars(worst.map(x=>({name:x.store,pieces:x.pendiente_ubicar})))}</div><div class="panel"><div class="panel-head"><b>Mejor recuperación económica</b></div>${simpleBars(bestRec.map(x=>({name:x.store,pieces:x.recovery_pct})))}</div></div>`;
+  }else{
+    out='<div class="infoempty">Selecciona un reporte.</div>';
+  }
+
+  out+=reportDownloadBar(name);
+  $('#operativoDynamicContent').innerHTML=out;
+}
+
+const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=()=>{ setPeriodSelector(OP_VIEW||'Centro Ejecutivo',OPSDATA||{available_dates:[],available_weeks:[],available_months:[]}); }; }
+
+$('#operPeriodApply').onclick=async()=>{
+  OPER_PERIOD.value=$('#operPeriodSelect').value||'';
+  await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+};
+
+
+async function copyText(text,button){
+  if(!text||text==='No configurada en este equipo'||text==='—')return;
+  try{await navigator.clipboard.writeText(text);const old=button.textContent;button.textContent='Copiado ✓';setTimeout(()=>button.textContent=old,1200)}
+  catch(e){window.prompt('Copia esta liga:',text)}
+}
+async function renderShareInfo(){
+  try{
+    const s=await api('/api/share-info');
+    $('#publicShareUrl').textContent=s.public_url||'No configurada en este equipo';
+    $('#lanShareUrl').textContent=s.lan_url||'No se pudo detectar';
+    $('#shareSourceInfo').innerHTML=`<b>Archivo conectado:</b> ${s.source_file||'Sin archivo'}<br><b>Última actualización:</b> ${s.updated_at||'Sin actualización'}<br><b>Liga local:</b> ${s.local_url}<br><br>${s.note}`;
+    $('#copyPublicUrl').disabled=!s.public_url; $('#copyPublicUrl').textContent=s.public_url?'Copiar liga pública':'Liga pública no configurada';$('#copyPublicUrl').onclick=()=>copyText(s.public_url,$('#copyPublicUrl'));
+    $('#copyLanUrl').disabled=!s.lan_url;$('#copyLanUrl').onclick=()=>copyText(s.lan_url,$('#copyLanUrl'));
+    const best=s.best_url||s.public_url||s.lan_url||s.local_url;
+    $('#shareBestUrl').onclick=async()=>{if(navigator.share){await navigator.share({title:'Operaciones Ropa',text:'Acceso a Operaciones Ropa',url:best})}else{copyText(best,$('#shareBestUrl'))}};
+    $('#whatsappShare').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent('Operaciones Ropa: '+best),'_blank');
+  }catch(e){$('#shareSourceInfo').textContent=e.message}
+}
+
+async function renderGoalsConfig(){
+  $('#operativoCentro').classList.add('hidden');
+  $('#operativoDynamic').classList.remove('hidden');
+  $('#operativoDynamicTitle').textContent='Configuración de metas y tiendas';
+  $('#operativoDynamicSub').textContent='Persistencia, historial y tiendas activas del proyecto';
+  $('#operativoPeriodBar')?.classList.add('hidden');
+  try{
+    const [g,s]=await Promise.all([api('/api/goals'),api('/api/stores?include_inactive=true')]);
+    const goalOrder=[
+      'productividad_diaria','conversion','recuperacion','acondicionado_ingresos','ubicado_ingresos',
+      'recorridos_lunes','recorridos_martes','recorridos_miercoles','recorridos_jueves',
+      'recorridos_viernes','recorridos_sabado','recorridos_domingo','recorridos_semanales'
+    ];
+    const inputs=goalOrder.map(key=>{
+      const label=g.labels?.[key]||key,val=Number(g.values?.[key]??0);
+      const suffix=key.includes('conversion')||key.includes('recuperacion')||key.includes('ingresos')?'%':'';
+      return `<div class="field"><label>${label}</label><div style="display:flex;align-items:center;gap:6px"><input class="goalInput" data-goal="${key}" type="number" min="0" step="1" value="${val}" ${g.editable?'':'disabled'}><span class="note">${suffix}</span></div></div>`;
+    }).join('');
+    const goalHistory=(g.history||[]).map(r=>`<tr><td>${r.changed_at}</td><td>${r.changed_by}</td><td>${g.labels?.[r.key]||r.key}</td><td>${r.old_value}</td><td>${r.new_value}</td></tr>`).join('');
+    const storeRows=(s.stores||[]).map(r=>`<tr data-store-id="${r.id}"><td><input class="storeNameEdit" value="${String(r.name).replaceAll('"','&quot;')}" ${s.editable?'':'disabled'}></td><td><input class="storeActiveEdit" type="checkbox" ${r.active?'checked':''} ${s.editable?'':'disabled'}></td><td><input class="storeProjectEdit" type="checkbox" ${r.project?'checked':''} ${s.editable?'':'disabled'}></td><td>${r.updated_at||''}</td><td>${r.updated_by||''}</td><td>${s.editable?'<button class="action-sm saveStoreRow">Guardar</button>':''}</td></tr>`).join('');
+    const storeHistory=(s.history||[]).map(r=>`<tr><td>${r.changed_at}</td><td>${r.changed_by}</td><td>${r.action}</td><td>${r.old_name||''}</td><td>${r.new_name||''}</td><td>${r.old_active==null?'':r.old_active?'Activo':'Inactivo'}</td><td>${r.new_active==null?'':r.new_active?'Activo':'Inactivo'}</td><td>${r.old_project==null?'':r.old_project?'Sí':'No'}</td><td>${r.new_project==null?'':r.new_project?'Sí':'No'}</td></tr>`).join('');
+
+    $('#operativoDynamicContent').innerHTML=`
+      <div class="panel"><div class="title" style="margin-top:0">Metas vigentes</div><div class="usergrid">${inputs}</div>
+      ${g.editable?'<button class="primary" id="saveGoals" style="margin-top:12px">Guardar metas</button>':''}<div class="msg" id="goalMsg"></div></div>
+      <div class="title">Tiendas y selección de proyecto</div><div class="subtitle">Activa = tienda disponible en el sistema. Proyecto = resalta la tienda en comparativos y la incluye en los detalles operativos del proyecto.</div>
+      ${s.editable?'<div class="panel"><div class="filters-inline"><div class="field"><label>Nueva tienda</label><input id="newProjectStore" placeholder="Nombre de tienda"></div><button class="primary" id="addProjectStore">Agregar tienda</button><button class="primary" id="saveStoreSelection">Guardar selección</button></div><div class="msg" id="storeMsg"></div></div>':''}
+      <div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Activa</th><th>Proyecto</th><th>Actualizada</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>${storeRows}</tbody></table></div>
+      <div class="title">Historial de metas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Meta</th><th>Anterior</th><th>Nueva</th></tr></thead><tbody>${goalHistory||'<tr><td colspan="5">Sin cambios</td></tr>'}</tbody></table></div>
+      <div class="title">Historial de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Nombre anterior</th><th>Nombre nuevo</th><th>Estatus anterior</th><th>Estatus nuevo</th><th>Proyecto anterior</th><th>Proyecto nuevo</th></tr></thead><tbody>${storeHistory||'<tr><td colspan="9">Sin cambios</td></tr>'}</tbody></table></div>`;
+
+    if(g.editable){
+      $('#saveGoals').onclick=async()=>{
+        const values={};$$('.goalInput').forEach(i=>values[i.dataset.goal]=Number(i.value));
+        try{const r=await api('/api/goals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values})});$('#goalMsg').style.color='var(--green)';$('#goalMsg').textContent=`Guardado exitoso · ${r.changed?.length||0} cambios`;setTimeout(renderGoalsConfig,500)}
+        catch(e){$('#goalMsg').style.color='var(--red)';$('#goalMsg').textContent='Error: '+e.message}
+      };
+      $('#addProjectStore').onclick=async()=>{
+        try{const r=await api('/api/stores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#newProjectStore').value})});$('#storeMsg').style.color='var(--green)';$('#storeMsg').textContent=r.message;setTimeout(renderGoalsConfig,450)}
+        catch(e){$('#storeMsg').style.color='var(--red)';$('#storeMsg').textContent='Error: '+e.message}
+      };
+      $$('.storeProjectEdit').forEach(chk=>chk.addEventListener('change',()=>{
+        if(chk.checked){
+          const tr=chk.closest('tr');
+          const active=tr?.querySelector('.storeActiveEdit');
+          if(active) active.checked=true;
+        }
+      }));
+      $$('.storeActiveEdit').forEach(chk=>chk.addEventListener('change',()=>{
+        if(!chk.checked){
+          const tr=chk.closest('tr');
+          const project=tr?.querySelector('.storeProjectEdit');
+          if(project) project.checked=false;
+        }
+      }));
+      $('#saveStoreSelection').onclick=async()=>{
+        const items=Array.from($$('#operativoDynamicContent tr[data-store-id]')).map(tr=>({
+          id:Number(tr.dataset.storeId),
+          active:tr.querySelector('.storeActiveEdit')?.checked===true,
+          project:tr.querySelector('.storeProjectEdit')?.checked===true
+        }));
+        const b=$('#saveStoreSelection');
+        b.disabled=true;b.textContent='Guardando...'; if($('#storeMsg')) $('#storeMsg').textContent='Guardando selección de tiendas...';
+        try{
+          const r=await api('/api/stores/batch',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({items}),
+            timeoutMs:120000
+          });
+          $('#storeMsg').style.color='var(--green)';
+          const ps=(r.project_stores||[]);
+          $('#storeMsg').textContent=`✓ ${r.message} · ${r.changed||0} cambios · Tiendas Proyecto: ${ps.length?ps.join(', '):'ninguna'}`;
+          OPSDATA=null;
+          setTimeout(renderGoalsConfig,700);
+        }catch(e){
+          $('#storeMsg').style.color='var(--red)';
+          $('#storeMsg').textContent='Error: '+e.message;
+        }finally{
+          b.disabled=false;b.textContent='Guardar selección';
+        }
+      };
+      $$('.saveStoreRow').forEach(btn=>btn.onclick=async()=>{
+        const tr=btn.closest('tr'),id=tr.dataset.storeId,name=tr.querySelector('.storeNameEdit').value,active=tr.querySelector('.storeActiveEdit').checked,project=tr.querySelector('.storeProjectEdit').checked;
+        try{const r=await api('/api/stores/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,active,project})});$('#storeMsg').style.color='var(--green)';$('#storeMsg').textContent=r.message;setTimeout(renderGoalsConfig,450)}
+        catch(e){$('#storeMsg').style.color='var(--red)';$('#storeMsg').textContent='Error: '+e.message}
+      });
+    }
+  }catch(e){
+    $('#operativoDynamicContent').innerHTML='<div class="infoempty">Error: '+e.message+'</div>';
+  }
+}
+
+let OPSDATA=null, OPMETRIC='total';
+async function loadOps(){
+  const d=await refreshOperativoMeta();
+  OPSDATA=d;
+  return d;
+}
+function renderOpPanel(kind,d,available){
+  if(!available){
+    return '<div class="infoempty">Información no disponible. Carga el Excel operativo desde “Carga de información”.</div>';
+  }
+  const max=Math.max(1,...(d.stores||[]).map(x=>x.pieces));
+  return `<div class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="kpi" style="--a:${kind==='cambios'?'var(--blue)':'var(--pink)'}">
+      <div class="lab">Piezas</div><div class="val">${fmt(d.pieces)}</div><div class="note">Total identificado</div>
+    </div>
+    <div class="kpi" style="--a:var(--green)">
+      <div class="lab">Registros</div><div class="val">${fmt(d.records)}</div><div class="note">Fuente operativa cargada</div>
+    </div>
+  </div>
+  <div class="title">Por tienda</div>
+  <div class="bars">${(d.stores||[]).map(s=>`<div class="bar"><span>${s.store}</span><div class="track"><div class="fill" style="width:${s.pieces/max*100}%"></div></div><b>${fmt(s.pieces)}</b></div>`).join('')}</div>`;
+}
+function renderCombinedOps(d){
+  const mt=d.metrics||{}, rows=d.stores||[];
+  $('#cambiosPiecesTop').textContent=fmt(mt.dev_pzs||0);
+  $('#muertosPiecesTop').textContent=fmt(mt.muertos||0);
+  $('#operativoTotalTop').textContent=fmt(mt.productividad_piezas||0);
+  $('#opMuertos').textContent=fmt(mt.muertos||0);
+  $('#opProbador').textContent=fmt(mt.probador||0);
+  $('#opCajas').textContent=fmt(mt.cajas||0);
+  $('#opIngresos').textContent=fmt(mt.recolectadas||0);
+  $('#opPendAcond').textContent=fmt(mt.pendiente_acondicionar||0);
+  $('#opAcondicionado').textContent=fmt(mt.acondicionado||0);
+  $('#opAcondicionadoPct').textContent=pct(mt.pct_acondicionado||0);
+  $('#opUbicado').textContent=fmt(mt.ubicado||0);
+  $('#opUbicadoPct').textContent=pct(mt.pct_ubicado||0);
+  $('#opPendiente').textContent=fmt(mt.pendiente_ubicar||0);
+  $('#opRecorridos').textContent=fmt(mt.recorridos||0);
+  $('#opRecorridosPct').textContent=`${pct(mt.pct_recorridos||0)} · meta ${fmt(mt.meta_recorridos||0)}`;
+  $('#opConversion').textContent=pct(mt.conversion_pct||0);
+  $('#opConversionNote').textContent=`${fmt(mt.converted_pieces||0)} recuperadas / ${fmt(mt.dev_pzs||0)} Dev Pzs`;
+  $('#opRecovery').textContent=pct(mt.recovery_pct||0);
+  $('#opRecoveryNote').textContent=`${fmtMoney(mt.recovered_value||0)} recuperado · ${fmtMoney(mt.pending_recovery_value||0)} pendiente`;
+  $('#opScore').textContent=Number(mt.score_integral||0).toFixed(1)+'/100';
+
+  const sourceState=$('#opSourceState'),sourceDetail=$('#opSourceDetail');
+  sourceState.textContent=d.filtered_available?'Conectado':'Sin registros en periodo';
+  sourceState.className='status '+(d.filtered_available?'ok':'warn');
+  $('#profileMeta').textContent=`V40 · ${d.source_file||'fuente operativa sin cargar'}`; sourceDetail.textContent=`${d.source_file||'Base de datos Muertos y Cambios'} · hojas operativas: ${(d.operational_sheets||[d.operational_sheet]).filter(Boolean).join(', ')||'no identificadas'} · periodo: ${d.period_value||'histórico'} · duplicados exactos eliminados: ${fmt(d.duplicate_rows_removed||0)}`;
+
+  $('#cambiosContent').innerHTML=`<div class="report-kpis">${kpiCard('Dev Pzs',fmt(mt.dev_pzs||0),'Devoluciones','#3366CC')}${kpiCard('Convertidas',fmt(mt.converted_pieces||0),pct(mt.conversion_pct||0),'#10B981')}${kpiCard('Pendientes',fmt(mt.pending_recovery_pieces||0),'Por convertir','#EF4444')}</div>`;
+  $('#muertosContent').innerHTML=`<div class="report-kpis">${kpiCard('Muertos',fmt(mt.muertos||0),'Motivo Muertos','#EC007C')}${kpiCard('Probador',fmt(mt.probador||0),'Motivo Probador','#F59E0B')}${kpiCard('Cajas',fmt(mt.cajas||0),'Motivo Cajas','#7C3AED')}${kpiCard('Piezas recolectadas',fmt(mt.recolectadas||0),'Total Recolección de muertos','#3366CC')}</div>`;
+
+  const metricKey=OPMETRIC==='cambios'?'dev_pzs':OPMETRIC==='muertos'?'muertos':'ingresos';
+  const max=Math.max(1,...rows.map(x=>Number(x[metricKey]||0)));
+  $('#operativoBars').innerHTML=rows.map(r=>`<div class="bar"><span>${r.store}</span><div class="track"><div class="fill" style="width:${Math.max(1,Number(r[metricKey]||0)/max*100)}%"></div></div><b>${fmt(r[metricKey]||0)}</b></div>`).join('');
+
+  const staticRec=d.recovery_by_store||[];
+  const staticOrdered=orderByConversion(rows,staticRec);
+  $('#operativoTable').innerHTML=staticOrdered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+    <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.muertos)}</td><td>${fmt(r.probador)}</td><td>${fmt(r.cajas)}</td><td><b>${fmt(r.recolectadas)}</b></td>
+    <td>${fmt(r.recorridos)}</td><td>${fmt(r.acondicionado)}</td><td>${fmt(r.ubicado)}</td><td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td>
+  </tr>`).join('');
+}
+$('#refresh').onclick=async()=>{
+  try{
+    if(MAIN==='analysis'){
+      if(SUB==='stores')await loadDash('Compañía',$('#section')?.value||'Todas');
+      else await loadDash($('#store')?.value||'Compañía',$('#section')?.value||'Todas');
+      if(SUB==='sections')await loadCommercialDetail('rubro');
+      if(SUB==='areas')await loadCommercialDetail('area');
+    }else{
+      await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true);
+    }
+  }catch(e){console.error(e)}
+};
+$('#store').onchange=async()=>{
+  if(MAIN==='operativo'){
+    await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+  }else{
+    await loadDash();
+    if(SUB==='sections')await loadCommercialDetail('rubro');
+    if(SUB==='areas')await loadCommercialDetail('area');
+  }
+};
+$('#section').onchange=async()=>{
+  if(MAIN!=='analysis')return;
+  if(SUB==='stores')await loadDash('Compañía',$('#section').value||'Todas');
+  else await loadDash($('#store')?.value||'Compañía',$('#section').value||'Todas');
+  if(SUB==='sections')await loadCommercialDetail('rubro');
+  if(SUB==='areas')await loadCommercialDetail('area');
+};
+$('#catalog').onchange=async()=>{
+  if(MAIN!=='analysis')return;
+  if(SUB==='stores')await loadDash('Compañía',$('#section')?.value||'Todas');
+  else await loadDash($('#store')?.value||'Compañía',$('#section')?.value||'Todas');
+  if(SUB==='sections')await loadCommercialDetail('rubro');
+  if(SUB==='areas')await loadCommercialDetail('area');
+};
+$('#week').onchange=async()=>{if(MAIN==='analysis'){await loadDash();if(SUB==='sections')await loadCommercialDetail('rubro');if(SUB==='areas')await loadCommercialDetail('area')}else{await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true)}};
+function log(x){$('#log').textContent=typeof x==='string'?x:JSON.stringify(x,null,2)}
+async function safeRefreshDash(){
+  try{await loadDash();return true}
+  catch(e){console.warn('Carga terminada; refresco de dashboard no disponible:',e);return false}
+}
+async function postFile(url,file,extra={}){let fd=new FormData();fd.append('file',file);Object.entries(extra).forEach(([k,v])=>fd.append(k,v));let r=await fetch(url,{method:'POST',body:fd});let j=await r.json();if(!r.ok)throw new Error(j.detail||'Error');return j}
+document.getElementById('pdfFiles').addEventListener('change',e=>{document.getElementById('pdfSelection').textContent=e.target.files.length?`${e.target.files.length} PDF seleccionado(s)`:'Ningún PDF seleccionado'});
+document.getElementById('salesFiles').addEventListener('change',e=>{document.getElementById('salesSelection').textContent=e.target.files.length?`${e.target.files.length} PDF seleccionado(s)`:'Ningún PDF seleccionado'});
+document.getElementById('capFile').addEventListener('change',e=>{document.getElementById('capSelection').textContent=e.target.files.length?e.target.files[0].name:'Ningún Excel seleccionado'});
+document.getElementById('opsFile').addEventListener('change',e=>{document.getElementById('opsSelection').textContent=e.target.files.length?e.target.files[0].name:'Ningún Excel seleccionado'});
+$('#uploadPdf').onclick=async()=>{
+  const input=document.getElementById('pdfFiles');
+  const fs=Array.from(input?.files||[]);
+  if(!fs.length){log('Selecciona uno o más PDF de Análisis Comercial.');return}
+  const btn=$('#uploadPdf');btn.disabled=true;btn.textContent='Procesando...';
+  log(`V40 · Procesando ${fs.length} PDF de Análisis Comercial...`);
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('week',$('#pdfWeek').value.trim());
+  try{
+    const r=await api('/api/upload/pdfs',{method:'POST',body:fd});
+    const results=Array.isArray(r.results)?r.results:[];
+    const ok=results.filter(x=>x.ok).length,bad=results.length-ok;
+    input.value='';$('#pdfSelection').textContent='Ningún PDF seleccionado';
+    log(`V40 · Carga terminada
+Correctos: ${ok}
+Con revisión: ${bad}
+
+${JSON.stringify(results,null,2)}`);
+    await safeRefreshDash();
+  }catch(e){log('V40 · Error real de carga PDF: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar PDF'}
+}
+$('#uploadCap').onclick=async()=>{
+  const f=$('#capFile').files[0];
+  if(!f){log('Selecciona Excel de capacidades/existencias.');return}
+  const btn=$('#uploadCap');btn.disabled=true;btn.textContent='Procesando Excel…';
+  log(`V47 · Procesando ${f.name} (${(f.size/1024/1024).toFixed(1)} MB). La primera carga del archivo completo puede tardar entre 20 y 90 segundos, según el equipo. La aplicación seguirá disponible mientras se procesa.`);
+  try{
+    const r=await postFile('/api/upload/capacity',f);
+    log(`V47 · Capacidades/existencias procesadas correctamente\n\nRegistros: ${fmt(r.rows)}\nTiendas: ${fmt(r.stores)}\n${r.cached?'Catálogo reutilizado.':'Catálogo normalizado y optimizado guardado.'}`);
+    $('#capFile').value='';$('#capSelection').textContent='Ningún Excel seleccionado';
+    await safeRefreshDash();
+  }catch(e){log('V47 · Error real de Excel capacidades: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar Excel'}
+}
+$('#uploadOps').onclick=async()=>{
+  const input=document.getElementById('opsFile'), f=input?.files?.[0];
+  if(!f){log('Selecciona Excel operativo de Cambios y Muertos.');return}
+  const btn=$('#uploadOps');btn.disabled=true;btn.textContent='Procesando...';log(`V40 · Procesando ${f.name}... El servidor seguirá disponible mientras se analiza el Excel.`);
+  try{
+    const r=await postFile('/api/upload/operations',f);
+    log(`V40 · Excel de Cambios y Muertos conectado al módulo operativo
+Filas: ${r.rows}
+Hojas revisadas: ${r.sheets}
+
+${JSON.stringify(r,null,2)}`);
+    input.value='';$('#opsSelection').textContent='Ningún Excel seleccionado';await loadOps();
+  }catch(e){log('V40 · Error real del Excel operativo: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar operativo'}
+}
+async function loadUsers(){
+  if(!['superadmin','admin'].includes(USER?.role))return;
+  try{
+    const [users,stores]=await Promise.all([api('/api/users'),api('/api/stores')]);
+    const sel=$('#newStore'); if(sel){sel.innerHTML='<option value="">Seleccionar</option>';stores.stores.forEach(s=>sel.add(new Option(s.name,s.name)))}
+    if($('#newRole')){
+      const adminOpt=[...$('#newRole').options].find(o=>o.value==='admin'); if(adminOpt)adminOpt.hidden=false;
+    }
+    $('#userTable').innerHTML=(users||[]).map(u=>{const owner=u.role==='superadmin';return `<tr>
+      <td><input class="userEditName" value="${String(u.username).replaceAll('"','&quot;')}" ${owner?'disabled':''}></td>
+      <td><select class="userEditRole" ${owner?'disabled':''}>${owner?'<option value="superadmin">Super Administrador</option>':'<option value="admin">Administrador</option><option value="director">Director / Consulta</option><option value="tienda">Tienda</option>'}</select></td>
+      <td><select class="userEditStore" ${owner?'disabled':''}><option value="">Sin tienda</option>${stores.stores.map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}</select></td>
+      <td>${u.active?'<span class="status ok">Activo</span>':'<span class="status r">Inactivo</span>'}</td>
+      <td>${owner?'<span class="note">Cuenta propietaria protegida</span>':`<div class="action-row"><button class="action-sm userSave" data-id="${u.id}">Guardar</button><button class="action-sm userReset" data-id="${u.id}">Reiniciar contraseña</button><button class="action-sm userToggle" data-id="${u.id}" data-active="${u.active?0:1}">${u.active?'Desactivar':'Activar'}</button><button class="action-sm danger userDelete" data-id="${u.id}">Eliminar</button></div>`}</td>
+    </tr>`}).join('');
+    (users||[]).forEach((u,i)=>{
+      const tr=$('#userTable').children[i]; if(!tr)return;
+      tr.querySelector('.userEditRole').value=u.role;
+      tr.querySelector('.userEditStore').value=u.store||'';
+    });
+    bindUserActions();
+  }catch(e){if($('#userMsg'))$('#userMsg').textContent='Error: '+e.message}
+}
+function bindUserActions(){
+  $$('.userSave').forEach(b=>b.onclick=async()=>{
+    const tr=b.closest('tr'),id=b.dataset.id;
+    try{await api('/api/users/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:tr.querySelector('.userEditName').value,role:tr.querySelector('.userEditRole').value,store:tr.querySelector('.userEditStore').value,active:true})});$('#userMsg').textContent='Usuario actualizado';loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userReset').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Restablecer la contraseña de este usuario? Se invalidarán sus sesiones anteriores.'))return;
+    let p=prompt('Escribe una contraseña temporal de al menos 8 caracteres, o deja vacío para generarla automáticamente:','');
+    if(p===null)return;
+    try{
+      const r=await api('/api/users/'+b.dataset.id+'/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+      $('#userMsg').innerHTML=`<div class="temp-pass-box"><b>${r.message}</b><br>Contraseña temporal: <code id="tempPassOnce">${r.temporary_password}</code> <button class="action-sm" id="copyTempPass">Copiar</button><br><small>Se muestra una sola vez.</small></div>`;
+      $('#copyTempPass').onclick=()=>navigator.clipboard.writeText(r.temporary_password);
+    }catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userToggle').forEach(b=>b.onclick=async()=>{
+    try{const r=await api('/api/users/'+b.dataset.id+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:b.dataset.active==='1'})});$('#userMsg').textContent=r.message;loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userDelete').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.'))return;
+    try{await api('/api/users/'+b.dataset.id,{method:'DELETE'});$('#userMsg').textContent='Usuario eliminado';loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+}
+$('#openUsersFromUpload').onclick=()=>showPage('users');
+
+
+
+
+$('#changeMyPasswordBtn')?.addEventListener('click',async()=>{
+  const current=prompt('Contraseña actual:'); if(current===null)return;
+  const next=prompt('Nueva contraseña (mínimo 8 caracteres):'); if(next===null)return;
+  const confirmPass=prompt('Confirma la nueva contraseña:'); if(confirmPass===null)return;
+  try{
+    const r=await api('/api/me/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:current,new_password:next,confirm_password:confirmPass})});
+    $('#myPasswordMsg').style.color='var(--green)';$('#myPasswordMsg').textContent=r.message;
+  }catch(e){$('#myPasswordMsg').style.color='var(--red)';$('#myPasswordMsg').textContent='Error: '+e.message}
+});
+
+function bindOperationalUpload(hasCurrent=false){
+  const validateBtn=$('#opsModuleUploadBtn'),publishBtn=$('#publishOpsFile'),replaceBtn=$('#replaceOpsFile');
+  const input=$('#opsModuleFile'),drop=$('#opsDropzone'),msg=$('#opsModuleUploadMsg'),box=$('#opsPreview'),progress=$('#opsProgress');
+  if(!validateBtn||!input)return;
+
+  const setProgress=(n,text='')=>{
+    if(progress)progress.style.width=Math.max(0,Math.min(100,n))+'%';
+    if(text&&msg)msg.textContent=text;
+  };
+
+  const selectFile=f=>{
+    if(!f)return;
+    const dt=new DataTransfer();dt.items.add(f);input.files=dt.files;
+    if(drop)drop.innerHTML=`<b>${f.name}</b><br><small>${Math.round(f.size/1024).toLocaleString()} KB · listo para cargar</small>`;
+  };
+
+  if(drop){
+    drop.onclick=()=>input.click();
+    ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+    ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+    drop.addEventListener('drop',e=>selectFile(e.dataTransfer.files?.[0]));
+  }
+  input.onchange=()=>selectFile(input.files?.[0]);
+
+  async function upload(){
+    const f=input.files?.[0];
+    if(!f){setProgress(0,'Selecciona o arrastra el Excel de Cambios y Muertos.');return}
+    if(!f.name.toLowerCase().endsWith('.xlsx')){setProgress(0,'Sólo se acepta Excel .xlsx.');return}
+
+    validateBtn.disabled=true;
+    if(publishBtn)publishBtn.classList.add('hidden');
+    if(replaceBtn)replaceBtn.disabled=true;
+
+    try{
+      setProgress(15,`Cargando ${f.name}…`);
+      const fd=new FormData();
+      fd.append('file',f,f.name);
+
+      setProgress(35,'Leyendo Resultados de Productividad…');
+      const r=await api('/api/upload/operations',{method:'POST',body:fd,timeoutMs:900000});
+
+      setProgress(100,`${r.message} · ${fmt(r.rows||0)} registros`);
+      if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros`;
+      if(box){
+        box.classList.remove('hidden');
+        box.innerHTML=`<div class="preview-grid">
+          <div class="preview-item">Archivo<b>${r.file||f.name}</b></div>
+          <div class="preview-item">Registros<b>${fmt(r.rows||0)}</b></div>
+          <div class="preview-item">Hojas operativas<b>${(r.operational_sheets||[r.operational_sheet]).filter(Boolean).join(', ')||'Información no disponible'}</b></div>
+          <div class="preview-item">Periodo<b>${(r.months||r.weeks||[]).join(', ')||'Información no disponible'}</b></div>
+          <div class="preview-item">Rechazados<b>${fmt(r.rejected_records||0)}</b></div>
+          <div class="preview-item">Duplicados exactos eliminados<b>${fmt(r.duplicate_rows_removed||0)}</b></div>
+        </div>
+        ${(r.errors||[]).length?`<div class="infoempty"><b>Errores de lectura:</b><br>${r.errors.join('<br>')}</div>`:''}
+        ${Object.entries(r.missing_columns_by_sheet||{}).some(([_,v])=>(v||[]).length)?`<div class="infoempty"><b>Columnas faltantes:</b><br>${Object.entries(r.missing_columns_by_sheet||{}).filter(([_,v])=>(v||[]).length).map(([s,v])=>`${s}: ${v.join(', ')}`).join('<br>')}</div>`:''}
+        ${(r.data_issues||[]).length?`<div class="infoempty"><b>Advertencias:</b><br>${(r.data_issues||[]).slice(0,20).map(x=>`${x.sheet||''} fila ${x.row||''}: ${x.warning||''}`).join('<br>')}</div>`:''}`;
+      }
+
+      input.value='';
+      OPSDATA=null;
+      OP_VIEW='Centro Ejecutivo';
+      $$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
+      if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros · listo`;
+      setTimeout(async()=>{
+        try{
+          await refreshOperativoMeta();
+          await renderOperativoView('Centro Ejecutivo',false);
+        }catch(e){
+          console.error('Error post-carga:',e);
+          if($('#operativoDynamicContent')) {
+            $('#operativoDynamicContent').innerHTML=`<div class="infoempty">El archivo se cargó, pero no fue posible abrir Centro Ejecutivo: ${e.message||e}</div>`;
+          }
+        }
+      },250);
+    }catch(e){
+      setProgress(0,'Error real de carga: '+e.message);
+      if(box)box.classList.add('hidden');
+    }finally{
+      validateBtn.disabled=false;
+      if(replaceBtn)replaceBtn.disabled=false;
+    }
+  }
+
+  validateBtn.textContent='Cargar archivo';
+  validateBtn.onclick=upload;
+  if(publishBtn)publishBtn.classList.add('hidden');
+  if(replaceBtn){
+    replaceBtn.textContent='Reemplazar archivo';
+    replaceBtn.onclick=upload;
+  }
+}
+
+function analysisUploadMessage(text){
+  const log=$('#analysisUploadLog');log.classList.remove('hidden');log.textContent=text;
+}
+$('#analysisPdfUploadBtn').onclick=async()=>{
+  const fs=Array.from($('#analysisPdfFiles').files||[]);
+  if(!fs.length)return analysisUploadMessage('Selecciona los PDF de Análisis Comercial.');
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('week','');
+  try{const r=await api('/api/upload/pdfs',{method:'POST',body:fd});analysisUploadMessage('PDF procesados: '+JSON.stringify(r.results,null,2));await loadDash()}
+  catch(e){analysisUploadMessage('Error: '+e.message)}
+};
+$('#analysisCapUploadBtn').onclick=async()=>{
+  const f=$('#analysisCapFile').files[0];if(!f)return analysisUploadMessage('Selecciona Excel de capacidades.');
+  const btn=$('#analysisCapUploadBtn');
+  btn.disabled=true;btn.textContent='Procesando Excel…';
+  analysisUploadMessage(`Procesando ${f.name} (${(f.size/1024/1024).toFixed(1)} MB). Este archivo contiene cerca de 196 mil registros y la primera carga puede tardar entre 20 y 90 segundos, según el equipo. La aplicación seguirá respondiendo; no vuelvas a presionar el botón.`);
+  try{
+    const r=await postFile('/api/upload/capacity',f);
+    analysisUploadMessage(`Capacidades procesadas correctamente.\n\nRegistros: ${fmt(r.rows)}\nTiendas: ${fmt(r.stores)}\n${r.cached?'Se reutilizó el catálogo ya normalizado.':'Se creó catálogo optimizado para que las consultas posteriores sean rápidas.'}`);
+    await loadDash();
+  }catch(e){analysisUploadMessage('Error procesando capacidades: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar Excel'}
+};
+$('#analysisSalesUploadBtn').onclick=async()=>{
+  const fs=Array.from($('#analysisSalesFiles').files||[]);if(!fs.length)return analysisUploadMessage('Selecciona PDF de ventas.');
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('year',$('#analysisSalesYear').value);fd.append('month',$('#analysisSalesMonth').value);
+  try{const r=await api('/api/upload/sales-pdfs',{method:'POST',body:fd});analysisUploadMessage('Ventas procesadas: '+JSON.stringify(r.results,null,2));await loadDash()}
+  catch(e){analysisUploadMessage('Error: '+e.message)}
+};
+
+$('#newRole').onchange=()=>{$('#newStore').disabled=$('#newRole').value!=='tienda'}
+$('#createUser').onclick=async()=>{try{await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#newUser').value,password:$('#newPass').value,role:$('#newRole').value,store:$('#newStore').value})});$('#userMsg').textContent='Usuario creado.';loadUsers()}catch(e){$('#userMsg').textContent=e.message}}
+async function ownerSystemAction(action){
+  if(USER?.role!=='superadmin')return;
+  const password=prompt('Escribe tu contraseña de Super Administrador:'); if(password===null)return;
+  let confirmation='';
+  if(action==='delete'){
+    confirmation=prompt('Para confirmar escribe exactamente: ELIMINAR SISTEMA')||'';
+    if(confirmation!=='ELIMINAR SISTEMA'){ $('#systemMsg').textContent='Eliminación cancelada.'; return; }
+  }
+  try{
+    const r=await api('/api/system/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,password,confirmation})});
+    $('#systemMsg').textContent='Estado del sistema: '+r.status;
+    if(action==='delete') await loadUsers();
+  }catch(e){$('#systemMsg').textContent=e.message}
+}
+$('#suspendSystem').onclick=()=>ownerSystemAction('suspend');
+$('#activateSystem').onclick=()=>ownerSystemAction('activate');
+$('#deleteSystem').onclick=()=>ownerSystemAction('delete');
+
+start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg').textContent=e.message});
+</script></body></html>
