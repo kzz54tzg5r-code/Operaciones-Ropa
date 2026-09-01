@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import List
 from datetime import datetime
 from urllib.parse import urlparse
-import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re
+import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc
+from functools import wraps
 
 # Compatibilidad Windows para este equipo:
 # platform.machine() se bloquea por WMI; fijamos arquitectura antes de importar pandas.
@@ -36,8 +37,9 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from commercial.storage import (
     load_manifest, load_snapshots, save_snapshot, save_pdf_upload,
-    save_capacity_upload, save_sales_upload, resolve_entry_path, update_entry,
+    save_capacity_upload, save_sales_upload, resolve_entry_path, update_entry, save_manifest,
 )
+from commercial.config import CAPACITY_DIR
 from commercial.parsers import extract_pdf_snapshot, read_capacity_file, read_sales_file
 
 ROOT = Path(__file__).resolve().parent
@@ -55,7 +57,7 @@ DATA_ROOT = Path(os.environ.get("OPERACIONES_ROPA_DATA", ROOT / "data"))
 DATA_ROOT.mkdir(parents=True, exist_ok=True)
 DB = DATA_ROOT / "operaciones_ropa_users.sqlite3"
 OPS_FILE = DATA_ROOT / "operaciones_ropa_operativo.json"
-OPERATIONS_PARSER_VERSION = 40
+OPERATIONS_PARSER_VERSION = 41
 
 # Cache de respuestas compactas para evitar recalcular el mismo reporte en cada clic.
 _OPS_RESPONSE_CACHE = {}
@@ -204,6 +206,43 @@ class UploadAdapter(BytesIO):
     def __init__(self, data: bytes, name: str):
         super().__init__(data); self.name = name
     def getvalue(self): return super().getvalue()
+
+
+async def _save_upload_stream(upload: UploadFile, target: Path) -> int:
+    """Copia UploadFile a disco sin duplicar todo el archivo en memoria."""
+    target.parent.mkdir(parents=True,exist_ok=True)
+    await upload.seek(0)
+    def copy_file():
+        with target.open("wb") as destination:
+            shutil.copyfileobj(upload.file,destination,length=1024*1024)
+        return target.stat().st_size
+    return await asyncio.to_thread(copy_file)
+
+
+def _save_capacity_source_path(source: Path, original_name: str) -> dict:
+    """Registra una capacidad desde disco sin duplicar el Excel en memoria."""
+    digest=hashlib.sha256()
+    with source.open("rb") as stream:
+        for chunk in iter(lambda:stream.read(1024*1024),b""):
+            digest.update(chunk)
+    digest_hex=digest.hexdigest()
+    manifest=load_manifest()
+    existing=next((item for item in manifest.get("capacities",[]) if item.get("sha256")==digest_hex),None)
+    if existing:return {**existing,"duplicate":True}
+
+    safe_name=re.sub(r"[^A-Za-z0-9._-]+","_",Path(original_name).name).strip("._") or "capacidades.xlsx"
+    target=CAPACITY_DIR/safe_name;target.parent.mkdir(parents=True,exist_ok=True)
+    if target.exists():
+        target=target.with_name(f"{target.stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}{target.suffix}")
+    shutil.copy2(source,target)
+    entry={
+        "id":digest_hex[:16],"name":target.name,"path":str(target.relative_to(DATA_ROOT)),
+        "sha256":digest_hex,"size":source.stat().st_size,
+        "uploaded_at":datetime.now().astimezone().isoformat(timespec="seconds"),
+        "status":"Pendiente de validación",
+    }
+    manifest.setdefault("capacities",[]).append(entry);save_manifest(manifest)
+    return {**entry,"duplicate":False}
 
 def db():
     con = sqlite3.connect(DB)
@@ -750,8 +789,81 @@ _OPS_DATA_CACHE={"stamp":None,"data":None}
 _OPS_META_CACHE={"stamp":None,"data":None}
 OPS_RECOVERY_CACHE_FILE = DATA_ROOT / "operaciones_recovery_fifo_cache.json"
 OPS_META_CACHE_FILE = DATA_ROOT / "operaciones_meta_cache.json"
+_OPS_COMPACTION_LOCK=threading.Lock()
+_OPS_LEGACY_COMPACT_MIN_BYTES=32*1024*1024
+
+
+def _compact_legacy_operations_file():
+    """Elimina arreglos históricos redundantes sin cargar el JSON completo."""
+    if not OPS_FILE.exists():
+        return
+    try:
+        with OPS_FILE.open("rb") as stream:
+            prefix=stream.read(8192)
+        match=re.search(rb'"parser_version"\s*:\s*(\d+)',prefix)
+        if match and int(match.group(1))>=OPERATIONS_PARSER_VERSION:
+            return
+        if OPS_FILE.stat().st_size < _OPS_LEGACY_COMPACT_MIN_BYTES:
+            return
+    except Exception:
+        return
+
+    with _OPS_COMPACTION_LOCK:
+        try:
+            with OPS_FILE.open("rb") as stream:
+                prefix=stream.read(8192)
+            match=re.search(rb'"parser_version"\s*:\s*(\d+)',prefix)
+            if match and int(match.group(1))>=OPERATIONS_PARSER_VERSION:
+                return
+
+            import ijson
+            from ijson.common import ObjectBuilder
+
+            allowed={
+                "parser_version","rows","recovery_fifo","uploaded_at","uploaded_by","source_file",
+                "sheets_all","operational_sheet","operational_sheets","sheets_used","monthly_sheets",
+                "op_columns","op_columns_by_sheet","missing_columns_by_sheet","weeks","commercial_weeks",
+                "months","meta_index","errors","rejected_rows","data_issues","duplicate_rows_removed",
+                "migration_at",
+            }
+            result={};current="";builder=None;depth=0
+            with OPS_FILE.open("rb") as stream:
+                for prefix,event,value in ijson.parse(stream,use_float=True):
+                    if prefix=="" and event=="map_key":
+                        current=str(value);builder=None;depth=0
+                        continue
+                    if current not in allowed:
+                        continue
+                    if prefix!=current and not prefix.startswith(current+"."):
+                        continue
+                    if builder is None:
+                        builder=ObjectBuilder();builder.event(event,value)
+                        if event in ("start_map","start_array"):
+                            depth=1
+                        else:
+                            result[current]=builder.value;builder=None
+                        continue
+                    builder.event(event,value)
+                    if event in ("start_map","start_array"):depth+=1
+                    elif event in ("end_map","end_array"):
+                        depth-=1
+                        if depth==0:
+                            result[current]=builder.value;builder=None
+
+            result["parser_version"]=OPERATIONS_PARSER_VERSION
+            if not isinstance(result.get("recovery_fifo"),list):
+                raise ValueError("La base antigua no contiene FIFO precalculado; se conserva sin cambios")
+            result["storage_compacted_at"]=datetime.now().isoformat(timespec="seconds")
+            temp_path=OPS_FILE.with_suffix(".compact.tmp")
+            temp_path.write_text(_safe_json_dump(result),encoding="utf-8")
+            temp_path.replace(OPS_FILE)
+            gc.collect()
+            print("[V47] Base operativa compactada: se eliminaron arreglos diarios redundantes.")
+        except Exception as exc:
+            print(f"[V47] No se pudo compactar la base operativa: {type(exc).__name__}: {exc}")
 
 def load_ops():
+    _compact_legacy_operations_file()
     if not OPS_FILE.exists():
         _OPS_DATA_CACHE["stamp"]=None
         _OPS_DATA_CACHE["data"]={"rows":[],"uploaded_at":None}
@@ -808,7 +920,7 @@ def _build_operations_meta(data: dict, stamp: int=0):
 
     return {
         "source_stamp":stamp,
-        "available":bool(rows or data.get("commercial_daily")),
+        "available":bool(rows or data.get("recovery_fifo") or data.get("commercial_daily")),
         "uploaded_at":data.get("uploaded_at"),
         "source_file":data.get("source_file","") or "",
         "operational_sheet":data.get("operational_sheet","") or "",
@@ -1350,6 +1462,126 @@ def _parse_monthly_commercial(path: Path, sheet: str):
     return monthly,daily
 
 
+def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
+    """Construye FIFO desde las hojas mensuales con memoria acotada.
+
+    Los libros reales generan más de un millón de observaciones diarias. En vez
+    de crear un diccionario Python por observación, se recorren en modo lectura
+    y se agregan en una base SQLite temporal. Así el proceso web no rebasa la
+    memoria del plan económico de Render.
+    """
+    if not sheets:
+        return [], [], [], []
+
+    from openpyxl import load_workbook
+
+    temp_fd,temp_name=tempfile.mkstemp(prefix="operaciones_recovery_",suffix=".sqlite3")
+    os.close(temp_fd)
+    con=sqlite3.connect(temp_name)
+    weeks=set(); months=set(); errors=[]
+    try:
+        con.executescript("""
+            PRAGMA journal_mode=OFF;
+            PRAGMA synchronous=OFF;
+            PRAGMA temp_store=FILE;
+            PRAGMA cache_size=-16000;
+            CREATE TABLE daily(
+                store TEXT NOT NULL, year_iso INTEGER NOT NULL, week_iso INTEGER NOT NULL,
+                id_art TEXT NOT NULL, color TEXT NOT NULL, date TEXT NOT NULL,
+                dev REAL NOT NULL, sales REAL NOT NULL, sales_value REAL NOT NULL,
+                return_cost REAL NOT NULL
+            );
+        """)
+        wb=load_workbook(path,read_only=True,data_only=True)
+        try:
+            for sheet in sheets:
+                if sheet not in wb.sheetnames:
+                    errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
+                    continue
+                try:
+                    ws=wb[sheet]
+                    row_iter=ws.iter_rows(values_only=True)
+                    first=tuple(next(row_iter,()) or ())
+                    next(row_iter,None)  # La segunda fila contiene subtítulos del reporte.
+                    date_columns=[]
+                    for index in range(29,len(first),3):
+                        date_iso,week_iso,year_iso,month_key=_safe_date_iso(first[index])
+                        if date_iso and week_iso and year_iso:
+                            date_columns.append((index,date_iso,int(week_iso),int(year_iso),month_key))
+                            weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
+                            if month_key:months.add(month_key)
+                    if not date_columns:
+                        errors.append(f"{sheet}: no se detectaron fechas diarias desde la columna 30")
+                        continue
+
+                    batch=[]
+                    def cell(values,index,default=None):
+                        return values[index] if index < len(values) else default
+                    def number(value):
+                        try:
+                            result=float(value or 0)
+                            return result if math.isfinite(result) else 0.0
+                        except Exception:
+                            return 0.0
+
+                    for values in row_iter:
+                        values=tuple(values or ())
+                        store=_normalize_store_value(cell(values,25,""))
+                        art=_clean_occurrence(cell(values,1,""))
+                        if not store or not art:
+                            continue
+                        color=_clean_text(cell(values,7,""))
+                        price=max(number(cell(values,24,0)),0.0)
+                        for index,date_iso,week_iso,year_iso,_month in date_columns:
+                            sales=max(number(cell(values,index,0)),0.0)
+                            dev=max(number(cell(values,index+1,0)),0.0)
+                            sales_value=max(number(cell(values,index+2,0)),0.0)
+                            if sales<=0 and dev<=0 and sales_value<=0:
+                                continue
+                            return_cost=price*dev if price>0 and dev>0 else sales_value
+                            batch.append((store,year_iso,week_iso,art,color,date_iso,dev,sales,sales_value,max(return_cost,0.0)))
+                            if len(batch)>=5000:
+                                con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
+                                batch.clear()
+                    if batch:
+                        con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
+                    con.commit()
+                except Exception as exc:
+                    errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
+        finally:
+            wb.close()
+
+        query="""
+            SELECT store,year_iso,week_iso,id_art,color,date,
+                   SUM(dev),SUM(sales),SUM(sales_value),SUM(return_cost)
+            FROM daily
+            GROUP BY store,year_iso,week_iso,id_art,color,date
+            ORDER BY store,year_iso,week_iso,id_art,color,date
+        """
+        fifo=[]; current_key=None; group=[]
+        def flush_group():
+            if group:
+                fifo.extend(_build_recovery_fifo_rows(group))
+        for store,year_iso,week_iso,art,color,date,dev,sales,sales_value,return_cost in con.execute(query):
+            key=(store,int(year_iso),int(week_iso),art,color)
+            if current_key is not None and key!=current_key:
+                flush_group();group.clear()
+            current_key=key
+            group.append({
+                "store":store,"year_iso":int(year_iso),"week_iso":int(week_iso),
+                "id_art":art,"color":color,"date":date,"dev_pzs":float(dev or 0),
+                "vta_pzs":float(sales or 0),"vta_imp":float(sales_value or 0),
+                "costo_dev":float(return_cost or 0),
+            })
+        flush_group()
+        fifo.sort(key=lambda x:(x["date"],x["store"],x["id_art"],x.get("color","")))
+        return fifo, sorted(weeks), sorted(months), errors
+    finally:
+        con.close()
+        try:Path(temp_name).unlink(missing_ok=True)
+        except Exception:pass
+
+
 def _json_default(value):
     try:
         import numpy as _np
@@ -1529,23 +1761,15 @@ def parse_operations_excel(path: Path, persist: bool=True):
     # Deduplicación correcta: sólo filas completamente iguales. Nunca por occurrence solamente.
     rows,duplicate_rows_removed=_dedupe_operational_rows(rows)
 
-    # Las hojas mensuales se conservan únicamente para conversión/recuperación comercial.
-    # NO participan en Muertos, Probadores/Aduana, Cajas, Recolectadas, Acondicionado, Ubicado ni Recorridos.
-    commercial=[]; daily=[]
-    for sheet in monthly_sheets:
-        try:
-            co,di=_parse_monthly_commercial(path,sheet)
-            commercial.extend(co); daily.extend(di)
-        except Exception as exc:
-            errors.append(f"{sheet}: {exc}")
-
     weeks=sorted({f"{int(r['year_iso'])}-W{int(r['week_iso']):02d}" for r in rows if r.get("year_iso") and r.get("week_iso")})
-    daily_weeks=sorted({f"{int(r['year_iso'])}-W{int(r['week_iso']):02d}" for r in daily if r.get("year_iso") and r.get("week_iso")})
-    months=sorted({r.get("month") for r in rows if r.get("month")})
-    recovery_fifo=_build_recovery_fifo_rows(daily)
+    # Las hojas mensuales sólo alimentan conversión/recuperación. Se procesan
+    # directamente a FIFO y ya no se conservan 1.3 M+ filas intermedias.
+    recovery_fifo,daily_weeks,recovery_months,recovery_errors=_stream_monthly_recovery_fifo(path,monthly_sheets)
+    errors.extend(recovery_errors)
+    months=sorted({r.get("month") for r in rows if r.get("month")} | set(recovery_months))
     meta_index={
-        "available_dates":sorted({str(r.get("date")) for r in rows if r.get("date")}),
-        "available_weeks":weeks,
+        "available_dates":sorted({str(r.get("date")) for r in (rows+recovery_fifo) if r.get("date")}),
+        "available_weeks":sorted(set(weeks)|set(daily_weeks)),
         "available_months":months,
         "stores":sorted({str(r.get("store") or "").strip() for r in rows if str(r.get("store") or "").strip()}),
         "areas":sorted({str(r.get("area") or "").strip() for r in rows if str(r.get("area") or "").strip()}),
@@ -1554,7 +1778,7 @@ def parse_operations_excel(path: Path, persist: bool=True):
 
     payload={
         "parser_version":OPERATIONS_PARSER_VERSION,
-        "rows":rows,"commercial":commercial,"commercial_daily":daily,"recovery_fifo":recovery_fifo,
+        "rows":rows,"recovery_fifo":recovery_fifo,
         "uploaded_at":datetime.now().isoformat(timespec="seconds"),"source_file":path.name,
         "sheets_all":names,"operational_sheet":operational_sheets[0],"operational_sheets":operational_sheets,
         "sheets_used":operational_sheets+monthly_sheets,"monthly_sheets":monthly_sheets,
@@ -1968,6 +2192,16 @@ def _load_capacity_cache(entry: dict) -> pd.DataFrame:
     return pd.DataFrame()
 
 _CAPACITY_FRAME_CACHE = {"path": "", "mtime": None, "frame": None}
+_CAPACITY_ANALYTICS_LOCK=threading.RLock()
+
+
+def _serialized_capacity(func):
+    """Evita picos por varias copias simultáneas del catálogo de 196 mil filas."""
+    @wraps(func)
+    def wrapped(*args,**kwargs):
+        with _CAPACITY_ANALYTICS_LOCK:
+            return func(*args,**kwargs)
+    return wrapped
 
 def _latest_capacity_frame() -> pd.DataFrame:
     try:
@@ -2200,6 +2434,9 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
 
     if selected.empty:
         return []
+    # El resumen 80/20 conserva los totales completos; el detalle visual se
+    # limita para evitar miles de nodos HTML y mantener fluido el desplazamiento.
+    selected=selected.head(150).copy()
     selected=selected.reset_index(drop=True)
     selected["rank"]=np.arange(1,len(selected)+1)
     selected["occupancy"]=np.where(pd.to_numeric(selected.get("capacity",0),errors="coerce").fillna(0)>0,
@@ -2317,6 +2554,7 @@ def _capacity_8020_summary(store: str="Compañía", section: str="Todas", catalo
 
 
 @app.get("/api/model-8020-summary")
+@_serialized_capacity
 def model_8020_summary(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos", group_by: str="section"):
     u=require_user(request)
     store=effective_store(u,store)
@@ -2444,7 +2682,6 @@ def _capacity_period_options(requested: str=""):
     values=weeks+months
     if not values:
         d=datetime.now().date();iso=d.isocalendar();values=[f"{iso.year}-W{iso.week:02d}",f"{d.year:04d}-{d.month:02d}"]
-    if requested and requested not in values:values.insert(0,requested)
     return values
 
 
@@ -2739,18 +2976,20 @@ def _capacity_accordion_payload(store: str="Compañía", section: str="Todas", c
 
 
 @app.get("/api/commercial-accordion")
+@_serialized_capacity
 def commercial_accordion(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos"):
     u=require_user(request)
     store=effective_store(u,store)
     return {"week":week or "","store":store,"section":section,"catalog":catalog,**_capacity_accordion_payload(store,section,catalog,week or "")}
 
 @app.get("/api/dashboard")
+@_serialized_capacity
 def dashboard(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos"):
     u=require_user(request)
     store=effective_store(u,store)
     section=section if section in ("Todas","Dama","Caballero","Infantil") else "Todas"
     periods=_capacity_period_options(week or "")
-    selected=week or (periods[0] if periods else "")
+    selected=week if week and week in periods else (periods[0] if periods else "")
     frame=_capacity_frame_for_period(selected)
     managed=store_names(True) or list(PROJECT_STORES)
     if u["role"]=="tienda":managed=[u.get("store") or ""]
@@ -2772,6 +3011,7 @@ def dashboard(request: Request, week: str|None=None, store: str="Compañía", se
 
 
 @app.get("/api/model-ranking")
+@_serialized_capacity
 def model_ranking(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", slow: bool=False, mode: str|None=None, catalog: str="Todos"):
     u=require_user(request)
     selected,weeks,rows=_week_rows(week)
@@ -2959,6 +3199,7 @@ def export_checklist_summary(request: Request, week: str):
     return Response(content=data,media_type="application/pdf",headers={"Content-Disposition":f'attachment; filename="checklist_{re.sub(r"[^0-9A-Za-z_-]+","_",week or "periodo")}.pdf"'})
 
 @app.get("/api/commercial-detail")
+@_serialized_capacity
 def commercial_detail(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos"):
     u=require_user(request)
     store=effective_store(u,store)
@@ -3052,20 +3293,24 @@ def operations(
 
     data=load_ops()
     op_all=list(data.get("rows",[]))
-    co_all=list(data.get("commercial_daily",[]))
+    # V41 conserva lotes FIFO compactos. Las filas diarias sólo se consultan
+    # mientras una base antigua termina de compactarse.
+    recovery_fifo=_get_recovery_fifo_rows(data)
+    co_all=list(data.get("commercial_daily",[])) if not recovery_fifo else []
+    period_rows=op_all+(recovery_fifo or co_all)
 
     # Catálogo de periodos reales detectados en el Excel.
     all_dates=sorted({
-        str(r.get("date")) for r in (op_all+co_all)
+        str(r.get("date")) for r in period_rows
         if r.get("date")
     })
     all_weeks=sorted({
         f"{int(r.get('year_iso'))}-W{int(r.get('week_iso')):02d}"
-        for r in (op_all+co_all)
+        for r in period_rows
         if r.get("year_iso") and r.get("week_iso")
     })
     all_months=sorted({
-        str(r.get("date"))[:7] for r in (op_all+co_all)
+        str(r.get("date"))[:7] for r in period_rows
         if r.get("date") and len(str(r.get("date")))>=7
     })
 
@@ -3119,8 +3364,6 @@ def operations(
 
     # Conversión / recuperación:
     # usar lotes FIFO precalculados para que Centro Ejecutivo abra rápido.
-    recovery_fifo=_get_recovery_fifo_rows(data)
-
     conv_detail=[]
     for r in recovery_fifo:
         if not in_period(r) or not in_date_range(r):
@@ -3158,7 +3401,7 @@ def operations(
         if float(r.get("recolectadas") or 0)>0 or float(r.get("acondicionado") or 0)>0 or float(r.get("ubicado") or 0)>0:
             d["productividad_piezas"]+=float(r.get("pieces") or 0)
 
-    for r in co:
+    for r in conv_detail:
         s=r.get("store") or ""
         if s in store_map: store_map[s]["dev_pzs"]+=float(r.get("dev_pzs") or 0)
 
@@ -3382,8 +3625,8 @@ def operations(
             previous={}
 
     result = {
-        "available":bool(data.get("rows") or data.get("commercial_daily")),
-        "filtered_available":bool(op or co),
+        "available":bool(data.get("rows") or recovery_fifo or data.get("commercial_daily")),
+        "filtered_available":bool(op or conv_detail or co),
         "uploaded_at":data.get("uploaded_at"),
         "source_file":data.get("source_file",""),
         "operational_sheet":data.get("operational_sheet",""),
@@ -3871,13 +4114,19 @@ async def upload_pdfs(request: Request, files: List[UploadFile]=File(...), week:
 async def upload_capacity(request: Request,file:UploadFile=File(...)):
     require_user(request,("superadmin","admin"))
     filename=file.filename or "capacidades.xlsx"
-    if not filename.lower().endswith((".xlsx",".xls")):
+    suffix=Path(filename).suffix.lower()
+    if suffix not in (".xlsx",".xls"):
         raise HTTPException(400,"Selecciona un archivo Excel .xlsx o .xls")
-    data=await file.read()
-    if not data:
-        raise HTTPException(400,"El archivo está vacío")
-    entry=save_capacity_upload(UploadAdapter(data,filename))
-    path=resolve_entry_path(entry)
+    stage_path=STAGING_DIR/f"capacity_{secrets.token_hex(8)}{suffix}"
+    try:
+        size=await _save_upload_stream(file,stage_path)
+        if not size:
+            raise HTTPException(400,"El archivo está vacío")
+        entry=await asyncio.to_thread(_save_capacity_source_path,stage_path,filename)
+        path=resolve_entry_path(entry)
+    finally:
+        try:stage_path.unlink(missing_ok=True)
+        except Exception:pass
 
     # Si el mismo archivo ya fue procesado, reutiliza el cache y responde de inmediato.
     if entry.get("duplicate") and str(entry.get("status") or "").lower()=="procesado":
@@ -3892,9 +4141,16 @@ async def upload_capacity(request: Request,file:UploadFile=File(...)):
 
     update_entry("capacities",entry["id"],status="Procesando",error="")
     try:
+        # Libera el catálogo anterior antes de normalizar uno nuevo. En el plan
+        # Starter evita sumar dos DataFrames completos durante la carga.
+        _CAPACITY_FRAME_CACHE.update({"path":"","mtime":None,"frame":None})
+        gc.collect()
         # IMPORTANTE: el XLSX real supera 195 mil registros. Se procesa fuera del
         # hilo principal para que Uvicorn y las demás pestañas sigan respondiendo.
-        df=await asyncio.to_thread(read_capacity_file,path)
+        def parse_capacity():
+            with _CAPACITY_ANALYTICS_LOCK:
+                return read_capacity_file(path)
+        df=await asyncio.to_thread(parse_capacity)
         if df.empty:
             raise ValueError("El Excel se abrió pero no se identificaron filas de capacidades/existencias")
 
@@ -3983,14 +4239,14 @@ async def upload_operations_preview(request: Request,file:UploadFile=File(...)):
     suffix=Path(filename).suffix.lower()
     if suffix != ".xlsx":
         raise HTTPException(400,"Carga un archivo Excel .xlsx")
-    data=await file.read()
-    if not data:
-        raise HTTPException(400,"El archivo está vacío")
     token=secrets.token_urlsafe(18)
     stage_path=STAGING_DIR/f"{token}{suffix}"
-    stage_path.write_bytes(data)
+    size=await _save_upload_stream(file,stage_path)
+    if not size:
+        stage_path.unlink(missing_ok=True)
+        raise HTTPException(400,"El archivo está vacío")
     try:
-        payload=await asyncio.to_thread(lambda: parse_operations_excel(stage_path,persist=False))
+        payload=await asyncio.to_thread(_parse_operations_external,stage_path,token)
     except Exception as exc:
         stage_path.unlink(missing_ok=True)
         raise HTTPException(400,f"No fue posible validar el archivo: {type(exc).__name__}: {exc}")
@@ -4106,24 +4362,25 @@ async def upload_operations_legacy(request: Request,file:UploadFile=File(...)):
     suffix=Path(filename).suffix.lower()
     if suffix != ".xlsx":
         raise HTTPException(400,"Carga un archivo Excel .xlsx")
-    data=await file.read()
-    if not data:
+    # El archivo se guarda por flujo y se procesa en un proceso aislado. Así la
+    # API sigue respondiendo mientras se recorren las hojas grandes.
+    token=secrets.token_hex(8)
+    p=STAGING_DIR/f"legacy_{token}{suffix}"
+    size=await _save_upload_stream(file,p)
+    if not size:
+        p.unlink(missing_ok=True)
         raise HTTPException(400,"El archivo está vacío")
 
-    # Igual que el flujo estable anterior: staging simple, parseo directo y publicación.
-    p=STAGING_DIR/f"legacy_{secrets.token_hex(8)}{suffix}"
-    p.write_bytes(data)
-
     try:
-        payload=parse_operations_excel(p,persist=True)
+        payload=await asyncio.to_thread(_parse_operations_external,p,token)
         payload["source_file"]=filename
         payload["uploaded_by"]=u["username"]
         payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
 
         # Persistir metadatos y archivo fuente actual.
         final_path=DATA_ROOT/"cambios_muertos_actual.xlsx"
-        shutil.copy2(p,final_path)
-        OPS_FILE.write_text(_safe_json_dump(payload),encoding="utf-8")
+        await asyncio.to_thread(shutil.copy2,p,final_path)
+        await asyncio.to_thread(OPS_FILE.write_text,_safe_json_dump(payload),encoding="utf-8")
         _clear_operations_caches(clear_meta_file=True)
         try:
             meta=_build_operations_meta(payload,_ops_source_stamp())

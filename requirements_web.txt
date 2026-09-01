@@ -17,5 +17,6 @@ Pillow==12.3.0
 fastapi==0.116.1
 uvicorn[standard]==0.35.0
 python-multipart==0.0.20
+ijson==3.4.0.post0
 
 itsdangerous>=2.2.0
