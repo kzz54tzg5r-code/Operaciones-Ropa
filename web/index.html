@@ -20,7 +20,7 @@
 .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.card,.panel{background:#fff;border:1px solid #e0e6ef;border-radius:12px;padding:11px}.card h3{font-size:12px;margin:0}.big{font-size:19px;font-weight:1000;margin:6px 0}.card small{font-size:8px;color:var(--muted);line-height:1.4}.mini3{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:8px}.mini{background:#f6f8fb;border-radius:8px;padding:7px}.mini span{display:block;font-size:6.5px;color:var(--muted);text-transform:uppercase;font-weight:900}.mini b{font-size:9px}
 .grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(250px,.7fr);gap:9px}.switches{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}.switch{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:999px;padding:5px 8px;font-size:7.5px;font-weight:900;cursor:pointer}.switch.active{background:var(--blue);border-color:var(--blue);color:#fff}
 .bars{display:grid;gap:6px}.bar{display:grid;grid-template-columns:88px minmax(0,1fr) 50px;gap:7px;align-items:center;font-size:8px}.track{height:13px;background:#edf1f5;border-radius:5px;overflow:hidden}.fill{height:100%;background:var(--blue);border-radius:5px}.fill.g{background:var(--green)}.fill.y{background:var(--yellow)}.fill.r{background:var(--red)}.bar b{text-align:right}
-.tablewrap{overflow:auto;border:1px solid #d8e0eb;border-radius:10px;background:#fff}.model-scroll-30{max-height:1020px;overflow-y:auto}.model-scroll-30 .table th{position:sticky;top:0;z-index:3}.pareto-total{font-weight:950;background:#eef5ff!important}.filter-caption{font-size:7px;color:var(--muted);font-weight:950;text-transform:uppercase;margin:5px 0 4px}.table{border-collapse:collapse;width:100%;min-width:760px;font-size:8.5px}.table th{background:var(--navy);color:#fff;text-align:left;padding:9px;white-space:nowrap}.table td{padding:8px 9px;border-bottom:1px solid #e7ebf0;white-space:nowrap}.table tr:nth-child(even) td{background:#f8fafd}.status{display:inline-block;border-radius:6px;padding:4px 6px;font-weight:950}.ok{background:#dcfce7;color:#14532d}.warn{background:#fff1bf;color:#8a5c00}.bad{background:#fee2e2;color:#a31515}
+.tablewrap{overflow:auto;border:1px solid #d8e0eb;border-radius:10px;background:#fff}.model-scroll-30{max-height:1020px;overflow-y:auto}.model-scroll-30 .table th,.table-scroll-35 .table th{position:sticky;top:0;z-index:3}.table-scroll-35{max-height:1220px;overflow:auto}.pareto-total{font-weight:950;background:#eef5ff!important}.filter-caption{font-size:7px;color:var(--muted);font-weight:950;text-transform:uppercase;margin:5px 0 4px}.table{border-collapse:collapse;width:100%;min-width:760px;font-size:8.5px}.table th{background:var(--navy);color:#fff;text-align:left;padding:9px;white-space:nowrap}.table td{padding:8px 9px;border-bottom:1px solid #e7ebf0;white-space:nowrap}.table tr:nth-child(even) td{background:#f8fafd}.table tr.recurrence-yellow td{background:#fff4bf!important}.table tr.recurrence-red td{background:#ffd9d6!important}.evidence-btn{border:1px solid #9db7dc;background:#fff;color:var(--navy);border-radius:8px;padding:6px 8px;font-size:8px;font-weight:900;cursor:pointer}.evidence-btn.has-photo{border-color:#22a35a;color:#087a36;background:#effcf4}.status{display:inline-block;border-radius:6px;padding:4px 6px;font-weight:950}.ok{background:#dcfce7;color:#14532d}.warn{background:#fff1bf;color:#8a5c00}.bad{background:#fee2e2;color:#a31515}
 .accordion{display:grid;gap:7px}.acc{background:#fff;border:1px solid var(--line);border-radius:11px;overflow:hidden}.acc>button{width:100%;border:0;background:#fff;color:var(--text);padding:12px;text-align:left;font-size:10px;font-weight:950;display:flex;justify-content:space-between;cursor:pointer}.accbody{display:none;padding:0 12px 12px}.acc.open .accbody{display:block}
 .infoempty{padding:18px;border:1px dashed #c9d3df;border-radius:10px;background:#fafbfd;color:var(--muted);font-size:10px;text-align:center}.uploadgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.drop{background:#fff;border:1px dashed #b9c6d6;border-radius:12px;padding:13px}.drop h3{font-size:11px;margin:0 0 4px}.drop p{font-size:8px;color:var(--muted);line-height:1.4}.drop input{width:100%;font-size:9px;margin:5px 0}.log{white-space:pre-wrap;background:#0e1c2d;color:#dce8f8;border-radius:10px;padding:11px;font:10px Consolas,monospace;min-height:70px}.mobile{display:none}
 .usergrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.useritem{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}.useritem b{font-size:10px}.useritem small{display:block;font-size:8px;color:var(--muted);margin-top:3px}
@@ -227,7 +227,7 @@ body{max-width:100%;overflow-x:hidden}
   .table{font-size:8px;min-width:720px}
   .table th{padding:8px 7px;font-size:7.5px;position:sticky;top:0;z-index:3}
   .table td{padding:7px;line-height:1.2}
-  .model-scroll-30{max-height:62dvh!important;overflow:auto!important}
+  .model-scroll-30,.table-scroll-35{max-height:62dvh!important;overflow:auto!important}
   .model-scroll-30 .table{min-width:860px}
   .model-check{min-width:68px;padding:5px;font-size:8px}
 
@@ -470,9 +470,9 @@ body{max-width:100%;overflow-x:hidden}
 </section>
 
 <section class="page" id="page-macro"><div class="title" id="macroTitle">Análisis Comercial · Macro Compañía</div><div class="subtitle">Compañía → Sección → Catálogo → Rubro → Modelo · <span id="pdfCoverage"></span></div><div class="kpis"><div class="kpi" style="--a:var(--purple)"><div class="lab">Existencia total</div><div class="val" id="kExist">—</div><div class="note" id="kExistNote"></div></div><div class="kpi" style="--a:#08a9d6"><div class="lab">Sugerido compañía</div><div class="val" id="kSug">—</div><div class="note" id="kSugNote"></div></div><div class="kpi" style="--a:var(--yellow)"><div class="lab">DDI compañía</div><div class="val" id="kDdi">—</div><div class="note" id="kDdiNote"></div></div><div class="kpi" style="--a:var(--blue)"><div class="lab">Capacidad · Curva</div><div class="val" id="kCap">—</div><div class="note" id="kCapNote"></div></div><div class="kpi" style="--a:var(--green)"><div class="lab">Ocupación</div><div class="val" id="kOcc">—</div><div class="note" id="kOccNote"></div></div></div><div class="title">Macro sección</div><div class="cards" id="sectionSummary"></div><div class="title" id="macroRankingTitle">Comparativo de tiendas</div><div class="panel"><div class="switches" id="metricSwitch"><button class="switch active" data-metric="suggested">Sugerido</button><button class="switch" data-metric="existence">Existencia</button><button class="switch" data-metric="floor">Piso</button><button class="switch" data-metric="warehouse">Bodega</button><button class="switch" data-metric="ddi">DDI</button></div><div class="bars" id="bars"></div><div class="note" id="ddiLegend"></div></div><div class="title" id="macroSectionTableTitle">Macro sección · Compañía</div><div class="tablewrap"><table class="table"><thead><tr><th>Sección</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th><th>% Part. utilidad</th><th>% Part. piezas</th><th>% Part. inventario</th></tr></thead><tbody id="sectionTable"></tbody></table></div><div class="title" id="macroAreaTitle">Macro ubicación · Compañía</div>
-<div class="subtitle">Agrupado por Colgado, Doblado, Jeans y Lencería. La sección se filtra con los botones siguientes.</div>
-<div class="panel compact-filter"><div class="switches" id="macroAreaSectionSwitch"><button class="switch active" data-area-section="Todas">Todas</button><button class="switch" data-area-section="Dama">Dama</button><button class="switch" data-area-section="Caballero">Caballero</button><button class="switch" data-area-section="Infantil">Infantil</button></div></div>
-<div class="tablewrap"><table class="table">
+<div class="subtitle">Consulta por sección y por área operativa.</div>
+<div class="panel compact-filter"><div class="filter-caption">Sección</div><div class="switches" id="macroAreaSectionSwitch"><button class="switch active" data-area-section="Todas">Todas</button><button class="switch" data-area-section="Dama">Dama</button><button class="switch" data-area-section="Caballero">Caballero</button><button class="switch" data-area-section="Infantil">Infantil</button></div><div class="filter-caption">Área</div><div class="switches" id="macroAreaGroupSwitch"><button class="switch active" data-area-group="Todas">Todas</button><button class="switch" data-area-group="Colgado">Colgado</button><button class="switch" data-area-group="Doblado">Doblado</button><button class="switch" data-area-group="Jeans">Jeans</button><button class="switch" data-area-group="Lencería">Lencería</button></div></div>
+<div class="tablewrap table-scroll-35"><table class="table">
 <thead><tr><th>Ubicación</th><th>Pasillo / Mesa</th><th>Modelos</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th></tr></thead>
 <tbody id="macroAreaTable"><tr><td colspan="12">Cargando...</td></tr></tbody>
 </table></div>
@@ -926,25 +926,60 @@ function checklistIcon(v,editable,field,idArt){
   if(val==='0')return '<span class="check-no">✕</span>';
   return '<span class="check-na">—</span>';
 }
-function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',scope='Compañía',checkMap={},checkEditable=false,checkStore=''){
+function evidenceControl(check={},editable=false,idArt=''){
+  const view=check.evidence_id?`<button class="evidence-btn has-photo evidence-view" data-evidence-id="${check.evidence_id}">Ver foto</button>`:'';
+  const upload=editable?`<button class="evidence-btn evidence-upload" data-id="${idArt}">${check.evidence_id?'Cambiar':'Cargar foto'}</button>`:'';
+  return view+upload||'<span class="check-na">—</span>';
+}
+function recurrenceClass(row){return Number(row?.recurrence_weeks||0)>=2?'recurrence-red':Number(row?.recurrence_weeks||0)>=1?'recurrence-yellow':''}
+function bindEvidenceButtons(root,models,store){
+  root.querySelectorAll('.evidence-view').forEach(btn=>btn.onclick=()=>window.open(`/api/model-checklist/evidence/${encodeURIComponent(btn.dataset.evidenceId)}`,'_blank'));
+  root.querySelectorAll('.evidence-upload').forEach(btn=>{
+    const row=(models||[]).find(x=>String(x.id_art)===String(btn.dataset.id));
+    if(row)btn.onclick=()=>pickModelEvidence(btn,row,store,models);
+  });
+}
+async function pickModelEvidence(button,row,store,models){
+  const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/webp';
+  input.onchange=async()=>{
+    const file=input.files?.[0];if(!file)return;
+    const old=button.textContent;button.disabled=true;button.textContent='Subiendo…';
+    const fd=new FormData();fd.append('file',file,file.name);fd.append('week',$('#week').value||'');fd.append('store',store);fd.append('id_art',row.id_art);fd.append('model',row.model||'');fd.append('section',row.section||'');fd.append('rubro',row.rubro||'');
+    try{
+      const saved=await api('/api/model-checklist/evidence',{method:'POST',body:fd,timeoutMs:120000});
+      const cell=button.closest('td');cell.innerHTML=evidenceControl({evidence_id:saved.evidence_id},true,row.id_art);bindEvidenceButtons(cell,models,store);loadChecklistSummary();
+    }catch(e){alert('No fue posible cargar la evidencia: '+e.message);button.disabled=false;button.textContent=old}
+  };
+  input.click();
+}
+function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',scope='Compañía',checkMap={},checkEditable=false,checkStore='',modelScope=''){
+  modelScope=modelScope||scope;
+  const zeroIds=new Set((zeros||[]).map(x=>String(x.id_art)));
+  slows=(slows||[]).filter(x=>!zeroIds.has(String(x.id_art)));
+  const allChecklistModels=[...slows,...(zeros||[])];
   $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec} · primeros 150`;
-  $('#slowTitle').textContent=`Modelos lentos · ${scope} · ${slowSec}`;
-  $('#zeroTitle').textContent=`Modelos con sugerido 0 / sin venta 30 días · ${scope} · ${slowSec}`;
-  const slowPanel=$('#slowTotals')?.parentElement;if(slowPanel){let help=slowPanel.querySelector('.check-help');if(!help){help=document.createElement('div');help.className='note check-help';slowPanel.appendChild(help)}help.textContent=(scope==='Compañía'&&['admin','superadmin'].includes(USER?.role))?'Selecciona la tienda a evaluar en el control de checklist para capturar Sí / No. El resumen de Compañía permanece visible por tienda.':'';}
+  $('#slowTitle').textContent=`Modelos lentos · ${modelScope} · ${slowSec}`;
+  $('#zeroTitle').textContent=`Modelos con sugerido 0 · última entrada mayor a 30 días · ${modelScope} · ${slowSec}`;
+  const slowPanel=$('#slowTotals')?.parentElement;if(slowPanel){let help=slowPanel.querySelector('.check-help');if(!help){help=document.createElement('div');help.className='note check-help';slowPanel.appendChild(help)}const capture=(scope==='Compañía'&&['admin','superadmin'].includes(USER?.role))?'Selecciona la tienda a evaluar para capturar el checklist y las evidencias. ':'';help.textContent=capture+'Amarillo: reincide una semana sin subir de sugerido 1. Rojo: reincide dos semanas consecutivas.';}
   $('#champTable').innerHTML=(champs||[]).map(x=>`<tr><td><b>#${x.rank||''}</b></td><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||x.area||''}</td><td>${x.exhibition||'—'}</td><td>${fmt(x.sales_pzas)}</td><td>${money(x.sales_value)}</td><td>${fmt(x.existence)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.ddi)}</td><td>${fmt(x.capacity)}</td><td>${x.occupancy==null?'N/D':pct(x.occupancy)}</td><td>${pct(x.cum_share)}</td></tr>`).join('')||'<tr><td colspan="16">Información no disponible</td></tr>';
 
   const canAnswer=!!checkStore&&checkEditable;
+  const slowWrap=$('#slowTable')?.closest('.tablewrap'),zeroWrap=$('#zeroTable')?.closest('.tablewrap');
+  slowWrap?.classList.add('table-scroll-35');zeroWrap?.classList.add('table-scroll-35');
+  const slowHead=slowWrap?.querySelector('thead tr'),zeroHead=zeroWrap?.querySelector('thead tr');
+  if(slowHead)slowHead.innerHTML='<th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. entrada</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>Evidencia</th>';
+  if(zeroHead)zeroHead.innerHTML='<th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. entrada</th><th>Venta pzas 30</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>Evidencia</th>';
   $('#slowTable').innerHTML=(slows||[]).map(x=>{
     const ck=checkMap[String(x.id_art)]||{};
     const hint=!checkStore?' title="Selecciona una tienda para capturar el checklist"':'';
-    return `<tr data-model-id="${x.id_art}"><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||''}</td><td>${x.exhibition||'—'}</td><td>${x.ultima_cedis||'—'}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td>
+    return `<tr class="${recurrenceClass(x)}" data-model-id="${x.id_art}"><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||''}</td><td>${x.exhibition||'—'}</td><td>${x.ultima_cedis||'—'}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td>
       <td${hint}>${checklistIcon(ck.en_ubicacion,canAnswer,'en_ubicacion',x.id_art)}</td>
       <td${hint}>${checklistIcon(ck.cenefa_correcta,canAnswer,'cenefa_correcta',x.id_art)}</td>
       <td${hint}>${checklistIcon(ck.todas_tallas,canAnswer,'todas_tallas',x.id_art)}</td>
-      <td${hint}>${checklistIcon(ck.exhibido,canAnswer,'exhibido',x.id_art)}</td></tr>`;
-  }).join('')||'<tr><td colspan="14">Información no disponible</td></tr>';
+      <td${hint}>${checklistIcon(ck.exhibido,canAnswer,'exhibido',x.id_art)}</td><td>${evidenceControl(ck,canAnswer,x.id_art)}</td></tr>`;
+  }).join('')||'<tr><td colspan="15">Información no disponible</td></tr>';
 
-  $('#zeroTable').innerHTML=(zeros||[]).map(x=>{const ck=checkMap[String(x.id_art)]||{};const hint=!checkStore?' title="Selecciona una tienda para capturar el checklist"':'';return `<tr data-model-id="${x.id_art}"><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||''}</td><td>${x.exhibition||'—'}</td><td>${x.ultima_cedis||'—'}</td><td>${fmt(x.sales_pzas_30)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td><td${hint}>${checklistIcon(ck.en_ubicacion,canAnswer,'en_ubicacion',x.id_art)}</td><td${hint}>${checklistIcon(ck.cenefa_correcta,canAnswer,'cenefa_correcta',x.id_art)}</td><td${hint}>${checklistIcon(ck.todas_tallas,canAnswer,'todas_tallas',x.id_art)}</td><td${hint}>${checklistIcon(ck.exhibido,canAnswer,'exhibido',x.id_art)}</td></tr>`}).join('')||'<tr><td colspan="15">Información no disponible</td></tr>';
+  $('#zeroTable').innerHTML=(zeros||[]).map(x=>{const ck=checkMap[String(x.id_art)]||{};const hint=!checkStore?' title="Selecciona una tienda para capturar el checklist"':'';return `<tr class="${recurrenceClass(x)}" data-model-id="${x.id_art}"><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||''}</td><td>${x.exhibition||'—'}</td><td>${x.ultima_cedis||'—'}</td><td>${fmt(x.sales_pzas_30)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td><td${hint}>${checklistIcon(ck.en_ubicacion,canAnswer,'en_ubicacion',x.id_art)}</td><td${hint}>${checklistIcon(ck.cenefa_correcta,canAnswer,'cenefa_correcta',x.id_art)}</td><td${hint}>${checklistIcon(ck.todas_tallas,canAnswer,'todas_tallas',x.id_art)}</td><td${hint}>${checklistIcon(ck.exhibido,canAnswer,'exhibido',x.id_art)}</td><td>${evidenceControl(ck,canAnswer,x.id_art)}</td></tr>`}).join('')||'<tr><td colspan="16">Información no disponible</td></tr>';
 
   if($('#slowTotals')){
     const sr=slows||[];
@@ -956,8 +991,9 @@ function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',sco
   }
 
   if(canAnswer){
-    $$('.model-check').forEach(sel=>sel.onchange=()=>saveModelChecklist(sel,slows,checkStore));
+    $$('.model-check').forEach(sel=>sel.onchange=()=>saveModelChecklist(sel,allChecklistModels,checkStore));
   }
+  bindEvidenceButtons($('#slowTable'),allChecklistModels,checkStore);bindEvidenceButtons($('#zeroTable'),allChecklistModels,checkStore);
 }
 
 let PARETO_GROUP='section';
@@ -999,8 +1035,8 @@ let CHECKLIST_CAPTURE_STORE='';
 async function loadModelTables(){
   if(!DASH)return;
   $('#champTable').innerHTML='<tr><td colspan="16">Cargando detalle 80/20…</td></tr>';
-  $('#slowTable').innerHTML='<tr><td colspan="14">Cargando modelos lentos…</td></tr>';
-  $('#zeroTable').innerHTML='<tr><td colspan="15">Cargando modelos sin venta…</td></tr>';
+  $('#slowTable').innerHTML='<tr><td colspan="15">Cargando modelos lentos…</td></tr>';
+  $('#zeroTable').innerHTML='<tr><td colspan="16">Cargando modelos con sugerido 0…</td></tr>';
   const scope=(DASH.selected_store&&DASH.selected_store!=='Compañía')?DASH.selected_store:'Compañía';
   const champSec=$('#champSection')?.value||'Todas',slowSec=$('#slowSection')?.value||'Todas';
   const wrap=$('#checklistStoreWrap'), sel=$('#checklistStoreSelect');
@@ -1026,20 +1062,25 @@ async function loadModelTables(){
 
   try{
     const cat=$('#catalog')?.value||'Todos';
+    const modelScope=target||scope;
     // Secuencial a propósito: cada ranking trabaja el catálogo completo y tres
     // copias simultáneas agotaban la memoria del servidor económico.
     const c=await api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(champSec)}&catalog=${encodeURIComponent(cat)}&mode=80_20`,{timeoutMs:180000});
-    const s=await api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(slowSec)}&catalog=${encodeURIComponent(cat)}&mode=slow`,{timeoutMs:180000});
-    const z=await api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(scope)}&section=${encodeURIComponent(slowSec)}&catalog=${encodeURIComponent(cat)}&mode=suggested_zero`,{timeoutMs:180000});
+    const s=await api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(modelScope)}&section=${encodeURIComponent(slowSec)}&catalog=${encodeURIComponent(cat)}&mode=slow`,{timeoutMs:180000});
+    const z=await api(`/api/model-ranking?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(modelScope)}&section=${encodeURIComponent(slowSec)}&catalog=${encodeURIComponent(cat)}&mode=suggested_zero`,{timeoutMs:180000});
     const ck=target?await api(`/api/model-checklist?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(target)}`):{rows:[],editable:false};
     const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
-    renderModelRows(c.rows||[],s.rows||[],z.rows||[],champSec,slowSec,scope,map,!!ck.editable,target);
+    if(target&&ck.editable){
+      const unique=new Map();[...(s.rows||[]),...(z.rows||[])].forEach(row=>unique.set(String(row.id_art),{id_art:row.id_art,model:row.model,section:row.section,rubro:row.rubro}));
+      try{await api('/api/model-checklist/scope',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:$('#week').value||'',store:target,models:[...unique.values()]})})}catch(e){console.warn('No se actualizó el universo de evidencias',e)}
+    }
+    renderModelRows(c.rows||[],s.rows||[],z.rows||[],champSec,slowSec,scope,map,!!ck.editable,target,modelScope);
     await loadParetoSummary();
     await loadChecklistSummary();
   }catch(e){
     $('#champTable').innerHTML='<tr><td colspan="16">Error: '+e.message+'</td></tr>';
-    $('#slowTable').innerHTML='<tr><td colspan="14">Error: '+e.message+'</td></tr>';
-    $('#zeroTable').innerHTML='<tr><td colspan="15">Error: '+e.message+'</td></tr>';
+    $('#slowTable').innerHTML='<tr><td colspan="15">Error: '+e.message+'</td></tr>';
+    $('#zeroTable').innerHTML='<tr><td colspan="16">Error: '+e.message+'</td></tr>';
   }
 }
 
@@ -1052,11 +1093,17 @@ async function loadChecklistSummary(){
   try{
     const d=await api(`/api/model-checklist/summary?week=${encodeURIComponent($('#week').value||'')}`);
     const fields=['en_ubicacion','cenefa_correcta','todas_tallas','exhibido'];
+    const head=$('#checklistSummary')?.closest('table')?.querySelector('thead tr');if(head)head.innerHTML='<th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>Score checklist</th><th>Evidencias</th>';
     $('#checklistSummary').innerHTML=(d.rows||[]).map(r=>`<tr><td><b>${r.store}</b></td>${fields.map(f=>{
       const c=r.criteria[f],txt=c.pct==null?'Sin respuesta':pct(c.pct);
       return `<td><button class="summary-cell ${c.no?'has-no':''}" data-store="${r.store}" data-field="${f}">${txt}<small>${c.answered} respuestas${c.no?' · '+c.no+' No':''}</small></button></td>`;
-    }).join('')}<td><b class="check-score ${(Number(r.score||0)>=90?'score-ok':Number(r.score||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.score||0))}</b><small>${r.score_answered||0} respuestas totales</small></td></tr>`).join('');
+    }).join('')}<td><b class="check-score ${(Number(r.score||0)>=90?'score-ok':Number(r.score||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.score||0))}</b><small>${r.score_answered||0} respuestas totales</small></td><td><b class="check-score ${(Number(r.evidence_pct||0)>=90?'score-ok':Number(r.evidence_pct||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.evidence_pct||0))}</b><small>${fmt(r.evidences||0)} de ${fmt(r.models||0)} modelos</small></td></tr>`).join('');
     const pdfBtn=$('#downloadChecklistPdf');if(pdfBtn)pdfBtn.onclick=()=>downloadChecklistSummaryPdf(pdfBtn);
+    const heading=wrap.querySelector('.title');let evidenceBtn=$('#downloadEvidencePdf');
+    if(['admin','superadmin'].includes(USER?.role)){
+      if(!evidenceBtn){evidenceBtn=document.createElement('button');evidenceBtn.id='downloadEvidencePdf';evidenceBtn.className='primary';evidenceBtn.style.cssText='width:auto;padding:8px 14px';evidenceBtn.textContent='Descargar evidencias';heading?.appendChild(evidenceBtn)}
+      evidenceBtn.onclick=()=>downloadEvidencePdf(evidenceBtn);
+    }else evidenceBtn?.remove();
     $$('.summary-cell').forEach(btn=>btn.onclick=()=>{
       const row=(d.rows||[]).find(r=>r.store===btn.dataset.store),c=row?.criteria?.[btn.dataset.field];
       if(!c)return;
@@ -1066,7 +1113,7 @@ async function loadChecklistSummary(){
         '<div class="note">No hay modelos contestados como No.</div>'}`;
     });
   }catch(e){
-    $('#checklistSummary').innerHTML=`<tr><td colspan="6">Información no disponible: ${e.message}</td></tr>`;
+    $('#checklistSummary').innerHTML=`<tr><td colspan="7">Información no disponible: ${e.message}</td></tr>`;
   }
 }
 
@@ -1081,6 +1128,16 @@ async function downloadChecklistSummaryPdf(button){
     if(button)button.textContent='Descargado ✓';
   }catch(e){alert('No fue posible descargar el PDF del checklist: '+(e.message||e))}
   finally{setTimeout(()=>{if(button){button.disabled=false;button.textContent=old}},1200)}
+}
+async function downloadEvidencePdf(button){
+  const week=$('#week')?.value||'',old=button?.textContent||'Descargar evidencias';
+  try{
+    if(button){button.disabled=true;button.textContent='Generando reporte…'}
+    const res=await fetch(`/api/export/checklist-evidence?week=${encodeURIComponent(week)}`,{credentials:'same-origin'});
+    if(!res.ok){let msg=`Error ${res.status}`;try{const j=await res.json();msg=j.detail||msg}catch(_){}throw new Error(msg)}
+    const blob=await res.blob(),obj=URL.createObjectURL(blob),a=document.createElement('a');a.href=obj;a.download=`evidencias_${week||'periodo'}.pdf`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(obj),1500);
+  }catch(e){alert('No fue posible descargar las evidencias: '+(e.message||e))}
+  finally{if(button){button.disabled=false;button.textContent=old}}
 }
 
 function loginNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
@@ -1162,18 +1219,18 @@ async function loadCommercialDetail(mode){
 }
 
 
-let MACRO_AREA_SECTION='Todas';
+let MACRO_AREA_SECTION='Todas',MACRO_AREA_GROUP='Todas';
 async function loadMacroAreaDetail(){
   const store=(DASH?.selected_store)||($('#store')?.value||'Compañía');
   const week=$('#week')?.value||'';
   const titleScope=store==='Compañía'?'Compañía':store;
-  if($('#macroAreaTitle')) $('#macroAreaTitle').textContent=`Macro ubicación · ${titleScope}${MACRO_AREA_SECTION!=='Todas'?' · '+MACRO_AREA_SECTION:''}`;
+  if($('#macroAreaTitle')) $('#macroAreaTitle').textContent=`Ubicación · ${titleScope}${MACRO_AREA_SECTION!=='Todas'?' · '+MACRO_AREA_SECTION:''}${MACRO_AREA_GROUP!=='Todas'?' · '+MACRO_AREA_GROUP:''}`;
   if($('#macroAreaTable')) $('#macroAreaTable').innerHTML='<tr><td colspan="12">Cargando detalle por ubicación...</td></tr>';
   try{
     const d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(MACRO_AREA_SECTION)}&catalog=${encodeURIComponent($('#catalog')?.value||'Todos')}`,{timeoutMs:120000});
     const groups=['Colgado','Doblado','Jeans','Lencería'];
     const order={Colgado:1,Doblado:2,Jeans:3,Lencería:4};
-    const src=(d.locations||[]).filter(x=>groups.includes(x.group));
+    const src=(d.locations||[]).filter(x=>groups.includes(x.group)&&(MACRO_AREA_GROUP==='Todas'||x.group===MACRO_AREA_GROUP));
     const rows=[...src].sort((a,b)=>(order[a.group]||99)-(order[b.group]||99)||Number(b.suggested||0)-Number(a.suggested||0)||String(a.location).localeCompare(String(b.location),'es'));
     if($('#macroAreaTable')){
       const company=store==='Compañía';
@@ -1187,6 +1244,7 @@ async function loadMacroAreaDetail(){
   }catch(e){if($('#macroAreaTable'))$('#macroAreaTable').innerHTML=`<tr><td colspan="12">No fue posible consultar el detalle por ubicación: ${e.message||e}</td></tr>`}
 }
 $$('[data-area-section]').forEach(btn=>btn.onclick=()=>{MACRO_AREA_SECTION=btn.dataset.areaSection||'Todas';$$('[data-area-section]').forEach(x=>x.classList.toggle('active',x===btn));loadMacroAreaDetail()});
+$$('[data-area-group]').forEach(btn=>btn.onclick=()=>{MACRO_AREA_GROUP=btn.dataset.areaGroup||'Todas';$$('[data-area-group]').forEach(x=>x.classList.toggle('active',x===btn));loadMacroAreaDetail()});
 
 async function renderAccordion(){
   const root=$('#accordion');if(!root||!DASH)return;

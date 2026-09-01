@@ -14,7 +14,7 @@ def main():
 
     import web_app
     payload = web_app.parse_operations_excel(src, persist=False)
-    out.write_text(web_app._safe_json_dump(payload), encoding="utf-8")
+    web_app._write_json_stream(out,payload)
     print(json.dumps({"ok": True, "rows": len(payload.get("rows") or [])}))
     return 0
 

@@ -113,3 +113,63 @@ def test_frontend_hides_render_html_errors_and_serializes_rankings():
     assert "cleanText=/<\\s*!doctype|<\\s*html/i.test(raw)?'':" in source
     ranking_block=source[source.index("async function loadModelTables"):source.index("async function loadChecklistSummary")]
     assert "Promise.all(calls)" not in ranking_block
+def test_suggested_zero_requires_old_entry_and_is_not_repeated_in_slow(monkeypatch):
+    frame=pd.DataFrame({
+        "Tienda":["Iztapalapa"]*3,
+        "ID_ART":["ZERO-OLD","ZERO-NEW","SLOW"],
+        "Modelo":["Cero antiguo","Cero reciente","Lento"],
+        "Marca":["Marca"]*3,
+        "Sección":["Dama"]*3,
+        "Subcategoría":["Blusa"]*3,
+        "Tipo catálogo":["VIGENTE"]*3,
+        "Existencia":[10.0,9.0,8.0],
+        "Existencia piso":[10.0,9.0,8.0],
+        "Existencia bodega":[0.0]*3,
+        "VPD":[0.0,0.0,1.0],
+        "Capacidad":[10.0]*3,
+        "Venta pzas 7":[0.0,0.0,1.0],
+        "Venta pzas 30":[0.0,0.0,1.0],
+        "Venta pzas":[0.0,0.0,1.0],
+        "Venta $ 7":[0.0,0.0,10.0],
+        "Venta $ mes":[0.0,0.0,10.0],
+        "DDI":[0.0]*3,
+        "Pzas última entrada":[1.0]*3,
+        "Última entrada CEDIS a tienda":[
+            pd.Timestamp("2026-07-01"),pd.Timestamp("2026-08-20"),pd.Timestamp("2026-07-15"),
+        ],
+        "Ubicación detalle":["R. COLGADA 01"]*3,
+        "Exhibición":["Colgado"]*3,
+    })
+    monkeypatch.setattr(web_app,"_capacity_frame_for_period",lambda _period:frame)
+    monkeypatch.setattr(web_app,"_capacity_source_entry",lambda _period:{"id":"now","report_date":"2026-09-01"})
+    monkeypatch.setattr(web_app,"store_names",lambda _active=True:["Iztapalapa"])
+    monkeypatch.setattr(web_app,"_capacity_recurrence_counts",lambda ids,*_args:{value:(2 if value=="ZERO-OLD" else 1) for value in ids})
+
+    zeros=web_app._capacity_model_rows("Compañía","Todas","suggested_zero","2026-W36","Todos")
+    slows=web_app._capacity_model_rows("Compañía","Todas","slow","2026-W36","Todos")
+
+    assert [row["id_art"] for row in zeros]==["ZERO-OLD"]
+    assert zeros[0]["recurrence_weeks"]==2
+    assert "ZERO-OLD" not in {row["id_art"] for row in slows}
+    assert {row["id_art"] for row in slows}=={"ZERO-NEW","SLOW"}
+
+
+def test_capacity_preparation_and_requested_frontend_controls():
+    frame=pd.DataFrame({
+        "Tienda":["Iztapalapa","Iztapalapa"],
+        "Sección":["Dama","Caballero"],
+        "Tipo catálogo":["VIGENTE","VIGENTE"],
+        "Ubicación":["R. COLGADA 01","MESA 04"],
+        "Pasillo":["R. COLGADA 01","MESA 04"],
+    })
+    prepared=web_app._prepare_capacity_frame(frame)
+    assert str(prepared["Tienda"].dtype)=="category"
+    assert {"Área reporte","Pasillo operativo","_TiendaKey","_SeccionKey","_CatalogKey"}.issubset(prepared.columns)
+
+    source=(web_app.WEB/"index.html").read_text(encoding="utf-8")
+    for label in ('data-area-group="Colgado"','data-area-group="Doblado"','data-area-group="Jeans"','data-area-group="Lencería"'):
+        assert label in source
+    assert "table-scroll-35" in source
+    assert "Últ. entrada" in source
+    assert "recurrence-yellow" in source and "recurrence-red" in source
+    assert "/api/export/checklist-evidence" in source

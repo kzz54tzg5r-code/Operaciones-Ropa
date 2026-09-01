@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import List
 from datetime import datetime
 from urllib.parse import urlparse
-import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc
-from functools import wraps
+import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc, zipfile
+from functools import wraps, lru_cache
+from xml.etree import ElementTree as ET
 
 # Compatibilidad Windows para este equipo:
 # platform.machine() se bloquea por WMI; fijamos arquitectura antes de importar pandas.
@@ -66,6 +67,24 @@ SALES_PDF_FILE = DATA_ROOT / "ventas_pdf_procesadas.json"
 LEGACY_DB = ROOT / "data" / "config" / "ps_operaciones.db"
 STAGING_DIR = DATA_ROOT / "staging"
 STAGING_DIR.mkdir(parents=True, exist_ok=True)
+CHECKLIST_EVIDENCE_DIR = DATA_ROOT / "checklist_evidence"
+CHECKLIST_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+_RESOURCE_HEAVY_LOCK = threading.RLock()
+
+
+def _release_process_memory():
+    """Devuelve al sistema páginas libres del asignador cuando está disponible."""
+    gc.collect()
+    if os.name != "posix":
+        return
+    try:
+        import ctypes
+        libc=ctypes.CDLL(None)
+        trim=getattr(libc,"malloc_trim",None)
+        if trim is not None:
+            trim(0)
+    except Exception:
+        pass
 
 def _cleanup_old_staging_files():
     """Elimina staging antiguo sin bloquear el inicio de la aplicación."""
@@ -92,24 +111,35 @@ def _parse_operations_external(stage_path: Path, token: str) -> dict:
     """
     output_path = STAGING_DIR / f"{token}.worker.json"
     cmd = [sys.executable, str(ROOT / "operations_parse_worker.py"), str(stage_path), str(output_path)]
-    try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            timeout=900,
-            env=os.environ.copy(),
-        )
-    except subprocess.TimeoutExpired:
-        raise RuntimeError("La validación excedió 15 minutos y fue cancelada.")
+    # El proceso hijo comparte el límite de 512 MB con FastAPI. Mientras se
+    # analiza el libro se libera el catálogo comercial y se bloquean consultas
+    # pesadas para que ambos módulos no compitan por la misma memoria.
+    with _RESOURCE_HEAVY_LOCK:
+        cache=globals().get("_CAPACITY_FRAME_CACHE")
+        if isinstance(cache,dict):
+            cache.update({"path":"","mtime":None,"frame":None})
+        gc.collect()
+        _release_process_memory()
+        worker_env=os.environ.copy()
+        worker_env.setdefault("MALLOC_ARENA_MAX","2")
+        try:
+            proc = subprocess.run(
+                cmd,
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                timeout=900,
+                env=worker_env,
+            )
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("La validación excedió 15 minutos y fue cancelada.")
     if proc.returncode != 0:
         err = (proc.stderr or proc.stdout or "Error desconocido").strip()
         raise RuntimeError(err[-4000:])
     if not output_path.exists():
         raise RuntimeError("El proceso de validación terminó sin generar resultados.")
     try:
-        return json.loads(output_path.read_text(encoding="utf-8"))
+        return _read_json_stream(output_path)
     finally:
         output_path.unlink(missing_ok=True)
 
@@ -311,6 +341,32 @@ def init_db():
             exhibido INTEGER,
             updated_at TEXT NOT NULL,
             updated_by TEXT NOT NULL,
+            UNIQUE(week,store,id_art)
+        )""")
+        con.execute("""CREATE TABLE IF NOT EXISTS model_checklist_expected(
+            week TEXT NOT NULL,
+            store TEXT NOT NULL,
+            id_art TEXT NOT NULL,
+            model TEXT DEFAULT '',
+            section TEXT DEFAULT '',
+            rubro TEXT DEFAULT '',
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY(week,store,id_art)
+        )""")
+        con.execute("""CREATE TABLE IF NOT EXISTS model_evidence(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            week TEXT NOT NULL,
+            store TEXT NOT NULL,
+            id_art TEXT NOT NULL,
+            model TEXT DEFAULT '',
+            section TEXT DEFAULT '',
+            rubro TEXT DEFAULT '',
+            file_path TEXT NOT NULL,
+            original_name TEXT DEFAULT '',
+            mime_type TEXT DEFAULT 'image/jpeg',
+            size_bytes INTEGER NOT NULL DEFAULT 0,
+            uploaded_at TEXT NOT NULL,
+            uploaded_by TEXT NOT NULL,
             UNIQUE(week,store,id_art)
         )""")
 
@@ -1005,7 +1061,15 @@ def _detect_header(raw: pd.DataFrame) -> int:
 
 
 def _safe_date_iso(value):
-    dt=pd.to_datetime(value,errors="coerce")
+    # En lectura XML las fechas de Excel llegan como seriales numéricos.
+    try:
+        numeric=float(value)
+    except Exception:
+        numeric=None
+    if numeric is not None and math.isfinite(numeric) and 20000 <= numeric <= 100000:
+        dt=pd.to_datetime(numeric,unit="D",origin="1899-12-30",errors="coerce")
+    else:
+        dt=pd.to_datetime(value,errors="coerce")
     if pd.isna(dt) and value is not None:
         text=normalize_col(value)
         weekdays=("lunes","martes","miercoles","jueves","viernes","sabado","domingo")
@@ -1462,6 +1526,110 @@ def _parse_monthly_commercial(path: Path, sheet: str):
     return monthly,daily
 
 
+def _xml_local_name(tag: str) -> str:
+    return str(tag).rsplit("}",1)[-1]
+
+
+def _xlsx_sheet_paths(archive: zipfile.ZipFile) -> dict[str,str]:
+    """Relaciona el nombre visible de cada hoja con su XML dentro del XLSX."""
+    import posixpath
+    workbook=ET.fromstring(archive.read("xl/workbook.xml"))
+    rels=ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+    targets={
+        str(rel.attrib.get("Id") or ""):str(rel.attrib.get("Target") or "")
+        for rel in rels if _xml_local_name(rel.tag)=="Relationship"
+    }
+    result={}
+    rel_attr="{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+    for node in workbook.iter():
+        if _xml_local_name(node.tag)!="sheet":
+            continue
+        name=str(node.attrib.get("name") or "")
+        target=targets.get(str(node.attrib.get(rel_attr) or ""),"")
+        if not name or not target:
+            continue
+        if target.startswith("/"):
+            member=target.lstrip("/")
+        elif target.startswith("xl/"):
+            member=target
+        else:
+            member=posixpath.normpath(posixpath.join("xl",target))
+        result[name]=member
+    return result
+
+
+def _xlsx_shared_string_reader(archive: zipfile.ZipFile, con: sqlite3.Connection):
+    """Guarda sharedStrings en SQLite y devuelve un lector con caché acotado."""
+    con.execute("CREATE TABLE IF NOT EXISTS shared_strings(idx INTEGER PRIMARY KEY,value TEXT NOT NULL)")
+    member="xl/sharedStrings.xml"
+    if member in archive.namelist():
+        batch=[]; index=0
+        with archive.open(member) as stream:
+            for _event,elem in ET.iterparse(stream,events=("end",)):
+                if _xml_local_name(elem.tag)!="si":
+                    continue
+                value="".join(str(child.text or "") for child in elem.iter() if _xml_local_name(child.tag)=="t")
+                batch.append((index,value));index+=1
+                if len(batch)>=5000:
+                    con.executemany("INSERT INTO shared_strings VALUES(?,?)",batch);batch.clear()
+                elem.clear()
+        if batch:
+            con.executemany("INSERT INTO shared_strings VALUES(?,?)",batch)
+        con.commit()
+
+    @lru_cache(maxsize=32768)
+    def read(index: int) -> str:
+        row=con.execute("SELECT value FROM shared_strings WHERE idx=?",(int(index),)).fetchone()
+        return str(row[0]) if row else ""
+    return read
+
+
+def _xlsx_column_index(reference: str) -> int:
+    value=0
+    for char in str(reference or ""):
+        if not char.isalpha():
+            break
+        value=value*26+(ord(char.upper())-64)
+    return value-1
+
+
+def _xlsx_cell_value(cell, shared_value):
+    kind=str(cell.attrib.get("t") or "")
+    raw=""
+    if kind=="inlineStr":
+        return "".join(str(node.text or "") for node in cell.iter() if _xml_local_name(node.tag)=="t")
+    for node in cell:
+        if _xml_local_name(node.tag)=="v":
+            raw=str(node.text or "")
+            break
+    if kind=="s" and raw:
+        try:return shared_value(int(raw))
+        except Exception:return ""
+    if kind=="b":
+        return raw=="1"
+    if not raw:
+        return ""
+    try:return float(raw)
+    except Exception:return raw
+
+
+def _xlsx_monthly_rows(archive: zipfile.ZipFile, member: str, shared_value):
+    """Itera sólo columnas requeridas sin materializar la hoja completa."""
+    current={}
+    with archive.open(member) as stream:
+        for _event,elem in ET.iterparse(stream,events=("end",)):
+            tag=_xml_local_name(elem.tag)
+            if tag=="c":
+                column=_xlsx_column_index(elem.attrib.get("r", ""))
+                if column in (1,7,24,25) or column>=29:
+                    current[column]=_xlsx_cell_value(elem,shared_value)
+                elem.clear()
+            elif tag=="row":
+                yield current
+                current={}
+                elem.clear()
+
+
 def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
     """Construye FIFO desde las hojas mensuales con memoria acotada.
 
@@ -1472,8 +1640,6 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
     """
     if not sheets:
         return [], [], [], []
-
-    from openpyxl import load_workbook
 
     temp_fd,temp_name=tempfile.mkstemp(prefix="operaciones_recovery_",suffix=".sqlite3")
     os.close(temp_fd)
@@ -1492,20 +1658,22 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
                 return_cost REAL NOT NULL
             );
         """)
-        wb=load_workbook(path,read_only=True,data_only=True)
-        try:
+        with zipfile.ZipFile(path) as archive:
+            sheet_paths=_xlsx_sheet_paths(archive)
+            shared_value=_xlsx_shared_string_reader(archive,con)
             for sheet in sheets:
-                if sheet not in wb.sheetnames:
+                member=sheet_paths.get(sheet,"")
+                if not member or member not in archive.namelist():
                     errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
                     continue
                 try:
-                    ws=wb[sheet]
-                    row_iter=ws.iter_rows(values_only=True)
-                    first=tuple(next(row_iter,()) or ())
+                    row_iter=_xlsx_monthly_rows(archive,member,shared_value)
+                    first=dict(next(row_iter,{}) or {})
                     next(row_iter,None)  # La segunda fila contiene subtítulos del reporte.
                     date_columns=[]
-                    for index in range(29,len(first),3):
-                        date_iso,week_iso,year_iso,month_key=_safe_date_iso(first[index])
+                    max_column=max(first.keys(),default=28)
+                    for index in range(29,max_column+1,3):
+                        date_iso,week_iso,year_iso,month_key=_safe_date_iso(first.get(index))
                         if date_iso and week_iso and year_iso:
                             date_columns.append((index,date_iso,int(week_iso),int(year_iso),month_key))
                             weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
@@ -1516,7 +1684,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
 
                     batch=[]
                     def cell(values,index,default=None):
-                        return values[index] if index < len(values) else default
+                        return values.get(index,default)
                     def number(value):
                         try:
                             result=float(value or 0)
@@ -1525,7 +1693,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
                             return 0.0
 
                     for values in row_iter:
-                        values=tuple(values or ())
+                        values=dict(values or {})
                         store=_normalize_store_value(cell(values,25,""))
                         art=_clean_occurrence(cell(values,1,""))
                         if not store or not art:
@@ -1548,9 +1716,6 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
                     con.commit()
                 except Exception as exc:
                     errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
-        finally:
-            wb.close()
-
         query="""
             SELECT store,year_iso,week_iso,id_art,color,date,
                    SUM(dev),SUM(sales),SUM(sales_value),SUM(return_cost)
@@ -1601,6 +1766,23 @@ def _json_default(value):
 
 def _safe_json_dump(data):
     return json.dumps(data,ensure_ascii=False,default=_json_default,allow_nan=False)
+
+
+def _write_json_stream(path: Path, data):
+    """Escribe JSON por fragmentos para no crear una segunda copia en memoria."""
+    with Path(path).open("w",encoding="utf-8") as stream:
+        json.dump(data,stream,ensure_ascii=False,default=_json_default,allow_nan=False,separators=(",",":"))
+
+
+def _read_json_stream(path: Path):
+    """Reconstruye JSON grande sin cargar primero todo el texto del archivo."""
+    try:
+        import ijson
+        with Path(path).open("rb") as stream:
+            return next(ijson.items(stream,""))
+    except (ImportError,StopIteration):
+        with Path(path).open("r",encoding="utf-8") as stream:
+            return json.load(stream)
 
 
 
@@ -1727,8 +1909,21 @@ def _get_recovery_fifo_rows(data):
 
 def parse_operations_excel(path: Path, persist: bool=True):
     try:
-        with pd.ExcelFile(path) as xls:
-            names=list(xls.sheet_names)
+        if Path(path).suffix.lower()==".xlsx":
+            with zipfile.ZipFile(path) as archive:
+                names=list(_xlsx_sheet_paths(archive))
+        else:
+            names=[]
+            last=None
+            for engine in _excel_engine_candidates(path):
+                try:
+                    with pd.ExcelFile(path,engine=engine) as xls:
+                        names=list(xls.sheet_names)
+                    break
+                except Exception as exc:
+                    last=exc
+            if not names and last:
+                raise last
     except Exception as exc:
         raise ValueError(f"No fue posible abrir el Excel: {exc}")
 
@@ -2174,10 +2369,69 @@ def _capacity_unique_model_sets():
 
 CAPACITY_NORMALIZED_DIR = DATA_ROOT / "capacity_normalized"
 CAPACITY_NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
+CAPACITY_CACHE_SCHEMA = 48
 
 def _capacity_cache_path(entry_id: str) -> Path:
     safe=re.sub(r"[^0-9A-Za-z_-]+","_",str(entry_id or "capacity"))
-    return CAPACITY_NORMALIZED_DIR / f"capacity_{safe}.pkl"
+    return CAPACITY_NORMALIZED_DIR / f"capacity_{safe}_v{CAPACITY_CACHE_SCHEMA}.pkl"
+
+
+def _prepare_capacity_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Reduce el catálogo a una fracción de su memoria y precalcula ubicaciones.
+
+    Los textos del Excel se repiten miles de veces. Como objetos Python ocupaban
+    más de 300 MB; como categorías conservan el mismo valor con códigos compactos.
+    La conversión se hace columna por columna para no duplicar el catálogo entero.
+    """
+    if not isinstance(frame,pd.DataFrame) or frame.empty:
+        return frame
+    ready=(
+        int(frame.attrs.get("capacity_cache_schema") or 0)==CAPACITY_CACHE_SCHEMA
+        and "Área reporte" in frame.columns and "Pasillo operativo" in frame.columns
+        and "_TiendaKey" in frame.columns and "_SeccionKey" in frame.columns
+    )
+    if ready:
+        return frame
+
+    if "Tienda" in frame.columns:
+        stores=frame["Tienda"].fillna("").astype(str).str.strip()
+        keys=stores.map(login_key)
+        stores=stores.mask(keys==login_key("Guadalajara"),"Atemajac")
+        stores=stores.mask(keys.isin([login_key("Guadalajara Miravalle"),login_key("Miravalle Guadalajara")]),"Miravalle")
+        frame["Tienda"]=stores
+        del stores,keys
+
+    date_columns={"Última entrada CEDIS a tienda"}
+    numeric_columns={
+        "Existencia piso","Existencia bodega","Existencia","VPD","DDI",
+        "Venta pzas 7","Venta pzas 30","Venta pzas","Venta $ 7","Venta $ mes","Venta $",
+        "Costo unitario","Precio unitario","Inversión","Utilidad %","Utilidad $",
+        "Capacidad","Excedente","Pzas última entrada",
+    }
+    for column in list(frame.columns):
+        if column in date_columns or column in numeric_columns:
+            continue
+        series=frame[column]
+        if isinstance(series.dtype,pd.CategoricalDtype):
+            continue
+        if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_string_dtype(series.dtype):
+            clean=series.fillna("").astype(str).str.strip()
+            frame[column]=pd.Categorical(clean)
+            del clean
+
+    # Estas dos clasificaciones eran la parte más costosa de cada consulta. Se
+    # calculan una sola vez al cargar/migrar el archivo y también se categorizan.
+    if "Área reporte" not in frame.columns:
+        frame["Área reporte"]=pd.Categorical(_capacity_area_report_series(frame))
+    if "Pasillo operativo" not in frame.columns:
+        frame["Pasillo operativo"]=pd.Categorical(_operational_location_series(frame))
+
+    frame["_TiendaKey"]=pd.Categorical(frame.get("Tienda",pd.Series("",index=frame.index)).astype(str).map(login_key))
+    frame["_SeccionKey"]=pd.Categorical(frame.get("Sección",pd.Series("",index=frame.index)).astype(str).map(login_key))
+    frame["_CatalogKey"]=pd.Categorical(frame.get("Tipo catálogo",pd.Series("",index=frame.index)).astype(str).map(login_key))
+    frame.attrs["capacity_cache_schema"]=CAPACITY_CACHE_SCHEMA
+    _release_process_memory()
+    return frame
 
 def _load_capacity_cache(entry: dict) -> pd.DataFrame:
     try:
@@ -2186,13 +2440,21 @@ def _load_capacity_cache(entry: dict) -> pd.DataFrame:
         if cache_path.exists() and cache_path.is_file():
             frame=pd.read_pickle(cache_path)
             if isinstance(frame,pd.DataFrame):
+                old_schema=int(frame.attrs.get("capacity_cache_schema") or 0)
+                frame=_prepare_capacity_frame(frame)
+                target=_capacity_cache_path(str(entry.get("id") or ""))
+                if old_schema!=CAPACITY_CACHE_SCHEMA or cache_path!=target:
+                    frame.to_pickle(target)
+                    update_entry("capacities",str(entry.get("id") or ""),cache_file=str(target.relative_to(DATA_ROOT)))
+                    if cache_path.parent==CAPACITY_NORMALIZED_DIR and cache_path!=target:
+                        cache_path.unlink(missing_ok=True)
                 return frame
     except Exception as exc:
         print(f"[V44] Cache capacidades no disponible: {type(exc).__name__}: {exc}")
     return pd.DataFrame()
 
 _CAPACITY_FRAME_CACHE = {"path": "", "mtime": None, "frame": None}
-_CAPACITY_ANALYTICS_LOCK=threading.RLock()
+_CAPACITY_ANALYTICS_LOCK=_RESOURCE_HEAVY_LOCK
 
 
 def _serialized_capacity(func):
@@ -2200,7 +2462,10 @@ def _serialized_capacity(func):
     @wraps(func)
     def wrapped(*args,**kwargs):
         with _CAPACITY_ANALYTICS_LOCK:
-            return func(*args,**kwargs)
+            try:
+                return func(*args,**kwargs)
+            finally:
+                _release_process_memory()
     return wrapped
 
 def _latest_capacity_frame() -> pd.DataFrame:
@@ -2222,6 +2487,7 @@ def _latest_capacity_frame() -> pd.DataFrame:
         if frame.empty:
             frame=read_capacity_file(path)
             if isinstance(frame,pd.DataFrame) and not frame.empty:
+                frame=_prepare_capacity_frame(frame)
                 cache_path=_capacity_cache_path(str(entry.get("id") or ""))
                 try:
                     frame.to_pickle(cache_path)
@@ -2229,6 +2495,7 @@ def _latest_capacity_frame() -> pd.DataFrame:
                 except Exception as cache_exc:
                     print(f"[V44] No se pudo persistir cache capacidades: {cache_exc}")
         if isinstance(frame,pd.DataFrame):
+            frame=_prepare_capacity_frame(frame)
             _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":frame})
             return frame
         return pd.DataFrame()
@@ -2313,6 +2580,65 @@ def _aggregate_capacity_models(frame: pd.DataFrame, store: str="Compañía", sec
     return out
 
 
+_CAPACITY_RECURRENCE_CACHE={}
+
+
+def _capacity_previous_entries(period: str, limit: int=2) -> list[dict]:
+    current=_capacity_source_entry(period)
+    if not current:
+        return []
+    current_date=_capacity_report_date(current)
+    by_week={}
+    for entry in _capacity_processed_entries():
+        if str(entry.get("id") or "")==str(current.get("id") or ""):
+            continue
+        report_date=_capacity_report_date(entry)
+        if report_date>=current_date:
+            continue
+        iso=report_date.isocalendar(); key=f"{iso.year}-W{iso.week:02d}"
+        previous=by_week.get(key)
+        if previous is None or str(entry.get("uploaded_at") or "")>str(previous.get("uploaded_at") or ""):
+            by_week[key]=entry
+    return sorted(by_week.values(),key=lambda e:_capacity_report_date(e),reverse=True)[:limit]
+
+
+def _capacity_low_suggested_ids(entry: dict, store: str, section: str, catalog: str) -> set[str]:
+    key=(str(entry.get("id") or ""),login_key(store),login_key(section),login_key(catalog))
+    cached=_CAPACITY_RECURRENCE_CACHE.get(key)
+    if cached is not None:
+        return set(cached)
+    frame=_load_capacity_cache(entry)
+    if frame.empty:
+        path=resolve_entry_path(entry)
+        frame=_prepare_capacity_frame(read_capacity_file(path))
+    work=_capacity_scope_v45(frame,store,section,catalog)
+    if work.empty or "ID_ART" not in work.columns:
+        ids=set()
+    else:
+        article=work["ID_ART"].fillna("").astype(str).str.strip()
+        suggested=pd.to_numeric(work.get("VPD",0),errors="coerce").fillna(0.0)
+        totals=suggested.groupby(article).sum()
+        ids={str(value) for value in totals[totals<=1.0].index if str(value) not in ("","nan","None")}
+    if len(_CAPACITY_RECURRENCE_CACHE)>=48:
+        _CAPACITY_RECURRENCE_CACHE.pop(next(iter(_CAPACITY_RECURRENCE_CACHE)))
+    _CAPACITY_RECURRENCE_CACHE[key]=set(ids)
+    del work,frame
+    _release_process_memory()
+    return ids
+
+
+def _capacity_recurrence_counts(current_ids: set[str], period: str, store: str, section: str, catalog: str) -> dict[str,int]:
+    active=set(current_ids); counts={value:0 for value in active}
+    for entry in _capacity_previous_entries(period,2):
+        previous=_capacity_low_suggested_ids(entry,store,section,catalog)
+        active={value for value in active if value in previous}
+        for value in active:
+            counts[value]+=1
+        if not active:
+            break
+    return counts
+
+
 def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: str="80_20", period: str="", catalog: str="Todos"):
     """Reportes de modelos desde el catálogo de capacidades.
 
@@ -2329,7 +2655,6 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
     if work.empty or "ID_ART" not in work.columns:
         return []
 
-    work=work.copy()
     work["__id"] = work["ID_ART"].fillna("").astype(str).str.strip()
     work=work[~work["__id"].isin(["","nan","None"])]
     if work.empty:
@@ -2410,6 +2735,16 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
         pmetric="sales_pzas_30" if "sales_pzas_30" in models.columns else "sales_pzas_month"
     models["sales_pzas"]=pd.to_numeric(models.get(pmetric,0),errors="coerce").fillna(0.0)
 
+    entry=_capacity_source_entry(period)
+    report_date=pd.Timestamp(_capacity_report_date(entry)) if entry else pd.Timestamp.now().normalize()
+    last_entry=pd.to_datetime(models.get("ultima_cedis",pd.NaT),errors="coerce")
+    zero_eligible=(
+        (pd.to_numeric(models.get("suggested",0),errors="coerce").fillna(0)<=0)
+        & (pd.to_numeric(models.get("sales_pzas_30",0),errors="coerce").fillna(0)<=0)
+        & last_entry.notna()
+        & (last_entry<=report_date-pd.Timedelta(days=30))
+    )
+
     mode=str(mode or "80_20").lower()
     if mode in ("80_20","8020","top","champions"):
         selected=models.sort_values([metric,"sales_pzas","existence"],ascending=[False,False,False]).reset_index(drop=True)
@@ -2423,10 +2758,11 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             selected=selected.head(50).copy()
     elif mode in ("slow","lentos"):
         selected=models[(pd.to_numeric(models["suggested"],errors="coerce").fillna(0)<=1) | (pd.to_numeric(models["sales_pzas_30"],errors="coerce").fillna(0)<=0)]
+        selected=selected[~zero_eligible.reindex(selected.index,fill_value=False)]
         selected=selected.sort_values(["existence","suggested","sales_pzas_30"],ascending=[False,True,True]).head(50).copy()
         selected["cum_share"]=0.0
     elif mode in ("suggested_zero","sin_venta","sug0"):
-        selected=models[(pd.to_numeric(models["suggested"],errors="coerce").fillna(0)<=0) | (pd.to_numeric(models["sales_pzas_30"],errors="coerce").fillna(0)<=0)]
+        selected=models[zero_eligible]
         selected=selected.sort_values(["existence","sales_pzas_30"],ascending=[False,True]).head(80).copy()
         selected["cum_share"]=0.0
     else:
@@ -2441,6 +2777,12 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
     selected["rank"]=np.arange(1,len(selected)+1)
     selected["occupancy"]=np.where(pd.to_numeric(selected.get("capacity",0),errors="coerce").fillna(0)>0,
         pd.to_numeric(selected.get("existence",0),errors="coerce").fillna(0)/pd.to_numeric(selected.get("capacity",0),errors="coerce").replace(0,np.nan)*100,np.nan)
+    if mode in ("slow","lentos","suggested_zero","sin_venta","sug0"):
+        low_ids=set(selected.loc[pd.to_numeric(selected.get("suggested",0),errors="coerce").fillna(0)<=1,"id_art"].astype(str))
+        recurrence=_capacity_recurrence_counts(low_ids,period,store,section,catalog)
+        selected["recurrence_weeks"]=selected["id_art"].astype(str).map(recurrence).fillna(0).astype(int)
+    else:
+        selected["recurrence_weeks"]=0
 
     # Etiquetas de ubicación/exhibición sólo para el subconjunto devuelto.
     ids=set(selected["id_art"].astype(str))
@@ -2487,6 +2829,7 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             "ultima_cedis":str(getattr(r,"ultima_cedis_fmt","") or ""),
             "pzas_ult_cedis":float(getattr(r,"pzas_ult_cedis",0) or 0),
             "cum_share":float(getattr(r,"cum_share",0) or 0),
+            "recurrence_weeks":int(getattr(r,"recurrence_weeks",0) or 0),
         }
         rows.append(base)
     return rows
@@ -2499,7 +2842,6 @@ def _capacity_8020_summary(store: str="Compañía", section: str="Todas", catalo
     if work.empty or "ID_ART" not in work.columns:
         return {"models_80":0,"models_20":0,"total_models":0,"rows":[]}
     pcol,vcol=_capacity_period_columns(period)
-    work=work.copy()
     work["__id"]=work["ID_ART"].fillna("").astype(str).str.strip()
     work=work[~work["__id"].isin(["","nan","None"])]
     if work.empty:return {"models_80":0,"models_20":0,"total_models":0,"rows":[]}
@@ -2597,9 +2939,8 @@ def _capacity_location_detail(store: str="Compañía", section: str="Todas", cat
         work=_capacity_scope_v45(frame, store, section, catalog, add_area=True)
         if work.empty:
             return []
-        work=work.copy()
         work["Grupo ubicación"]=work.get("Área reporte", _capacity_area_report_series(work)).fillna("").astype(str).str.strip()
-        work["Pasillo real"]=_operational_location_series(work)
+        work["Pasillo real"]=work.get("Pasillo operativo",_operational_location_series(work)).fillna("").astype(str).str.strip()
         work=work[work["Pasillo real"].fillna("").astype(str).str.strip().ne("")]
         if work.empty:
             return []
@@ -2696,12 +3037,13 @@ def _capacity_frame_for_period(period: str="") -> pd.DataFrame:
         if frame.empty:
             frame=read_capacity_file(path)
             if isinstance(frame,pd.DataFrame) and not frame.empty:
+                frame=_prepare_capacity_frame(frame)
                 cache_path=_capacity_cache_path(str(entry.get("id") or ""))
                 try:
                     frame.to_pickle(cache_path);update_entry("capacities",str(entry.get("id") or ""),cache_file=str(cache_path.relative_to(DATA_ROOT)))
                 except Exception:pass
         if isinstance(frame,pd.DataFrame):
-            frame=_normalize_capacity_store_aliases(frame)
+            frame=_prepare_capacity_frame(frame)
             _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":frame});return frame
     except Exception as exc:print(f"[V45] Error leyendo capacidad por periodo: {type(exc).__name__}: {exc}")
     return pd.DataFrame()
@@ -2711,7 +3053,9 @@ def _normalize_capacity_store_aliases(frame: pd.DataFrame) -> pd.DataFrame:
     """Corrige alias del Excel aun cuando el catálogo cacheado provenga de V45."""
     if frame is None or frame.empty or "Tienda" not in frame.columns:
         return frame
-    out=frame.copy()
+    out=frame
+    if pd.api.types.is_categorical_dtype(out["Tienda"].dtype):
+        out["Tienda"]=out["Tienda"].astype(str)
     keys=out["Tienda"].fillna("").astype(str).map(login_key)
     # En el Excel de capacidades: Guadalajara = Atemajac y Guadalajara Miravalle = Miravalle.
     out.loc[keys==login_key("Guadalajara"),"Tienda"]="Atemajac"
@@ -2733,6 +3077,8 @@ def _capacity_area_report_series(frame: pd.DataFrame) -> pd.Series:
     """
     if frame is None or frame.empty:
         return pd.Series(dtype=str)
+    if "Área reporte" in frame.columns:
+        return frame["Área reporte"]
     sub=frame.get("Subcategoría",pd.Series("",index=frame.index)).fillna("").astype(str).str.upper()
     cat=frame.get("Categoría",pd.Series("",index=frame.index)).fillna("").astype(str).str.upper()
     aisle=frame.get("Pasillo",pd.Series("",index=frame.index)).fillna("").astype(str).str.upper()
@@ -2793,6 +3139,8 @@ def _operational_location_series(frame: pd.DataFrame) -> pd.Series:
     """Versión vectorizada: selecciona la primera ubicación operativa válida."""
     if frame is None or frame.empty:
         return pd.Series(dtype=str)
+    if "Pasillo operativo" in frame.columns:
+        return frame["Pasillo operativo"]
     areas=frame.get("Área reporte",_capacity_area_report_series(frame)).fillna("").astype(str)
     raw=frame.get("Pasillo",frame.get("Ubicación detalle",pd.Series("",index=frame.index))).fillna("").astype(str).str.strip()
     stores=frame.get("Tienda",pd.Series("",index=frame.index)).fillna("").astype(str)
@@ -2826,13 +3174,17 @@ def _capacity_scope_v45(frame: pd.DataFrame, store: str="Compañía", section: s
     if frame is None or frame.empty:return pd.DataFrame()
     work=frame
     if store and store!="Compañía":
-        work=work[work["Tienda"].map(login_key)==login_key(store)]
+        store_keys=work["_TiendaKey"] if "_TiendaKey" in work.columns else work["Tienda"].map(login_key)
+        work=work[store_keys==login_key(store)]
     else:
         active=set(store_names(True) or PROJECT_STORES)
         work=work[work["Tienda"].isin(active)]
-    if section and section!="Todas":work=work[work["Sección"].map(login_key)==login_key(section)]
+    if section and section!="Todas":
+        section_keys=work["_SeccionKey"] if "_SeccionKey" in work.columns else work["Sección"].map(login_key)
+        work=work[section_keys==login_key(section)]
     if catalog and catalog not in ("Todos","Todas","") and "Tipo catálogo" in work.columns:
-        work=work[work["Tipo catálogo"].map(login_key)==login_key(catalog)]
+        catalog_keys=work["_CatalogKey"] if "_CatalogKey" in work.columns else work["Tipo catálogo"].map(login_key)
+        work=work[catalog_keys==login_key(catalog)]
     if work.empty:return work.copy()
     work=work.copy()
     if add_area:
@@ -3061,8 +3413,10 @@ def model_checklist_get(request: Request, week: str, store: str):
         return {"week":week,"store":"Compañía","rows":[],"editable":False}
     with db() as con:
         rows=con.execute(
-            "SELECT week,store,id_art,model,section,rubro,en_ubicacion,cenefa_correcta,todas_tallas,exhibido,updated_at,updated_by "
-            "FROM model_checklist WHERE week=? AND store=? ORDER BY id_art",
+            "SELECT c.week,c.store,c.id_art,c.model,c.section,c.rubro,c.en_ubicacion,c.cenefa_correcta,c.todas_tallas,c.exhibido,c.updated_at,c.updated_by,"
+            "e.id AS evidence_id,e.uploaded_at AS evidence_uploaded_at,e.uploaded_by AS evidence_uploaded_by "
+            "FROM model_checklist c LEFT JOIN model_evidence e ON e.week=c.week AND e.store=c.store AND e.id_art=c.id_art "
+            "WHERE c.week=? AND c.store=? ORDER BY c.id_art",
             (week,store)
         ).fetchall()
     editable=(
@@ -3110,6 +3464,135 @@ async def model_checklist_save(request: Request):
         )
     return {"ok":True,"message":"Checklist guardado","updated_at":now}
 
+
+def _checklist_write_store(user: dict, requested: str) -> str:
+    store=str(requested or "").strip()
+    if user.get("role")=="tienda":
+        assigned=str(user.get("store") or "").strip()
+        if store and login_key(store)!=login_key(assigned):
+            raise HTTPException(403,"Sólo puedes registrar evidencia de tu tienda")
+        store=assigned
+    elif user.get("role") in ("superadmin","admin"):
+        active={login_key(x):x for x in store_names(True)}
+        store=active.get(login_key(store),"")
+        if not store:
+            raise HTTPException(400,"Selecciona una tienda activa")
+    else:
+        raise HTTPException(403,"No autorizado")
+    return store
+
+
+@app.post("/api/model-checklist/scope")
+async def model_checklist_scope(request: Request):
+    """Guarda el universo mostrado para calcular cobertura real de evidencias."""
+    u=require_user(request,("superadmin","admin","tienda"))
+    body=await request.json()
+    week=str(body.get("week") or "").strip()
+    store=_checklist_write_store(u,str(body.get("store") or ""))
+    models=list(body.get("models") or [])[:500]
+    if not week:
+        raise HTTPException(400,"Selecciona un periodo")
+    clean=[];seen=set();now=datetime.now().isoformat(timespec="seconds")
+    for model in models:
+        ident=str((model or {}).get("id_art") or "").strip()
+        if not ident or ident in seen:
+            continue
+        seen.add(ident)
+        clean.append((week,store,ident,str(model.get("model") or ""),str(model.get("section") or ""),str(model.get("rubro") or ""),now))
+    with db() as con:
+        con.execute("DELETE FROM model_checklist_expected WHERE week=? AND store=?",(week,store))
+        con.executemany("INSERT INTO model_checklist_expected(week,store,id_art,model,section,rubro,updated_at) VALUES(?,?,?,?,?,?,?)",clean)
+    return {"ok":True,"week":week,"store":store,"models":len(clean)}
+
+
+def _safe_path_component(value: str) -> str:
+    return re.sub(r"[^0-9A-Za-z_-]+","_",str(value or "")).strip("_") or "item"
+
+
+def _compress_evidence_image(source: Path, target: Path):
+    from PIL import Image, ImageOps
+    with Image.open(source) as raw:
+        image=ImageOps.exif_transpose(raw)
+        if image.mode not in ("RGB","L"):
+            image=image.convert("RGB")
+        elif image.mode=="L":
+            image=image.convert("RGB")
+        image.thumbnail((1600,1600),Image.Resampling.LANCZOS)
+        target.parent.mkdir(parents=True,exist_ok=True)
+        image.save(target,"JPEG",quality=82,optimize=True)
+
+
+@app.post("/api/model-checklist/evidence")
+async def upload_model_evidence(
+    request: Request,
+    file: UploadFile=File(...),
+    week: str=Form(...),store: str=Form(...),id_art: str=Form(...),
+    model: str=Form(""),section: str=Form(""),rubro: str=Form(""),
+):
+    u=require_user(request,("superadmin","admin","tienda"))
+    week=str(week or "").strip();id_art=str(id_art or "").strip()
+    store=_checklist_write_store(u,store)
+    if not week or not id_art:
+        raise HTTPException(400,"Falta periodo o ID_ART")
+    suffix=Path(file.filename or "evidencia.jpg").suffix.lower()
+    if suffix not in (".jpg",".jpeg",".png",".webp"):
+        raise HTTPException(400,"La evidencia debe ser una foto JPG, PNG o WEBP")
+    stage=STAGING_DIR/f"evidence_{secrets.token_hex(8)}{suffix}"
+    target_dir=CHECKLIST_EVIDENCE_DIR/_safe_path_component(week)/_safe_path_component(store)
+    target=target_dir/f"{_safe_path_component(id_art)}_{secrets.token_hex(5)}.jpg"
+    old_path=None
+    try:
+        size=await _save_upload_stream(file,stage)
+        if not size:
+            raise HTTPException(400,"La foto está vacía")
+        if size>15*1024*1024:
+            raise HTTPException(400,"La foto supera 15 MB")
+        try:
+            await asyncio.to_thread(_compress_evidence_image,stage,target)
+        except Exception:
+            raise HTTPException(400,"No fue posible leer la foto. Usa una imagen JPG, PNG o WEBP válida")
+        now=datetime.now().isoformat(timespec="seconds")
+        with db() as con:
+            previous=con.execute("SELECT file_path FROM model_evidence WHERE week=? AND store=? AND id_art=?",(week,store,id_art)).fetchone()
+            old_path=str(previous["file_path"] or "") if previous else ""
+            con.execute(
+                """INSERT INTO model_checklist(week,store,id_art,model,section,rubro,updated_at,updated_by)
+                VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(week,store,id_art) DO UPDATE SET
+                model=excluded.model,section=excluded.section,rubro=excluded.rubro,updated_at=excluded.updated_at,updated_by=excluded.updated_by""",
+                (week,store,id_art,model,section,rubro,now,u["username"])
+            )
+            con.execute(
+                """INSERT INTO model_evidence(week,store,id_art,model,section,rubro,file_path,original_name,mime_type,size_bytes,uploaded_at,uploaded_by)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(week,store,id_art) DO UPDATE SET
+                model=excluded.model,section=excluded.section,rubro=excluded.rubro,file_path=excluded.file_path,
+                original_name=excluded.original_name,mime_type=excluded.mime_type,size_bytes=excluded.size_bytes,
+                uploaded_at=excluded.uploaded_at,uploaded_by=excluded.uploaded_by""",
+                (week,store,id_art,model,section,rubro,str(target.relative_to(DATA_ROOT)),file.filename or "evidencia.jpg","image/jpeg",target.stat().st_size,now,u["username"])
+            )
+            evidence=con.execute("SELECT id FROM model_evidence WHERE week=? AND store=? AND id_art=?",(week,store,id_art)).fetchone()
+        if old_path and old_path!=str(target.relative_to(DATA_ROOT)):
+            try:(DATA_ROOT/old_path).unlink(missing_ok=True)
+            except Exception:pass
+        return {"ok":True,"message":"Evidencia guardada","evidence_id":int(evidence["id"]),"uploaded_at":now}
+    finally:
+        stage.unlink(missing_ok=True)
+
+
+@app.get("/api/model-checklist/evidence/{evidence_id}")
+def get_model_evidence(request: Request,evidence_id: int):
+    u=require_user(request)
+    with db() as con:
+        row=con.execute("SELECT * FROM model_evidence WHERE id=?",(int(evidence_id),)).fetchone()
+    if not row:
+        raise HTTPException(404,"Evidencia no encontrada")
+    data=dict(row)
+    if u["role"]=="tienda" and login_key(data.get("store"))!=login_key(u.get("store")):
+        raise HTTPException(403,"No autorizado")
+    path=DATA_ROOT/str(data.get("file_path") or "")
+    if not path.exists():
+        raise HTTPException(404,"La fotografía ya no está disponible")
+    return FileResponse(path,media_type="image/jpeg",headers={"Content-Disposition":"inline"})
+
 @app.get("/api/model-checklist/summary")
 def model_checklist_summary(request: Request, week: str):
     u=require_user(request)
@@ -3123,6 +3606,14 @@ def model_checklist_summary(request: Request, week: str):
             "SELECT store,id_art,model,section,rubro,en_ubicacion,cenefa_correcta,todas_tallas,exhibido,updated_at "
             "FROM model_checklist WHERE week=?",(week,)
         ).fetchall()
+        expected_rows=con.execute(
+            "SELECT store,COUNT(*) AS total FROM model_checklist_expected WHERE week=? GROUP BY store",(week,)
+        ).fetchall()
+        evidence_rows=con.execute(
+            "SELECT store,COUNT(*) AS total FROM model_evidence WHERE week=? GROUP BY store",(week,)
+        ).fetchall()
+    expected={str(r["store"]):int(r["total"] or 0) for r in expected_rows}
+    evidences={str(r["store"]):int(r["total"] or 0) for r in evidence_rows}
     grouped={}
     for rr in rows:
         r=dict(rr)
@@ -3145,6 +3636,10 @@ def model_checklist_summary(request: Request, week: str):
     out=[]
     for store in allowed:
         g=grouped.get(store,{"store":store,"models":0,"criteria":{f:{"yes":0,"no":0,"answered":0,"missing":[]} for f in CHECKLIST_FIELDS}})
+        g["checklist_models"]=int(g.get("models") or 0)
+        g["models"]=int(expected.get(store) or g.get("models") or 0)
+        g["evidences"]=int(evidences.get(store) or 0)
+        g["evidence_pct"]=g["evidences"]/g["models"]*100 if g["models"] else 0.0
         total_answered=0
         criteria_scores=[]
         for f,c in g["criteria"].items():
@@ -3198,6 +3693,69 @@ def export_checklist_summary(request: Request, week: str):
     if not data.startswith(b"%PDF"): raise HTTPException(500,"No se generó un PDF válido")
     return Response(content=data,media_type="application/pdf",headers={"Content-Disposition":f'attachment; filename="checklist_{re.sub(r"[^0-9A-Za-z_-]+","_",week or "periodo")}.pdf"'})
 
+
+@app.get("/api/export/checklist-evidence")
+def export_checklist_evidence(request: Request, week: str):
+    u=require_user(request,("superadmin","admin"))
+    summary=model_checklist_summary(request,week)
+    allowed=set(store_names(True))
+    with db() as con:
+        evidence=[dict(r) for r in con.execute(
+            "SELECT * FROM model_evidence WHERE week=? ORDER BY store,id_art",(week,)
+        ).fetchall() if str(r["store"] or "") in allowed]
+    bio=BytesIO();c=pdfcanvas.Canvas(bio,pagesize=landscape(letter))
+    width,height=landscape(letter);margin=30
+
+    def page_header(title):
+        c.setFillColor(colors.HexColor("#173B73"));c.setFont("Helvetica-Bold",16)
+        c.drawString(margin,height-32,title)
+        c.setFillColor(colors.black);c.setFont("Helvetica",8)
+        c.drawRightString(width-margin,height-30,f"Periodo {week or 'Sin periodo'}")
+
+    page_header("Operaciones Ropa · Evidencias por modelo")
+    y=height-58
+    c.setFont("Helvetica-Bold",9);c.drawString(margin,y,"Cobertura de evidencias por tienda");y-=18
+    for row in summary.get("rows",[]):
+        if y<45:
+            c.showPage();page_header("Cobertura de evidencias por tienda");y=height-58
+        if int(row.get("models") or 0)<=0 and int(row.get("evidences") or 0)<=0:
+            continue
+        c.setFillColor(colors.HexColor("#F3F7FC") if int(y)%2 else colors.white)
+        c.rect(margin,y-4,width-margin*2,15,fill=1,stroke=0)
+        c.setFillColor(colors.black);c.setFont("Helvetica",8)
+        c.drawString(margin+5,y,str(row.get("store") or ""))
+        c.drawString(margin+190,y,f"{int(row.get('evidences') or 0)} de {int(row.get('models') or 0)} modelos")
+        c.setFont("Helvetica-Bold",8);c.drawString(margin+330,y,f"{float(row.get('evidence_pct') or 0):.1f}%")
+        y-=16
+
+    if evidence:
+        c.showPage();page_header("Detalle fotográfico");y=height-58
+    else:
+        y-=15;c.setFont("Helvetica",9);c.drawString(margin,y,"Aún no hay fotografías cargadas para este periodo.")
+
+    from reportlab.lib.utils import ImageReader
+    for index,row in enumerate(evidence,1):
+        if y<155:
+            c.showPage();page_header("Detalle fotográfico");y=height-58
+        path=DATA_ROOT/str(row.get("file_path") or "")
+        if path.exists():
+            try:c.drawImage(ImageReader(str(path)),margin,y-112,width=165,height=105,preserveAspectRatio=True,anchor='c',mask='auto')
+            except Exception:pass
+        tx=margin+180
+        c.setFillColor(colors.HexColor("#173B73"));c.setFont("Helvetica-Bold",11)
+        c.drawString(tx,y-8,f"{index}. {str(row.get('store') or '')[:30]}")
+        c.setFillColor(colors.black);c.setFont("Helvetica-Bold",9)
+        c.drawString(tx,y-28,f"ID_ART: {str(row.get('id_art') or '')[:45]}")
+        c.setFont("Helvetica",9)
+        c.drawString(tx,y-44,f"Modelo: {str(row.get('model') or '')[:62]}")
+        c.drawString(tx,y-60,f"Sección / Rubro: {str(row.get('section') or '')[:24]} / {str(row.get('rubro') or '')[:40]}")
+        c.drawString(tx,y-76,f"Subida por: {str(row.get('uploaded_by') or '')[:38]}")
+        c.drawString(tx,y-92,f"Fecha: {str(row.get('uploaded_at') or '')[:19]}")
+        c.setStrokeColor(colors.HexColor("#D8E0EB"));c.line(margin,y-120,width-margin,y-120)
+        y-=130
+    c.save();data=bio.getvalue()
+    return Response(content=data,media_type="application/pdf",headers={"Content-Disposition":f'attachment; filename="evidencias_{_safe_path_component(week or "periodo")}.pdf"'})
+
 @app.get("/api/commercial-detail")
 @_serialized_capacity
 def commercial_detail(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos"):
@@ -3237,7 +3795,7 @@ def _ensure_operations_parser_current():
         payload["migration_at"]=datetime.now().isoformat(timespec="seconds")
 
         tmp=DATA_ROOT/"operations_v40_migration.tmp.json"
-        tmp.write_text(_safe_json_dump(payload),encoding="utf-8")
+        _write_json_stream(tmp,payload)
         tmp.replace(OPS_FILE)
         _clear_operations_caches(clear_meta_file=True)
         try:
@@ -4144,12 +4702,13 @@ async def upload_capacity(request: Request,file:UploadFile=File(...)):
         # Libera el catálogo anterior antes de normalizar uno nuevo. En el plan
         # Starter evita sumar dos DataFrames completos durante la carga.
         _CAPACITY_FRAME_CACHE.update({"path":"","mtime":None,"frame":None})
+        _CAPACITY_RECURRENCE_CACHE.clear()
         gc.collect()
         # IMPORTANTE: el XLSX real supera 195 mil registros. Se procesa fuera del
         # hilo principal para que Uvicorn y las demás pestañas sigan respondiendo.
         def parse_capacity():
             with _CAPACITY_ANALYTICS_LOCK:
-                return read_capacity_file(path)
+                return _prepare_capacity_frame(read_capacity_file(path))
         df=await asyncio.to_thread(parse_capacity)
         if df.empty:
             raise ValueError("El Excel se abrió pero no se identificaron filas de capacidades/existencias")
@@ -4281,7 +4840,7 @@ async def upload_operations_preview(request: Request,file:UploadFile=File(...)):
         "missing_columns_by_sheet":payload.get("missing_columns_by_sheet",{}),
     }
     (STAGING_DIR/f"{token}.json").write_text(_safe_json_dump(meta),encoding="utf-8")
-    (STAGING_DIR/f"{token}.payload.json").write_text(_safe_json_dump(payload),encoding="utf-8")
+    await asyncio.to_thread(_write_json_stream,STAGING_DIR/f"{token}.payload.json",payload)
     return {
         "ok":True,"token":token,"file":filename,"period_detected":period,
         "operational_sheet":payload.get("operational_sheet",""),
@@ -4313,13 +4872,13 @@ async def upload_operations_publish(request: Request):
     try:
         if not payload_file.exists():
             raise HTTPException(409,"La validación temporal ya no existe. Valida nuevamente el archivo.")
-        payload=await asyncio.to_thread(lambda: json.loads(payload_file.read_text(encoding="utf-8")))
+        payload=await asyncio.to_thread(_read_json_stream,payload_file)
         final_path=DATA_ROOT/f"cambios_muertos_actual{suffix}"
         tmp_ops=DATA_ROOT/"operations_publish.tmp.json"
         payload["source_file"]=meta.get("filename") or final_path.name
         payload["uploaded_by"]=u["username"]
         payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
-        await asyncio.to_thread(tmp_ops.write_text, _safe_json_dump(payload), encoding="utf-8")
+        await asyncio.to_thread(_write_json_stream,tmp_ops,payload)
         await asyncio.to_thread(shutil.copy2, stage_path, final_path)
         await asyncio.to_thread(tmp_ops.replace, OPS_FILE)
         with db() as con:
@@ -4380,7 +4939,7 @@ async def upload_operations_legacy(request: Request,file:UploadFile=File(...)):
         # Persistir metadatos y archivo fuente actual.
         final_path=DATA_ROOT/"cambios_muertos_actual.xlsx"
         await asyncio.to_thread(shutil.copy2,p,final_path)
-        await asyncio.to_thread(OPS_FILE.write_text,_safe_json_dump(payload),encoding="utf-8")
+        await asyncio.to_thread(_write_json_stream,OPS_FILE,payload)
         _clear_operations_caches(clear_meta_file=True)
         try:
             meta=_build_operations_meta(payload,_ops_source_stamp())
