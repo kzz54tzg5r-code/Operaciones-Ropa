@@ -85,3 +85,51 @@ _web._capacity_locations_v45=_locations
 _web._capacity_rubros_v45=_rubros
 _web._capacity_location_detail=_detail
 app=_web.app
+
+# Parche visual y de estabilidad: se aplica a la respuesta HTML sin duplicar el
+# archivo web/index.html de gran tamaño.
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+class _OpsUIPatch(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response=await call_next(request)
+        if request.url.path!="/" or response.status_code!=200:
+            return response
+        body=b""
+        async for chunk in response.body_iterator:
+            body+=chunk
+        try:
+            html=body.decode("utf-8")
+        except UnicodeDecodeError:
+            return Response(body,status_code=response.status_code,headers=dict(response.headers),media_type="text/html")
+        patch=r'''<style>
+#macroAreaTableWrap{max-height:1185px;overflow-y:auto;position:relative}
+#macroAreaTableWrap .table th{position:sticky;top:0;z-index:4}
+#macroAreaAreaSwitch{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0 9px}
+</style><script>
+(()=>{const $=s=>document.querySelector(s);let AF='Todas',ROWS=[];
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const n=v=>typeof v==='number'?v.toLocaleString('es-MX',{maximumFractionDigits:2}):'—';
+const p=v=>v==null?'N/D':Number(v).toFixed(1)+'%';
+const scope=()=>window.DASH?.selected_store||$('#store')?.value||'Compañía';
+function setup(){const t=$('#macroAreaTitle');if(t)t.textContent='Ubicación · '+scope();
+ const old=$('#macroAreaSectionSwitch');if(old)old.style.display='none';
+ const sub=old?.parentElement?.previousElementSibling;
+ if(sub&&!$('#macroAreaAreaSwitch')){const bar=document.createElement('div');bar.id='macroAreaAreaSwitch';
+ ['Todas','Colgado','Doblado','Jeans','Lencería'].forEach(a=>{const b=document.createElement('button');b.className='switch'+(a===AF?' active':'');b.textContent=a;b.onclick=()=>{AF=a;document.querySelectorAll('#macroAreaAreaSwitch .switch').forEach(x=>x.classList.toggle('active',x.textContent===a));paint()};bar.appendChild(b)});sub.after(bar)}
+ const tb=$('#macroAreaTable');if(tb){const w=tb.closest('.tablewrap');if(w)w.id='macroAreaTableWrap'}
+ document.querySelectorAll('th').forEach(x=>{if(/^Últ?\.? CEDIS$/i.test(x.textContent.trim()))x.textContent='Ult entrada'})}
+ function paint(){const b=$('#macroAreaTable');if(!b)return;const d=AF==='Todas'?ROWS:ROWS.filter(r=>String(r.group||'')===AF);
+ b.innerHTML=d.length?d.map(r=>'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.location)+'</td><td>'+n(r.ids)+'</td><td>'+n(r.capacity)+'</td><td>'+n(r.floor)+'</td><td>'+n(r.warehouse)+'</td><td>'+n(r.existence)+'</td><td>'+n(r.suggested)+'</td><td>'+n(r.ddi)+'</td><td>'+n(r.sales_pzas)+'</td><td>+n(r.sales_value)+'</td><td>'+p(r.occupancy)+'</td></tr>').join(''):'<tr><td colspan="12">Sin información para el filtro seleccionado.</td></tr>'}
+ window.loadMacroAreaDetail=async()=>{setup();const b=$('#macroAreaTable');if(b)b.innerHTML='<tr><td colspan="12">Cargando ubicación…</td></tr>';try{const d=await api('/api/commercial-detail?week='+encodeURIComponent($('#week')?.value||'')+'&store='+encodeURIComponent(scope())+'&section=Todas&catalog='+encodeURIComponent($('#catalog')?.value||'Todos'),{timeoutMs:120000});ROWS=d.locations||[];paint()}catch(e){if(b)b.innerHTML='<tr><td colspan="12">No fue posible consultar ubicación: '+esc(e.message)+'</td></tr>'}setup()};
+ const bind=()=>{const btn=$('#uploadOps');if(!btn||btn.dataset.patch)return;btn.dataset.patch='1';btn.onclick=async()=>{const f=$('#opsFile')?.files?.[0];if(!f){log('Selecciona Excel operativo de Cambios y Muertos.');return}btn.disabled=true;btn.textContent='Procesando…';let ok=false,last='';for(let i=0;i<2&&!ok;i++){try{const r=await postFile('/api/upload/operations',f);log('Excel de Cambios y Muertos cargado correctamente\\nFilas: '+(r.rows||0));ok=true;await safeRefreshDash()}catch(e){last=e.message;if(i===0){log('Reintentando automáticamente la carga…');await new Promise(r=>setTimeout(r,5000))}}}if(!ok)log('Error real de carga: '+last);btn.disabled=false;btn.textContent='Procesar operativo'}};
+ const end=w=>{const m=/^(\\d{4})-W(\\d+)/.exec(w||'');if(!m)return new Date();const j=new Date(+m[1],0,4),day=j.getDay()||7;const mon=new Date(j);mon.setDate(j.getDate()-day+1+(+m[2]-1)*7);mon.setDate(mon.getDate()+6);return mon};
+ const orig=window.renderModelRows;if(typeof orig==='function')window.renderModelRows=function(a,b,z,...x){const base=end($('#week')?.value||'');z=(z||[]).filter(r=>{const s=String(r.ultima_cedis||'').trim();if(!s||s==='—')return false;const d=new Date(s+'T00:00:00'),q=(base-d)/86400000;return !Number.isNaN(q)&&q>=0&&q<=30});return orig.call(this,a,b,z,...x)};
+ new MutationObserver(()=>{setup();bind()}).observe(document.body,{childList:true,subtree:true});setTimeout(()=>{setup();bind()},100)
+})();
+</script>'''
+        html=html.replace("</body>",patch+"</body>",1)
+        return Response(html.encode("utf-8"),status_code=200,media_type="text/html")
+
+app.add_middleware(_OpsUIPatch)
