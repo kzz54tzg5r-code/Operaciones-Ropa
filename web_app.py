@@ -87,14 +87,24 @@ def _release_process_memory():
         pass
 
 def _cleanup_old_staging_files():
-    """Elimina staging antiguo sin bloquear el inicio de la aplicación."""
+    """Elimina cargas temporales interrumpidas al iniciar la aplicación."""
     try:
-        import time as _time
-        now=_time.time()
+        for pattern in ("legacy_*.xlsx","*.worker.json"):
+            for _p in STAGING_DIR.glob(pattern):
+                try:
+                    _p.unlink(missing_ok=True)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
+def _cleanup_current_operation_staging():
+    """Recupera espacio de intentos anteriores sin tocar archivos publicados."""
+    try:
         for _p in STAGING_DIR.glob("legacy_*.xlsx"):
             try:
-                if now-_p.stat().st_mtime > 300:
-                    _p.unlink(missing_ok=True)
+                _p.unlink(missing_ok=True)
             except Exception:
                 pass
     except Exception:
@@ -104,44 +114,23 @@ _cleanup_old_staging_files()
 
 
 def _parse_operations_external(stage_path: Path, token: str) -> dict:
-    """Procesa el Excel en un proceso Python separado.
+    """Procesa el Excel dentro del único proceso del plan Starter.
 
-    Esto evita que openpyxl/pandas bloqueen el proceso principal de FastAPI
-    mientras se valida un archivo grande.
+    Render suma la memoria del proceso web y de cualquier proceso hijo dentro
+    del mismo límite de 512 MB. El analizador mensual ya trabaja por streaming,
+    por lo que crear un segundo intérprete sólo duplicaba pandas/FastAPI y
+    provocaba el reinicio observado durante la carga de 141 MB.
     """
-    output_path = STAGING_DIR / f"{token}.worker.json"
-    cmd = [sys.executable, str(ROOT / "operations_parse_worker.py"), str(stage_path), str(output_path)]
-    # El proceso hijo comparte el límite de 512 MB con FastAPI. Mientras se
-    # analiza el libro se libera el catálogo comercial y se bloquean consultas
-    # pesadas para que ambos módulos no compitan por la misma memoria.
     with _RESOURCE_HEAVY_LOCK:
         cache=globals().get("_CAPACITY_FRAME_CACHE")
         if isinstance(cache,dict):
             cache.update({"path":"","mtime":None,"frame":None})
         gc.collect()
         _release_process_memory()
-        worker_env=os.environ.copy()
-        worker_env.setdefault("MALLOC_ARENA_MAX","2")
         try:
-            proc = subprocess.run(
-                cmd,
-                cwd=str(ROOT),
-                capture_output=True,
-                text=True,
-                timeout=900,
-                env=worker_env,
-            )
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("La validación excedió 15 minutos y fue cancelada.")
-    if proc.returncode != 0:
-        err = (proc.stderr or proc.stdout or "Error desconocido").strip()
-        raise RuntimeError(err[-4000:])
-    if not output_path.exists():
-        raise RuntimeError("El proceso de validación terminó sin generar resultados.")
-    try:
-        return _read_json_stream(output_path)
-    finally:
-        output_path.unlink(missing_ok=True)
+            return parse_operations_excel(stage_path,persist=False)
+        finally:
+            _release_process_memory()
 
 
 def migrate_packaged_data_to_shared():
@@ -2738,11 +2727,15 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
     entry=_capacity_source_entry(period)
     report_date=pd.Timestamp(_capacity_report_date(entry)) if entry else pd.Timestamp.now().normalize()
     last_entry=pd.to_datetime(models.get("ultima_cedis",pd.NaT),errors="coerce")
+    # Los modelos sin venta y sugerido bajo que acaban de entrar no son
+    # realmente lentos todavía. Se separan durante sus primeros 30 días para
+    # que la tienda revise exhibición/ubicación sin duplicarlos en ambas tablas.
     zero_eligible=(
-        (pd.to_numeric(models.get("suggested",0),errors="coerce").fillna(0)<=0)
+        (pd.to_numeric(models.get("suggested",0),errors="coerce").fillna(0)<=1)
         & (pd.to_numeric(models.get("sales_pzas_30",0),errors="coerce").fillna(0)<=0)
         & last_entry.notna()
-        & (last_entry<=report_date-pd.Timedelta(days=30))
+        & (last_entry>=report_date-pd.Timedelta(days=30))
+        & (last_entry<=report_date)
     )
 
     mode=str(mode or "80_20").lower()
@@ -2800,7 +2793,24 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
 
     location_col="Ubicación detalle" if "Ubicación detalle" in labels.columns else ("Pasillo" if "Pasillo" in labels.columns else "")
     location_map=compact_labels(location_col) if location_col else {}
-    exhibition_map=compact_labels("Exhibición")
+    # En exhibiciones se necesita el número/ubicación concretos (p. ej.
+    # "Cabecera 30A / Isla 02"), no sólo la clasificación "Cabecera / Isla".
+    # Un modelo puede aparecer en varias exhibiciones y se conservan hasta 5.
+    exhibition_map={}
+    if location_col and "Exhibición" in labels.columns:
+        exhibition_labels=labels[["__id",location_col,"Exhibición"]].copy()
+        exhibition_labels["Exhibición"]=exhibition_labels["Exhibición"].fillna("").astype(str).str.strip()
+        exhibition_labels[location_col]=exhibition_labels[location_col].fillna("").astype(str).str.strip()
+        exhibition_labels=exhibition_labels[
+            ~exhibition_labels["Exhibición"].isin(["","nan","None","—"])
+            & ~exhibition_labels[location_col].isin(["","nan","None","—"])
+        ].drop_duplicates(["__id",location_col])
+        if not exhibition_labels.empty:
+            exhibition_map=exhibition_labels.groupby("__id",sort=False)[location_col].agg(
+                lambda s:_combine_labels(s,5)
+            ).to_dict()
+    if not exhibition_map:
+        exhibition_map=compact_labels("Exhibición")
     store_map=compact_labels("Tienda")
 
     rows=[]
@@ -3647,8 +3657,10 @@ def model_checklist_summary(request: Request, week: str):
             c["label"]=CHECKLIST_LABELS[f]
             total_answered+=c["answered"]
             criteria_scores.append(float(c["pct"] or 0))
-        # Score = promedio simple de los 4 criterios. Un criterio sin respuesta aporta 0.
-        g["score"]=sum(criteria_scores)/len(CHECKLIST_FIELDS) if CHECKLIST_FIELDS else 0.0
+        # El porcentaje checklist es el promedio simple de los 4 criterios.
+        # El Score final pondera por igual checklist y cobertura de evidencias.
+        g["checklist_pct"]=sum(criteria_scores)/len(CHECKLIST_FIELDS) if CHECKLIST_FIELDS else 0.0
+        g["score"]=(g["checklist_pct"]+g["evidence_pct"])/2
         g["score_answered"]=total_answered
         out.append(g)
     out.sort(key=lambda x:(-float(x.get("score") or 0),x.get("store") or ""))
@@ -3668,8 +3680,8 @@ def export_checklist_summary(request: Request, week: str):
     c.setFillColor(colors.HexColor("#173B73")); c.setFont("Helvetica-Bold",17)
     c.drawString(margin,y,"Operaciones Ropa · Resumen checklist de modelos lentos"); y-=22
     c.setFont("Helvetica",9); c.setFillColor(colors.black); c.drawString(margin,y,f"Periodo: {week or 'Sin periodo'}"); y-=22
-    headers=["#","Tienda","Ubicación","Cenefa","Tallas","Exhibido","Score"]
-    widths=[.05,.20,.14,.14,.14,.14,.12]; total_w=width-margin*2
+    headers=["#","Tienda","Ubicación","Cenefa","Tallas","Exhibido","% checklist","% evidencias","Score"]
+    widths=[.04,.17,.105,.105,.105,.105,.12,.12,.11]; total_w=width-margin*2
     xs=[margin]; acc=margin
     for frac in widths[:-1]: acc+=total_w*frac; xs.append(acc)
     def hdr():
@@ -3681,7 +3693,13 @@ def export_checklist_summary(request: Request, week: str):
     hdr()
     for i,r in enumerate(rows,1):
         if y<42: c.showPage(); y=height-32; hdr()
-        vals=[i,r.get("store",""),*(f'{float((r.get("criteria") or {}).get(f,{}).get("pct") or 0):.1f}%' for f in CHECKLIST_FIELDS),f'{float(r.get("score") or 0):.1f}%']
+        vals=[
+            i,r.get("store",""),
+            *(f'{float((r.get("criteria") or {}).get(f,{}).get("pct") or 0):.1f}%' for f in CHECKLIST_FIELDS),
+            f'{float(r.get("checklist_pct") or 0):.1f}%',
+            f'{float(r.get("evidence_pct") or 0):.1f}%',
+            f'{float(r.get("score") or 0):.1f}%'
+        ]
         if i%2==0:
             c.setFillColor(colors.HexColor("#F5F8FC")); c.rect(margin,y-3,total_w,14,fill=1,stroke=0)
         c.setFillColor(colors.black); c.setFont("Helvetica",7)
@@ -4921,8 +4939,9 @@ async def upload_operations_legacy(request: Request,file:UploadFile=File(...)):
     suffix=Path(filename).suffix.lower()
     if suffix != ".xlsx":
         raise HTTPException(400,"Carga un archivo Excel .xlsx")
-    # El archivo se guarda por flujo y se procesa en un proceso aislado. Así la
-    # API sigue respondiendo mientras se recorren las hojas grandes.
+    # Recupera el espacio de cualquier intento interrumpido antes de crear el
+    # staging de esta solicitud.
+    _cleanup_current_operation_staging()
     token=secrets.token_hex(8)
     p=STAGING_DIR/f"legacy_{token}{suffix}"
     size=await _save_upload_stream(file,p)

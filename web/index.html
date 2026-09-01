@@ -490,7 +490,7 @@ body{max-width:100%;overflow-x:hidden}
   <div class="filter-caption">Filtrar detalle por sección</div><div class="switches" id="champSectionSwitch"><button class="switch active" data-champ-section="Todas">Todas</button><button class="switch" data-champ-section="Dama">Dama</button><button class="switch" data-champ-section="Caballero">Caballero</button><button class="switch" data-champ-section="Infantil">Infantil</button></div>
   <select id="champSection" class="hidden"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select>
 </div>
-<div class="tablewrap model-scroll-30"><table class="table"><thead><tr><th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th></tr></thead><tbody id="champTable"></tbody></table></div><div class="title" id="slowTitle">Modelos lentos · Compañía · Todas</div><div class="panel compact-filter"><div class="filter"><label>Sección · Modelos lentos</label><select id="slowSection"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter hidden" id="checklistStoreWrap"><label>Tienda a evaluar · solo checklist</label><select id="checklistStoreSelect"></select></div><div id="slowTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. CEDIS</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="slowTable"></tbody></table></div><div class="title" id="zeroTitle">Modelos con sugerido 0 / sin venta 30 días</div><div class="panel compact-filter"><div id="zeroTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. CEDIS</th><th>Venta pzas 30</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="zeroTable"></tbody></table></div><div id="checklistSummaryWrap" class="hidden"><div class="title" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Resumen checklist de modelos lentos por tienda</span><button class="primary" id="downloadChecklistPdf" style="width:auto;padding:8px 14px">Descargar PDF</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>Score checklist</th></tr></thead><tbody id="checklistSummary"></tbody></table></div><div id="checklistMissing" class="panel hidden"></div></div></section>
+<div class="tablewrap model-scroll-30"><table class="table"><thead><tr><th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th></tr></thead><tbody id="champTable"></tbody></table></div><div class="title" id="slowTitle">Modelos lentos · Compañía · Todas</div><div class="panel compact-filter"><div class="filter"><label>Sección · Modelos lentos</label><select id="slowSection"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter hidden" id="checklistStoreWrap"><label>Tienda a evaluar · solo checklist</label><select id="checklistStoreSelect"></select></div><div id="slowTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. entrada</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="slowTable"></tbody></table></div><div class="title" id="zeroTitle">Modelos con sugerido 0 a 1 · entrada reciente</div><div class="panel compact-filter"><div id="zeroTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. entrada</th><th>Venta pzas 30</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="zeroTable"></tbody></table></div><div id="checklistSummaryWrap" class="hidden"><div class="title" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Resumen checklist de modelos lentos por tienda</span><button class="primary" id="downloadChecklistPdf" style="width:auto;padding:8px 14px">Descargar PDF</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>% checklist</th><th>% evidencias</th><th>Score</th></tr></thead><tbody id="checklistSummary"></tbody></table></div><div id="checklistMissing" class="panel hidden"></div></div></section>
 
 <section class="page" id="page-accordion"><div class="title">Acordeón comercial</div><div class="subtitle">Resumen comercial moderno por periodo y tienda</div><div class="accordion" id="accordion"></div></section>
 <section class="page" id="page-stores"><div class="title">Tiendas</div><div class="kpis"><div class="kpi" style="--a:var(--purple)"><div class="lab">Existencia</div><div class="val" id="tExist">—</div></div><div class="kpi" style="--a:#08a9d6"><div class="lab">Sugerido</div><div class="val" id="tSug">—</div></div><div class="kpi" style="--a:var(--blue)"><div class="lab">Piso</div><div class="val" id="tFloor">—</div></div><div class="kpi" style="--a:var(--pink)"><div class="lab">Bodega</div><div class="val" id="tWh">—</div></div></div><div class="title">Ranking de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Sugerido</th><th>Capacidad (Curva)</th><th>Existencia total</th><th>% Ocupación</th><th>Piso</th><th>Bodega</th><th>DDI</th><th>Bodega %</th><th>Estatus</th></tr></thead><tbody id="storeTable"></tbody></table></div></section>
@@ -499,6 +499,7 @@ body{max-width:100%;overflow-x:hidden}
   <div class="subtitle">Usa los filtros superiores de Periodo, Tienda y Sección.</div>
   <div class="cards" id="sectionCards"></div>
   <div class="title" id="rubroTitle">Detalle de Rubro · Compañía</div>
+  <div class="panel compact-filter"><div class="filter-caption">Filtrar rubro por sección</div><div class="switches" id="rubroSectionSwitch"><button class="switch active" data-rubro-section="Todas">Todas</button><button class="switch" data-rubro-section="Dama">Dama</button><button class="switch" data-rubro-section="Caballero">Caballero</button><button class="switch" data-rubro-section="Infantil">Infantil</button><button class="switch" data-rubro-section="Lencería">Lencería</button></div></div>
   <div id="rubroWarning" class="note"></div>
   <div class="tablewrap"><table class="table"><thead><tr>
     <th>Sección</th><th>Rubro / Subcategoría</th><th>Modelos</th><th>Curva</th><th>Piso</th><th>Bodega</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Vta pzas</th><th>Venta $</th><th>% Ocupación</th>
@@ -891,7 +892,7 @@ function renderDash(d){
   if($('#macroSectionTableTitle'))$('#macroSectionTableTitle').textContent=`Macro sección · ${scope}`;
 
   $('#kExist').textContent=fmt(k.existence);
-  $('#kExistNote').textContent='Piso '+pct(k.existence?k.floor/k.existence*100:0)+' · Bodega '+pct(k.existence?k.warehouse/k.existence*100:0);
+  $('#kExistNote').textContent='Piso '+fmt(k.floor)+' pzas · Bodega '+fmt(k.warehouse)+' pzas';
   $('#kSug').textContent=fmt(k.suggested);
   $('#kSugNote').textContent='Dama '+sm(dama?.suggested)+' · Cab. '+sm(cab?.suggested)+' · Inf. '+sm(inf?.suggested);
   $('#kDdi').textContent=fmt(k.ddi)+' días';
@@ -901,7 +902,7 @@ function renderDash(d){
   $('#kOcc').textContent=pct(k.occupancy);
   $('#kOccNote').textContent='Dama '+sm(dama?.occupancy,pct)+' · Cab. '+sm(cab?.occupancy,pct)+' · Inf. '+sm(inf?.occupancy,pct);
 
-  $('#sectionSummary').innerHTML=(d.sections||[]).filter(s=>['dama','caballero','infantil'].some(x=>s.section.toLowerCase().startsWith(x))).map(s=>`<div class="card"><h3>${s.section}</h3><div class="big">${fmt(s.suggested)}</div><small>Sugerido</small><div class="mini3"><div class="mini"><span>% Part. piezas</span><b>${pct(s.part_pieces)}</b></div><div class="mini"><span>% Part. utilidad</span><b>${pct(s.utility)}</b></div><div class="mini"><span>% Part. inventario</span><b>${pct(s.part_inventory)}</b></div></div></div>`).join('')||'<div class="infoempty">Información no disponible</div>';
+  $('#sectionSummary').innerHTML=(d.sections||[]).filter(s=>['dama','caballero','infantil'].some(x=>s.section.toLowerCase().startsWith(x))).map(s=>`<div class="card"><h3>${s.section}</h3><div class="big">${fmt(s.suggested)}</div><small>Sugerido</small><div class="mini3"><div class="mini"><span>Existencia</span><b>${fmt(s.existence)} pzas</b></div><div class="mini"><span>Piso</span><b>${fmt(s.floor)} pzas</b></div><div class="mini"><span>Bodega</span><b>${fmt(s.warehouse)} pzas</b></div></div></div>`).join('')||'<div class="infoempty">Información no disponible</div>';
   $('#sectionTable').innerHTML=(d.sections||[]).map(s=>`<tr><td><b>${s.section}</b></td><td>${fmt(s.capacity)}</td><td>${fmt(s.floor)}</td><td>${fmt(s.warehouse)}</td><td>${fmt(s.existence)}</td><td>${dec2(s.suggested)}</td><td>${fmt(s.ddi)}</td><td>${fmt(s.sales_pzas)}</td><td>${money(s.sales_value)}</td><td>${pct(s.occupancy)}</td><td>${pct(s.utility)}</td><td>${pct(s.part_pieces)}</td><td>${pct(s.part_inventory)}</td></tr>`).join('');
 
   $('#tExist').textContent=fmt(k.existence);$('#tSug').textContent=fmt(k.suggested);$('#tFloor').textContent=fmt(k.floor);$('#tWh').textContent=fmt(k.warehouse);
@@ -959,7 +960,7 @@ function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',sco
   const allChecklistModels=[...slows,...(zeros||[])];
   $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec} · primeros 150`;
   $('#slowTitle').textContent=`Modelos lentos · ${modelScope} · ${slowSec}`;
-  $('#zeroTitle').textContent=`Modelos con sugerido 0 · última entrada mayor a 30 días · ${modelScope} · ${slowSec}`;
+  $('#zeroTitle').textContent=`Modelos con sugerido 0 a 1 · última entrada menor o igual a 30 días · ${modelScope} · ${slowSec}`;
   const slowPanel=$('#slowTotals')?.parentElement;if(slowPanel){let help=slowPanel.querySelector('.check-help');if(!help){help=document.createElement('div');help.className='note check-help';slowPanel.appendChild(help)}const capture=(scope==='Compañía'&&['admin','superadmin'].includes(USER?.role))?'Selecciona la tienda a evaluar para capturar el checklist y las evidencias. ':'';help.textContent=capture+'Amarillo: reincide una semana sin subir de sugerido 1. Rojo: reincide dos semanas consecutivas.';}
   $('#champTable').innerHTML=(champs||[]).map(x=>`<tr><td><b>#${x.rank||''}</b></td><td>${x.id_art}</td><td>${x.model}</td><td>${x.brand}</td><td>${x.section}</td><td>${x.rubro}</td><td>${x.location||x.area||''}</td><td>${x.exhibition||'—'}</td><td>${fmt(x.sales_pzas)}</td><td>${money(x.sales_value)}</td><td>${fmt(x.existence)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.ddi)}</td><td>${fmt(x.capacity)}</td><td>${x.occupancy==null?'N/D':pct(x.occupancy)}</td><td>${pct(x.cum_share)}</td></tr>`).join('')||'<tr><td colspan="16">Información no disponible</td></tr>';
 
@@ -1093,11 +1094,11 @@ async function loadChecklistSummary(){
   try{
     const d=await api(`/api/model-checklist/summary?week=${encodeURIComponent($('#week').value||'')}`);
     const fields=['en_ubicacion','cenefa_correcta','todas_tallas','exhibido'];
-    const head=$('#checklistSummary')?.closest('table')?.querySelector('thead tr');if(head)head.innerHTML='<th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>Score checklist</th><th>Evidencias</th>';
+    const head=$('#checklistSummary')?.closest('table')?.querySelector('thead tr');if(head)head.innerHTML='<th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>% checklist</th><th>% evidencias</th><th>Score</th>';
     $('#checklistSummary').innerHTML=(d.rows||[]).map(r=>`<tr><td><b>${r.store}</b></td>${fields.map(f=>{
       const c=r.criteria[f],txt=c.pct==null?'Sin respuesta':pct(c.pct);
       return `<td><button class="summary-cell ${c.no?'has-no':''}" data-store="${r.store}" data-field="${f}">${txt}<small>${c.answered} respuestas${c.no?' · '+c.no+' No':''}</small></button></td>`;
-    }).join('')}<td><b class="check-score ${(Number(r.score||0)>=90?'score-ok':Number(r.score||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.score||0))}</b><small>${r.score_answered||0} respuestas totales</small></td><td><b class="check-score ${(Number(r.evidence_pct||0)>=90?'score-ok':Number(r.evidence_pct||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.evidence_pct||0))}</b><small>${fmt(r.evidences||0)} de ${fmt(r.models||0)} modelos</small></td></tr>`).join('');
+    }).join('')}<td><b class="check-score ${(Number(r.checklist_pct||0)>=90?'score-ok':Number(r.checklist_pct||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.checklist_pct||0))}</b><small>${r.score_answered||0} respuestas totales</small></td><td><b class="check-score ${(Number(r.evidence_pct||0)>=90?'score-ok':Number(r.evidence_pct||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.evidence_pct||0))}</b><small>${fmt(r.evidences||0)} de ${fmt(r.models||0)} modelos</small></td><td><b class="check-score ${(Number(r.score||0)>=90?'score-ok':Number(r.score||0)>=70?'score-warn':'score-bad')}">${pct(Number(r.score||0))}</b><small>Promedio checklist + evidencias</small></td></tr>`).join('');
     const pdfBtn=$('#downloadChecklistPdf');if(pdfBtn)pdfBtn.onclick=()=>downloadChecklistSummaryPdf(pdfBtn);
     const heading=wrap.querySelector('.title');let evidenceBtn=$('#downloadEvidencePdf');
     if(['admin','superadmin'].includes(USER?.role)){
@@ -1113,7 +1114,7 @@ async function loadChecklistSummary(){
         '<div class="note">No hay modelos contestados como No.</div>'}`;
     });
   }catch(e){
-    $('#checklistSummary').innerHTML=`<tr><td colspan="7">Información no disponible: ${e.message}</td></tr>`;
+    $('#checklistSummary').innerHTML=`<tr><td colspan="8">Información no disponible: ${e.message}</td></tr>`;
   }
 }
 
@@ -1198,14 +1199,21 @@ $$('#metricSwitch .switch').forEach(b=>b.onclick=()=>{$$('#metricSwitch .switch'
 $$('[data-opmetric]').forEach(b=>b.onclick=()=>{$$('[data-opmetric]').forEach(x=>x.classList.remove('active'));b.classList.add('active');OPMETRIC=b.dataset.opmetric;if(OPSDATA)renderCombinedOps(OPSDATA)})
 function acc(title,html,open=false){return `<div class="acc ${open?'open':''}"><button>${title}<span>${open?'−':'+'}</span></button><div class="accbody">${html}</div></div>`}
 
+let RUBRO_SECTION='Todas';
+function rubroMatchesSection(row,filter){
+  if(filter==='Todas')return true;
+  const sec=loginNorm(row?.section),rub=loginNorm(row?.rubro);
+  if(filter==='Lencería')return sec.includes('lencer')||/(lencer|brasier|brassier|panty|pantie|pantale|boxer|bikini|faja|corse|ropa interior)/.test(rub);
+  return sec.startsWith(loginNorm(filter));
+}
 async function loadCommercialDetail(mode){
   const store=$('#store')?.value||'Compañía';
   const section=$('#section')?.value||'Todas';
   const d=await api(`/api/commercial-detail?week=${encodeURIComponent($('#week').value||'')}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(section)}&catalog=${encodeURIComponent($('#catalog')?.value||'Todos')}`);
   if(mode==='rubro'){
-    $('#rubroTitle').textContent=`Detalle de Rubro · ${store==='Compañía'?'Compañía':store}${section!=='Todas'?' · '+section:''}`;
+    $('#rubroTitle').textContent=`Detalle de Rubro · ${store==='Compañía'?'Compañía':store}${RUBRO_SECTION!=='Todas'?' · '+RUBRO_SECTION:(section!=='Todas'?' · '+section:'')}`;
     $('#rubroWarning').textContent=(d.warnings||[]).join(' · ');
-    $('#rubroTable').innerHTML=(d.rubros||[]).map(r=>{const ds=state(Number(r.ddi||0))[1],oc=r.occupancy==null?'N/D':`<span class="${Number(r.occupancy)>100?'bad':'ok'}">${pct(r.occupancy)}</span>`;return `<tr><td>${r.section}</td><td><b>${r.rubro}</b></td><td>${fmt(r.models)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.warehouse)}</td><td>${fmt(r.existence)}</td><td>${dec2(r.suggested)}</td><td><span class="${ds}">${fmt(r.ddi)}</span></td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${oc}</td></tr>`}).join('')||'<tr><td colspan="12">Información no disponible en el Excel de capacidades para este filtro.</td></tr>';
+    $('#rubroTable').innerHTML=(d.rubros||[]).filter(r=>rubroMatchesSection(r,RUBRO_SECTION)).map(r=>{const ds=state(Number(r.ddi||0))[1],oc=r.occupancy==null?'N/D':`<span class="${Number(r.occupancy)>100?'bad':'ok'}">${pct(r.occupancy)}</span>`;return `<tr><td>${r.section}</td><td><b>${r.rubro}</b></td><td>${fmt(r.models)}</td><td>${fmt(r.capacity)}</td><td>${fmt(r.floor)}</td><td>${fmt(r.warehouse)}</td><td>${fmt(r.existence)}</td><td>${dec2(r.suggested)}</td><td><span class="${ds}">${fmt(r.ddi)}</span></td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${oc}</td></tr>`}).join('')||'<tr><td colspan="12">Información no disponible en el Excel de capacidades para este filtro.</td></tr>';
   }else{
     const groups=['Colgado','Doblado','Jeans','Lencería'];
     $('#areaTables').innerHTML=groups.map(g=>{
@@ -1217,6 +1225,12 @@ async function loadCommercialDetail(mode){
     }).join('');
   }
 }
+
+$$('[data-rubro-section]').forEach(button=>button.onclick=()=>{
+  RUBRO_SECTION=button.dataset.rubroSection||'Todas';
+  $$('[data-rubro-section]').forEach(x=>x.classList.toggle('active',x===button));
+  loadCommercialDetail('rubro');
+});
 
 
 let MACRO_AREA_SECTION='Todas',MACRO_AREA_GROUP='Todas';

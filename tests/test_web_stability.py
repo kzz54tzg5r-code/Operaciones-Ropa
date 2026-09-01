@@ -50,6 +50,19 @@ def test_operations_parser_stores_compact_fifo_without_daily_rows(tmp_path):
     assert lot["recovered_value"]==40
 
 
+def test_operations_upload_parser_uses_single_runtime(monkeypatch,tmp_path):
+    source=tmp_path/"operaciones.xlsx"
+    source.write_bytes(b"placeholder")
+    called=[]
+    monkeypatch.setattr(web_app,"parse_operations_excel",lambda path,persist=False:called.append((path,persist)) or {"ok":True})
+    monkeypatch.setattr(web_app,"_release_process_memory",lambda:None)
+
+    payload=web_app._parse_operations_external(source,"token")
+
+    assert payload=={"ok":True}
+    assert called==[(source,False)]
+
+
 def test_model_detail_is_capped_to_keep_browser_responsive(monkeypatch):
     count=220
     frame=pd.DataFrame({
@@ -113,45 +126,68 @@ def test_frontend_hides_render_html_errors_and_serializes_rankings():
     assert "cleanText=/<\\s*!doctype|<\\s*html/i.test(raw)?'':" in source
     ranking_block=source[source.index("async function loadModelTables"):source.index("async function loadChecklistSummary")]
     assert "Promise.all(calls)" not in ranking_block
-def test_suggested_zero_requires_old_entry_and_is_not_repeated_in_slow(monkeypatch):
+def test_recent_low_suggested_models_are_not_repeated_in_slow(monkeypatch):
     frame=pd.DataFrame({
-        "Tienda":["Iztapalapa"]*3,
-        "ID_ART":["ZERO-OLD","ZERO-NEW","SLOW"],
-        "Modelo":["Cero antiguo","Cero reciente","Lento"],
-        "Marca":["Marca"]*3,
-        "Sección":["Dama"]*3,
-        "Subcategoría":["Blusa"]*3,
-        "Tipo catálogo":["VIGENTE"]*3,
-        "Existencia":[10.0,9.0,8.0],
-        "Existencia piso":[10.0,9.0,8.0],
-        "Existencia bodega":[0.0]*3,
-        "VPD":[0.0,0.0,1.0],
-        "Capacidad":[10.0]*3,
-        "Venta pzas 7":[0.0,0.0,1.0],
-        "Venta pzas 30":[0.0,0.0,1.0],
-        "Venta pzas":[0.0,0.0,1.0],
-        "Venta $ 7":[0.0,0.0,10.0],
-        "Venta $ mes":[0.0,0.0,10.0],
-        "DDI":[0.0]*3,
-        "Pzas última entrada":[1.0]*3,
+        "Tienda":["Iztapalapa"]*4,
+        "ID_ART":["ZERO-OLD","ZERO-NEW","ONE-NEW","SLOW"],
+        "Modelo":["Cero antiguo","Cero reciente","Uno reciente","Lento"],
+        "Marca":["Marca"]*4,
+        "Sección":["Dama"]*4,
+        "Subcategoría":["Blusa"]*4,
+        "Tipo catálogo":["VIGENTE"]*4,
+        "Existencia":[10.0,9.0,8.0,7.0],
+        "Existencia piso":[10.0,9.0,8.0,7.0],
+        "Existencia bodega":[0.0]*4,
+        "VPD":[0.0,0.0,1.0,1.0],
+        "Capacidad":[10.0]*4,
+        "Venta pzas 7":[0.0,0.0,0.0,1.0],
+        "Venta pzas 30":[0.0,0.0,0.0,1.0],
+        "Venta pzas":[0.0,0.0,0.0,1.0],
+        "Venta $ 7":[0.0,0.0,0.0,10.0],
+        "Venta $ mes":[0.0,0.0,0.0,10.0],
+        "DDI":[0.0]*4,
+        "Pzas última entrada":[1.0]*4,
         "Última entrada CEDIS a tienda":[
-            pd.Timestamp("2026-07-01"),pd.Timestamp("2026-08-20"),pd.Timestamp("2026-07-15"),
+            pd.Timestamp("2026-07-01"),pd.Timestamp("2026-08-20"),
+            pd.Timestamp("2026-08-18"),pd.Timestamp("2026-07-15"),
         ],
-        "Ubicación detalle":["R. COLGADA 01"]*3,
-        "Exhibición":["Colgado"]*3,
+        "Ubicación detalle":["R. COLGADA 01"]*4,
+        "Exhibición":["Colgado"]*4,
     })
     monkeypatch.setattr(web_app,"_capacity_frame_for_period",lambda _period:frame)
     monkeypatch.setattr(web_app,"_capacity_source_entry",lambda _period:{"id":"now","report_date":"2026-09-01"})
     monkeypatch.setattr(web_app,"store_names",lambda _active=True:["Iztapalapa"])
-    monkeypatch.setattr(web_app,"_capacity_recurrence_counts",lambda ids,*_args:{value:(2 if value=="ZERO-OLD" else 1) for value in ids})
+    monkeypatch.setattr(web_app,"_capacity_recurrence_counts",lambda ids,*_args:{value:(2 if value=="ONE-NEW" else 1) for value in ids})
 
     zeros=web_app._capacity_model_rows("Compañía","Todas","suggested_zero","2026-W36","Todos")
     slows=web_app._capacity_model_rows("Compañía","Todas","slow","2026-W36","Todos")
 
-    assert [row["id_art"] for row in zeros]==["ZERO-OLD"]
-    assert zeros[0]["recurrence_weeks"]==2
-    assert "ZERO-OLD" not in {row["id_art"] for row in slows}
-    assert {row["id_art"] for row in slows}=={"ZERO-NEW","SLOW"}
+    assert [row["id_art"] for row in zeros]==["ZERO-NEW","ONE-NEW"]
+    assert next(row for row in zeros if row["id_art"]=="ONE-NEW")["recurrence_weeks"]==2
+    assert {"ZERO-NEW","ONE-NEW"}.isdisjoint({row["id_art"] for row in slows})
+    assert {row["id_art"] for row in slows}=={"ZERO-OLD","SLOW"}
+
+
+def test_exhibition_uses_each_specific_location(monkeypatch):
+    frame=pd.DataFrame({
+        "Tienda":["Iztapalapa","Iztapalapa"],"ID_ART":["1001","1001"],
+        "Modelo":["M1","M1"],"Marca":["Marca","Marca"],"Sección":["Dama","Dama"],
+        "Subcategoría":["Blusa","Blusa"],"Tipo catálogo":["VIGENTE","VIGENTE"],
+        "Existencia":[1.0,1.0],"Existencia piso":[1.0,1.0],"Existencia bodega":[0.0,0.0],
+        "VPD":[1.0,1.0],"Capacidad":[1.0,1.0],"Venta pzas 7":[2.0,2.0],
+        "Venta pzas 30":[2.0,2.0],"Venta pzas":[2.0,2.0],"Venta $ 7":[20.0,20.0],
+        "Venta $ mes":[20.0,20.0],"DDI":[1.0,1.0],"Pzas última entrada":[0.0,0.0],
+        "Última entrada CEDIS a tienda":[pd.NaT,pd.NaT],
+        "Ubicación detalle":["Cabecera 30A","Isla 02"],"Exhibición":["Cabecera","Isla"],
+    })
+    monkeypatch.setattr(web_app,"_capacity_frame_for_period",lambda _period:frame)
+    monkeypatch.setattr(web_app,"store_names",lambda _active=True:["Iztapalapa"])
+
+    rows=web_app._capacity_model_rows("Compañía","Todas","80_20","2026-W36","Todos")
+
+    assert len(rows)==1
+    assert "Cabecera 30A" in rows[0]["exhibition"]
+    assert "Isla 02" in rows[0]["exhibition"]
 
 
 def test_capacity_preparation_and_requested_frontend_controls():
@@ -173,3 +209,7 @@ def test_capacity_preparation_and_requested_frontend_controls():
     assert "Últ. entrada" in source
     assert "recurrence-yellow" in source and "recurrence-red" in source
     assert "/api/export/checklist-evidence" in source
+    for label in ('data-rubro-section="Dama"','data-rubro-section="Caballero"','data-rubro-section="Infantil"','data-rubro-section="Lencería"'):
+        assert label in source
+    assert "% checklist" in source and "% evidencias" in source
+    assert "Piso '+fmt(k.floor)+' pzas" in source
