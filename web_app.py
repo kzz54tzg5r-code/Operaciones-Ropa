@@ -3418,10 +3418,32 @@ def operations(
 
 
 
+def _operations_export_sections(data: dict):
+    """Unifica el alcance de exportación entre pantalla, PDF y Excel.
+
+    Recuperación conserva todas las tiendas del alcance consultado y marca las
+    tiendas Proyecto. El detalle operativo incluye exclusivamente Proyecto.
+    """
+    configured=data.get("project_stores")
+    if configured is None:
+        configured=project_store_names(True)
+    project_names={str(name).strip() for name in configured if str(name).strip()}
+
+    def marked(row):
+        item=dict(row)
+        store=str(item.get("store") or "").strip()
+        item["is_project"]=bool(item.get("is_project")) or store in project_names
+        return item
+
+    all_stores=[marked(row) for row in data.get("stores",[])]
+    project_stores=[row for row in all_stores if row.get("is_project")]
+    recovery=[marked(row) for row in data.get("recovery_by_store",[])]
+    return project_stores,recovery
+
+
 def _report_export_payload(data: dict, report: str):
     metrics=data.get("metrics",{})
-    active_project=set(project_store_names(True)); stores=[x for x in data.get("stores",[]) if x.get("store") in active_project]
-    recovery=[x for x in data.get("recovery_by_store",[]) if x.get("store") in active_project]
+    stores,recovery=_operations_export_sections(data)
     productivity=data.get("productivity",[])
 
     summary=[
@@ -3481,8 +3503,9 @@ def _build_operations_pdf(data: dict, report: str, scope: str="Compañía") -> b
             c.setFillColor(colors.HexColor(TXT)); c.setFont("Helvetica-Bold",16); c.drawString(x+12,yy+23,safe(value)[:18])
             c.setFillColor(colors.HexColor("#6B778C")); c.setFont("Helvetica",6.2); c.drawString(x+12,yy+9,safe(sub)[:38])
         y-=rows*(cardh+gap)+4
-    def table(headers,rows,width_fracs=None,title=None,row_h=14,font=6.2):
+    def table(headers,rows,width_fracs=None,title=None,row_h=14,font=6.2,highlight_rows=None):
         nonlocal y
+        highlighted=set(highlight_rows or [])
         if title: section(title)
         if not rows:
             ensure(26); c.setFillColor(colors.white); c.setStrokeColor(colors.HexColor(LINE)); c.roundRect(M,y-20,width-2*M,22,6,fill=1,stroke=1); c.setFillColor(colors.HexColor("#6B778C")); c.setFont("Helvetica",7); c.drawString(M+10,y-12,"Información no disponible"); y-=30; return
@@ -3498,9 +3521,16 @@ def _build_operations_pdf(data: dict, report: str, scope: str="Compañía") -> b
         head()
         for ridx,row in enumerate(rows):
             if y-row_h < 30: new_page(title or ""); head()
-            c.setFillColor(colors.white if ridx%2==0 else colors.HexColor("#EEF4FB")); c.rect(M,y-row_h+2,total,row_h,fill=1,stroke=0)
-            c.setFillColor(colors.HexColor(TXT)); c.setFont("Helvetica",font)
-            for i,val in enumerate(row): c.drawString(xs[i]+3,y-8,safe(val)[:27])
+            is_highlighted=ridx in highlighted
+            background=colors.HexColor("#DDEAFF") if is_highlighted else (colors.white if ridx%2==0 else colors.HexColor("#EEF4FB"))
+            c.setFillColor(background); c.rect(M,y-row_h+2,total,row_h,fill=1,stroke=0)
+            if is_highlighted:
+                c.setFillColor(colors.HexColor(BLUE2)); c.rect(M,y-row_h+2,3,row_h,fill=1,stroke=0)
+            for i,val in enumerate(row):
+                emphasized=is_highlighted and i==1
+                c.setFillColor(colors.HexColor(BLUE if emphasized else TXT))
+                c.setFont("Helvetica-Bold" if emphasized else "Helvetica",font)
+                c.drawString(xs[i]+3,y-8,safe(val)[:27])
             y-=row_h
         y-=7
     def horizontal_chart(title,rows,series):
@@ -3547,7 +3577,7 @@ def _build_operations_pdf(data: dict, report: str, scope: str="Compañía") -> b
         y-=h
 
     page_header()
-    mt=data.get("metrics",{}); stores=data.get("stores",[]); rec=data.get("recovery_by_store",[]); prod=data.get("productivity",[])
+    mt=data.get("metrics",{}); stores,rec=_operations_export_sections(data); prod=data.get("productivity",[])
     period=data.get("period_value") or "Histórico"
     c.setFillColor(colors.HexColor("#6B778C")); c.setFont("Helvetica",7.2); c.drawString(M,y,f"Periodo: {period}   ·   Alcance: {scope}"); y-=14
 
@@ -3578,11 +3608,12 @@ def _build_operations_pdf(data: dict, report: str, scope: str="Compañía") -> b
         hourly=[dict(r,label=f"{int(r.get('hour') or 0):02d}:00") for r in data.get("hourly_peaks",[]) if float(r.get("recolectadas") or 0)>0]
         horizontal_chart("Recolecciones por hora",hourly,[("muertos",PINK,"Muertos"),("cajas",PURPLE,"Cajas"),("probador",ORANGE,"Probador")])
     else:
-        rec_rows=[[i+1,r.get("store"),n(r.get("dev_pzs")),n(r.get("converted_pieces")),pc(r.get("conversion_pct")),money(r.get("return_value")),money(r.get("recovered_value")),pc(r.get("recovery_pct"))] for i,r in enumerate(ordered_rec,1)]
-        table(["#","Tienda","Dev","Recup.","Conv.","Valor Dev.","Recup. $","Recup. %"],rec_rows,[.05,.16,.09,.09,.09,.15,.15,.12],"Recuperación por tienda")
+        rec_rows=[[i,f"{r.get('store')} (Proyecto)" if r.get("is_project") else r.get("store"),n(r.get("dev_pzs")),n(r.get("converted_pieces")),pc(r.get("conversion_pct")),money(r.get("return_value")),money(r.get("recovered_value")),pc(r.get("recovery_pct"))] for i,r in enumerate(ordered_rec,1)]
+        project_recovery_rows=[i for i,r in enumerate(ordered_rec) if r.get("is_project")]
+        table(["#","Tienda","Dev","Recup.","Conv.","Valor Dev.","Recup. $","Recup. %"],rec_rows,[.05,.16,.09,.09,.09,.15,.15,.12],"Recuperación por tienda · todas las tiendas",highlight_rows=project_recovery_rows)
         horizontal_chart("Devolución y recuperación",ordered_rec,[("dev_pzs",BLUE,"Dev Pzs"),("converted_pieces",PINK,"Recup. Pzs")])
-        op_rows=[[i+1,r.get("store"),n(r.get("muertos")),n(r.get("probador")),n(r.get("cajas")),n(r.get("recolectadas")),n(r.get("recorridos")),n(r.get("acondicionado")),n(r.get("ubicado")),n(r.get("pendiente_acondicionar")),n(r.get("pendiente_ubicar"))] for i,r in enumerate(ordered_stores,1)]
-        table(["#","Tienda","Muertos","Probador","Cajas","Ingresos","Rec.","Acond.","Ubicado","Pend.Acond","Pend.Ubicar"],op_rows,[.04,.14,.08,.08,.07,.09,.07,.09,.09,.11,.11],"Detalle operativo")
+        op_rows=[[i,r.get("store"),n(r.get("muertos")),n(r.get("probador")),n(r.get("cajas")),n(r.get("recolectadas")),n(r.get("recorridos")),n(r.get("acondicionado")),n(r.get("ubicado")),n(r.get("pendiente_acondicionar")),n(r.get("pendiente_ubicar"))] for i,r in enumerate(ordered_stores,1)]
+        table(["#","Tienda","Muertos","Probador","Cajas","Ingresos","Rec.","Acond.","Ubicado","Pend.Acond","Pend.Ubicar"],op_rows,[.04,.14,.08,.08,.07,.09,.07,.09,.09,.11,.11],"Detalle operativo · tiendas del proyecto")
         mixed_chart(f"Ingreso vs Acondicionado vs Ubicado · {period}",ordered_stores)
 
     c.save(); data_pdf=bio.getvalue()
