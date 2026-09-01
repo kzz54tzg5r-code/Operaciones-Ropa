@@ -103,6 +103,10 @@ class _OpsUIPatch(BaseHTTPMiddleware):
             html=body.decode("utf-8")
         except UnicodeDecodeError:
             return Response(body,status_code=response.status_code,headers=dict(response.headers),media_type="text/html")
+        html=html.replace("Macro ubicación · Compañía","Ubicación · Compañía")
+        html=html.replace("Agrupado por Colgado, Doblado, Jeans y Lencería. La sección se filtra con los botones siguientes.","Filtra por área: Colgado, Doblado, Jeans y Lencería.")
+        html=html.replace("<th>Últ. CEDIS</th>","<th>Ult entrada</th>")
+        html=html.replace("<th>Ult. CEDIS</th>","<th>Ult entrada</th>")
         patch=r'''<style>
 #macroAreaTableWrap{max-height:1185px;overflow-y:auto;position:relative}
 #macroAreaTableWrap .table th{position:sticky;top:0;z-index:4}
