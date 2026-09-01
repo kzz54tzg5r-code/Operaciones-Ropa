@@ -3,4 +3,5 @@ WORKDIR /app
 COPY . /app
 RUN pip install --no-cache-dir -r requirements_web.txt
 ENV PORT=8080
-CMD uvicorn web_app:app --host 0.0.0.0 --port ${PORT}
+# Entrada de producción: evita un segundo intérprete completo durante cargas Excel.
+CMD uvicorn server_entry:app --host 0.0.0.0 --port ${PORT} --workers 1
