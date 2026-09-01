@@ -86,60 +86,12 @@ _web._capacity_rubros_v45=_rubros
 _web._capacity_location_detail=_detail
 app=_web.app
 
-
-# Ajustes finales de interfaz. Se inyectan sin modificar el HTML grande.
+# Parche visual y de estabilidad: se aplica a la respuesta HTML sin duplicar el
+# archivo web/index.html de gran tamaño.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-_FINAL_PATCH=r'''<style>
-#macroAreaTableWrap{max-height:1185px!important;overflow-y:auto!important;overflow-x:auto!important;position:relative}
-#macroAreaTableWrap .table th{position:sticky!important;top:0!important;z-index:4!important}
-#macroAreaAreaSwitch{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
-</style>
-<script>
-(()=>{
-const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let AF='Todas',ROWS=[],BUSY=false;
-const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const n=v=>Number(v||0).toLocaleString('es-MX',{maximumFractionDigits:2});
-const mon=v=>Number(v||0).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2});
-const pc=v=>v==null?'N/D':Number(v).toFixed(1)+'%';
-const scope=()=>window.DASH?.selected_store||$('#store')?.value||'Compañía';
-function setup(){
- const t=$('#macroAreaTitle');if(t)t.textContent='Ubicación · '+scope();
- $$('[data-area-section]').forEach(x=>x.style.display='none');
- const tb=$('#macroAreaTable');if(tb){const w=tb.closest('.tablewrap');if(w)w.id='macroAreaTableWrap'}
- if(tb&&!$('#macroAreaAreaSwitch')){
-   const bar=document.createElement('div');bar.id='macroAreaAreaSwitch';
-   ['Todas','Colgado','Doblado','Jeans','Lencería'].forEach(a=>{const b=document.createElement('button');b.type='button';b.className='switch'+(a===AF?' active':'');b.textContent=a;b.onclick=()=>{AF=a;$$('#macroAreaAreaSwitch .switch').forEach(x=>x.classList.toggle('active',x.textContent===a));paint()};bar.appendChild(b)});
-   const old=$$('[data-area-section]')[0];const host=old?.parentElement||tb.parentElement;if(host)host.insertBefore(bar,old||host.firstChild);
- }
- $$('th').forEach(x=>{const q=x.textContent.trim();if(q==='Últ. CEDIS'||q==='Ult. CEDIS')x.textContent='Ult entrada'});
-}
-function paint(){
- const b=$('#macroAreaTable');if(!b)return;const d=AF==='Todas'?ROWS:ROWS.filter(r=>String(r.group||'')===AF);
- b.innerHTML=d.length?d.map(r=>'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.location)+'</td><td>'+n(r.ids)+'</td><td>'+n(r.capacity)+'</td><td>'+n(r.floor)+'</td><td>'+n(r.warehouse)+'</td><td>'+n(r.existence)+'</td><td>'+n(r.suggested)+'</td><td>'+n(r.ddi)+'</td><td>'+n(r.sales_pzas)+'</td><td>'+mon(r.sales_value)+'</td><td>'+pc(r.occupancy)+'</td></tr>').join(''):'<tr><td colspan="12">Sin información para el filtro seleccionado.</td></tr>';
-}
-async function macro(){
- setup();const b=$('#macroAreaTable');if(b)b.innerHTML='<tr><td colspan="12">Cargando ubicación...</td></tr>';
- try{const d=await api('/api/commercial-detail?week='+encodeURIComponent($('#week')?.value||'')+'&store='+encodeURIComponent(scope())+'&section=Todas&catalog='+encodeURIComponent($('#catalog')?.value||'Todos'),{timeoutMs:120000});ROWS=d.locations||[];paint()}catch(e){if(b)b.innerHTML='<tr><td colspan="12">No fue posible consultar ubicación: '+esc(e.message||e)+'</td></tr>'}
-}
-function weekEnd(){const m=/^(\d{4})-W(\d{2})$/.exec($('#week')?.value||'');if(!m)return new Date();const j=new Date(+m[1],0,4),day=j.getDay()||7,mo=new Date(j);mo.setDate(j.getDate()-day+1+(+m[2]-1)*7+6);return mo}
-function models(){
- if(typeof window.renderModelRows!=='function'||window.renderModelRows.__final)return;
- const o=window.renderModelRows;const w=function(a,b,z,...rest){const base=weekEnd();z=(z||[]).filter(r=>{const s=String(r?.ultima_cedis||'').trim();if(!s||s==='—')return false;const d=new Date(s+'T00:00:00'),age=(base-d)/86400000;return !Number.isNaN(age)&&age>=0&&age<=30});return o.call(this,a,b,z,...rest)};w.__final=true;window.renderModelRows=w;
-}
-function upload(){
- const btn=$('#uploadOps');if(!btn||btn.__final)return;btn.__final=true;
- btn.addEventListener('click',async ev=>{ev.preventDefault();ev.stopImmediatePropagation();if(BUSY)return;const f=$('#opsFile')?.files?.[0];if(!f){($('.log')||{}).textContent='Selecciona el Excel de Cambios y Muertos.';return}BUSY=true;btn.disabled=true;let err='';try{for(let i=0;i<3;i++){try{const r=await postFile('/api/upload/operations',f);if($('.log'))$('.log').textContent='Excel de Cambios y Muertos cargado correctamente\\nFilas: '+(r?.rows||0);if(typeof safeRefreshDash==='function')await safeRefreshDash();err='';break}catch(e){err=e.message||String(e);if(i<2)await new Promise(r=>setTimeout(r,4000))}}if(err&&$('.log'))$('.log').textContent='Error real de carga: '+err}finally{BUSY=false;btn.disabled=false;btn.textContent='Procesar operativo'}},true);
-}
-function apply(){setup();models();upload();if(typeof window.loadMacroAreaDetail==='function'&&!window.loadMacroAreaDetail.__final){macro.__final=true;window.loadMacroAreaDetail=macro}}
-new MutationObserver(()=>{try{apply()}catch(_){}}).observe(document.body,{childList:true,subtree:true});
-setInterval(()=>{try{apply()}catch(_){}},800);setTimeout(()=>{apply();macro()},300);
-})();
-</script>'''
-
-class _FinalUIPatch(BaseHTTPMiddleware):
+class _OpsUIPatch(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response=await call_next(request)
         if request.url.path!="/" or response.status_code!=200:
@@ -151,12 +103,33 @@ class _FinalUIPatch(BaseHTTPMiddleware):
             html=body.decode("utf-8")
         except UnicodeDecodeError:
             return Response(body,status_code=response.status_code,headers=dict(response.headers),media_type="text/html")
-        html=html.replace("Macro ubicación · Compañía","Ubicación · Compañía")
-        html=html.replace("Macro ubicación","Ubicación")
-        html=html.replace("Agrupado por Colgado, Doblado, Jeans y Lencería. La sección se filtra con los botones siguientes.","Filtra por área: Colgado, Doblado, Jeans y Lencería.")
-        html=html.replace("<th>Últ. CEDIS</th>","<th>Ult entrada</th>")
-        html=html.replace("<th>Ult. CEDIS</th>","<th>Ult entrada</th>")
-        html=html.replace("</body>",_FINAL_PATCH+"</body>",1)
+        patch=r'''<style>
+#macroAreaTableWrap{max-height:1185px;overflow-y:auto;position:relative}
+#macroAreaTableWrap .table th{position:sticky;top:0;z-index:4}
+#macroAreaAreaSwitch{display:flex;gap:6px;flex-wrap:wrap;margin:5px 0 9px}
+</style><script>
+(()=>{const $=s=>document.querySelector(s);let AF='Todas',ROWS=[];
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const n=v=>typeof v==='number'?v.toLocaleString('es-MX',{maximumFractionDigits:2}):'—';
+const p=v=>v==null?'N/D':Number(v).toFixed(1)+'%';
+const scope=()=>window.DASH?.selected_store||$('#store')?.value||'Compañía';
+function setup(){const t=$('#macroAreaTitle');if(t)t.textContent='Ubicación · '+scope();
+ const old=$('#macroAreaSectionSwitch');if(old)old.style.display='none';
+ const sub=old?.parentElement?.previousElementSibling;
+ if(sub&&!$('#macroAreaAreaSwitch')){const bar=document.createElement('div');bar.id='macroAreaAreaSwitch';
+ ['Todas','Colgado','Doblado','Jeans','Lencería'].forEach(a=>{const b=document.createElement('button');b.className='switch'+(a===AF?' active':'');b.textContent=a;b.onclick=()=>{AF=a;document.querySelectorAll('#macroAreaAreaSwitch .switch').forEach(x=>x.classList.toggle('active',x.textContent===a));paint()};bar.appendChild(b)});sub.after(bar)}
+ const tb=$('#macroAreaTable');if(tb){const w=tb.closest('.tablewrap');if(w)w.id='macroAreaTableWrap'}
+ document.querySelectorAll('th').forEach(x=>{if(/^Últ?\.? CEDIS$/i.test(x.textContent.trim()))x.textContent='Ult entrada'})}
+ function paint(){const b=$('#macroAreaTable');if(!b)return;const d=AF==='Todas'?ROWS:ROWS.filter(r=>String(r.group||'')===AF);
+ b.innerHTML=d.length?d.map(r=>'<tr><td>'+esc(r.group)+'</td><td>'+esc(r.location)+'</td><td>'+n(r.ids)+'</td><td>'+n(r.capacity)+'</td><td>'+n(r.floor)+'</td><td>'+n(r.warehouse)+'</td><td>'+n(r.existence)+'</td><td>'+n(r.suggested)+'</td><td>'+n(r.ddi)+'</td><td>'+n(r.sales_pzas)+'</td><td>+n(r.sales_value)+'</td><td>'+p(r.occupancy)+'</td></tr>').join(''):'<tr><td colspan="12">Sin información para el filtro seleccionado.</td></tr>'}
+ window.loadMacroAreaDetail=async()=>{setup();const b=$('#macroAreaTable');if(b)b.innerHTML='<tr><td colspan="12">Cargando ubicación…</td></tr>';try{const d=await api('/api/commercial-detail?week='+encodeURIComponent($('#week')?.value||'')+'&store='+encodeURIComponent(scope())+'&section=Todas&catalog='+encodeURIComponent($('#catalog')?.value||'Todos'),{timeoutMs:120000});ROWS=d.locations||[];paint()}catch(e){if(b)b.innerHTML='<tr><td colspan="12">No fue posible consultar ubicación: '+esc(e.message)+'</td></tr>'}setup()};
+ const bind=()=>{const btn=$('#uploadOps');if(!btn||btn.dataset.patch)return;btn.dataset.patch='1';btn.onclick=async()=>{const f=$('#opsFile')?.files?.[0];if(!f){log('Selecciona Excel operativo de Cambios y Muertos.');return}btn.disabled=true;btn.textContent='Procesando…';let ok=false,last='';for(let i=0;i<2&&!ok;i++){try{const r=await postFile('/api/upload/operations',f);log('Excel de Cambios y Muertos cargado correctamente\\nFilas: '+(r.rows||0));ok=true;await safeRefreshDash()}catch(e){last=e.message;if(i===0){log('Reintentando automáticamente la carga…');await new Promise(r=>setTimeout(r,5000))}}}if(!ok)log('Error real de carga: '+last);btn.disabled=false;btn.textContent='Procesar operativo'}};
+ const end=w=>{const m=/^(\\d{4})-W(\\d+)/.exec(w||'');if(!m)return new Date();const j=new Date(+m[1],0,4),day=j.getDay()||7;const mon=new Date(j);mon.setDate(j.getDate()-day+1+(+m[2]-1)*7);mon.setDate(mon.getDate()+6);return mon};
+ const orig=window.renderModelRows;if(typeof orig==='function')window.renderModelRows=function(a,b,z,...x){const base=end($('#week')?.value||'');z=(z||[]).filter(r=>{const s=String(r.ultima_cedis||'').trim();if(!s||s==='—')return false;const d=new Date(s+'T00:00:00'),q=(base-d)/86400000;return !Number.isNaN(q)&&q>=0&&q<=30});return orig.call(this,a,b,z,...x)};
+ new MutationObserver(()=>{setup();bind()}).observe(document.body,{childList:true,subtree:true});setTimeout(()=>{setup();bind()},100)
+})();
+</script>'''
+        html=html.replace("</body>",patch+"</body>",1)
         return Response(html.encode("utf-8"),status_code=200,media_type="text/html")
 
-app.add_middleware(_FinalUIPatch)
+app.add_middleware(_OpsUIPatch)
