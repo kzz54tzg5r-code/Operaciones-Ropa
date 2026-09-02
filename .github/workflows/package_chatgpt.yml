@@ -1,0 +1,25 @@
+name: package-chatgpt
+
+on:
+  push:
+    branches:
+      - chatgpt-package-5ea5616
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Build ZIP
+        run: |
+          mkdir -p dist
+          zip -r dist/OPERACIONES_ROPA_COMPLETO_5ea5616.zip . \
+            -x '.git/*' '.github/workflows/package_chatgpt.yml' 'dist/*' '__pycache__/*' '*/__pycache__/*' '*.pyc'
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: OPERACIONES_ROPA_COMPLETO_5ea5616
+          path: dist/OPERACIONES_ROPA_COMPLETO_5ea5616.zip
+          if-no-files-found: error
