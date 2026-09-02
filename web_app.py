@@ -2363,6 +2363,11 @@ def parse_operations_excel(path: Path, persist: bool=True):
 def health():
     return {"ok": True, "app": "Operaciones Ropa", "version": "V47"}
 
+@app.head("/")
+def index_healthcheck():
+    """Permite que la verificación predeterminada de Render responda 200."""
+    return Response(status_code=200)
+
 @app.get("/")
 def index(): return FileResponse(WEB/"index.html")
 

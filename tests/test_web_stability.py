@@ -325,3 +325,9 @@ def test_background_operations_endpoint_publishes_and_preserves_snapshot(monkeyp
     assert (data_root/"cambios_muertos_actual.xlsx").exists()
     snapshots=list(history.glob("*.json.gz"))
     assert len(snapshots)==1
+
+
+def test_root_accepts_render_head_healthcheck():
+    routes=[route for route in web_app.app.routes if getattr(route,"path",None)=="/"]
+
+    assert any("HEAD" in (getattr(route,"methods",set()) or set()) for route in routes)
