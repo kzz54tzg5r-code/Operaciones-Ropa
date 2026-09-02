@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List
 from datetime import datetime
 from urllib.parse import urlparse
-import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc, zipfile
+import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc, zipfile, gzip
 from functools import wraps, lru_cache
 from contextlib import contextmanager, nullcontext
 from xml.etree import ElementTree as ET
@@ -41,7 +41,7 @@ from commercial.storage import (
     load_manifest, load_snapshots, save_snapshot, save_pdf_upload,
     save_capacity_upload, save_sales_upload, resolve_entry_path, update_entry, save_manifest,
 )
-from commercial.config import CAPACITY_DIR
+from commercial.config import CAPACITY_DIR, DATA_ROOT as COMMERCIAL_DATA_ROOT
 from commercial.parsers import extract_pdf_snapshot, read_capacity_file, read_sales_file
 
 ROOT = Path(__file__).resolve().parent
@@ -68,9 +68,30 @@ SALES_PDF_FILE = DATA_ROOT / "ventas_pdf_procesadas.json"
 LEGACY_DB = ROOT / "data" / "config" / "ps_operaciones.db"
 STAGING_DIR = DATA_ROOT / "staging"
 STAGING_DIR.mkdir(parents=True, exist_ok=True)
+OPERATIONS_HISTORY_DIR = DATA_ROOT / "history" / "operations"
+OPERATIONS_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 CHECKLIST_EVIDENCE_DIR = DATA_ROOT / "checklist_evidence"
 CHECKLIST_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 _RESOURCE_HEAVY_LOCK = threading.RLock()
+
+REPORT_TABS = {
+    "operations.center": "Centro Ejecutivo",
+    "operations.day": "Día",
+    "operations.week": "Semanal",
+    "operations.month": "Mensual",
+    "operations.conversion": "Conversión",
+    "operations.recovery": "Recuperación $",
+    "operations.productivity": "Productividad",
+    "operations.routes": "Recorridos",
+    "operations.score": "Score",
+    "operations.alerts": "Alertas",
+    "commercial.macro": "Macro compañía",
+    "commercial.accordion": "Acordeón comercial",
+    "commercial.stores": "Tiendas",
+    "commercial.sections": "Sección / Rubro",
+    "commercial.areas": "Ubicación / Área",
+    "commercial.more": "Más opciones",
+}
 
 
 def _release_process_memory():
@@ -90,7 +111,7 @@ def _release_process_memory():
 def _cleanup_old_staging_files():
     """Elimina cargas temporales interrumpidas al iniciar la aplicación."""
     try:
-        for pattern in ("legacy_*.xlsx","*.worker.json"):
+        for pattern in ("legacy_*.xlsx","operations_job_*.xlsx","capacity_job_*","*.worker.json"):
             for _p in STAGING_DIR.glob(pattern):
                 try:
                     _p.unlink(missing_ok=True)
@@ -260,7 +281,10 @@ def _save_capacity_source_path(source: Path, original_name: str) -> dict:
         target=target.with_name(f"{target.stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}{target.suffix}")
     shutil.copy2(source,target)
     entry={
-        "id":digest_hex[:16],"name":target.name,"path":str(target.relative_to(DATA_ROOT)),
+        # commercial.storage.resolve_entry_path() ya antepone la raíz
+        # .../commercial. Guardar la ruta respecto a esa raíz evita construir
+        # .../commercial/commercial/capacidades/... en Render.
+        "id":digest_hex[:16],"name":target.name,"path":str(target.relative_to(COMMERCIAL_DATA_ROOT)),
         "sha256":digest_hex,"size":source.stat().st_size,
         "uploaded_at":datetime.now().astimezone().isoformat(timespec="seconds"),
         "status":"Pendiente de validación",
@@ -377,6 +401,29 @@ def init_db():
             published INTEGER NOT NULL DEFAULT 0
         )""")
 
+        con.execute("""CREATE TABLE IF NOT EXISTS upload_jobs(
+            id TEXT PRIMARY KEY,
+            module TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            status TEXT NOT NULL,
+            progress INTEGER NOT NULL DEFAULT 0,
+            message TEXT DEFAULT '',
+            error TEXT DEFAULT '',
+            result_json TEXT DEFAULT '{}',
+            source_path TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            started_at TEXT DEFAULT '',
+            finished_at TEXT DEFAULT '',
+            created_by TEXT NOT NULL
+        )""")
+
+        con.execute("""CREATE TABLE IF NOT EXISTS report_tab_visibility(
+            tab_key TEXT PRIMARY KEY,
+            visible INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT NOT NULL,
+            updated_by TEXT NOT NULL
+        )""")
+
         con.execute("""CREATE TABLE IF NOT EXISTS goal_history(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             key TEXT NOT NULL,
@@ -386,6 +433,18 @@ def init_db():
             changed_by TEXT NOT NULL
         )""")
         now=datetime.now().isoformat(timespec='seconds')
+        for tab_key in REPORT_TABS:
+            con.execute(
+                "INSERT OR IGNORE INTO report_tab_visibility(tab_key,visible,updated_at,updated_by) VALUES(?,?,?,?)",
+                (tab_key,1,now,'system')
+            )
+        # Un proceso que se apagó durante una carga deja un registro explícito;
+        # el archivo vigente nunca se toca hasta que el reemplazo termina.
+        con.execute(
+            "UPDATE upload_jobs SET status='interrupted',error='El servicio se reinició antes de terminar.',finished_at=? "
+            "WHERE status IN ('queued','processing','publishing')",
+            (now,)
+        )
         for key,value in DEFAULT_GOALS.items():
             con.execute("INSERT OR IGNORE INTO goals(key,value,updated_at,updated_by) VALUES(?,?,?,?)",
                         (key,float(value),now,'system'))
@@ -406,8 +465,65 @@ def ensure_user_security_columns():
         if "updated_at" not in cols:
             con.execute("ALTER TABLE users ADD COLUMN updated_at TEXT DEFAULT ''")
 
+def ensure_upload_history_columns():
+    with db() as con:
+        cols={str(r["name"]) for r in con.execute("PRAGMA table_info(upload_history)").fetchall()}
+        for name,definition in (
+            ("job_id","TEXT DEFAULT ''"),
+            ("archive_path","TEXT DEFAULT ''"),
+            ("status","TEXT DEFAULT 'published'"),
+            ("error","TEXT DEFAULT ''"),
+        ):
+            if name not in cols:
+                con.execute(f"ALTER TABLE upload_history ADD COLUMN {name} {definition}")
+
 init_db()
 ensure_user_security_columns()
+ensure_upload_history_columns()
+
+def _create_upload_job(module: str, filename: str, source_path: Path, username: str) -> dict:
+    job_id=secrets.token_hex(12)
+    now=datetime.now().isoformat(timespec="seconds")
+    with db() as con:
+        con.execute(
+            "INSERT INTO upload_jobs(id,module,filename,status,progress,message,source_path,created_at,created_by) VALUES(?,?,?,?,?,?,?,?,?)",
+            (job_id,module,filename,"queued",10,"Archivo recibido; en espera de procesamiento.",str(source_path),now,username)
+        )
+    return _get_upload_job(job_id)
+
+def _get_upload_job(job_id: str) -> dict:
+    with db() as con:
+        row=con.execute(
+            "SELECT id,module,filename,status,progress,message,error,result_json,created_at,started_at,finished_at,created_by FROM upload_jobs WHERE id=?",
+            (job_id,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(404,"Carga no encontrada")
+    result=dict(row)
+    try:result["result"]=json.loads(result.pop("result_json") or "{}")
+    except Exception:result["result"]={};result.pop("result_json",None)
+    return result
+
+def _update_upload_job(job_id: str, **changes) -> None:
+    allowed={"status","progress","message","error","result_json","started_at","finished_at","source_path"}
+    clean={k:v for k,v in changes.items() if k in allowed}
+    if not clean:return
+    assignments=",".join(f"{key}=?" for key in clean)
+    with db() as con:
+        con.execute(f"UPDATE upload_jobs SET {assignments} WHERE id=?",(*clean.values(),job_id))
+
+def _finish_upload_job(job_id: str, result: dict) -> None:
+    _update_upload_job(
+        job_id,status="complete",progress=100,message=str(result.get("message") or "Carga terminada correctamente"),
+        error="",result_json=json.dumps(result,ensure_ascii=False,default=str),
+        finished_at=datetime.now().isoformat(timespec="seconds")
+    )
+
+def _fail_upload_job(job_id: str, exc: Exception) -> None:
+    _update_upload_job(
+        job_id,status="error",progress=100,message="La nueva versión no se publicó; la anterior sigue activa.",
+        error=f"{type(exc).__name__}: {exc}",finished_at=datetime.now().isoformat(timespec="seconds")
+    )
 
 def ensure_store_project_columns():
     """Agrega la selección Proyecto sin perder la configuración existente."""
@@ -621,7 +737,7 @@ def find_login_user(username: str):
     return None
 
 
-def current_user(request: Request):
+def _session_user_row(request: Request):
     uid=request.session.get("uid")
     if not uid:
         return None
@@ -635,8 +751,21 @@ def current_user(request: Request):
     if actual!=expected:
         request.session.clear()
         return None
+    return row
+
+def current_user(request: Request):
+    row=_session_user_row(request)
+    if not row:
+        return None
+    real_role=str(row["role"] or "")
+    view_role=str(request.session.get("view_role") or "")
+    if real_role!="superadmin" or view_role not in ("admin","director"):
+        view_role=""
+    effective_role=view_role or real_role
     return {
-        "id":row["id"],"username":row["username"],"role":row["role"],"store":row["store"],
+        "id":row["id"],"username":row["username"],"role":effective_role,"store":row["store"],
+        "real_role":real_role,"view_role":view_role,
+        "can_preview_roles":real_role=="superadmin",
         "must_change_password":bool(row["must_change_password"]) if "must_change_password" in row.keys() else False,
     }
 
@@ -644,10 +773,18 @@ def require_user(request: Request, roles=None):
     u = current_user(request)
     if not u: raise HTTPException(401, "Sesión requerida")
     state=system_status().get("status","active")
-    if state in ("suspended","deleted") and u.get("role")!="superadmin":
+    if state in ("suspended","deleted") and u.get("real_role")!="superadmin":
         raise HTTPException(423, "Operaciones Ropa está suspendido por el propietario")
     if roles and u["role"] not in roles: raise HTTPException(403, "No autorizado")
     return u
+
+def require_real_superadmin(request: Request):
+    row=_session_user_row(request)
+    if not row:
+        raise HTTPException(401,"Sesión requerida")
+    if str(row["role"] or "")!="superadmin":
+        raise HTTPException(403,"No autorizado")
+    return row
 
 def effective_store(user, requested="Compañía"):
     if user["role"] == "tienda":
@@ -2232,7 +2369,15 @@ def index(): return FileResponse(WEB/"index.html")
 @app.get("/api/bootstrap")
 def bootstrap(request: Request):
     migrate_legacy_owner()
-    return {"needs_owner":user_count()==0,"user":current_user(request),"roles":ROLE_LABELS,"system":system_status()}
+    visibility={key:True for key in REPORT_TABS}
+    try:
+        with db() as con:
+            for row in con.execute("SELECT tab_key,visible FROM report_tab_visibility").fetchall():
+                if row["tab_key"] in visibility:
+                    visibility[row["tab_key"]]=bool(row["visible"])
+    except Exception:
+        pass
+    return {"needs_owner":user_count()==0,"user":current_user(request),"roles":ROLE_LABELS,"system":system_status(),"tabs":visibility}
 
 @app.post("/api/bootstrap-owner")
 async def bootstrap_owner(request: Request):
@@ -2288,16 +2433,62 @@ async def login(request: Request):
     sv=int(row["session_version"] or 1) if "session_version" in row.keys() else 1
     request.session["uid"]=row["id"]
     request.session["sv"]=sv
+    request.session.pop("view_role",None)
     must=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
     return {
         "ok":True,
         "must_change_password":must,
-        "user":{"id":row["id"],"username":row["username"],"role":row["role"],"store":row["store"],"must_change_password":must},
+        "user":current_user(request),
         "system":system_status()
     }
 
 @app.post("/api/logout")
 def logout(request: Request): request.session.clear(); return {"ok":True}
+
+@app.post("/api/me/view-role")
+async def set_view_role(request: Request):
+    """Permite al propietario previsualizar permisos sin alterar su cuenta."""
+    require_real_superadmin(request)
+    body=await request.json()
+    role=str(body.get("role") or "superadmin").strip().lower()
+    if role not in ("superadmin","admin","director"):
+        raise HTTPException(400,"Vista de rol inválida")
+    if role=="superadmin":
+        request.session.pop("view_role",None)
+    else:
+        request.session["view_role"]=role
+    return {"ok":True,"user":current_user(request)}
+
+@app.get("/api/settings/report-tabs")
+def get_report_tabs(request: Request):
+    require_user(request)
+    with db() as con:
+        stored={r["tab_key"]:bool(r["visible"]) for r in con.execute("SELECT tab_key,visible FROM report_tab_visibility").fetchall()}
+    return {"tabs":[{"key":key,"label":label,"visible":stored.get(key,True)} for key,label in REPORT_TABS.items()]}
+
+@app.put("/api/settings/report-tabs")
+async def put_report_tabs(request: Request):
+    actor=require_real_superadmin(request)
+    body=await request.json()
+    values=body.get("visibility") or {}
+    if not isinstance(values,dict):
+        raise HTTPException(400,"Configuración inválida")
+    proposed={key:bool(values.get(key,True)) for key in REPORT_TABS}
+    if not any(proposed[k] for k in REPORT_TABS if k.startswith("operations.")):
+        raise HTTPException(400,"Debe quedar visible al menos una pestaña de Cambios y Muertos")
+    if not any(proposed[k] for k in REPORT_TABS if k.startswith("commercial.")):
+        raise HTTPException(400,"Debe quedar visible al menos una pestaña de Análisis Comercial")
+    now=datetime.now().isoformat(timespec="seconds")
+    with db() as con:
+        for key in REPORT_TABS:
+            if key not in values:
+                continue
+            con.execute(
+                "INSERT INTO report_tab_visibility(tab_key,visible,updated_at,updated_by) VALUES(?,?,?,?) "
+                "ON CONFLICT(tab_key) DO UPDATE SET visible=excluded.visible,updated_at=excluded.updated_at,updated_by=excluded.updated_by",
+                (key,1 if bool(values[key]) else 0,now,str(actor["username"]))
+            )
+    return get_report_tabs(request)
 
 @app.get("/api/users")
 def users(request: Request):
@@ -4922,27 +5113,11 @@ async def upload_pdfs(request: Request, files: List[UploadFile]=File(...), week:
             update_entry("pdfs",entry["id"],status="Error",error=str(exc)); results.append({"file":filename,"ok":False,"error":str(exc)})
     return {"results":results}
 
-@app.post("/api/upload/capacity")
-async def upload_capacity(request: Request,file:UploadFile=File(...)):
-    require_user(request,("superadmin","admin"))
-    filename=file.filename or "capacidades.xlsx"
-    suffix=Path(filename).suffix.lower()
-    if suffix not in (".xlsx",".xls"):
-        raise HTTPException(400,"Selecciona un archivo Excel .xlsx o .xls")
-    stage_path=STAGING_DIR/f"capacity_{secrets.token_hex(8)}{suffix}"
-    try:
-        size=await _save_upload_stream(file,stage_path)
-        if not size:
-            raise HTTPException(400,"El archivo está vacío")
-        entry=await asyncio.to_thread(_save_capacity_source_path,stage_path,filename)
-        path=resolve_entry_path(entry)
-    finally:
-        try:stage_path.unlink(missing_ok=True)
-        except Exception:pass
-
+def _process_capacity_entry(entry: dict, filename: str) -> dict:
+    path=resolve_entry_path(entry)
     # Si el mismo archivo ya fue procesado, reutiliza el cache y responde de inmediato.
     if entry.get("duplicate") and str(entry.get("status") or "").lower()=="procesado":
-        cached=await asyncio.to_thread(_load_capacity_cache,entry)
+        cached=_load_capacity_cache(entry)
         if not cached.empty:
             try:
                 mtime=path.stat().st_mtime if path.exists() else None
@@ -4963,12 +5138,12 @@ async def upload_capacity(request: Request,file:UploadFile=File(...)):
         def parse_capacity():
             with _CAPACITY_ANALYTICS_LOCK:
                 return _prepare_capacity_frame(read_capacity_file(path))
-        df=await asyncio.to_thread(parse_capacity)
+        df=parse_capacity()
         if df.empty:
             raise ValueError("El Excel se abrió pero no se identificaron filas de capacidades/existencias")
 
         cache_path=_capacity_cache_path(entry["id"])
-        await asyncio.to_thread(df.to_pickle,cache_path)
+        df.to_pickle(cache_path)
         cache_rel=str(cache_path.relative_to(DATA_ROOT))
         mtime=path.stat().st_mtime if path.exists() else None
         _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":df})
@@ -4979,7 +5154,54 @@ async def upload_capacity(request: Request,file:UploadFile=File(...)):
         return {"ok":True,"file":filename,"rows":int(len(df)),"stores":int(df["Tienda"].nunique()) if "Tienda" in df.columns else 0,"message":"Excel procesado correctamente y catálogo optimizado para consultas rápidas","cached":False}
     except Exception as exc:
         update_entry("capacities",entry["id"],status="Error",error=str(exc))
+        raise
+
+@app.post("/api/upload/capacity")
+async def upload_capacity(request: Request,file:UploadFile=File(...)):
+    require_user(request,("superadmin","admin"))
+    filename=file.filename or "capacidades.xlsx"
+    suffix=Path(filename).suffix.lower()
+    if suffix not in (".xlsx",".xls"):
+        raise HTTPException(400,"Selecciona un archivo Excel .xlsx o .xls")
+    stage_path=STAGING_DIR/f"capacity_{secrets.token_hex(8)}{suffix}"
+    try:
+        size=await _save_upload_stream(file,stage_path)
+        if not size:
+            raise HTTPException(400,"El archivo está vacío")
+        entry=await asyncio.to_thread(_save_capacity_source_path,stage_path,filename)
+    finally:
+        try:stage_path.unlink(missing_ok=True)
+        except Exception:pass
+    try:
+        return await asyncio.to_thread(_process_capacity_entry,entry,filename)
+    except Exception as exc:
         raise HTTPException(400,str(exc))
+
+def _run_capacity_job(job_id: str, entry: dict, filename: str) -> None:
+    try:
+        _update_upload_job(job_id,status="processing",progress=25,message="Procesando capacidades y existencias.",started_at=datetime.now().isoformat(timespec="seconds"))
+        result=_process_capacity_entry(entry,filename)
+        _finish_upload_job(job_id,result)
+    except Exception as exc:
+        _fail_upload_job(job_id,exc)
+
+@app.post("/api/upload/jobs/capacity",status_code=202)
+async def start_capacity_job(request: Request,file:UploadFile=File(...)):
+    u=require_user(request,("superadmin","admin"))
+    filename=file.filename or "capacidades.xlsx"
+    suffix=Path(filename).suffix.lower()
+    if suffix not in (".xlsx",".xls"):
+        raise HTTPException(400,"Selecciona un archivo Excel .xlsx o .xls")
+    stage_path=STAGING_DIR/f"capacity_job_{secrets.token_hex(8)}{suffix}"
+    try:
+        size=await _save_upload_stream(file,stage_path)
+        if not size:raise HTTPException(400,"El archivo está vacío")
+        entry=await asyncio.to_thread(_save_capacity_source_path,stage_path,filename)
+    finally:
+        stage_path.unlink(missing_ok=True)
+    job=_create_upload_job("capacity",filename,resolve_entry_path(entry),u["username"])
+    threading.Thread(target=_run_capacity_job,args=(job["id"],entry,filename),daemon=True,name=f"capacity-{job['id'][:8]}").start()
+    return job
 
 @app.post("/api/upload/sales-pdfs")
 async def upload_sales_pdfs(
@@ -5161,10 +5383,119 @@ def upload_operations_history(request: Request):
     require_user(request,("superadmin","admin"))
     with db() as con:
         rows=con.execute(
-            "SELECT id,module,filename,uploaded_at,uploaded_by,period_detected,valid_records,rejected_records,rejection_reason,published "
+            "SELECT id,module,filename,uploaded_at,uploaded_by,period_detected,valid_records,rejected_records,rejection_reason,published,job_id,archive_path,status,error "
             "FROM upload_history WHERE module='Cambios y Muertos' ORDER BY id DESC LIMIT 50"
         ).fetchall()
     return [dict(r) for r in rows]
+
+def _publish_operations_payload(stage_path: Path, filename: str, username: str, job_id: str="") -> dict:
+    token=job_id or secrets.token_hex(8)
+    payload=_parse_operations_external(stage_path,token)
+    payload["source_file"]=filename
+    payload["uploaded_by"]=username
+    payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
+
+    tmp_ops=DATA_ROOT/f"operations_publish_{token}.tmp.json"
+    tmp_raw=DATA_ROOT/f"operations_source_{token}.tmp.xlsx"
+    snapshot_tmp=OPERATIONS_HISTORY_DIR/f"{token}.json.gz.tmp"
+    snapshot_path=OPERATIONS_HISTORY_DIR/f"{token}.json.gz"
+    try:
+        _write_json_stream(tmp_ops,payload)
+        # El snapshot comprimido conserva cada corte para consultas y futuros
+        # comparativos sin duplicar en disco los 141 MB del Excel original.
+        with tmp_ops.open("rb") as source, gzip.open(snapshot_tmp,"wb",compresslevel=6) as target:
+            shutil.copyfileobj(source,target,length=1024*1024)
+        snapshot_tmp.replace(snapshot_path)
+        shutil.copy2(stage_path,tmp_raw)
+        tmp_raw.replace(DATA_ROOT/"cambios_muertos_actual.xlsx")
+        tmp_ops.replace(OPS_FILE)
+        _clear_operations_caches(clear_meta_file=True)
+        try:
+            meta=_build_operations_meta(payload,_ops_source_stamp())
+            OPS_META_CACHE_FILE.write_text(_safe_json_dump(meta),encoding="utf-8")
+            _OPS_META_CACHE["stamp"]=_ops_source_stamp();_OPS_META_CACHE["data"]=meta
+        except Exception:
+            pass
+        periods=payload.get("months") or payload.get("weeks") or []
+        with db() as con:
+            con.execute(
+                "INSERT INTO upload_history(module,filename,uploaded_at,uploaded_by,period_detected,valid_records,rejected_records,rejection_reason,published,job_id,archive_path,status,error) "
+                "VALUES(?,?,?,?,?,?,?,?,1,?,?,?,?)",
+                ("Cambios y Muertos",filename,payload["uploaded_at"],username,", ".join(periods),
+                 len(payload.get("rows") or []),len(payload.get("rejected_rows") or []),"; ".join(payload.get("errors") or []),
+                 job_id,str(snapshot_path.relative_to(DATA_ROOT)),"published","")
+            )
+        return {
+            "ok":True,"message":"Excel procesado y publicado; la versión anterior quedó resguardada",
+            "file":filename,"rows":len(payload.get("rows") or []),"sheets":payload.get("sheets_used",[]),
+            "weeks":payload.get("weeks",[]),"months":payload.get("months",[]),
+            "operational_sheet":payload.get("operational_sheet",""),"operational_sheets":payload.get("operational_sheets",[]),
+            "monthly_sheets":payload.get("monthly_sheets",[]),"rejected_records":len(payload.get("rejected_rows") or []),
+            "duplicate_rows_removed":payload.get("duplicate_rows_removed",0),"errors":payload.get("errors",[]),
+            "missing_columns_by_sheet":payload.get("missing_columns_by_sheet",{}),"data_issues":payload.get("data_issues",[])[:100],
+        }
+    finally:
+        for path in (tmp_ops,tmp_raw,snapshot_tmp):
+            try:path.unlink(missing_ok=True)
+            except Exception:pass
+
+def _run_operations_job(job_id: str, stage_path: Path, filename: str, username: str) -> None:
+    try:
+        _update_upload_job(job_id,status="processing",progress=25,message="Analizando hojas operativas. El archivo vigente sigue disponible.",started_at=datetime.now().isoformat(timespec="seconds"))
+        result=_publish_operations_payload(stage_path,filename,username,job_id)
+        _finish_upload_job(job_id,result)
+    except Exception as exc:
+        _fail_upload_job(job_id,exc)
+    finally:
+        try:stage_path.unlink(missing_ok=True)
+        except Exception:pass
+
+@app.post("/api/upload/jobs/operations",status_code=202)
+async def start_operations_job(request: Request,file:UploadFile=File(...)):
+    u=require_user(request,("superadmin","admin"))
+    filename=file.filename or "archivo.xlsx"
+    if Path(filename).suffix.lower()!=".xlsx":
+        raise HTTPException(400,"Carga un archivo Excel .xlsx")
+    stage_path=STAGING_DIR/f"operations_job_{secrets.token_hex(10)}.xlsx"
+    size=await _save_upload_stream(file,stage_path)
+    if not size:
+        stage_path.unlink(missing_ok=True)
+        raise HTTPException(400,"El archivo está vacío")
+    job=_create_upload_job("operations",filename,stage_path,u["username"])
+    threading.Thread(target=_run_operations_job,args=(job["id"],stage_path,filename,u["username"]),daemon=True,name=f"operations-{job['id'][:8]}").start()
+    return job
+
+@app.get("/api/upload/jobs/{job_id}")
+def upload_job_status(job_id: str,request: Request):
+    require_user(request,("superadmin","admin"))
+    return _get_upload_job(job_id)
+
+@app.get("/api/upload/history/capacity")
+def upload_capacity_history(request: Request):
+    require_user(request,("superadmin","admin"))
+    entries=[]
+    for item in sorted(load_manifest().get("capacities",[]),key=lambda x:str(x.get("uploaded_at") or ""),reverse=True)[:50]:
+        entries.append({k:item.get(k) for k in ("id","name","uploaded_at","status","rows","stores","report_date","week","month","size","error")})
+    return entries
+
+@app.get("/api/upload/history/capacity/{entry_id}/download")
+def download_capacity_history(entry_id: str,request: Request):
+    require_user(request,("superadmin","admin"))
+    entry=next((x for x in load_manifest().get("capacities",[]) if str(x.get("id") or "")==entry_id),None)
+    if not entry:raise HTTPException(404,"Versión histórica no encontrada")
+    path=resolve_entry_path(entry)
+    if not path.exists():raise HTTPException(404,"El archivo histórico ya no está en disco")
+    return FileResponse(path,filename=str(entry.get("name") or path.name))
+
+@app.get("/api/upload/history/operations/{history_id}/download")
+def download_operations_history(history_id: int,request: Request):
+    require_user(request,("superadmin","admin"))
+    with db() as con:
+        row=con.execute("SELECT filename,archive_path FROM upload_history WHERE id=? AND module='Cambios y Muertos'",(history_id,)).fetchone()
+    if not row or not row["archive_path"]:raise HTTPException(404,"Versión histórica no disponible")
+    path=DATA_ROOT/str(row["archive_path"])
+    if not path.exists():raise HTTPException(404,"El respaldo ya no está en disco")
+    return FileResponse(path,media_type="application/gzip",filename=f"{Path(row['filename']).stem}_datos.json.gz")
 
 # Compatibilidad: la ruta antigua ahora valida y publica en una sola llamada.
 @app.post("/api/upload/operations")

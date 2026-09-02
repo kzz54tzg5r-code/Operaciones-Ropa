@@ -1,10 +1,12 @@
 from datetime import datetime
 import json
+from types import SimpleNamespace
 
 import pandas as pd
 from openpyxl import Workbook
 
 import web_app
+from commercial import storage as commercial_storage
 
 
 def _operations_workbook(path):
@@ -228,3 +230,98 @@ def test_capacity_preparation_and_requested_frontend_controls():
         assert label in source
     assert "% checklist" in source and "% evidencias" in source
     assert "Piso '+fmt(k.floor)+' pzas" in source
+    assert "resumePendingUploadJob" in source
+    assert "Carga recuperada después de actualizar la página" in source
+
+
+def test_legacy_commercial_path_is_resolved_without_duplicate_folder(monkeypatch,tmp_path):
+    commercial_root=tmp_path/"commercial"
+    expected=commercial_root/"capacidades"/"Reporte.xlsx"
+    monkeypatch.setattr(commercial_storage,"DATA_ROOT",commercial_root)
+
+    resolved=commercial_storage.resolve_entry_path({"path":"commercial/capacidades/Reporte.xlsx"})
+
+    assert resolved==expected
+    assert "commercial/commercial" not in str(resolved)
+
+
+def test_superadmin_can_preview_roles_without_changing_real_permissions(monkeypatch,tmp_path):
+    database=tmp_path/"users.sqlite3"
+    monkeypatch.setattr(web_app,"DB",database)
+    web_app.init_db()
+    web_app.ensure_user_security_columns()
+    with web_app.db() as con:
+        con.execute(
+            "INSERT INTO users(username,password_hash,role,store,session_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+            ("Propietario",web_app.hash_password("Temporal123!"),"superadmin","",1,"2026-09-02","2026-09-02")
+        )
+        user_id=con.execute("SELECT id FROM users WHERE username='Propietario'").fetchone()["id"]
+    request=SimpleNamespace(session={"uid":user_id,"sv":1,"view_role":"director"})
+
+    user=web_app.current_user(request)
+
+    assert user["role"]=="director"
+    assert user["real_role"]=="superadmin"
+    assert user["can_preview_roles"] is True
+    assert web_app.require_real_superadmin(request)["username"]=="Propietario"
+
+
+def test_upload_job_records_completion_and_keeps_result(monkeypatch,tmp_path):
+    database=tmp_path/"jobs.sqlite3"
+    source=tmp_path/"entrada.xlsx"
+    source.write_bytes(b"xlsx")
+    monkeypatch.setattr(web_app,"DB",database)
+    web_app.init_db()
+
+    job=web_app._create_upload_job("operations","entrada.xlsx",source,"Propietario")
+    web_app._finish_upload_job(job["id"],{"ok":True,"rows":125000,"message":"Publicado"})
+    completed=web_app._get_upload_job(job["id"])
+
+    assert completed["status"]=="complete"
+    assert completed["progress"]==100
+    assert completed["result"]["rows"]==125000
+    assert completed["message"]=="Publicado"
+
+
+def test_background_operations_endpoint_publishes_and_preserves_snapshot(monkeypatch,tmp_path):
+    source=tmp_path/"operaciones.xlsx"
+    _operations_workbook(source)
+    data_root=tmp_path/"persistent"
+    staging=data_root/"staging"
+    history=data_root/"history"/"operations"
+    staging.mkdir(parents=True)
+    history.mkdir(parents=True)
+    monkeypatch.setattr(web_app,"DB",data_root/"users.sqlite3")
+    monkeypatch.setattr(web_app,"DATA_ROOT",data_root)
+    monkeypatch.setattr(web_app,"STAGING_DIR",staging)
+    monkeypatch.setattr(web_app,"OPERATIONS_HISTORY_DIR",history)
+    monkeypatch.setattr(web_app,"OPS_FILE",data_root/"operations.json")
+    monkeypatch.setattr(web_app,"OPS_META_CACHE_FILE",data_root/"operations.meta.json")
+    web_app.init_db()
+    web_app.ensure_user_security_columns()
+    web_app.ensure_upload_history_columns()
+    with web_app.db() as con:
+        con.execute(
+            "INSERT INTO users(username,password_hash,role,store,session_version,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+            ("Propietario",web_app.hash_password("Temporal123!"),"superadmin","",1,"2026-09-02","2026-09-02")
+        )
+        user_id=con.execute("SELECT id FROM users WHERE username='Propietario'").fetchone()["id"]
+
+    import asyncio
+    import time
+    request=SimpleNamespace(session={"uid":user_id,"sv":1})
+    with source.open("rb") as stream:
+        upload=web_app.UploadFile(filename="operaciones.xlsx",file=stream)
+        job=asyncio.run(web_app.start_operations_job(request,upload))
+    for _ in range(100):
+        status=web_app._get_upload_job(job["id"])
+        if status["status"] in ("complete","error","interrupted"):
+            break
+        time.sleep(0.05)
+
+    assert status["status"]=="complete",status
+    assert status["result"]["rows"]==1
+    assert (data_root/"operations.json").exists()
+    assert (data_root/"cambios_muertos_actual.xlsx").exists()
+    snapshots=list(history.glob("*.json.gz"))
+    assert len(snapshots)==1

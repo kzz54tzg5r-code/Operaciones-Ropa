@@ -275,7 +275,14 @@ def discover_existing_files(manifest: dict | None = None) -> dict:
 
 
 def resolve_entry_path(entry: dict) -> Path:
-    return DATA_ROOT / str(entry.get("path", ""))
+    relative = Path(str(entry.get("path", "")))
+    # Compatibilidad con entradas creadas por la web V47: se guardaron como
+    # "commercial/capacidades/..." aunque DATA_ROOT ya termina en commercial.
+    # Normalizar aquí también permite recuperar manifiestos que ya están en el
+    # disco persistente sin pedir que el usuario vuelva a subir el archivo.
+    if relative.parts and relative.parts[0].lower() == DATA_ROOT.name.lower():
+        relative = Path(*relative.parts[1:])
+    return DATA_ROOT / relative
 
 
 def _uploaded_bytes(uploaded) -> bytes:
