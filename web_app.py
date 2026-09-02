@@ -7,6 +7,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc, zipfile
 from functools import wraps, lru_cache
+from contextlib import contextmanager, nullcontext
 from xml.etree import ElementTree as ET
 
 # Compatibilidad Windows para este equipo:
@@ -122,6 +123,10 @@ def _parse_operations_external(stage_path: Path, token: str) -> dict:
     provocaba el reinicio observado durante la carga de 141 MB.
     """
     with _RESOURCE_HEAVY_LOCK:
+        # La pantalla consulta /current antes de cargar y eso deja la base
+        # anterior completa en RAM. Soltarla aquí evita sumar dos periodos
+        # operativos durante el análisis del Excel nuevo.
+        _clear_operations_caches(clear_meta_file=False)
         cache=globals().get("_CAPACITY_FRAME_CACHE")
         if isinstance(cache,dict):
             cache.update({"path":"","mtime":None,"frame":None})
@@ -1566,7 +1571,10 @@ def _xlsx_shared_string_reader(archive: zipfile.ZipFile, con: sqlite3.Connection
             con.executemany("INSERT INTO shared_strings VALUES(?,?)",batch)
         con.commit()
 
-    @lru_cache(maxsize=32768)
+    # Los libros operativos contienen cientos de miles de textos compartidos.
+    # Un caché grande vuelve a duplicarlos en RAM; SQLite ya es el caché
+    # persistente y esta ventana pequeña conserva sólo los valores calientes.
+    @lru_cache(maxsize=4096)
     def read(index: int) -> str:
         row=con.execute("SELECT value FROM shared_strings WHERE idx=?",(int(index),)).fetchone()
         return str(row[0]) if row else ""
@@ -1602,6 +1610,224 @@ def _xlsx_cell_value(cell, shared_value):
     except Exception:return raw
 
 
+@contextmanager
+def _xlsx_stream_book(path: Path):
+    """Abre un XLSX con memoria acotada y comparte strings entre sus hojas."""
+    temp_fd,temp_name=tempfile.mkstemp(prefix="operaciones_xlsx_",suffix=".sqlite3")
+    os.close(temp_fd)
+    con=sqlite3.connect(temp_name)
+    archive=None;shared_value=None
+    try:
+        con.executescript("""
+            PRAGMA journal_mode=OFF;
+            PRAGMA synchronous=OFF;
+            PRAGMA temp_store=FILE;
+            PRAGMA cache_size=-8000;
+        """)
+        archive=zipfile.ZipFile(path)
+        sheet_paths=_xlsx_sheet_paths(archive)
+        shared_value=_xlsx_shared_string_reader(archive,con)
+        yield {
+            "archive":archive,"con":con,"sheet_paths":sheet_paths,
+            "shared_value":shared_value,
+        }
+    finally:
+        try:
+            if shared_value is not None:
+                shared_value.cache_clear()
+        except Exception:
+            pass
+        if archive is not None:
+            archive.close()
+        con.close()
+        try:Path(temp_name).unlink(missing_ok=True)
+        except Exception:pass
+        _release_process_memory()
+
+
+def _xlsx_stream_rows(book: dict, sheet: str):
+    """Itera (número de fila, {índice de columna: valor}) sin DataFrame."""
+    archive=book["archive"]
+    member=book["sheet_paths"].get(sheet,"")
+    if not member or member not in archive.namelist():
+        raise ValueError(f"No se encontró la hoja '{sheet}' dentro del XLSX")
+    shared_value=book["shared_value"]
+    current={};row_number=0
+    with archive.open(member) as stream:
+        for _event,elem in ET.iterparse(stream,events=("end",)):
+            tag=_xml_local_name(elem.tag)
+            if tag=="c":
+                column=_xlsx_column_index(elem.attrib.get("r", ""))
+                if column>=0:
+                    current[column]=_xlsx_cell_value(elem,shared_value)
+                elem.clear()
+            elif tag=="row":
+                try:row_number=int(elem.attrib.get("r") or row_number+1)
+                except Exception:row_number+=1
+                yield row_number,current
+                current={}
+                elem.clear()
+
+
+def _xlsx_best_header(book: dict, sheet: str, tokens, minimum: int=1):
+    best=(0,-1,{})
+    for row_number,values in _xlsx_stream_rows(book,sheet):
+        if row_number>25:
+            break
+        normalized=[normalize_col(v) for _,v in sorted(values.items()) if _clean_text(v)]
+        score=sum(any(token==value or token in value for token in tokens) for value in normalized)
+        if score>best[1]:
+            best=(row_number,score,dict(values))
+    if best[1]<minimum:
+        return 0,{}
+    return best[0],best[2]
+
+
+def _staff_lookup_from_template_stream(book: dict, sheet_names):
+    """Lee Plantilla fila a fila; nunca materializa la hoja completa."""
+    plantilla=next((s for s in sheet_names if normalize_col(s)=="plantilla"),None)
+    by_nomina={};by_store_alias={}
+    if not plantilla:
+        return {"by_nomina":by_nomina,"by_store_alias":by_store_alias}
+    header_row,header=_xlsx_best_header(book,plantilla,("tienda","nombre","nomina"),minimum=1)
+    columns={normalize_col(value):index for index,value in header.items() if _clean_text(value)}
+    c_store=columns.get("tienda");c_name=columns.get("nombre");c_nom=columns.get("nomina")
+    if c_name is None:
+        return {"by_nomina":by_nomina,"by_store_alias":by_store_alias}
+    for row_number,values in _xlsx_stream_rows(book,plantilla):
+        if row_number<=header_row:
+            continue
+        full=_clean_text(values.get(c_name))
+        store=_normalize_store_value(values.get(c_store)) if c_store is not None else ""
+        nom=_clean_occurrence(values.get(c_nom)) if c_nom is not None else ""
+        if not full:
+            continue
+        if nom:by_nomina[nom]=full
+        tokens=[token for token in normalize_col(full).split() if len(token)>=3]
+        aliases=set(tokens)
+        if tokens:
+            aliases.add(tokens[0]);aliases.add(tokens[-1])
+        for index in range(len(tokens)-1):
+            aliases.add(tokens[index]+" "+tokens[index+1])
+        for alias in aliases:
+            by_store_alias.setdefault((normalize_col(store),alias),set()).add(full)
+    return {"by_nomina":by_nomina,"by_store_alias":by_store_alias}
+
+
+def _operational_canonical_header(value):
+    key=normalize_col(value)
+    if key in ("occurrence","ocurrencia","ocurrense"):return "Ocurrencia"
+    if key in ("tienda","sucursal","ubicacion"):return "Tienda"
+    if key=="fecha":return "Fecha"
+    if key in ("fecha s","fechas","fecha base"):return "Fecha s"
+    if key=="tabla":return "Tabla"
+    if key in ("actividad realizada","actividad"):return "Actividad Realizada"
+    if key=="area":return "Área"
+    if key in ("numero de piezas","piezas","pzas","cantidad"):return "Número de Piezas"
+    if key in ("hora inicio","hora de inicio","inicio"):return "Hora Inicio"
+    if key in ("hora fin","hora de fin","fin"):return "Hora Fin"
+    if key in ("nombre","usuario","colaborador","nombre real","nombre colaborador","nomina") or key.startswith("nomb"):
+        return "Nombre"
+    if key in ("motivo de ingreso","motivo","ingreso al area de acondicionado","ingreso al area acondicionado"):
+        return "Motivo de ingreso"
+    if key in ("recorridos","recorrido","rec"):return "RECORRIDOS"
+    return ""
+
+
+def _read_operational_sheet_stream(book: dict, sheet: str, staff_lookup=None):
+    """Versión de bajo consumo del lector operativo para XLSX grandes."""
+    header_tokens=("fecha s","fecha","occurrence","ocurrencia","ocurrense","tienda","ubicacion","tabla",
+                   "actividad realizada","area","numero de piezas","hora inicio","hora fin","nombre","nomina",
+                   "motivo de ingreso","ingreso al area de acondicionado","recorridos")
+    header_row,header=_xlsx_best_header(book,sheet,header_tokens,minimum=4)
+    if not header_row:
+        raise ValueError(f"No se detectó un encabezado operativo válido en '{sheet}'")
+    original_columns=[];seen_columns=set()
+    for index,raw_header in sorted(header.items()):
+        column_name=_operational_canonical_header(raw_header) or _clean_text(raw_header) or f"Columna {index+1}"
+        if column_name not in seen_columns:
+            original_columns.append(column_name);seen_columns.add(column_name)
+    canonical={}
+    for index,value in sorted(header.items()):
+        name=_operational_canonical_header(value)
+        if name and name not in canonical:
+            canonical[name]=index
+    required=["Fecha s","Fecha","Ocurrencia","Tienda","Tabla","Actividad Realizada","Área",
+              "Número de Piezas","Hora Inicio","Hora Fin","Nombre","Motivo de ingreso","RECORRIDOS"]
+    missing_columns=[name for name in required if name not in canonical]
+    rows=[];rejected=[];issues=[]
+    lookup=staff_lookup or {"by_nomina":{},"by_store_alias":{}}
+
+    def value(values,name):
+        index=canonical.get(name)
+        return values.get(index) if index is not None else None
+
+    for row_number,values in _xlsx_stream_rows(book,sheet):
+        if row_number<=header_row:
+            continue
+        act_original=_clean_text(value(values,"Actividad Realizada"))
+        activity=_activity_class(act_original)
+        reason=_clean_text(value(values,"Motivo de ingreso"))
+        store=_normalize_store_value(value(values,"Tienda"))
+        occ=_clean_occurrence(value(values,"Ocurrencia"))
+        name=_resolve_staff_name(value(values,"Nombre"),store,lookup)
+        area=_clean_text(value(values,"Área"));table=_clean_text(value(values,"Tabla"))
+        start_time=value(values,"Hora Inicio");end_time=value(values,"Hora Fin")
+        raw_date=value(values,"Fecha")
+        if raw_date is None or raw_date=="":raw_date=value(values,"Fecha s")
+        date_iso,week_iso,year_iso,month_key=_safe_date_iso(raw_date)
+        try:pcs_raw=float(value(values,"Número de Piezas"))
+        except Exception:pcs_raw=float("nan")
+        has_identity=bool(act_original or reason or store or occ or name or table)
+        if not has_identity:
+            continue
+        row_errors=[]
+        if not store:row_errors.append("Tienda vacía")
+        if not date_iso:row_errors.append("Fecha inválida")
+        if not math.isfinite(pcs_raw):row_errors.append("Número de Piezas no numérico")
+        if not act_original:row_errors.append("Actividad Realizada vacía")
+        if row_errors:
+            rejected.append({"sheet":sheet,"row":int(row_number),"store":store,"occurrence":occ,
+                             "activity":act_original,"reason":reason,"errors":row_errors})
+            continue
+        pcs=float(pcs_raw)
+        is_recorrido_table="recorrido" in normalize_col(table)
+        if not occ:
+            issues.append({"sheet":sheet,"row":int(row_number),"store":store,"activity":act_original,
+                           "warning":"Ocurrencia vacía; la fila suma piezas pero no cuenta como recorrido."})
+        is_recoleccion=(activity=="Recolección de muertos")
+        is_ingreso=(normalize_col(act_original)=="ingreso")
+        is_operational_input=is_recoleccion or is_ingreso
+        motive=_motive_class(reason) if is_operational_input else "No aplica"
+        muertos=pcs if is_operational_input and motive=="Muertos" else 0.0
+        probador=pcs if is_operational_input and motive=="Probador" else 0.0
+        cajas=pcs if is_operational_input and motive=="Cajas" else 0.0
+        sistema_devoluciones=pcs if is_operational_input and motive=="Sistema/Devoluciones" else 0.0
+        sin_clasificar=pcs if is_operational_input and motive=="Sin clasificar" else 0.0
+        recolectadas=pcs if is_operational_input else 0.0
+        acondicionado=pcs if activity=="Acondicionado" else 0.0
+        ubicado=pcs if activity=="Ubicado" else 0.0
+        duration=_duration_hours(start_time,end_time)
+        try:recorrido_count=float(value(values,"RECORRIDOS") or 0)
+        except Exception:recorrido_count=0.0
+        recorrido_key=f"{store}|{date_iso}|{occ}" if is_recorrido_table and occ else ""
+        rows.append({
+            "sheet":sheet,"occurrence":occ,"store":store,"date":date_iso,
+            "week_iso":week_iso,"year_iso":year_iso,"month":month_key,
+            "table":table,"activity":activity,"activity_original":act_original,
+            "area":area,"pieces":pcs,"name":name,"reason":reason,"motive_class":motive,
+            "start_time":"" if start_time is None else str(start_time),
+            "end_time":"" if end_time is None else str(end_time),
+            "hours_used":duration,"is_recorrido_table":bool(is_recorrido_table),"recorrido_key":recorrido_key,
+            "has_recorridos_column":bool("RECORRIDOS" in canonical),
+            "muertos":muertos,"probador":probador,"cajas":cajas,
+            "sistema_devoluciones":sistema_devoluciones,"sin_clasificar":sin_clasificar,
+            "recolectadas":recolectadas,"acondicionado":acondicionado,"ubicado":ubicado,
+            "recorridos":recorrido_count,"productividad":recolectadas+acondicionado+ubicado,
+        })
+    return rows,original_columns,rejected,issues,missing_columns
+
+
 def _xlsx_monthly_rows(archive: zipfile.ZipFile, member: str, shared_value):
     """Itera sólo columnas requeridas sin materializar la hoja completa."""
     current={}
@@ -1619,7 +1845,7 @@ def _xlsx_monthly_rows(archive: zipfile.ZipFile, member: str, shared_value):
                 elem.clear()
 
 
-def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
+def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: dict|None=None):
     """Construye FIFO desde las hojas mensuales con memoria acotada.
 
     Los libros reales generan más de un millón de observaciones diarias. En vez
@@ -1629,17 +1855,16 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
     """
     if not sheets:
         return [], [], [], []
+    if stream_book is None:
+        # Compatibilidad con llamadas directas y archivos de prueba.
+        with _xlsx_stream_book(path) as owned_book:
+            return _stream_monthly_recovery_fifo(path,sheets,owned_book)
 
-    temp_fd,temp_name=tempfile.mkstemp(prefix="operaciones_recovery_",suffix=".sqlite3")
-    os.close(temp_fd)
-    con=sqlite3.connect(temp_name)
+    con=stream_book["con"]
     weeks=set(); months=set(); errors=[]
     try:
         con.executescript("""
-            PRAGMA journal_mode=OFF;
-            PRAGMA synchronous=OFF;
-            PRAGMA temp_store=FILE;
-            PRAGMA cache_size=-16000;
+            DROP TABLE IF EXISTS daily;
             CREATE TABLE daily(
                 store TEXT NOT NULL, year_iso INTEGER NOT NULL, week_iso INTEGER NOT NULL,
                 id_art TEXT NOT NULL, color TEXT NOT NULL, date TEXT NOT NULL,
@@ -1647,64 +1872,64 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
                 return_cost REAL NOT NULL
             );
         """)
-        with zipfile.ZipFile(path) as archive:
-            sheet_paths=_xlsx_sheet_paths(archive)
-            shared_value=_xlsx_shared_string_reader(archive,con)
-            for sheet in sheets:
-                member=sheet_paths.get(sheet,"")
-                if not member or member not in archive.namelist():
-                    errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
+        archive=stream_book["archive"]
+        sheet_paths=stream_book["sheet_paths"]
+        shared_value=stream_book["shared_value"]
+        for sheet in sheets:
+            member=sheet_paths.get(sheet,"")
+            if not member or member not in archive.namelist():
+                errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
+                continue
+            try:
+                row_iter=_xlsx_monthly_rows(archive,member,shared_value)
+                first=dict(next(row_iter,{}) or {})
+                next(row_iter,None)  # La segunda fila contiene subtítulos del reporte.
+                date_columns=[]
+                max_column=max(first.keys(),default=28)
+                for index in range(29,max_column+1,3):
+                    date_iso,week_iso,year_iso,month_key=_safe_date_iso(first.get(index))
+                    if date_iso and week_iso and year_iso:
+                        date_columns.append((index,date_iso,int(week_iso),int(year_iso),month_key))
+                        weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
+                        if month_key:months.add(month_key)
+                if not date_columns:
+                    errors.append(f"{sheet}: no se detectaron fechas diarias desde la columna 30")
                     continue
-                try:
-                    row_iter=_xlsx_monthly_rows(archive,member,shared_value)
-                    first=dict(next(row_iter,{}) or {})
-                    next(row_iter,None)  # La segunda fila contiene subtítulos del reporte.
-                    date_columns=[]
-                    max_column=max(first.keys(),default=28)
-                    for index in range(29,max_column+1,3):
-                        date_iso,week_iso,year_iso,month_key=_safe_date_iso(first.get(index))
-                        if date_iso and week_iso and year_iso:
-                            date_columns.append((index,date_iso,int(week_iso),int(year_iso),month_key))
-                            weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
-                            if month_key:months.add(month_key)
-                    if not date_columns:
-                        errors.append(f"{sheet}: no se detectaron fechas diarias desde la columna 30")
+
+                batch=[]
+                def cell(values,index,default=None):
+                    return values.get(index,default)
+                def number(value):
+                    try:
+                        result=float(value or 0)
+                        return result if math.isfinite(result) else 0.0
+                    except Exception:
+                        return 0.0
+
+                for values in row_iter:
+                    values=dict(values or {})
+                    store=_normalize_store_value(cell(values,25,""))
+                    art=_clean_occurrence(cell(values,1,""))
+                    if not store or not art:
                         continue
-
-                    batch=[]
-                    def cell(values,index,default=None):
-                        return values.get(index,default)
-                    def number(value):
-                        try:
-                            result=float(value or 0)
-                            return result if math.isfinite(result) else 0.0
-                        except Exception:
-                            return 0.0
-
-                    for values in row_iter:
-                        values=dict(values or {})
-                        store=_normalize_store_value(cell(values,25,""))
-                        art=_clean_occurrence(cell(values,1,""))
-                        if not store or not art:
+                    color=_clean_text(cell(values,7,""))
+                    price=max(number(cell(values,24,0)),0.0)
+                    for index,date_iso,week_iso,year_iso,_month in date_columns:
+                        sales=max(number(cell(values,index,0)),0.0)
+                        dev=max(number(cell(values,index+1,0)),0.0)
+                        sales_value=max(number(cell(values,index+2,0)),0.0)
+                        if sales<=0 and dev<=0 and sales_value<=0:
                             continue
-                        color=_clean_text(cell(values,7,""))
-                        price=max(number(cell(values,24,0)),0.0)
-                        for index,date_iso,week_iso,year_iso,_month in date_columns:
-                            sales=max(number(cell(values,index,0)),0.0)
-                            dev=max(number(cell(values,index+1,0)),0.0)
-                            sales_value=max(number(cell(values,index+2,0)),0.0)
-                            if sales<=0 and dev<=0 and sales_value<=0:
-                                continue
-                            return_cost=price*dev if price>0 and dev>0 else sales_value
-                            batch.append((store,year_iso,week_iso,art,color,date_iso,dev,sales,sales_value,max(return_cost,0.0)))
-                            if len(batch)>=5000:
-                                con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
-                                batch.clear()
-                    if batch:
-                        con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
-                    con.commit()
-                except Exception as exc:
-                    errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
+                        return_cost=price*dev if price>0 and dev>0 else sales_value
+                        batch.append((store,year_iso,week_iso,art,color,date_iso,dev,sales,sales_value,max(return_cost,0.0)))
+                        if len(batch)>=5000:
+                            con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
+                            batch.clear()
+                if batch:
+                    con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
+                con.commit()
+            except Exception as exc:
+                errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
         query="""
             SELECT store,year_iso,week_iso,id_art,color,date,
                    SUM(dev),SUM(sales),SUM(sales_value),SUM(return_cost)
@@ -1731,9 +1956,11 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str]):
         fifo.sort(key=lambda x:(x["date"],x["store"],x["id_art"],x.get("color","")))
         return fifo, sorted(weeks), sorted(months), errors
     finally:
-        con.close()
-        try:Path(temp_name).unlink(missing_ok=True)
-        except Exception:pass
+        try:
+            con.execute("DROP TABLE IF EXISTS daily")
+            con.commit()
+        except Exception:
+            pass
 
 
 def _json_default(value):
@@ -1897,90 +2124,99 @@ def _get_recovery_fifo_rows(data):
 
 
 def parse_operations_excel(path: Path, persist: bool=True):
+    path=Path(path)
+    is_xlsx=path.suffix.lower()==".xlsx"
+    context=_xlsx_stream_book(path) if is_xlsx else nullcontext(None)
     try:
-        if Path(path).suffix.lower()==".xlsx":
-            with zipfile.ZipFile(path) as archive:
-                names=list(_xlsx_sheet_paths(archive))
-        else:
-            names=[]
-            last=None
-            for engine in _excel_engine_candidates(path):
+        with context as stream_book:
+            if stream_book is not None:
+                names=list(stream_book["sheet_paths"])
+            else:
+                names=[];last=None
+                for engine in _excel_engine_candidates(path):
+                    try:
+                        with pd.ExcelFile(path,engine=engine) as xls:
+                            names=list(xls.sheet_names)
+                        break
+                    except Exception as exc:
+                        last=exc
+                if not names and last:
+                    raise last
+
+            operational_sheets=_detect_operational_sheets(names)
+            monthly_sheets=[sheet for sheet in names if _monthly_sheet_name(sheet)]
+            if not operational_sheets:
+                raise ValueError(
+                    "El Excel abrió correctamente, pero no se encontró ninguna hoja cuyo nombre comience con "
+                    "'Resultados productividad' o 'Resultados de productividad'. Hojas detectadas: "+", ".join(names[:30])
+                )
+
+            staff_lookup=(
+                _staff_lookup_from_template_stream(stream_book,names)
+                if stream_book is not None else _staff_lookup_from_template(path,names)
+            )
+            rows=[];rejected_rows=[];data_issues=[];op_columns_by_sheet={};missing_by_sheet={};errors=[]
+            for sheet in operational_sheets:
                 try:
-                    with pd.ExcelFile(path,engine=engine) as xls:
-                        names=list(xls.sheet_names)
-                    break
+                    if stream_book is not None:
+                        result=_read_operational_sheet_stream(stream_book,sheet,staff_lookup=staff_lookup)
+                    else:
+                        result=_read_operational_sheet(path,sheet,staff_lookup=staff_lookup)
+                    r,cols,rej,issues,missing=result
+                    rows.extend(r);rejected_rows.extend(rej);data_issues.extend(issues)
+                    op_columns_by_sheet[sheet]=cols;missing_by_sheet[sheet]=missing
+                    if "RECORRIDOS" in missing:
+                        data_issues.append({"sheet":sheet,"warning":"La hoja no contiene columna RECORRIDOS. Sus recorridos quedan en 0 hasta que el archivo la incluya."})
                 except Exception as exc:
-                    last=exc
-            if not names and last:
-                raise last
+                    errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
+
+            if not rows:
+                raise ValueError(
+                    "Se detectaron las hojas operativas, pero no contienen registros utilizables. "
+                    f"Hojas: {', '.join(operational_sheets)}. Errores: {' | '.join(errors) if errors else 'sin detalle'}"
+                )
+
+            rows,duplicate_rows_removed=_dedupe_operational_rows(rows)
+            weeks=sorted({f"{int(row['year_iso'])}-W{int(row['week_iso']):02d}" for row in rows if row.get("year_iso") and row.get("week_iso")})
+            recovery_fifo,daily_weeks,recovery_months,recovery_errors=_stream_monthly_recovery_fifo(
+                path,monthly_sheets,stream_book=stream_book
+            ) if is_xlsx else ([],[],[],["Las hojas mensuales optimizadas requieren un archivo .xlsx"] if monthly_sheets else [])
+            errors.extend(recovery_errors)
+    except ValueError:
+        raise
     except Exception as exc:
         raise ValueError(f"No fue posible abrir el Excel: {exc}")
 
-    operational_sheets=_detect_operational_sheets(names)
-    monthly_sheets=[s for s in names if _monthly_sheet_name(s)]
-    if not operational_sheets:
-        raise ValueError(
-            "El Excel abrió correctamente, pero no se encontró ninguna hoja cuyo nombre comience con "
-            "'Resultados productividad' o 'Resultados de productividad'. Hojas detectadas: "+", ".join(names[:30])
-        )
-
-    staff_lookup=_staff_lookup_from_template(path,names)
-    rows=[]; rejected_rows=[]; data_issues=[]; op_columns_by_sheet={}; missing_by_sheet={}; errors=[]
-    for sheet in operational_sheets:
-        try:
-            r,cols,rej,issues,missing=_read_operational_sheet(path,sheet,staff_lookup=staff_lookup)
-            rows.extend(r); rejected_rows.extend(rej); data_issues.extend(issues)
-            op_columns_by_sheet[sheet]=cols; missing_by_sheet[sheet]=missing
-            if "RECORRIDOS" in missing:
-                data_issues.append({"sheet":sheet,"warning":"La hoja no contiene columna RECORRIDOS. Sus recorridos quedan en 0 hasta que el archivo la incluya."})
-        except Exception as exc:
-            errors.append(f"{sheet}: {exc}")
-
-    if not rows:
-        raise ValueError(
-            "Se detectaron las hojas operativas, pero no contienen registros utilizables. "
-            f"Hojas: {', '.join(operational_sheets)}. Errores: {' | '.join(errors) if errors else 'sin detalle'}"
-        )
-
-    # Deduplicación correcta: sólo filas completamente iguales. Nunca por occurrence solamente.
-    rows,duplicate_rows_removed=_dedupe_operational_rows(rows)
-
-    weeks=sorted({f"{int(r['year_iso'])}-W{int(r['week_iso']):02d}" for r in rows if r.get("year_iso") and r.get("week_iso")})
-    # Las hojas mensuales sólo alimentan conversión/recuperación. Se procesan
-    # directamente a FIFO y ya no se conservan 1.3 M+ filas intermedias.
-    recovery_fifo,daily_weeks,recovery_months,recovery_errors=_stream_monthly_recovery_fifo(path,monthly_sheets)
-    errors.extend(recovery_errors)
-    months=sorted({r.get("month") for r in rows if r.get("month")} | set(recovery_months))
+    months=sorted({row.get("month") for row in rows if row.get("month")} | set(recovery_months))
+    available_dates={str(row.get("date")) for row in rows if row.get("date")}
+    available_dates.update(str(row.get("date")) for row in recovery_fifo if row.get("date"))
     meta_index={
-        "available_dates":sorted({str(r.get("date")) for r in (rows+recovery_fifo) if r.get("date")}),
+        "available_dates":sorted(available_dates),
         "available_weeks":sorted(set(weeks)|set(daily_weeks)),
         "available_months":months,
-        "stores":sorted({str(r.get("store") or "").strip() for r in rows if str(r.get("store") or "").strip()}),
-        "areas":sorted({str(r.get("area") or "").strip() for r in rows if str(r.get("area") or "").strip()}),
-        "activities":sorted({str(r.get("activity") or "").strip() for r in rows if str(r.get("activity") or "").strip()}),
+        "stores":sorted({str(row.get("store") or "").strip() for row in rows if str(row.get("store") or "").strip()}),
+        "areas":sorted({str(row.get("area") or "").strip() for row in rows if str(row.get("area") or "").strip()}),
+        "activities":sorted({str(row.get("activity") or "").strip() for row in rows if str(row.get("activity") or "").strip()}),
     }
-
     payload={
-        "parser_version":OPERATIONS_PARSER_VERSION,
-        "rows":rows,"recovery_fifo":recovery_fifo,
+        "parser_version":OPERATIONS_PARSER_VERSION,"rows":rows,"recovery_fifo":recovery_fifo,
         "uploaded_at":datetime.now().isoformat(timespec="seconds"),"source_file":path.name,
         "sheets_all":names,"operational_sheet":operational_sheets[0],"operational_sheets":operational_sheets,
         "sheets_used":operational_sheets+monthly_sheets,"monthly_sheets":monthly_sheets,
         "op_columns":op_columns_by_sheet.get(operational_sheets[0],[]),"op_columns_by_sheet":op_columns_by_sheet,
         "missing_columns_by_sheet":missing_by_sheet,"weeks":weeks,"commercial_weeks":daily_weeks,"months":months,
-        "meta_index":meta_index,
-        "errors":errors,"rejected_rows":rejected_rows,"data_issues":data_issues,
+        "meta_index":meta_index,"errors":errors,"rejected_rows":rejected_rows,"data_issues":data_issues,
         "duplicate_rows_removed":duplicate_rows_removed,
     }
     if persist:
-        OPS_FILE.write_text(_safe_json_dump(payload),encoding="utf-8")
+        _write_json_stream(OPS_FILE,payload)
         _clear_operations_caches(clear_meta_file=True)
-        try: OPS_RECOVERY_CACHE_FILE.unlink(missing_ok=True)
-        except Exception: pass
+        try:OPS_RECOVERY_CACHE_FILE.unlink(missing_ok=True)
+        except Exception:pass
         try:
             meta=_build_operations_meta(payload,_ops_source_stamp())
-            OPS_META_CACHE_FILE.write_text(_safe_json_dump(meta),encoding="utf-8")
-            _OPS_META_CACHE["stamp"]=_ops_source_stamp(); _OPS_META_CACHE["data"]=meta
+            _write_json_stream(OPS_META_CACHE_FILE,meta)
+            _OPS_META_CACHE["stamp"]=_ops_source_stamp();_OPS_META_CACHE["data"]=meta
         except Exception:
             pass
     return payload

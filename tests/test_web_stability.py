@@ -50,10 +50,23 @@ def test_operations_parser_stores_compact_fifo_without_daily_rows(tmp_path):
     assert lot["recovered_value"]==40
 
 
+def test_xlsx_operations_parser_never_materializes_sheets_with_pandas(monkeypatch,tmp_path):
+    source=tmp_path/"operaciones_stream.xlsx"
+    _operations_workbook(source)
+    monkeypatch.setattr(pd,"read_excel",lambda *_args,**_kwargs:(_ for _ in ()).throw(AssertionError("read_excel no debe usarse para XLSX")))
+
+    payload=web_app.parse_operations_excel(source,persist=False)
+
+    assert len(payload["rows"])==1
+    assert len(payload["recovery_fifo"])==1
+
+
 def test_operations_upload_parser_uses_single_runtime(monkeypatch,tmp_path):
     source=tmp_path/"operaciones.xlsx"
     source.write_bytes(b"placeholder")
     called=[]
+    monkeypatch.setitem(web_app._OPS_DATA_CACHE,"stamp",123)
+    monkeypatch.setitem(web_app._OPS_DATA_CACHE,"data",{"rows":[{"old":True}]})
     monkeypatch.setattr(web_app,"parse_operations_excel",lambda path,persist=False:called.append((path,persist)) or {"ok":True})
     monkeypatch.setattr(web_app,"_release_process_memory",lambda:None)
 
@@ -61,6 +74,8 @@ def test_operations_upload_parser_uses_single_runtime(monkeypatch,tmp_path):
 
     assert payload=={"ok":True}
     assert called==[(source,False)]
+    assert web_app._OPS_DATA_CACHE["stamp"] is None
+    assert web_app._OPS_DATA_CACHE["data"] is None
 
 
 def test_model_detail_is_capped_to_keep_browser_responsive(monkeypatch):
