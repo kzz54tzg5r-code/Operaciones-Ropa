@@ -331,3 +331,22 @@ def test_root_accepts_render_head_healthcheck():
     routes=[route for route in web_app.app.routes if getattr(route,"path",None)=="/"]
 
     assert any("HEAD" in (getattr(route,"methods",set()) or set()) for route in routes)
+
+
+def test_large_legacy_meta_never_loads_or_compacts_full_json(monkeypatch,tmp_path):
+    database=tmp_path/"operaciones_legacy.json"
+    with database.open("wb") as stream:
+        stream.write(b'{"parser_version":40,"rows":[')
+        stream.seek(web_app._OPS_LEGACY_COMPACT_MIN_BYTES)
+        stream.write(b"]}")
+    monkeypatch.setattr(web_app,"OPS_FILE",database)
+    monkeypatch.setattr(web_app,"OPS_META_CACHE_FILE",tmp_path/"missing_meta.json")
+    monkeypatch.setitem(web_app._OPS_META_CACHE,"stamp",None)
+    monkeypatch.setitem(web_app._OPS_META_CACHE,"data",None)
+    monkeypatch.setattr(web_app,"load_ops",lambda:(_ for _ in ()).throw(AssertionError("no debe cargar el JSON grande")))
+    monkeypatch.setattr(web_app,"_compact_legacy_operations_file",lambda:(_ for _ in ()).throw(AssertionError("no debe compactar durante la petición")))
+
+    meta=web_app.load_operations_meta()
+
+    assert meta["available"] is True
+    assert meta["metadata_pending"] is True

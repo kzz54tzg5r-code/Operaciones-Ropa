@@ -1050,7 +1050,10 @@ def _compact_legacy_operations_file():
             print(f"[V47] No se pudo compactar la base operativa: {type(exc).__name__}: {exc}")
 
 def load_ops():
-    _compact_legacy_operations_file()
+    # Nunca compactar/migrar aquí. Esta función también se usa desde peticiones
+    # ligeras de la interfaz y reconstruir un JSON legado de cientos de MB en
+    # ese momento puede duplicar la memoria y provocar que Render reinicie.
+    # Los archivos nuevos se normalizan de forma atómica en el trabajo de carga.
     if not OPS_FILE.exists():
         _OPS_DATA_CACHE["stamp"]=None
         _OPS_DATA_CACHE["data"]={"rows":[],"uploaded_at":None}
@@ -1139,6 +1142,39 @@ def load_operations_meta():
                 _OPS_META_CACHE["stamp"]=stamp
                 _OPS_META_CACHE["data"]=cached
                 return cached
+    except Exception:
+        pass
+
+    # Una base legada grande puede no tener todavía el índice liviano. No debe
+    # cargarse ni compactarse dentro de /api/operations/meta: esa ruta se llama
+    # al abrir la pantalla de carga y debe responder de inmediato. La próxima
+    # carga en segundo plano publicará el índice completo sin perder el archivo
+    # vigente mientras procesa.
+    try:
+        if OPS_FILE.exists() and OPS_FILE.stat().st_size >= _OPS_LEGACY_COMPACT_MIN_BYTES:
+            meta={
+                "source_stamp":stamp,
+                "available":True,
+                "uploaded_at":None,
+                "source_file":"Base operativa vigente",
+                "operational_sheet":"",
+                "operational_sheets":[],
+                "monthly_sheets":[],
+                "duplicate_rows_removed":0,
+                "available_dates":[],
+                "available_weeks":[],
+                "available_months":[],
+                "areas_available":[],
+                "activities_available":[],
+                "stores_detected":[],
+                "parser_version":0,
+                "valid_records":0,
+                "rejected_records":0,
+                "metadata_pending":True,
+            }
+            _OPS_META_CACHE["stamp"]=stamp
+            _OPS_META_CACHE["data"]=meta
+            return meta
     except Exception:
         pass
 
