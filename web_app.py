@@ -73,6 +73,8 @@ OPERATIONS_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
 CHECKLIST_EVIDENCE_DIR = DATA_ROOT / "checklist_evidence"
 CHECKLIST_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 _RESOURCE_HEAVY_LOCK = threading.RLock()
+_UPLOAD_JOB_LOCK = threading.RLock()
+_ACTIVE_UPLOAD_JOBS: set[str] = set()
 
 REPORT_TABS = {
     "operations.center": "Centro Ejecutivo",
@@ -109,9 +111,14 @@ def _release_process_memory():
         pass
 
 def _cleanup_old_staging_files():
-    """Elimina cargas temporales interrumpidas al iniciar la aplicación."""
+    """Elimina temporales desechables sin borrar cargas recuperables.
+
+    Los ``operations_job_*.xlsx`` viven en el disco persistente y son la
+    garantía de que un reinicio de Render no obligue al usuario a volver a
+    subir 140 MB. Su ciclo de vida lo controla ``_run_operations_job``.
+    """
     try:
-        for pattern in ("legacy_*.xlsx","operations_job_*.xlsx","capacity_job_*","*.worker.json"):
+        for pattern in ("legacy_*.xlsx","capacity_job_*","*.worker.json"):
             for _p in STAGING_DIR.glob(pattern):
                 try:
                     _p.unlink(missing_ok=True)
@@ -438,12 +445,12 @@ def init_db():
                 "INSERT OR IGNORE INTO report_tab_visibility(tab_key,visible,updated_at,updated_by) VALUES(?,?,?,?)",
                 (tab_key,1,now,'system')
             )
-        # Un proceso que se apagó durante una carga deja un registro explícito;
-        # el archivo vigente nunca se toca hasta que el reemplazo termina.
+        # Las cargas se guardan primero en el disco persistente. Si Render
+        # reinicia la instancia, quedan en cola para retomarse al arrancar.
         con.execute(
-            "UPDATE upload_jobs SET status='interrupted',error='El servicio se reinició antes de terminar.',finished_at=? "
-            "WHERE status IN ('queued','processing','publishing')",
-            (now,)
+            "UPDATE upload_jobs SET status='queued',progress=15,"
+            "message='El servicio se reinició; la carga se retomará automáticamente.',error='',finished_at=NULL "
+            "WHERE status IN ('processing','publishing')"
         )
         for key,value in DEFAULT_GOALS.items():
             con.execute("INSERT OR IGNORE INTO goals(key,value,updated_at,updated_by) VALUES(?,?,?,?)",
@@ -5219,12 +5226,19 @@ async def upload_capacity(request: Request,file:UploadFile=File(...)):
         raise HTTPException(400,str(exc))
 
 def _run_capacity_job(job_id: str, entry: dict, filename: str) -> None:
+    with _UPLOAD_JOB_LOCK:
+        if job_id in _ACTIVE_UPLOAD_JOBS:
+            return
+        _ACTIVE_UPLOAD_JOBS.add(job_id)
     try:
         _update_upload_job(job_id,status="processing",progress=25,message="Procesando capacidades y existencias.",started_at=datetime.now().isoformat(timespec="seconds"))
         result=_process_capacity_entry(entry,filename)
         _finish_upload_job(job_id,result)
     except Exception as exc:
         _fail_upload_job(job_id,exc)
+    finally:
+        with _UPLOAD_JOB_LOCK:
+            _ACTIVE_UPLOAD_JOBS.discard(job_id)
 
 @app.post("/api/upload/jobs/capacity",status_code=202)
 async def start_capacity_job(request: Request,file:UploadFile=File(...)):
@@ -5481,6 +5495,10 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
             except Exception:pass
 
 def _run_operations_job(job_id: str, stage_path: Path, filename: str, username: str) -> None:
+    with _UPLOAD_JOB_LOCK:
+        if job_id in _ACTIVE_UPLOAD_JOBS:
+            return
+        _ACTIVE_UPLOAD_JOBS.add(job_id)
     try:
         _update_upload_job(job_id,status="processing",progress=25,message="Analizando hojas operativas. El archivo vigente sigue disponible.",started_at=datetime.now().isoformat(timespec="seconds"))
         result=_publish_operations_payload(stage_path,filename,username,job_id)
@@ -5490,6 +5508,45 @@ def _run_operations_job(job_id: str, stage_path: Path, filename: str, username: 
     finally:
         try:stage_path.unlink(missing_ok=True)
         except Exception:pass
+        with _UPLOAD_JOB_LOCK:
+            _ACTIVE_UPLOAD_JOBS.discard(job_id)
+
+def _resume_pending_upload_jobs() -> int:
+    """Retoma cargas desde el disco persistente después de un reinicio."""
+    with db() as con:
+        pending=con.execute(
+            "SELECT id,module,filename,source_path,created_by FROM upload_jobs "
+            "WHERE status='queued' ORDER BY created_at"
+        ).fetchall()
+    resumed=0
+    capacity_entries=load_manifest().get("capacities",[])
+    for row in pending:
+        job=dict(row); source=Path(str(job.get("source_path") or ""))
+        if not source.exists():
+            _fail_upload_job(job["id"],FileNotFoundError("El archivo temporal recuperable no existe"))
+            continue
+        if job["module"]=="operations":
+            target=_run_operations_job
+            args=(job["id"],source,job["filename"],job["created_by"])
+        elif job["module"]=="capacity":
+            entry=next((item for item in capacity_entries if resolve_entry_path(item)==source),None)
+            if entry is None:
+                _fail_upload_job(job["id"],FileNotFoundError("No se encontró la versión de capacidades resguardada"))
+                continue
+            target=_run_capacity_job
+            args=(job["id"],entry,job["filename"])
+        else:
+            _fail_upload_job(job["id"],ValueError(f"Tipo de carga desconocido: {job['module']}"))
+            continue
+        threading.Thread(target=target,args=args,daemon=True,name=f"resume-{job['module']}-{job['id'][:8]}").start()
+        resumed+=1
+    return resumed
+
+@app.on_event("startup")
+def resume_uploads_after_restart():
+    resumed=_resume_pending_upload_jobs()
+    if resumed:
+        print(f"[UPLOAD] {resumed} carga(s) retomada(s) después del reinicio",flush=True)
 
 @app.post("/api/upload/jobs/operations",status_code=202)
 async def start_operations_job(request: Request,file:UploadFile=File(...)):

@@ -80,6 +80,44 @@ def test_operations_upload_parser_uses_single_runtime(monkeypatch,tmp_path):
     assert web_app._OPS_DATA_CACHE["data"] is None
 
 
+def test_operations_job_survives_restart_and_is_resumed(monkeypatch,tmp_path):
+    source=tmp_path/"operations_job_recoverable.xlsx"
+    source.write_bytes(b"recoverable")
+    started=[]
+    database=tmp_path/"jobs.sqlite3"
+
+    @web_app.contextmanager
+    def test_db():
+        con=web_app.sqlite3.connect(database)
+        con.row_factory=web_app.sqlite3.Row
+        try:
+            yield con
+            con.commit()
+        finally:
+            con.close()
+
+    monkeypatch.setattr(web_app,"db",test_db)
+    with web_app.db() as con:
+        con.execute("""CREATE TABLE upload_jobs(
+            id TEXT PRIMARY KEY,module TEXT,filename TEXT,status TEXT,progress INTEGER,
+            message TEXT,error TEXT,result_json TEXT,source_path TEXT,created_at TEXT,
+            started_at TEXT,finished_at TEXT,created_by TEXT)""")
+        con.execute(
+            "INSERT INTO upload_jobs VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            ("job1","operations","base.xlsx","queued",15,"Pendiente","","{}",str(source),
+             "2026-09-03T00:00:00","","","admin")
+        )
+
+    class ImmediateThread:
+        def __init__(self,target,args,**_kwargs):self.target=target;self.args=args
+        def start(self):started.append((self.target,self.args))
+
+    monkeypatch.setattr(web_app.threading,"Thread",ImmediateThread)
+    assert web_app._resume_pending_upload_jobs()==1
+    assert started[0][0] is web_app._run_operations_job
+    assert started[0][1]==("job1",source,"base.xlsx","admin")
+
+
 def test_model_detail_is_capped_to_keep_browser_responsive(monkeypatch):
     count=220
     frame=pd.DataFrame({
