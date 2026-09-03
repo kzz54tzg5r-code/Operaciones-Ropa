@@ -1,7 +1,11 @@
 """Entrada de producción para Render.
 
-Las optimizaciones de memoria, los bloqueos de análisis y el procesamiento
-aislado de Excel viven en ``web_app``. Mantener una sola implementación evita
-que un parche de arranque reemplace las reglas funcionales del sistema.
+Carga la aplicación y aplica antes del startup el parche de memoria del FIFO.
+Así las cargas grandes conservan el cálculo por SKU/color, pero el payload final
+queda consolidado por tienda-día y no rebasa el límite de memoria del servicio.
 """
-from web_app import app
+import web_app
+from render_memory_patch import install as _install_render_memory_patch
+
+_install_render_memory_patch(web_app)
+app = web_app.app
