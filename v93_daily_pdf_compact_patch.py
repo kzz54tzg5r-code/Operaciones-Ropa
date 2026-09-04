@@ -10,7 +10,7 @@ def install(m):
     old=m._build_operations_pdf
     def build(d,report,scope='Compañía'):
         rows=list(d.get('stores') or [])
-        if report!='Operación Diaria' or len(rows)>7:return old(d,report,scope)
+        if report!='Operación Diaria':return old(d,report,scope)
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import landscape,letter
         from reportlab.pdfgen import canvas
@@ -31,12 +31,17 @@ def install(m):
         hh=19;c.setFillColor(colors.HexColor(BLUE));c.rect(M,y-hh+3,tw,hh,fill=1,stroke=0);c.setFillColor(colors.white);c.setFont('Helvetica-Bold',4.5)
         for j,h in enumerate(head):c.drawString(xs[j]+2,y-8,h)
         y-=hh
-        rh=13
+        # Hasta las 17 tiendas del proyecto caben completas en la primera hoja.
+        rh=13 if len(rows)<=7 else (11.5 if len(rows)<=12 else 10.3)
         for i,r in enumerate(rows):
             total=r.get('total_pzs') if r.get('total_pzs') is not None else r.get('ingresos');vals=[f'#{i+1}',r.get('store',''),f(r.get('dev_pzs')),f(r.get('muertos')),f(r.get('probador')),f(r.get('cajas')),f(r.get('pendiente_anterior')),f(total),f(r.get('recorridos')),f(r.get('acondicionado')),f(r.get('ubicado')),f(r.get('pendiente_acondicionar')),f(r.get('pendiente_ubicar'))];c.setFillColor(colors.HexColor('#DDEAFF') if r.get('is_project') else colors.white);c.rect(M,y-rh+2,tw,rh,fill=1,stroke=0);c.setFillColor(colors.HexColor(TXT));c.setFont('Helvetica',4.5)
             for j,v in enumerate(vals):c.drawString(xs[j]+2,y-8,str(v)[:23])
             y-=rh
-        y-=7;c.setFillColor(colors.HexColor(TXT));c.setFont('Helvetica-Bold',11);c.drawString(M,y,'Ingreso vs Acondicionado vs Ubicado - '+period);y-=15
+        # El gráfico nunca se corta: si no queda altura suficiente, comienza en una hoja nueva.
+        y-=7
+        if y < 215:
+            c.showPage();c.setFillColor(colors.HexColor(BG));c.rect(0,0,W,H,fill=1,stroke=0);c.setFillColor(colors.HexColor(BLUE));c.roundRect(M,H-88,W-2*M,58,11,fill=1,stroke=0);c.setFillColor(colors.white);c.setFont('Helvetica-Bold',17);c.drawString(M+18,H-55,'Cambios y Muertos');c.setFont('Helvetica',8);c.drawString(M+18,H-72,'Recuperación, conversión, recolección y seguimiento operativo');c.setFont('Helvetica-Bold',9);c.drawRightString(W-M-18,H-54,'Operaciones Ropa - Price Shoes');c.setFont('Helvetica',7);c.drawRightString(W-M-18,H-70,'Operación Diaria - gráfico');y=H-106
+        c.setFillColor(colors.HexColor(TXT));c.setFont('Helvetica-Bold',11);c.drawString(M,y,'Ingreso vs Acondicionado vs Ubicado - '+period);y-=15
         x0=M+42;x1=W-M-12;base=44;top=y-12;ph=max(70,top-base);gw=(x1-x0)/max(1,len(rows));bw=min(13,gw*.23);mx=max([_n(v) for r in rows for v in ((r.get('total_pzs') if r.get('total_pzs') is not None else r.get('ingresos')),r.get('acondicionado'),r.get('ubicado'))]+[1])*1.15
         c.setStrokeColor(colors.HexColor(LINE));c.setLineWidth(.6)
         for q in range(5):gy=base+ph*q/4;c.line(x0,gy,x1,gy);c.setFillColor(colors.HexColor(MUT));c.setFont('Helvetica',5);c.drawRightString(x0-5,gy-2,f(mx*q/4))
