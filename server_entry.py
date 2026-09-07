@@ -4,8 +4,8 @@ Carga la aplicación y aplica antes del startup las optimizaciones necesarias
 para Render y, al final, la paridad funcional/visual validada en Python.
 V93 compacta el PDF Diario, V94 aplica diseño/ceros rojos, V95 mantiene el
 mismo criterio en web, V96 sincroniza el PDF de Centro Ejecutivo, V97 agrega
-filtros contextuales reversibles y V98 corrige su visibilidad para el Super
-Administrador.
+filtros contextuales reversibles, V98 corrige su visibilidad y V99 mueve el
+desglose al interior de los reportes y tablas.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -20,6 +20,7 @@ from v95_web_zero_red_fix import install as _install_v95_web_zero_red_fix
 from v96_center_exec_pdf_patch import install as _install_v96_center_exec_pdf_patch
 from v97_contextual_filters_patch import install as _install_v97_contextual_filters_patch
 from v98_contextual_visibility_fix import install as _install_v98_contextual_visibility_fix
+from v99_inline_table_drilldown_patch import install as _install_v99_inline_table_drilldown_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -32,6 +33,7 @@ _install_v94_zero_red_table_patch(web_app)
 _install_v95_web_zero_red_fix(web_app)
 _install_v96_center_exec_pdf_patch(web_app)
 _install_v97_contextual_filters_patch(web_app)
-# V98 debe quedar al final: sincroniza el usuario real con la capa visual V97.
 _install_v98_contextual_visibility_fix(web_app)
+# V99 debe quedar al final: sustituye la prueba lateral por desglose dentro del reporte.
+_install_v99_inline_table_drilldown_patch(web_app)
 app = web_app.app
