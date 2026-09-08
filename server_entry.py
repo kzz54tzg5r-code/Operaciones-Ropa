@@ -2,9 +2,10 @@
 
 Mantiene las optimizaciones y reportes validados hasta V96. V103 aporta la
 barra compacta; V104 deja esa barra como única forma visible de filtrar y
-mantiene el desglose por clic en tabla siempre activo. V105 replica en los PDF
-Semanal y Mensual el lenguaje visual y la paginación compacta del PDF Diario.
-V106 ejecuta una prueba de humo de ambos PDF al arrancar.
+mantiene el desglose por clic en tabla siempre activo. V105/V106 conservan la
+paridad y validaciones previas de PDF. V107 reemplaza únicamente Semanal y
+Mensual para poner Devolución y recuperación en una hoja vertical exclusiva y
+regenerar cada exportación sin caché.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -22,6 +23,7 @@ from v103_compact_filter_bar_patch import install as _install_v103_compact_filte
 from v104_single_filter_patch import install as _install_v104_single_filter_patch
 from v105_week_month_pdf_mirror_patch import install as _install_v105_week_month_pdf_mirror_patch
 from v106_pdf_selftest_patch import install as _install_v106_pdf_selftest_patch
+from v107_portrait_recovery_chart_patch import install as _install_v107_portrait_recovery_chart_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -37,6 +39,7 @@ _install_v102_final_filter_switch_patch(web_app)
 _install_v103_compact_filter_bar_patch(web_app)
 _install_v104_single_filter_patch(web_app)
 _install_v105_week_month_pdf_mirror_patch(web_app)
-# La prueba se ejecuta después de instalar V105, sin modificar datos reales.
 _install_v106_pdf_selftest_patch(web_app)
+# V107 va al final porque sustituye sólo Semanal/Mensual y añade no-cache.
+_install_v107_portrait_recovery_chart_patch(web_app)
 app = web_app.app
