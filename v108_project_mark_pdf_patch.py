@@ -3,7 +3,7 @@
 Se aplica después de V107 y conserva íntegramente el PDF mixto ya validado.
 Únicamente añade sobre la tabla "Recuperación por tienda" de la primera hoja:
 - fondo azul tenue en cada tienda marcada como Proyecto;
-- barra azul a la izquierda de la fila;
+- barra azul sólida a la izquierda de la fila;
 - etiqueta "Proyecto" dentro de la celda Tienda.
 
 La exportación se sigue regenerando sin caché y no cambia cálculos ni datos.
@@ -74,25 +74,26 @@ def install(m):
 
             overlay_buf = io.BytesIO()
             oc = canvas.Canvas(overlay_buf, pagesize=(LW, LH))
-            try:
-                oc.setFillAlpha(0.18)
-            except Exception:
-                pass
 
             for idx in marked_indexes:
                 row_top = y - idx * rh
                 row_bottom = row_top - rh + 1
 
-                # Fondo azul tenue a todo lo ancho.
+                # Fondo azul tenue a todo lo ancho; el texto original queda legible.
+                try:
+                    oc.setFillAlpha(0.18)
+                except Exception:
+                    pass
                 oc.setFillColor(colors.HexColor(FILL))
                 oc.rect(M, row_bottom, tw, rh - 1, fill=1, stroke=0)
 
-                # Marca lateral más fuerte, igual al lenguaje visual web.
+                # Barra y etiqueta deben quedar sólidas.
+                try:
+                    oc.setFillAlpha(1)
+                except Exception:
+                    pass
                 oc.setFillColor(colors.HexColor(BLUE))
-                oc.rect(M, row_bottom, 2.5, rh - 1, fill=1, stroke=0)
-
-                # Etiqueta dentro de la celda Tienda, alineada a la derecha.
-                oc.setFillColor(colors.HexColor(BLUE))
+                oc.rect(M, row_bottom, 2.7, rh - 1, fill=1, stroke=0)
                 oc.setFont("Helvetica-Bold", 3.9)
                 oc.drawRightString(145, row_bottom + 2.55, "Proyecto")
 
