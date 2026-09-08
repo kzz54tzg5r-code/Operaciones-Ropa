@@ -1,12 +1,9 @@
 """Entrada de producción para Render.
 
-Carga la aplicación y aplica antes del startup las optimizaciones necesarias
-para Render y, al final, la paridad funcional/visual validada en Python.
-V93 compacta el PDF Diario, V94 aplica diseño/ceros rojos, V95 mantiene el
-mismo criterio en web, V96 sincroniza el PDF de Centro Ejecutivo, V97/V98
-conservan la prueba anterior, V99 agrega desglose en tablas, V100 muestra un
-selector visible y V101 lo fija directamente en el HTML base para que no se
-pierda durante los rerenders de la SPA.
+Mantiene las optimizaciones y reportes validados hasta V96. La V102 agrega,
+como última capa de respuesta, el selector visible entre Filtro clásico y
+Desglose interactivo dentro del mismo reporte. Las pruebas V97-V101 se retiran
+del arranque para evitar que oculten o reubiquen el control nuevo.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -19,11 +16,7 @@ from v93_daily_pdf_compact_patch import install as _install_v93_daily_pdf_compac
 from v94_zero_red_table_patch import install as _install_v94_zero_red_table_patch
 from v95_web_zero_red_fix import install as _install_v95_web_zero_red_fix
 from v96_center_exec_pdf_patch import install as _install_v96_center_exec_pdf_patch
-from v97_contextual_filters_patch import install as _install_v97_contextual_filters_patch
-from v98_contextual_visibility_fix import install as _install_v98_contextual_visibility_fix
-from v99_inline_table_drilldown_patch import install as _install_v99_inline_table_drilldown_patch
-from v100_visible_filter_mode_patch import install as _install_v100_visible_filter_mode_patch
-from v101_static_filter_switch_patch import install as _install_v101_static_filter_switch_patch
+from v102_final_filter_switch_patch import install as _install_v102_final_filter_switch_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -35,11 +28,7 @@ _install_v93_daily_pdf_compact_patch(web_app)
 _install_v94_zero_red_table_patch(web_app)
 _install_v95_web_zero_red_fix(web_app)
 _install_v96_center_exec_pdf_patch(web_app)
-_install_v97_contextual_filters_patch(web_app)
-_install_v98_contextual_visibility_fix(web_app)
-_install_v99_inline_table_drilldown_patch(web_app)
-_install_v100_visible_filter_mode_patch(web_app)
-# V101 se instala al final y modifica directamente web/index.html, evitando que
-# el selector desaparezca por orden de middlewares o rerenders del frontend.
-_install_v101_static_filter_switch_patch(web_app)
+# V102 debe ser la última capa para modificar el HTML final después de todas
+# las correcciones visuales y de PDF ya validadas.
+_install_v102_final_filter_switch_patch(web_app)
 app = web_app.app
