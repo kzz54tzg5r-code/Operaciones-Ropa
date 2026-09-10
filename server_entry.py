@@ -7,7 +7,9 @@ de ventas mensuales. También reprocesa una sola vez el historial ya cargado
 para que Macro quede listo sin esperar al primer clic. V110 incorpora la hoja
 Resultados por Checklist al consolidado operativo y nombra cada PDF con su
 reporte y fecha/periodo de corte. V111 ajusta Operación Diaria para mostrar
-%Acondicionado y %Ubicado en tarjetas y sólo %Ubicado en la tabla.
+%Acondicionado y %Ubicado en tarjetas y sólo %Ubicado en la tabla. V112 repara
+la API de ventas, reconoce PDF multipágina y usa capacidades del mismo mes como
+respaldo cuando el PDF no expone un total mensual legible.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -31,6 +33,7 @@ from v109_macro_sales_patch import install as _install_v109_macro_sales_patch
 from v109_sales_repair_startup import install as _install_v109_sales_repair_startup
 from v110_operational_checklist_patch import install as _install_v110_operational_checklist_patch
 from v111_daily_percent_fix import install as _install_v111_daily_percent_fix
+from v112_sales_pdf_repair import install as _install_v112_sales_pdf_repair
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -52,6 +55,7 @@ _install_v108_project_mark_pdf_patch(web_app)
 _install_v109_macro_sales_patch(web_app)
 _install_v109_sales_repair_startup(web_app)
 _install_v110_operational_checklist_patch(web_app)
-# V111 queda al final para que su presentación diaria prevalezca sobre V95/V93.
 _install_v111_daily_percent_fix(web_app)
+# V112 al final para corregir rutas V109 y hacer prevalecer el parser nuevo.
+_install_v112_sales_pdf_repair(web_app)
 app = web_app.app
