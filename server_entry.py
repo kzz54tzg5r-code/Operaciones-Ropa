@@ -9,7 +9,8 @@ Resultados por Checklist al consolidado operativo y nombra cada PDF con su
 reporte y fecha/periodo de corte. V111 ajusta Operación Diaria para mostrar
 %Acondicionado y %Ubicado en tarjetas y sólo %Ubicado en la tabla. V112 repara
 la API de ventas y V113 evita valores falsos. V114 inspecciona temporalmente el
-layout real de Meta_ROPA_SEPTIEMBRE para terminar de ajustar su lectura.
+layout real de Meta_ROPA_SEPTIEMBRE. V115 muestra Acondicionado y Ubicado en
+piezas y porcentaje tanto en la tabla diaria como en su PDF.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -36,6 +37,7 @@ from v111_daily_percent_fix import install as _install_v111_daily_percent_fix
 from v112_sales_pdf_repair import install as _install_v112_sales_pdf_repair
 from v113_sales_guard_patch import install as _install_v113_sales_guard_patch
 from v114_sales_layout_probe import install as _install_v114_sales_layout_probe
+from v115_daily_pieces_percent_patch import install as _install_v115_daily_pieces_percent_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -61,4 +63,6 @@ _install_v111_daily_percent_fix(web_app)
 _install_v112_sales_pdf_repair(web_app)
 _install_v113_sales_guard_patch(web_app)
 _install_v114_sales_layout_probe(web_app)
+# V115 debe quedar al final para prevalecer sobre la tabla/PDF diario de V111.
+_install_v115_daily_pieces_percent_patch(web_app)
 app = web_app.app
