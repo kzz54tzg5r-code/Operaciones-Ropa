@@ -3,7 +3,8 @@
 Mantiene las optimizaciones y reportes validados hasta V108. V109 agrega en
 Análisis Comercial > Macro el reporte ejecutivo de ventas Año vs Año pasado,
 metas mensuales, tendencia gráfica y repara la carga/procesamiento de los PDF
-de ventas mensuales. No altera los cálculos operativos ni los PDF V107/V108.
+de ventas mensuales. También reprocesa una sola vez el historial ya cargado
+para que Macro quede listo sin esperar al primer clic.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -24,6 +25,7 @@ from v106_pdf_selftest_patch import install as _install_v106_pdf_selftest_patch
 from v107_portrait_recovery_chart_patch import install as _install_v107_portrait_recovery_chart_patch
 from v108_project_mark_pdf_patch import install as _install_v108_project_mark_pdf_patch
 from v109_macro_sales_patch import install as _install_v109_macro_sales_patch
+from v109_sales_repair_startup import install as _install_v109_sales_repair_startup
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -42,6 +44,6 @@ _install_v105_week_month_pdf_mirror_patch(web_app)
 _install_v106_pdf_selftest_patch(web_app)
 _install_v107_portrait_recovery_chart_patch(web_app)
 _install_v108_project_mark_pdf_patch(web_app)
-# V109 debe instalarse al final porque añade la capa comercial sin tocar V108.
 _install_v109_macro_sales_patch(web_app)
+_install_v109_sales_repair_startup(web_app)
 app = web_app.app
