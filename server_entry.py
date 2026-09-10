@@ -4,7 +4,9 @@ Mantiene las optimizaciones y reportes validados hasta V108. V109 agrega en
 Análisis Comercial > Macro el reporte ejecutivo de ventas Año vs Año pasado,
 metas mensuales, tendencia gráfica y repara la carga/procesamiento de los PDF
 de ventas mensuales. También reprocesa una sola vez el historial ya cargado
-para que Macro quede listo sin esperar al primer clic.
+para que Macro quede listo sin esperar al primer clic. V110 incorpora la hoja
+Resultados por Checklist al consolidado operativo y nombra cada PDF con su
+reporte y fecha/periodo de corte.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -26,6 +28,7 @@ from v107_portrait_recovery_chart_patch import install as _install_v107_portrait
 from v108_project_mark_pdf_patch import install as _install_v108_project_mark_pdf_patch
 from v109_macro_sales_patch import install as _install_v109_macro_sales_patch
 from v109_sales_repair_startup import install as _install_v109_sales_repair_startup
+from v110_operational_checklist_patch import install as _install_v110_operational_checklist_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -46,4 +49,6 @@ _install_v107_portrait_recovery_chart_patch(web_app)
 _install_v108_project_mark_pdf_patch(web_app)
 _install_v109_macro_sales_patch(web_app)
 _install_v109_sales_repair_startup(web_app)
+# V110 va al final: extiende el parser operativo y la cabecera de descarga.
+_install_v110_operational_checklist_patch(web_app)
 app = web_app.app
