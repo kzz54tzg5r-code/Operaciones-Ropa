@@ -40,6 +40,7 @@ from v112_sales_pdf_repair import install as _install_v112_sales_pdf_repair
 from v113_sales_guard_patch import install as _install_v113_sales_guard_patch
 from v114_sales_layout_probe import install as _install_v114_sales_layout_probe
 from v115_daily_pieces_percent_patch import install as _install_v115_daily_pieces_percent_patch
+from v116_reportlab_color_fix import install as _install_v116_reportlab_color_fix
 from v116_daily_pdf_mirror_patch import install as _install_v116_daily_pdf_mirror_patch
 
 _install_render_memory_patch(web_app)
@@ -67,6 +68,8 @@ _install_v112_sales_pdf_repair(web_app)
 _install_v113_sales_guard_patch(web_app)
 _install_v114_sales_layout_probe(web_app)
 _install_v115_daily_pieces_percent_patch(web_app)
+# Compatibilidad de color antes de ejecutar la autoprueba del PDF V116.
+_install_v116_reportlab_color_fix(web_app)
 # V116 al final: no toca la pantalla, sólo hace prevalecer el PDF espejo del reporte Diario.
 _install_v116_daily_pdf_mirror_patch(web_app)
 app = web_app.app
