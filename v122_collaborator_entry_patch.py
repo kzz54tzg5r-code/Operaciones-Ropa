@@ -3,6 +3,7 @@
 Evita que el flujo general de inicio intente abrir Centro Operativo antes de
 mostrar Operación. El colaborador entra directamente a su captura, sin consultar
 endpoints de Cambios y Muertos, Análisis Comercial, Usuarios o configuración.
+También mantiene habilitada la tienda al crear cuentas Colaborador.
 """
 from __future__ import annotations
 
@@ -14,6 +15,11 @@ def install(m):
 
     js=r'''<script id="v122-collaborator-entry-js">
 (function(){
+  const roleSel=$('#newRole');
+  if(roleSel){
+    const syncStore=()=>{const s=$('#newStore');if(s)s.disabled=!['tienda','colaborador'].includes(roleSel.value)};
+    roleSel.onchange=syncStore;syncStore();
+  }
   const previousEnter=window.enter;
   if(typeof previousEnter!=='function')return;
   window.enter=async function(u){
