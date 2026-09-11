@@ -18,7 +18,8 @@ Día, Semanal, Mensual y Anual dentro de Centro Operativo. V120 conserva la
 estructura validada de Día/Semanal/Mensual y hace que únicamente cambie el filtro.
 V121 agrega el indicador Operación, captura diaria, productividad por colaborador,
 perfil Colaborador, cierre de día, acumulados y exportaciones sin modificar los
-reportes validados de Centro Operativo.
+reportes validados de Centro Operativo. V122 hace que el Colaborador entre
+directamente a Operación sin consultar módulos restringidos.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -52,6 +53,7 @@ from v117_operational_visual_parity_patch import install as _install_v117_operat
 from v119_centro_operativo_safe_annual_patch import install as _install_v119_centro_operativo_safe_annual_patch
 from v120_centro_operativo_preserve_reports_patch import install as _install_v120_centro_operativo_preserve_reports_patch
 from v121_operation_indicator_patch import install as _install_v121_operation_indicator_patch
+from v122_collaborator_entry_patch import install as _install_v122_collaborator_entry_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -84,6 +86,8 @@ _install_v117_operational_visual_parity_patch(web_app)
 _install_v119_centro_operativo_safe_annual_patch(web_app)
 # V120 mantiene los reportes validados de Centro Operativo.
 _install_v120_centro_operativo_preserve_reports_patch(web_app)
-# V121 se instala al final para añadir Operación/Colaborador sin reestructurar los reportes existentes.
+# V121 agrega Operación y perfil Colaborador.
 _install_v121_operation_indicator_patch(web_app)
+# V122 evita que Colaborador atraviese Centro Operativo durante el inicio.
+_install_v122_collaborator_entry_patch(web_app)
 app = web_app.app
