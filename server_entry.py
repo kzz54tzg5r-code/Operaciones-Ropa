@@ -13,6 +13,7 @@ layout real de Meta_ROPA_SEPTIEMBRE. V115 muestra Acondicionado y Ubicado en
 piezas y porcentaje tanto en la tabla diaria como en su PDF. V116 hace que el
 PDF Diario replique visualmente la pantalla. V117 unifica Día, Semanal y
 Mensual: mismas tarjetas, mismo orden de detalle y misma identidad visual en PDF.
+V118 consolida Día, Semanal y Mensual como filtro dentro de Centro Operativo.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -43,6 +44,7 @@ from v115_daily_pieces_percent_patch import install as _install_v115_daily_piece
 from v116_reportlab_color_fix import install as _install_v116_reportlab_color_fix
 from v116_daily_pdf_mirror_patch import install as _install_v116_daily_pdf_mirror_patch
 from v117_operational_visual_parity_patch import install as _install_v117_operational_visual_parity_patch
+from v118_centro_operativo_period_filter_patch import install as _install_v118_centro_operativo_period_filter_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -71,6 +73,7 @@ _install_v114_sales_layout_probe(web_app)
 _install_v115_daily_pieces_percent_patch(web_app)
 _install_v116_reportlab_color_fix(web_app)
 _install_v116_daily_pdf_mirror_patch(web_app)
-# V117 debe quedar al final para homogeneizar web y PDF de Día/Semanal/Mensual.
 _install_v117_operational_visual_parity_patch(web_app)
+# V118 al final: reorganiza navegación sin alterar cálculos de V117.
+_install_v118_centro_operativo_period_filter_patch(web_app)
 app = web_app.app
