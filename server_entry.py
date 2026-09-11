@@ -20,9 +20,12 @@ V121 agrega el indicador Operación, captura diaria, productividad por colaborad
 perfil Colaborador, cierre de día, acumulados y exportaciones sin modificar los
 reportes validados de Centro Operativo. V122 hace que el Colaborador entre
 directamente a Operación sin consultar módulos restringidos. V123 garantiza que
-Operación permanezca visible, configurable y enlazada dentro de Cambios y Muertos.
+Operación permanezca visible. V124 corrige la API de Operación y la mueve como
+módulo independiente al menú principal.
 """
 import web_app
+from fastapi import Request as _FastAPIRequest
+import v121_operation_indicator_patch as _v121_operation_module
 from render_memory_patch import install as _install_render_memory_patch
 from september_date_patch import install as _install_september_date_patch
 from operations_diagnostic_patch import install as _install_operations_diagnostic_patch
@@ -56,6 +59,12 @@ from v120_centro_operativo_preserve_reports_patch import install as _install_v12
 from v121_operation_indicator_patch import install as _install_v121_operation_indicator_patch
 from v122_collaborator_entry_patch import install as _install_v122_collaborator_entry_patch
 from v123_operation_visibility_patch import install as _install_v123_operation_visibility_patch
+from v124_operation_main_module_patch import install as _install_v124_operation_main_module_patch
+
+# FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
+# módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
+# consulta y /api/operation/meta respondía 422.
+_v121_operation_module.Request = _FastAPIRequest
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -92,6 +101,8 @@ _install_v120_centro_operativo_preserve_reports_patch(web_app)
 _install_v121_operation_indicator_patch(web_app)
 # V122 evita que Colaborador atraviese Centro Operativo durante el inicio.
 _install_v122_collaborator_entry_patch(web_app)
-# V123 asegura que Operación siempre esté disponible en la interfaz y configuración.
+# V123 conserva compatibilidad de la vista Operación.
 _install_v123_operation_visibility_patch(web_app)
+# V124 la separa de Cambios y Muertos y la coloca en el menú principal.
+_install_v124_operation_main_module_patch(web_app)
 app = web_app.app
