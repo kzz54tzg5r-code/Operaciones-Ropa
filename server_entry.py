@@ -16,6 +16,9 @@ Mensual: mismas tarjetas, mismo orden de detalle y misma identidad visual en PDF
 V119 sustituye V118 para evitar el congelamiento del navegador y consolida
 Día, Semanal, Mensual y Anual dentro de Centro Operativo. V120 conserva la
 estructura validada de Día/Semanal/Mensual y hace que únicamente cambie el filtro.
+V121 agrega el indicador Operación, captura diaria, productividad por colaborador,
+perfil Colaborador, cierre de día, acumulados y exportaciones sin modificar los
+reportes validados de Centro Operativo.
 """
 import web_app
 from render_memory_patch import install as _install_render_memory_patch
@@ -48,6 +51,7 @@ from v116_daily_pdf_mirror_patch import install as _install_v116_daily_pdf_mirro
 from v117_operational_visual_parity_patch import install as _install_v117_operational_visual_parity_patch
 from v119_centro_operativo_safe_annual_patch import install as _install_v119_centro_operativo_safe_annual_patch
 from v120_centro_operativo_preserve_reports_patch import install as _install_v120_centro_operativo_preserve_reports_patch
+from v121_operation_indicator_patch import install as _install_v121_operation_indicator_patch
 
 _install_render_memory_patch(web_app)
 _install_september_date_patch(web_app)
@@ -78,6 +82,8 @@ _install_v116_reportlab_color_fix(web_app)
 _install_v116_daily_pdf_mirror_patch(web_app)
 _install_v117_operational_visual_parity_patch(web_app)
 _install_v119_centro_operativo_safe_annual_patch(web_app)
-# V120 al final: el filtro selecciona la estructura original Día/Semanal/Mensual.
+# V120 mantiene los reportes validados de Centro Operativo.
 _install_v120_centro_operativo_preserve_reports_patch(web_app)
+# V121 se instala al final para añadir Operación/Colaborador sin reestructurar los reportes existentes.
+_install_v121_operation_indicator_patch(web_app)
 app = web_app.app
