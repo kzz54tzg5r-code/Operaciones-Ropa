@@ -1,0 +1,6 @@
+V117
+- Web: Día, Semanal y Mensual usan el mismo orden de Detalle Operativo: Acondicionado, Ubicado, % Acondicionado, % Ubicado.
+- Web: Semanal y Mensual usan las mismas 10 tarjetas de Día (6 + 4).
+- PDF: Día, Semanal y Mensual comparten encabezado, paleta, tarjetas, tabla rayada, semáforos y gráfica operativa.
+- PDF Semanal/Mensual conserva Recuperación por tienda en página adicional.
+- No modifica fórmulas ni datos del backend.
