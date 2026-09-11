@@ -21,7 +21,8 @@ perfil Colaborador, cierre de día, acumulados y exportaciones sin modificar los
 reportes validados de Centro Operativo. V122 hace que el Colaborador entre
 directamente a Operación sin consultar módulos restringidos. V123 garantiza que
 Operación permanezca visible. V124 corrige la API de Operación y la mueve como
-módulo independiente al menú principal.
+módulo independiente al menú principal. V125 agrupa Colgado + Doblado como Origen
+en la captura diaria y separa Captura, Productividad y Estándares en pestañas.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -60,6 +61,7 @@ from v121_operation_indicator_patch import install as _install_v121_operation_in
 from v122_collaborator_entry_patch import install as _install_v122_collaborator_entry_patch
 from v123_operation_visibility_patch import install as _install_v123_operation_visibility_patch
 from v124_operation_main_module_patch import install as _install_v124_operation_main_module_patch
+from v125_operation_tabs_patch import install as _install_v125_operation_tabs_patch
 
 # FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
 # módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
@@ -105,4 +107,6 @@ _install_v122_collaborator_entry_patch(web_app)
 _install_v123_operation_visibility_patch(web_app)
 # V124 la separa de Cambios y Muertos y la coloca en el menú principal.
 _install_v124_operation_main_module_patch(web_app)
+# V125 organiza Operación en pestañas y simplifica la captura diaria.
+_install_v125_operation_tabs_patch(web_app)
 app = web_app.app
