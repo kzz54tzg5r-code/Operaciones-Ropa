@@ -23,6 +23,7 @@ directamente a Operación sin consultar módulos restringidos. V123 garantiza qu
 Operación permanezca visible. V124 corrige la API de Operación y la mueve como
 módulo independiente al menú principal. V125 agrupa Colgado + Doblado como Origen
 en la captura diaria y separa Captura, Productividad y Estándares en pestañas.
+V126 restaura el Resumen ejecutivo/operativo como primera pestaña.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -62,6 +63,7 @@ from v122_collaborator_entry_patch import install as _install_v122_collaborator_
 from v123_operation_visibility_patch import install as _install_v123_operation_visibility_patch
 from v124_operation_main_module_patch import install as _install_v124_operation_main_module_patch
 from v125_operation_tabs_patch import install as _install_v125_operation_tabs_patch
+from v126_operation_summary_patch import install as _install_v126_operation_summary_patch
 
 # FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
 # módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
@@ -109,4 +111,6 @@ _install_v123_operation_visibility_patch(web_app)
 _install_v124_operation_main_module_patch(web_app)
 # V125 organiza Operación en pestañas y simplifica la captura diaria.
 _install_v125_operation_tabs_patch(web_app)
+# V126 devuelve el Resumen como primera pestaña del módulo Operación.
+_install_v126_operation_summary_patch(web_app)
 app = web_app.app
