@@ -28,6 +28,8 @@ un demo visual temporal, sólo para Super Administrador, sin modificar datos rea
 V128 replica fielmente los bocetos aprobados en las cinco pestañas del demo.
 V129 agrega el demo de Análisis Comercial. V130 corrige la iconografía para usar
 prendas sólo en Dama, Caballero e Infantil y criterios contextuales en lo demás.
+V131 aplica las reglas reales de modelos lentos, sugerido 0, comparación de tienda
+y modelos sin ubicación. V132 fuerza el demo Comercial exacto para el propietario.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -72,6 +74,8 @@ from v127_operation_demo_dashboard_patch import install as _install_v127_operati
 from v128_operation_demo_exact_patch import install as _install_v128_operation_demo_exact_patch
 from v129_commercial_clothing_demo_patch import install as _install_v129_commercial_clothing_demo_patch
 from v130_commercial_context_icons_patch import install as _install_v130_commercial_context_icons_patch
+from v131_commercial_model_rules_patch import install as _install_v131_commercial_model_rules_patch
+from v132_commercial_demo_exact_patch import install as _install_v132_commercial_demo_exact_patch
 
 # FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
 # módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
@@ -129,4 +133,8 @@ _install_v128_operation_demo_exact_patch(web_app)
 _install_v129_commercial_clothing_demo_patch(web_app)
 # V130 limita prendas a Dama/Caballero/Infantil y contextualiza el resto.
 _install_v130_commercial_context_icons_patch(web_app)
+# V131 aplica reglas reales de modelos/comparativos; se conserva al quitar el demo.
+_install_v131_commercial_model_rules_patch(web_app)
+# V132 fuerza el demo Comercial exacto para el propietario, incluso al previsualizar roles.
+_install_v132_commercial_demo_exact_patch(web_app)
 app = web_app.app
