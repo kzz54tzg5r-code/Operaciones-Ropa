@@ -23,23 +23,11 @@ directamente a Operación sin consultar módulos restringidos. V123 garantiza qu
 Operación permanezca visible. V124 corrige la API de Operación y la mueve como
 módulo independiente al menú principal. V125 agrupa Colgado + Doblado como Origen
 en la captura diaria y separa Captura, Productividad y Estándares en pestañas.
-V126 restaura el Resumen ejecutivo/operativo como primera pestaña. V127 agrega
-un demo visual temporal, sólo para Super Administrador, sin modificar datos reales.
-V128 replica fielmente los bocetos aprobados en las cinco pestañas del demo.
-V129 agrega el demo de Análisis Comercial. V130 corrige la iconografía para usar
-prendas sólo en Dama, Caballero e Infantil y criterios contextuales en lo demás.
-V131 aplica las reglas reales de modelos lentos, sugerido 0, comparación de tienda
-y modelos sin ubicación. V132 fuerza el demo Comercial exacto para el propietario.
-V133 sustituye visualmente el demo por la versión compacta e interactiva aprobada.
-V134 corrige la interacción táctil de filtros, Consultar y pestañas en móvil.
-V135 agrega Sell Through al demo Comercial con ranking de modelos e inversión.
-V136 aísla el demo Comercial en un iframe del mismo origen para eliminar
-interferencias táctiles del portal y garantizar filtros + 7 pestañas funcionales.
-V137 reemplaza el contenido dinámico del iframe por HTML estático visible desde
-la carga, conservando filtros y 7 pestañas para evitar la pantalla en blanco.
-V138 carga el demo por srcdoc para evitar bloqueo del iframe en Safari/iPhone.
-V139 elimina por completo iframe/srcdoc/fetch del demo Comercial y lo renderiza
-directamente en el DOM para máxima compatibilidad móvil.
+V126 restaura el Resumen ejecutivo/operativo como primera pestaña. V127 y V128
+mantienen el demo operativo aprobado. V139 es ahora la única capa visual del demo
+de Análisis Comercial: render directo en DOM. V140 evita que el clic del demo
+dispare también el dashboard comercial real, eliminando la doble carga que
+provocaba pantalla blanca y recarga en Safari/iPhone.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -82,17 +70,8 @@ from v125_operation_tabs_patch import install as _install_v125_operation_tabs_pa
 from v126_operation_summary_patch import install as _install_v126_operation_summary_patch
 from v127_operation_demo_dashboard_patch import install as _install_v127_operation_demo_dashboard_patch
 from v128_operation_demo_exact_patch import install as _install_v128_operation_demo_exact_patch
-from v129_commercial_clothing_demo_patch import install as _install_v129_commercial_clothing_demo_patch
-from v130_commercial_context_icons_patch import install as _install_v130_commercial_context_icons_patch
-from v131_commercial_model_rules_patch import install as _install_v131_commercial_model_rules_patch
-from v132_commercial_demo_exact_patch import install as _install_v132_commercial_demo_exact_patch
-from v133_commercial_demo_compact_interactive_patch import install as _install_v133_commercial_demo_compact_interactive_patch
-from v134_commercial_touch_interaction_fix import install as _install_v134_commercial_touch_interaction_fix
-from v135_commercial_sellthrough_demo_patch import install as _install_v135_commercial_sellthrough_demo_patch
-from v136_commercial_isolated_demo_patch import install as _install_v136_commercial_isolated_demo_patch
-from v137_commercial_static_demo_fix import install as _install_v137_commercial_static_demo_fix
-from v138_commercial_srcdoc_fix import install as _install_v138_commercial_srcdoc_fix
 from v139_commercial_direct_dom_fix import install as _install_v139_commercial_direct_dom_fix
+from v140_commercial_demo_guard import install as _install_v140_commercial_demo_guard
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -134,15 +113,6 @@ _install_v125_operation_tabs_patch(web_app)
 _install_v126_operation_summary_patch(web_app)
 _install_v127_operation_demo_dashboard_patch(web_app)
 _install_v128_operation_demo_exact_patch(web_app)
-_install_v129_commercial_clothing_demo_patch(web_app)
-_install_v130_commercial_context_icons_patch(web_app)
-_install_v131_commercial_model_rules_patch(web_app)
-_install_v132_commercial_demo_exact_patch(web_app)
-_install_v133_commercial_demo_compact_interactive_patch(web_app)
-_install_v134_commercial_touch_interaction_fix(web_app)
-_install_v135_commercial_sellthrough_demo_patch(web_app)
-_install_v136_commercial_isolated_demo_patch(web_app)
-_install_v137_commercial_static_demo_fix(web_app)
-_install_v138_commercial_srcdoc_fix(web_app)
 _install_v139_commercial_direct_dom_fix(web_app)
+_install_v140_commercial_demo_guard(web_app)
 app = web_app.app
