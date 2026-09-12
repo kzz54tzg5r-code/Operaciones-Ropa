@@ -32,6 +32,7 @@ V131 aplica las reglas reales de modelos lentos, sugerido 0, comparación de tie
 y modelos sin ubicación. V132 fuerza el demo Comercial exacto para el propietario.
 V133 sustituye visualmente el demo por la versión compacta e interactiva aprobada.
 V134 corrige la interacción táctil de filtros, Consultar y pestañas en móvil.
+V135 agrega Sell Through al demo Comercial con ranking de modelos e inversión.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -80,6 +81,7 @@ from v131_commercial_model_rules_patch import install as _install_v131_commercia
 from v132_commercial_demo_exact_patch import install as _install_v132_commercial_demo_exact_patch
 from v133_commercial_demo_compact_interactive_patch import install as _install_v133_commercial_demo_compact_interactive_patch
 from v134_commercial_touch_interaction_fix import install as _install_v134_commercial_touch_interaction_fix
+from v135_commercial_sellthrough_demo_patch import install as _install_v135_commercial_sellthrough_demo_patch
 
 # FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
 # módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
@@ -145,4 +147,6 @@ _install_v132_commercial_demo_exact_patch(web_app)
 _install_v133_commercial_demo_compact_interactive_patch(web_app)
 # V134 rescata interacción táctil aunque exista una capa transparente del portal.
 _install_v134_commercial_touch_interaction_fix(web_app)
+# V135 agrega Sell Through al demo Comercial sin modificar datos reales.
+_install_v135_commercial_sellthrough_demo_patch(web_app)
 app = web_app.app
