@@ -37,6 +37,7 @@ V136 aísla el demo Comercial en un iframe del mismo origen para eliminar
 interferencias táctiles del portal y garantizar filtros + 7 pestañas funcionales.
 V137 reemplaza el contenido dinámico del iframe por HTML estático visible desde
 la carga, conservando filtros y 7 pestañas para evitar la pantalla en blanco.
+V138 carga el demo por srcdoc para evitar bloqueo del iframe en Safari/iPhone.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -88,6 +89,7 @@ from v134_commercial_touch_interaction_fix import install as _install_v134_comme
 from v135_commercial_sellthrough_demo_patch import install as _install_v135_commercial_sellthrough_demo_patch
 from v136_commercial_isolated_demo_patch import install as _install_v136_commercial_isolated_demo_patch
 from v137_commercial_static_demo_fix import install as _install_v137_commercial_static_demo_fix
+from v138_commercial_srcdoc_fix import install as _install_v138_commercial_srcdoc_fix
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -138,4 +140,5 @@ _install_v134_commercial_touch_interaction_fix(web_app)
 _install_v135_commercial_sellthrough_demo_patch(web_app)
 _install_v136_commercial_isolated_demo_patch(web_app)
 _install_v137_commercial_static_demo_fix(web_app)
+_install_v138_commercial_srcdoc_fix(web_app)
 app = web_app.app
