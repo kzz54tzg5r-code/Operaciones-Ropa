@@ -26,7 +26,8 @@ en la captura diaria y separa Captura, Productividad y Estándares en pestañas.
 V126 restaura el Resumen ejecutivo/operativo como primera pestaña. V127 agrega
 un demo visual temporal, sólo para Super Administrador, sin modificar datos reales.
 V128 replica fielmente los bocetos aprobados en las cinco pestañas del demo.
-V129 agrega el demo de Análisis Comercial con iconografía exclusivamente de ropa.
+V129 agrega el demo de Análisis Comercial. V130 corrige la iconografía para usar
+prendas sólo en Dama, Caballero e Infantil y criterios contextuales en lo demás.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -70,6 +71,7 @@ from v126_operation_summary_patch import install as _install_v126_operation_summ
 from v127_operation_demo_dashboard_patch import install as _install_v127_operation_demo_dashboard_patch
 from v128_operation_demo_exact_patch import install as _install_v128_operation_demo_exact_patch
 from v129_commercial_clothing_demo_patch import install as _install_v129_commercial_clothing_demo_patch
+from v130_commercial_context_icons_patch import install as _install_v130_commercial_context_icons_patch
 
 # FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
 # módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
@@ -123,6 +125,8 @@ _install_v126_operation_summary_patch(web_app)
 _install_v127_operation_demo_dashboard_patch(web_app)
 # V128 replica los cinco bocetos aprobados sin escribir datos reales.
 _install_v128_operation_demo_exact_patch(web_app)
-# V129 activa el demo Comercial y usa únicamente iconos de prendas de ropa.
+# V129 activa el demo Comercial.
 _install_v129_commercial_clothing_demo_patch(web_app)
+# V130 limita prendas a Dama/Caballero/Infantil y contextualiza el resto.
+_install_v130_commercial_context_icons_patch(web_app)
 app = web_app.app
