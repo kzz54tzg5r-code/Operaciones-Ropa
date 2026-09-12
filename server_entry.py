@@ -25,6 +25,7 @@ módulo independiente al menú principal. V125 agrupa Colgado + Doblado como Ori
 en la captura diaria y separa Captura, Productividad y Estándares en pestañas.
 V126 restaura el Resumen ejecutivo/operativo como primera pestaña. V127 agrega
 un demo visual temporal, sólo para Super Administrador, sin modificar datos reales.
+V128 replica fielmente los bocetos aprobados en las cinco pestañas del demo.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -66,6 +67,7 @@ from v124_operation_main_module_patch import install as _install_v124_operation_
 from v125_operation_tabs_patch import install as _install_v125_operation_tabs_patch
 from v126_operation_summary_patch import install as _install_v126_operation_summary_patch
 from v127_operation_demo_dashboard_patch import install as _install_v127_operation_demo_dashboard_patch
+from v128_operation_demo_exact_patch import install as _install_v128_operation_demo_exact_patch
 
 # FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
 # módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
@@ -117,4 +119,6 @@ _install_v125_operation_tabs_patch(web_app)
 _install_v126_operation_summary_patch(web_app)
 # V127 activa el demo visual temporal sólo para Super Administrador.
 _install_v127_operation_demo_dashboard_patch(web_app)
+# V128 replica los cinco bocetos aprobados sin escribir datos reales.
+_install_v128_operation_demo_exact_patch(web_app)
 app = web_app.app
