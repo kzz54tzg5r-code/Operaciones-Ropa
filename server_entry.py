@@ -33,6 +33,8 @@ y modelos sin ubicación. V132 fuerza el demo Comercial exacto para el propietar
 V133 sustituye visualmente el demo por la versión compacta e interactiva aprobada.
 V134 corrige la interacción táctil de filtros, Consultar y pestañas en móvil.
 V135 agrega Sell Through al demo Comercial con ranking de modelos e inversión.
+V136 aísla el demo Comercial en un iframe del mismo origen para eliminar
+interferencias táctiles del portal y garantizar filtros + 7 pestañas funcionales.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -82,10 +84,8 @@ from v132_commercial_demo_exact_patch import install as _install_v132_commercial
 from v133_commercial_demo_compact_interactive_patch import install as _install_v133_commercial_demo_compact_interactive_patch
 from v134_commercial_touch_interaction_fix import install as _install_v134_commercial_touch_interaction_fix
 from v135_commercial_sellthrough_demo_patch import install as _install_v135_commercial_sellthrough_demo_patch
+from v136_commercial_isolated_demo_patch import install as _install_v136_commercial_isolated_demo_patch
 
-# FastAPI resuelve las anotaciones diferidas de V121 contra los globales del
-# módulo. Sin este enlace, `request: Request` se interpretaba como parámetro de
-# consulta y /api/operation/meta respondía 422.
 _v121_operation_module.Request = _FastAPIRequest
 
 _install_render_memory_patch(web_app)
@@ -117,36 +117,21 @@ _install_v116_reportlab_color_fix(web_app)
 _install_v116_daily_pdf_mirror_patch(web_app)
 _install_v117_operational_visual_parity_patch(web_app)
 _install_v119_centro_operativo_safe_annual_patch(web_app)
-# V120 mantiene los reportes validados de Centro Operativo.
 _install_v120_centro_operativo_preserve_reports_patch(web_app)
-# V121 agrega Operación y perfil Colaborador.
 _install_v121_operation_indicator_patch(web_app)
-# V122 evita que Colaborador atraviese Centro Operativo durante el inicio.
 _install_v122_collaborator_entry_patch(web_app)
-# V123 conserva compatibilidad de la vista Operación.
 _install_v123_operation_visibility_patch(web_app)
-# V124 la separa de Cambios y Muertos y la coloca en el menú principal.
 _install_v124_operation_main_module_patch(web_app)
-# V125 organiza Operación en pestañas y simplifica la captura diaria.
 _install_v125_operation_tabs_patch(web_app)
-# V126 devuelve el Resumen como primera pestaña del módulo Operación.
 _install_v126_operation_summary_patch(web_app)
-# V127 activa el demo visual temporal sólo para Super Administrador.
 _install_v127_operation_demo_dashboard_patch(web_app)
-# V128 replica los cinco bocetos aprobados sin escribir datos reales.
 _install_v128_operation_demo_exact_patch(web_app)
-# V129 activa el demo Comercial.
 _install_v129_commercial_clothing_demo_patch(web_app)
-# V130 limita prendas a Dama/Caballero/Infantil y contextualiza el resto.
 _install_v130_commercial_context_icons_patch(web_app)
-# V131 aplica reglas reales de modelos/comparativos; se conserva al quitar el demo.
 _install_v131_commercial_model_rules_patch(web_app)
-# V132 mantiene compatibilidad del demo Comercial para el propietario.
 _install_v132_commercial_demo_exact_patch(web_app)
-# V133 reemplaza visualmente V132 con el boceto compacto y navegación funcional.
 _install_v133_commercial_demo_compact_interactive_patch(web_app)
-# V134 rescata interacción táctil aunque exista una capa transparente del portal.
 _install_v134_commercial_touch_interaction_fix(web_app)
-# V135 agrega Sell Through al demo Comercial sin modificar datos reales.
 _install_v135_commercial_sellthrough_demo_patch(web_app)
+_install_v136_commercial_isolated_demo_patch(web_app)
 app = web_app.app
