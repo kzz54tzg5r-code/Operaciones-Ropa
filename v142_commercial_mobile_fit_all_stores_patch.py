@@ -1,10 +1,9 @@
-"""V142 · Ajuste móvil del demo Comercial + 17 tiendas.
+"""V143 · Corrección móvil del demo Comercial.
 
-Corrige desbordes observados en iPhone sobre la réplica V141: KPIs, Macro sección,
-Sección/Rubro y Sell Through se compactan sin superponer textos. Las tablas
-anchas usan desplazamiento local cuando realmente lo requieren. Además, Tiendas
-muestra las 17 tiendas del proyecto tanto en ranking como en comparativo visual.
-Sólo afecta el demo del propietario; no modifica datos reales.
+Reacomoda el diseño del demo aprobado para iPhone: KPIs en 2 columnas,
+Macro sección a una tarjeta por fila, bloques dobles apilados y tablas anchas
+con desplazamiento horizontal local en lugar de comprimir texto. Mantiene las
+17 tiendas, filtros y comparador automático. Sólo afecta el demo del propietario.
 """
 from __future__ import annotations
 
@@ -19,66 +18,69 @@ def install(m):
 (function(){
   var storeRows=[
     {n:'Iztapalapa',s:452610,c:'A',e:218500,o:92.3,d:48,status:'Exceso',cls:'bad'},
-    {n:'Vallejo',s:438900,c:'B',e:211240,o:89.6,d:54,status:'Óptimo',cls:''},
+    {n:'Vallejo',s:398320,c:'B',e:194120,o:86.1,d:62,status:'Óptimo',cls:''},
     {n:'Ecatepec',s:362250,c:'B',e:176340,o:78.4,d:71,status:'Óptimo',cls:''},
     {n:'Querétaro',s:358890,c:'B',e:159040,o:74.2,d:84,status:'Atención',cls:'warn'},
+    {n:'Toluca',s:334800,c:'B',e:165900,o:76.9,d:79,status:'Óptimo',cls:''},
+    {n:'Arco Norte',s:318240,c:'B',e:158300,o:75.1,d:83,status:'Atención',cls:'warn'},
+    {n:'Ixtapaluca',s:309550,c:'B',e:151880,o:74.3,d:86,status:'Atención',cls:'warn'},
+    {n:'Centro',s:301220,c:'B',e:149760,o:73.4,d:88,status:'Atención',cls:'warn'},
     {n:'Puebla',s:298760,c:'C',e:146800,o:69.7,d:96,status:'Atención',cls:'warn'},
+    {n:'Naucalpan',s:289100,c:'B',e:143280,o:72.4,d:89,status:'Atención',cls:'warn'},
+    {n:'Olivar',s:287430,c:'C',e:141550,o:71.8,d:91,status:'Atención',cls:'warn'},
     {n:'León',s:276310,c:'C',e:128650,o:63.5,d:112,status:'Riesgo',cls:'bad'},
-    {n:'Toluca',s:268450,c:'B',e:131420,o:76.8,d:82,status:'Atención',cls:'warn'},
-    {n:'Centro',s:257980,c:'B',e:124360,o:80.2,d:69,status:'Óptimo',cls:''},
-    {n:'Ixtapaluca',s:246730,c:'B',e:119840,o:77.5,d:73,status:'Óptimo',cls:''},
-    {n:'Arco Norte',s:232540,c:'C',e:112650,o:70.4,d:91,status:'Atención',cls:'warn'},
-    {n:'Olivar',s:218960,c:'C',e:104300,o:68.2,d:98,status:'Atención',cls:'warn'},
-    {n:'Naucalpan',s:207440,c:'C',e:101250,o:72.1,d:88,status:'Atención',cls:'warn'},
-    {n:'Puebla Sur',s:194820,c:'C',e:95780,o:66.7,d:104,status:'Riesgo',cls:'bad'},
-    {n:'Aguascalientes',s:183610,c:'C',e:89420,o:64.8,d:109,status:'Riesgo',cls:'bad'},
-    {n:'Veracruz',s:176950,c:'C',e:86300,o:62.4,d:115,status:'Riesgo',cls:'bad'},
-    {n:'Atemajac',s:169380,c:'C',e:82740,o:67.5,d:101,status:'Riesgo',cls:'bad'},
-    {n:'Miravalle',s:162740,c:'C',e:79560,o:65.9,d:107,status:'Riesgo',cls:'bad'}
+    {n:'Puebla Sur',s:265980,c:'C',e:130420,o:67.8,d:102,status:'Riesgo',cls:'bad'},
+    {n:'Aguascalientes',s:248360,c:'C',e:121600,o:66.1,d:106,status:'Riesgo',cls:'bad'},
+    {n:'Veracruz',s:241980,c:'C',e:118740,o:65.5,d:108,status:'Riesgo',cls:'bad'},
+    {n:'Miravalle',s:232440,c:'C',e:113920,o:64.2,d:111,status:'Riesgo',cls:'bad'},
+    {n:'Atemajac',s:227350,c:'C',e:111630,o:63.8,d:113,status:'Riesgo',cls:'bad'}
   ];
   var storeNames=storeRows.map(function(x){return x.n});
-  var patchedRoot=null;
   function fmt(n){return Number(n||0).toLocaleString('es-MX',{maximumFractionDigits:0});}
   function money(n){return '$'+fmt(n);}
   function hostShadow(){var h=document.getElementById('v141CommercialHost');return h&&h.shadowRoot?h.shadowRoot:null;}
   function root(){var sh=hostShadow();return sh?sh.getElementById('v139-demo-root'):null;}
   function mobileCss(){return `
-:host{display:block!important;max-width:100%!important;overflow-x:hidden!important}
+:host{display:block!important;width:100%!important;max-width:100%!important;overflow-x:hidden!important}
 #v139-demo-root.app{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:hidden!important}
 .card,.page,.filters,.kpis,.kpi,.grid2,.grid3,.macrosec,.highlight,.modelbox,.accordion-card,.tablewrap{min-width:0!important;max-width:100%!important}
-.tablewrap{overflow-x:auto!important;overscroll-behavior-x:contain!important;-webkit-overflow-scrolling:touch!important}
-.demo-note{padding:7px 9px!important;gap:7px!important}.demo-note .info{width:22px!important;height:22px!important;font-size:13px!important}.demo-note b{font-size:9px!important}.demo-note span{font-size:7px!important;line-height:1.25!important}
-#sectionButtons{flex-wrap:nowrap!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}#sectionButtons::-webkit-scrollbar{display:none!important}
-#sectionButtons .filterbtn{flex:0 0 auto!important}
-#page-sell .st-table th{white-space:normal!important;line-height:1.05!important;text-align:left!important}
-#page-sell .st-table td:nth-child(3){white-space:normal!important;line-height:1.1!important}
-#page-more .table.wide{min-width:690px!important;width:690px!important;table-layout:auto!important}
+.tabs{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}.tabs::-webkit-scrollbar{display:none!important}
+.tablewrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior-x:contain!important;max-width:100%!important}
+.demo-note{padding:8px 10px!important;gap:8px!important}.demo-note .info{width:24px!important;height:24px!important;font-size:14px!important}.demo-note b{font-size:10px!important}.demo-note span{font-size:8px!important;line-height:1.28!important}
+#sectionButtons,.filters-inline{overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch!important;scrollbar-width:none!important}#sectionButtons::-webkit-scrollbar,.filters-inline::-webkit-scrollbar{display:none!important}
+#sectionButtons .filterbtn,.filters-inline .filterbtn{flex:0 0 auto!important}
 @media(max-width:430px){
- .app{gap:6px!important}.card{padding:7px!important;border-radius:10px!important}.filters{gap:5px!important;padding:7px!important}.field label{font-size:6.5px!important;margin-bottom:4px!important}.field select{height:37px!important;font-size:10px!important;padding-left:7px!important}.query{height:40px!important;font-size:14px!important}.tab{min-height:34px!important;font-size:8px!important;padding:0 10px!important}.section-title{font-size:15px!important}.section-sub{font-size:8px!important}.link{font-size:7.5px!important}
- .kpis{gap:5px!important;margin-top:7px!important}.kpis.six{grid-template-columns:repeat(3,minmax(0,1fr))!important}.kpis.four,.st-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
- .kpi{min-height:60px!important;padding:5px 4px!important;gap:3px!important;border-radius:8px!important}.kpi .ico{width:25px!important;height:25px!important;font-size:12px!important}.kpi .label{font-size:6.3px!important;line-height:1.05!important}.kpi .value{font-size:10.5px!important;line-height:1!important;letter-spacing:-.35px!important;white-space:nowrap!important;overflow:visible!important}.kpi .unit{font-size:5.7px!important;line-height:1.05!important}.kpis.six .kpi .value{font-size:11.5px!important}.st-kpis .kpi .value{font-size:10.3px!important}
- .macrosec{padding:6px!important;overflow:hidden!important}.macrosec .top{gap:4px!important}.garment{width:28px!important;height:28px!important;font-size:15px!important}.macrosec .name{font-size:8px!important}.macrosec .big{font-size:10.8px!important;white-space:nowrap!important;letter-spacing:-.2px!important}.macrosec small{font-size:5.3px!important;white-space:normal!important;line-height:1.18!important;margin-top:4px!important;overflow-wrap:anywhere!important}
- .grid2{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}.grid3{gap:5px!important}.bar{grid-template-columns:53px minmax(34px,1fr) 46px!important;gap:4px!important;font-size:6.7px!important}.bar b{font-size:6.8px!important}.track{height:11px!important}.percent{font-size:6.7px!important;padding:3px 4px!important}
- .table{font-size:6px!important}.table th,.table td{padding:4px 3px!important}.table th{white-space:normal!important;line-height:1.08!important}.table td{line-height:1.1!important}.badge{font-size:6.4px!important;padding:3px 5px!important}
- #page-stores .table{font-size:5.8px!important;table-layout:fixed!important;width:100%!important;min-width:0!important}#page-stores .table th,#page-stores .table td{padding:4px 2px!important}#page-stores .table th:nth-child(1),#page-stores .table td:nth-child(1){width:5%!important}#page-stores .table th:nth-child(2),#page-stores .table td:nth-child(2){width:17%!important}#page-stores .table th:nth-child(3),#page-stores .table td:nth-child(3){width:18%!important}#page-stores .table th:nth-child(4),#page-stores .table td:nth-child(4){width:8%!important}#page-stores .table th:nth-child(5),#page-stores .table td:nth-child(5){width:18%!important}#page-stores .table th:nth-child(6),#page-stores .table td:nth-child(6){width:14%!important}#page-stores .table th:nth-child(7),#page-stores .table td:nth-child(7){width:7%!important}#page-stores .table th:nth-child(8),#page-stores .table td:nth-child(8){width:13%!important}
- #page-sell .st-table{font-size:5.6px!important;table-layout:fixed!important;width:100%!important;min-width:0!important}#page-sell .st-table th,#page-sell .st-table td{padding:4px 2px!important}#page-sell .st-table th:nth-child(1),#page-sell .st-table td:nth-child(1){width:12%!important}#page-sell .st-table th:nth-child(2),#page-sell .st-table td:nth-child(2){width:10%!important}#page-sell .st-table th:nth-child(3),#page-sell .st-table td:nth-child(3){width:20%!important}#page-sell .st-table th:nth-child(4),#page-sell .st-table td:nth-child(4){width:11%!important}#page-sell .st-table th:nth-child(5),#page-sell .st-table td:nth-child(5){width:10%!important}#page-sell .st-table th:nth-child(6),#page-sell .st-table td:nth-child(6){width:10%!important}#page-sell .st-table th:nth-child(7),#page-sell .st-table td:nth-child(7){width:13%!important}#page-sell .st-table th:nth-child(8),#page-sell .st-table td:nth-child(8){width:14%!important}#page-sell .st-table td{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}#page-sell .st-table td:nth-child(3){white-space:normal!important;overflow:visible!important}.stpct{min-width:33px!important;font-size:5.9px!important;padding:3px 3px!important}
- .filters-inline{gap:4px!important}.filterbtn{height:31px!important;padding:0 10px!important;font-size:7.5px!important}.mini-kpis{gap:3px!important}.mini{padding:4px!important}.mini .label{font-size:5.7px!important}.mini .value{font-size:8px!important}.models-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+ .app{gap:7px!important}.card{padding:9px!important;border-radius:11px!important}
+ .filters{grid-template-columns:1fr!important;gap:8px!important;padding:9px!important}
+ .field label{font-size:7px!important;margin-bottom:5px!important}.field select{height:42px!important;font-size:12px!important;padding-left:9px!important}.query{height:44px!important;font-size:16px!important}
+ .tab{min-height:38px!important;font-size:10px!important;padding:0 13px!important;flex:0 0 auto!important}.section-title{font-size:17px!important;line-height:1.08!important}.section-sub{font-size:9px!important;line-height:1.25!important}.link{font-size:8px!important}
+ .kpis.six,.kpis.four,.st-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+ .kpi{min-height:76px!important;padding:8px!important;gap:7px!important;border-radius:9px!important;overflow:hidden!important}.kpi .ico{width:32px!important;height:32px!important;font-size:15px!important}.kpi .label{font-size:8px!important;line-height:1.12!important}.kpi .value{font-size:15px!important;line-height:1.04!important;letter-spacing:-.25px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.kpi .unit{font-size:7px!important;line-height:1.08!important}
+ #page-macro .grid3{grid-template-columns:1fr!important;gap:7px!important}.macrosec{padding:9px!important;overflow:hidden!important}.macrosec .top{gap:8px!important}.garment{width:36px!important;height:36px!important;font-size:19px!important}.macrosec .name{font-size:11px!important}.macrosec .big{font-size:14px!important;white-space:nowrap!important}.macrosec small{font-size:8px!important;white-space:normal!important;line-height:1.25!important;margin-top:6px!important;overflow-wrap:anywhere!important}
+ .grid2{grid-template-columns:1fr!important;gap:8px!important}.grid3{gap:7px!important}
+ .bar{grid-template-columns:82px minmax(75px,1fr) 62px!important;gap:6px!important;font-size:9px!important}.bar b{font-size:9px!important}.track{height:14px!important}.percent{font-size:8px!important;padding:4px 5px!important}
+ .mini-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}.mini{padding:7px!important}.mini .label{font-size:7px!important}.mini .value{font-size:10px!important}.accordion-card .grid2{grid-template-columns:1fr!important}
+ .table{font-size:10px!important}.table th,.table td{padding:7px 6px!important;white-space:nowrap!important;line-height:1.15!important}.badge{font-size:8px!important;padding:4px 7px!important}
+ #page-stores .table{min-width:860px!important;width:860px!important;table-layout:auto!important;font-size:10px!important}
+ #page-sections .table,#page-section .table{min-width:760px!important;width:760px!important;table-layout:auto!important;font-size:10px!important}
+ #page-areas .table{min-width:900px!important;width:900px!important;table-layout:auto!important;font-size:10px!important}
+ #page-more .table.wide,#page-more .table{min-width:900px!important;table-layout:auto!important;font-size:10px!important}
+ #page-sell .st-table{min-width:980px!important;width:980px!important;table-layout:auto!important;font-size:10px!important}
+ #page-sell .st-table th,#page-sell .st-table td{padding:7px 6px!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important}.stpct{min-width:42px!important;font-size:8px!important;padding:4px 5px!important}
+ .filterbtn{height:36px!important;padding:0 14px!important;font-size:9px!important;flex:0 0 auto!important}.models-grid{grid-template-columns:1fr!important;gap:7px!important}
 }
 `;}
-  function ensureStyle(sh){if(sh.getElementById('v142-mobile-fit-style'))return;var s=document.createElement('style');s.id='v142-mobile-fit-style';s.textContent=mobileCss();sh.appendChild(s);}
-  function ensureStoreOptions(r){var sel=r.querySelector('#store');if(!sel)return;var current=sel.value||'Compañía';var expected=['Compañía'].concat(storeNames);var actual=Array.from(sel.options).map(function(o){return o.value||o.textContent});if(expected.join('|')!==actual.join('|')){sel.innerHTML=expected.map(function(n){return '<option>'+n+'</option>';}).join('');if(expected.indexOf(current)>=0)sel.value=current;}}
-  function patchStores(r){var page=r.querySelector('#page-stores');if(!page)return;var table=null;page.querySelectorAll('table').forEach(function(t){var txt=(t.querySelector('thead')||{}).textContent||'';if(!table&&/Tienda/i.test(txt)&&/Sugerido/i.test(txt))table=t;});if(table){var tb=table.querySelector('tbody');if(tb){tb.innerHTML=storeRows.map(function(x,i){return '<tr><td>'+(i+1)+'</td><td><b>'+x.n+'</b></td><td>'+money(x.s)+'</td><td>'+x.c+'</td><td>'+fmt(x.e)+'</td><td>'+x.o.toFixed(1)+'%</td><td>'+x.d+'</td><td><span class="badge '+x.cls+'">'+x.status+'</span></td></tr>';}).join('');}var hs=table.querySelectorAll('th');hs.forEach(function(h){h.textContent=h.textContent.replace(/pares/gi,'pzas');});}
-    var bars=page.querySelector('.bars');if(bars){var mx=storeRows[0].s;bars.innerHTML=storeRows.map(function(x){var pct=Math.max(18,Math.round(x.s/mx*100));return '<div class="bar"><b>'+x.n+'</b><div class="track"><div class="fill" style="width:'+pct+'%"></div></div><span>'+money(x.s)+'</span></div>';}).join('');}
-    var rankTitle=page.querySelector('.headrow .link');if(rankTitle&&/Ver todas/i.test(rankTitle.textContent||''))rankTitle.textContent='17 tiendas';
-  }
-  function fullComparator(store){if(!store||store==='Compañía')return 'Iztapalapa';var i=storeNames.indexOf(store);if(i<0)return 'Iztapalapa';return i===0?storeNames[1]:storeNames[i-1];}
+  function ensureStyle(sh){var old=sh.getElementById('v142-mobile-fit-style');if(old)old.remove();var s=document.createElement('style');s.id='v142-mobile-fit-style';s.textContent=mobileCss();sh.appendChild(s);}
+  function ensureStoreOptions(r){var sel=r.querySelector('#store');if(!sel)return;var current=sel.value||'Compañía';var expected=['Compañía'].concat(storeNames);sel.innerHTML=expected.map(function(n){return '<option>'+n+'</option>';}).join('');if(expected.indexOf(current)>=0)sel.value=current;}
+  function patchStores(r){var page=r.querySelector('#page-stores');if(!page)return;var table=null;page.querySelectorAll('table').forEach(function(t){var txt=(t.querySelector('thead')||{}).textContent||'';if(!table&&/Tienda/i.test(txt)&&/Sugerido/i.test(txt))table=t;});if(table){var tb=table.querySelector('tbody');if(tb){tb.innerHTML=storeRows.map(function(x,i){return '<tr><td>'+(i+1)+'</td><td><b>'+x.n+'</b></td><td>'+money(x.s)+'</td><td>'+x.c+'</td><td>'+fmt(x.e)+'</td><td>'+x.o.toFixed(1)+'%</td><td>'+x.d+'</td><td><span class="badge '+x.cls+'">'+x.status+'</span></td></tr>';}).join('');}table.querySelectorAll('th').forEach(function(h){h.textContent=h.textContent.replace(/pares/gi,'pzas');});}var bars=page.querySelector('.bars');if(bars){var mx=storeRows[0].s;bars.innerHTML=storeRows.map(function(x){var pct=Math.max(18,Math.round(x.s/mx*100));return '<div class="bar"><b>'+x.n+'</b><div class="track"><div class="fill" style="width:'+pct+'%"></div></div><span>'+money(x.s)+'</span></div>';}).join('');}page.querySelectorAll('.headrow .link').forEach(function(x){if(/Ver todas/i.test(x.textContent||''))x.textContent='17 tiendas';});}
+  function fullComparator(store){if(!store||store==='Compañía')return'Iztapalapa';var i=storeNames.indexOf(store);if(i<0)return'Iztapalapa';return i===0?storeNames[1]:storeNames[i-1];}
   function updateComparator(r){var sel=r.querySelector('#store');var c=fullComparator(sel?sel.value:'Compañía');r.querySelectorAll('.cmp-store').forEach(function(x){x.textContent=c;});}
-  function bindComparator(r){if(r.getAttribute('data-v142-bound')==='1')return;r.setAttribute('data-v142-bound','1');r.addEventListener('change',function(e){if(e.target&&e.target.id==='store')setTimeout(function(){updateComparator(r);},0);});r.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#query'))setTimeout(function(){updateComparator(r);},0);});}
-  function patch(){var sh=hostShadow(),r=root();if(!sh||!r)return false;ensureStyle(sh);ensureStoreOptions(r);patchStores(r);bindComparator(r);updateComparator(r);patchedRoot=r;return true;}
+  function bindComparator(r){if(r.getAttribute('data-v143-bound')==='1')return;r.setAttribute('data-v143-bound','1');r.addEventListener('change',function(e){if(e.target&&e.target.id==='store')setTimeout(function(){updateComparator(r);},0);});r.addEventListener('click',function(e){if(e.target&&e.target.closest&&e.target.closest('#query'))setTimeout(function(){updateComparator(r);},0);});}
+  function patch(){var sh=hostShadow(),r=root();if(!sh||!r)return false;ensureStyle(sh);ensureStoreOptions(r);patchStores(r);bindComparator(r);updateComparator(r);return true;}
   function attempt(n){if(patch())return;if(n>0)setTimeout(function(){attempt(n-1);},260);}
-  document.addEventListener('click',function(e){var m=e.target&&e.target.closest?e.target.closest('[data-main]'):null;if(m){var v=m.getAttribute('data-main');if(v==='analysis'||v==='commercial')setTimeout(function(){attempt(12);},180);}},true);
-  setTimeout(function(){attempt(16);},300);
-  console.info('[V142] Ajuste móvil Comercial + 17 tiendas preparado.');
+  document.addEventListener('click',function(e){var m=e.target&&e.target.closest?e.target.closest('[data-main]'):null;if(m){var v=m.getAttribute('data-main');if(v==='analysis'||v==='commercial')setTimeout(function(){attempt(16);},180);}},true);
+  setTimeout(function(){attempt(20);},300);
+  console.info('[V143] Comercial móvil reacomodado: 2 columnas + tablas con scroll + 17 tiendas.');
 })();
 </script>'''
 
@@ -98,11 +100,11 @@ def install(m):
                 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
                 'Pragma': 'no-cache',
                 'Expires': '0',
-                'X-Operations-UI-Version': 'V142-COMMERCIAL-MOBILE-FIT-17-STORES',
+                'X-Operations-UI-Version': 'V143-COMMERCIAL-MOBILE-EXACT',
             })
         except Exception as exc:
-            print(f'[V142] HTML warning: {type(exc).__name__}: {exc}', flush=True)
+            print(f'[V143] HTML warning: {type(exc).__name__}: {exc}', flush=True)
             return response
 
     m._V142_COMMERCIAL_MOBILE_FIT = True
-    print('[V142] Comercial móvil ajustado + 17 tiendas instaladas.', flush=True)
+    print('[V143] Comercial móvil exacto instalado: 2 columnas, scroll local y 17 tiendas.', flush=True)
