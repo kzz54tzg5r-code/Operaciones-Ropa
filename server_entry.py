@@ -29,6 +29,9 @@ Comercial y V140 evita que el demo dispare el dashboard real en Safari/iPhone.
 V141 monta, por encima de V139, la réplica visual exacta de los bocetos aprobados
 en Shadow DOM: filtros funcionales y las 7 pestañas, incluido Sell Through.
 V142 corrige desbordes móviles y amplía Tiendas a las 17 sucursales del proyecto.
+V144 recupera la estructura pre-demo de Comercial: sugerido en piezas, Macro
+80/20 con 80 modelos en tabla fija desplazable y comparativo automático para
+Modelos lentos/Sugerido 0 contra la tienda inmediata superior (Top 1 vs Top 2).
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -76,6 +79,7 @@ from v140_commercial_demo_guard import install as _install_v140_commercial_demo_
 from v139_commercial_mockup_parity_patch import install as _install_v141_commercial_mockup_source
 from v141_commercial_exact_shadow_patch import install as _install_v141_commercial_exact_shadow_patch
 from v142_commercial_mobile_fit_all_stores_patch import install as _install_v142_commercial_mobile_fit_all_stores_patch
+from v144_commercial_pre_demo_structure_patch import install as _install_v144_commercial_pre_demo_structure_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -123,4 +127,5 @@ _install_v140_commercial_demo_guard(web_app)
 _install_v141_commercial_mockup_source(web_app)
 _install_v141_commercial_exact_shadow_patch(web_app)
 _install_v142_commercial_mobile_fit_all_stores_patch(web_app)
+_install_v144_commercial_pre_demo_structure_patch(web_app)
 app = web_app.app
