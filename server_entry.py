@@ -33,7 +33,9 @@ V144 recupera la estructura pre-demo de Comercial: sugerido en piezas, Macro
 80/20 con 80 modelos en tabla fija desplazable y comparativo automático para
 Modelos lentos/Sugerido 0 contra la tienda inmediata superior (Top 1 vs Top 2).
 V145 mueve Modelos lentos y Sugerido 0 a la primera pestaña Macro compañía,
-conservando íntegramente las reglas y comparativos de V144.
+conservando íntegramente las reglas y comparativos de V144. V146 hace explícitos
+en ambas tablas el nombre de la tienda comparativa y el sugerido del mismo modelo
+en esa tienda.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -83,6 +85,7 @@ from v141_commercial_exact_shadow_patch import install as _install_v141_commerci
 from v142_commercial_mobile_fit_all_stores_patch import install as _install_v142_commercial_mobile_fit_all_stores_patch
 from v144_commercial_pre_demo_structure_patch import install as _install_v144_commercial_pre_demo_structure_patch
 from v145_commercial_macro_models_patch import install as _install_v145_commercial_macro_models_patch
+from v146_commercial_comparison_columns_patch import install as _install_v146_commercial_comparison_columns_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -132,4 +135,5 @@ _install_v141_commercial_exact_shadow_patch(web_app)
 _install_v142_commercial_mobile_fit_all_stores_patch(web_app)
 _install_v144_commercial_pre_demo_structure_patch(web_app)
 _install_v145_commercial_macro_models_patch(web_app)
+_install_v146_commercial_comparison_columns_patch(web_app)
 app = web_app.app
