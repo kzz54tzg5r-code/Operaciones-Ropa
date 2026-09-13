@@ -32,6 +32,8 @@ V142 corrige desbordes móviles y amplía Tiendas a las 17 sucursales del proyec
 V144 recupera la estructura pre-demo de Comercial: sugerido en piezas, Macro
 80/20 con 80 modelos en tabla fija desplazable y comparativo automático para
 Modelos lentos/Sugerido 0 contra la tienda inmediata superior (Top 1 vs Top 2).
+V145 mueve Modelos lentos y Sugerido 0 a la primera pestaña Macro compañía,
+conservando íntegramente las reglas y comparativos de V144.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -80,6 +82,7 @@ from v139_commercial_mockup_parity_patch import install as _install_v141_commerc
 from v141_commercial_exact_shadow_patch import install as _install_v141_commercial_exact_shadow_patch
 from v142_commercial_mobile_fit_all_stores_patch import install as _install_v142_commercial_mobile_fit_all_stores_patch
 from v144_commercial_pre_demo_structure_patch import install as _install_v144_commercial_pre_demo_structure_patch
+from v145_commercial_macro_models_patch import install as _install_v145_commercial_macro_models_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -128,4 +131,5 @@ _install_v141_commercial_mockup_source(web_app)
 _install_v141_commercial_exact_shadow_patch(web_app)
 _install_v142_commercial_mobile_fit_all_stores_patch(web_app)
 _install_v144_commercial_pre_demo_structure_patch(web_app)
+_install_v145_commercial_macro_models_patch(web_app)
 app = web_app.app
