@@ -44,7 +44,9 @@ instala al final para evitar que capas posteriores lo oculten. V150 re-registra
 /api/operations con Request tipado y evita que Centro Ejecutivo oculte errores
 estructurados como [object Object]. V151 limita los KPIs, tarjetas, detalle,
 productividad y recorridos de Día/Semana/Mes/Año a tiendas Proyecto, conservando
-Recuperación por tienda como comparativo de todas las tiendas.
+Recuperación por tienda como comparativo de todas las tiendas. V152 restaura en
+PDF el resaltado Proyecto sólo cuando convive con otras tiendas y devuelve la
+gráfica de devolución/recuperación a una hoja vertical exclusiva.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -100,6 +102,7 @@ from v148_commercial_mockup_mobile_parity_patch import install as _install_v148_
 from v149_operation_summary_restore_patch import install as _install_v149_operation_summary_restore_patch
 from v150_operations_endpoint_guard_patch import install as _install_v150_operations_endpoint_guard_patch
 from v151_project_cards_scope_patch import install as _install_v151_project_cards_scope_patch
+from v152_pdf_project_highlight_portrait_chart_patch import install as _install_v152_pdf_project_highlight_portrait_chart_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -155,6 +158,8 @@ _install_v148_commercial_mockup_mobile_parity_patch(web_app)
 _install_v149_operation_summary_restore_patch(web_app)
 # V150 al final: garantiza firma HTTP correcta de /api/operations.
 _install_v150_operations_endpoint_guard_patch(web_app)
-# V151 al final: KPIs Día/Semana/Mes/Año sólo tiendas Proyecto; recuperación compara todas.
+# V151: KPIs Día/Semana/Mes/Año sólo tiendas Proyecto; recuperación compara todas.
 _install_v151_project_cards_scope_patch(web_app)
+# V152 al final: PDF mixto con Proyecto resaltado y gráfica recuperación vertical.
+_install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
 app = web_app.app
