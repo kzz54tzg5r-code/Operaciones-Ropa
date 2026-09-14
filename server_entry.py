@@ -46,7 +46,9 @@ estructurados como [object Object]. V151 limita los KPIs, tarjetas, detalle,
 productividad y recorridos de Día/Semana/Mes/Año a tiendas Proyecto, conservando
 Recuperación por tienda como comparativo de todas las tiendas. V152 restaura en
 PDF el resaltado Proyecto sólo cuando convive con otras tiendas y devuelve la
-gráfica de devolución/recuperación a una hoja vertical exclusiva.
+gráfica de devolución/recuperación a una hoja vertical exclusiva. V153 hace el
+alcance Proyecto autoritativo desde backend para que los KPIs de Compañía no
+puedan volver a tomar el agregado general en Día/Semana/Mes/Año.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -103,6 +105,7 @@ from v149_operation_summary_restore_patch import install as _install_v149_operat
 from v150_operations_endpoint_guard_patch import install as _install_v150_operations_endpoint_guard_patch
 from v151_project_cards_scope_patch import install as _install_v151_project_cards_scope_patch
 from v152_pdf_project_highlight_portrait_chart_patch import install as _install_v152_pdf_project_highlight_portrait_chart_patch
+from v153_project_scope_backend_authoritative_patch import install as _install_v153_project_scope_backend_authoritative_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -160,6 +163,8 @@ _install_v149_operation_summary_restore_patch(web_app)
 _install_v150_operations_endpoint_guard_patch(web_app)
 # V151: KPIs Día/Semana/Mes/Año sólo tiendas Proyecto; recuperación compara todas.
 _install_v151_project_cards_scope_patch(web_app)
-# V152 al final: PDF mixto con Proyecto resaltado y gráfica recuperación vertical.
+# V152: PDF mixto con Proyecto resaltado y gráfica recuperación vertical.
 _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
+# V153 al final: backend autoritativo para KPIs Proyecto en Compañía.
+_install_v153_project_scope_backend_authoritative_patch(web_app)
 app = web_app.app
