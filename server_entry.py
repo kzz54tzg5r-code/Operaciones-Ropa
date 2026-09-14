@@ -39,6 +39,8 @@ en esa tienda. V147 agrega en Macro 80/20 la participación de la tienda filtrad
 Σ sugerido tienda / Σ sugerido compañía y, por ID, venta tienda / venta compañía.
 V148 corrige la composición móvil para volver a la paridad visual de los bocetos:
 Macro 80/20 a ancho completo, tarjetas compactas y tablas con estructura pre-demo.
+V149 vuelve a colocar el Resumen real de Operación como primera pestaña y lo
+instala al final para evitar que capas posteriores lo oculten.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -91,6 +93,7 @@ from v145_commercial_macro_models_patch import install as _install_v145_commerci
 from v146_commercial_comparison_columns_patch import install as _install_v146_commercial_comparison_columns_patch
 from v147_commercial_8020_store_participation_patch import install as _install_v147_commercial_8020_store_participation_patch
 from v148_commercial_mockup_mobile_parity_patch import install as _install_v148_commercial_mockup_mobile_parity_patch
+from v149_operation_summary_restore_patch import install as _install_v149_operation_summary_restore_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -134,7 +137,6 @@ _install_v127_operation_demo_dashboard_patch(web_app)
 _install_v128_operation_demo_exact_patch(web_app)
 _install_v139_commercial_direct_dom_fix(web_app)
 _install_v140_commercial_demo_guard(web_app)
-# Fuente HTML exacta de los bocetos y montaje aislado en Shadow DOM.
 _install_v141_commercial_mockup_source(web_app)
 _install_v141_commercial_exact_shadow_patch(web_app)
 _install_v142_commercial_mobile_fit_all_stores_patch(web_app)
@@ -143,4 +145,6 @@ _install_v145_commercial_macro_models_patch(web_app)
 _install_v146_commercial_comparison_columns_patch(web_app)
 _install_v147_commercial_8020_store_participation_patch(web_app)
 _install_v148_commercial_mockup_mobile_parity_patch(web_app)
+# V149 al final: restaura Resumen de Operación por encima de capas anteriores.
+_install_v149_operation_summary_restore_patch(web_app)
 app = web_app.app
