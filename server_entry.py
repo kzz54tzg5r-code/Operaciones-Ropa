@@ -48,7 +48,9 @@ Recuperación por tienda como comparativo de todas las tiendas. V152 restaura en
 PDF el resaltado Proyecto sólo cuando convive con otras tiendas y devuelve la
 gráfica de devolución/recuperación a una hoja vertical exclusiva. V153 hace el
 alcance Proyecto autoritativo desde backend para que los KPIs de Compañía no
-puedan volver a tomar el agregado general en Día/Semana/Mes/Año.
+puedan volver a tomar el agregado general en Día/Semana/Mes/Año. V154 devuelve
+el PDF Diario al formato validado previo y deja la hoja vertical de recuperación
+sólo para Semana/Mes/Año; además elimina "proyecto" del nombre descargado.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -106,6 +108,7 @@ from v150_operations_endpoint_guard_patch import install as _install_v150_operat
 from v151_project_cards_scope_patch import install as _install_v151_project_cards_scope_patch
 from v152_pdf_project_highlight_portrait_chart_patch import install as _install_v152_pdf_project_highlight_portrait_chart_patch
 from v153_project_scope_backend_authoritative_patch import install as _install_v153_project_scope_backend_authoritative_patch
+from v154_pdf_period_rules_patch import install_pre as _install_v154_pdf_period_pre, install_post as _install_v154_pdf_period_post
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -163,8 +166,12 @@ _install_v149_operation_summary_restore_patch(web_app)
 _install_v150_operations_endpoint_guard_patch(web_app)
 # V151: KPIs Día/Semana/Mes/Año sólo tiendas Proyecto; recuperación compara todas.
 _install_v151_project_cards_scope_patch(web_app)
+# V154 PRE: captura el generador PDF diario validado antes de que V152 lo reemplace.
+_install_v154_pdf_period_pre(web_app)
 # V152: PDF mixto con Proyecto resaltado y gráfica recuperación vertical.
 _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
-# V153 al final: backend autoritativo para KPIs Proyecto en Compañía.
+# V153: backend autoritativo para KPIs Proyecto en Compañía.
 _install_v153_project_scope_backend_authoritative_patch(web_app)
+# V154 POST: Día vuelve al PDF previo; vertical sólo Semana/Mes/Año; nombre sin proyecto.
+_install_v154_pdf_period_post(web_app)
 app = web_app.app
