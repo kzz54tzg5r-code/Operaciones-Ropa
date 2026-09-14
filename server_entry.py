@@ -1,58 +1,8 @@
 """Entrada de producción para Render.
 
-Mantiene las optimizaciones y reportes validados hasta V108. V109 agrega en
-Análisis Comercial > Macro el reporte ejecutivo de ventas Año vs Año pasado,
-metas mensuales, tendencia gráfica y repara la carga/procesamiento de los PDF
-de ventas mensuales. También reprocesa una sola vez el historial ya cargado
-para que Macro quede listo sin esperar al primer clic. V110 incorpora la hoja
-Resultados por Checklist al consolidado operativo y nombra cada PDF con su
-reporte y fecha/periodo de corte. V111 ajusta Operación Diaria para mostrar
-%Acondicionado y %Ubicado en tarjetas y sólo %Ubicado en la tabla. V112 repara
-la API de ventas y V113 evita valores falsos. V114 inspecciona temporalmente el
-layout real de Meta_ROPA_SEPTIEMBRE. V115 muestra Acondicionado y Ubicado en
-piezas y porcentaje tanto en la tabla diaria como en su PDF. V116 hace que el
-PDF Diario replique visualmente la pantalla. V117 unifica Día, Semanal y
-Mensual: mismas tarjetas, mismo orden de detalle y misma identidad visual en PDF.
-V119 sustituye V118 para evitar el congelamiento del navegador y consolida
-Día, Semanal, Mensual y Anual dentro de Centro Operativo. V120 conserva la
-estructura validada de Día/Semanal/Mensual y hace que únicamente cambie el filtro.
-V121 agrega el indicador Operación, captura diaria, productividad por colaborador,
-perfil Colaborador, cierre de día, acumulados y exportaciones sin modificar los
-reportes validados de Centro Operativo. V122 hace que el Colaborador entre
-directamente a Operación sin consultar módulos restringidos. V123 garantiza que
-Operación permanezca visible. V124 corrige la API de Operación y la mueve como
-módulo independiente al menú principal. V125 agrupa Colgado + Doblado como Origen
-en la captura diaria y separa Captura, Productividad y Estándares en pestañas.
-V126 restaura el Resumen ejecutivo/operativo como primera pestaña. V127 y V128
-mantienen el demo operativo aprobado. V139 es la capa directa estable del demo
-Comercial y V140 evita que el demo dispare el dashboard real en Safari/iPhone.
-V141 monta, por encima de V139, la réplica visual exacta de los bocetos aprobados
-en Shadow DOM: filtros funcionales y las 7 pestañas, incluido Sell Through.
-V142 corrige desbordes móviles y amplía Tiendas a las 17 sucursales del proyecto.
-V144 recupera la estructura pre-demo de Comercial: sugerido en piezas, Macro
-80/20 con 80 modelos en tabla fija desplazable y comparativo automático para
-Modelos lentos/Sugerido 0 contra la tienda inmediata superior (Top 1 vs Top 2).
-V145 mueve Modelos lentos y Sugerido 0 a la primera pestaña Macro compañía,
-conservando íntegramente las reglas y comparativos de V144. V146 hace explícitos
-en ambas tablas el nombre de la tienda comparativa y el sugerido del mismo modelo
-en esa tienda. V147 agrega en Macro 80/20 la participación de la tienda filtrada:
-Σ sugerido tienda / Σ sugerido compañía y, por ID, venta tienda / venta compañía.
-V148 corrige la composición móvil para volver a la paridad visual de los bocetos:
-Macro 80/20 a ancho completo, tarjetas compactas y tablas con estructura pre-demo.
-V149 vuelve a colocar el Resumen real de Operación como primera pestaña y lo
-instala al final para evitar que capas posteriores lo oculten. V150 re-registra
-/api/operations con Request tipado y evita que Centro Ejecutivo oculte errores
-estructurados como [object Object]. V151 limita los KPIs, tarjetas, detalle,
-productividad y recorridos de Día/Semana/Mes/Año a tiendas Proyecto, conservando
-Recuperación por tienda como comparativo de todas las tiendas. V152 restaura en
-PDF el resaltado Proyecto sólo cuando convive con otras tiendas y devuelve la
-gráfica de devolución/recuperación a una hoja vertical exclusiva. V153 hace el
-alcance Proyecto autoritativo desde backend para que los KPIs de Compañía no
-puedan volver a tomar el agregado general en Día/Semana/Mes/Año. V154 devuelve
-el PDF Diario al formato validado previo y deja la hoja vertical de recuperación
-sólo para Semana/Mes/Año; además elimina "proyecto" del nombre descargado.
-V155 activa el demo visual Opción 1 sólo mediante estilos: conserva tablas,
-gráficas, cálculos y todas las descargas PDF/Excel existentes sin alterarlas.
+V156 corrige el demo visual: mantiene intactos los reportes, tablas, gráficas,
+PDF y Excel; elimina las capas demo comerciales globales y aplica el diseño
+Opción 1 únicamente como presentación sobre cada módulo real.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -95,23 +45,13 @@ from v125_operation_tabs_patch import install as _install_v125_operation_tabs_pa
 from v126_operation_summary_patch import install as _install_v126_operation_summary_patch
 from v127_operation_demo_dashboard_patch import install as _install_v127_operation_demo_dashboard_patch
 from v128_operation_demo_exact_patch import install as _install_v128_operation_demo_exact_patch
-from v139_commercial_direct_dom_fix import install as _install_v139_commercial_direct_dom_fix
-from v140_commercial_demo_guard import install as _install_v140_commercial_demo_guard
-from v139_commercial_mockup_parity_patch import install as _install_v141_commercial_mockup_source
-from v141_commercial_exact_shadow_patch import install as _install_v141_commercial_exact_shadow_patch
-from v142_commercial_mobile_fit_all_stores_patch import install as _install_v142_commercial_mobile_fit_all_stores_patch
-from v144_commercial_pre_demo_structure_patch import install as _install_v144_commercial_pre_demo_structure_patch
-from v145_commercial_macro_models_patch import install as _install_v145_commercial_macro_models_patch
-from v146_commercial_comparison_columns_patch import install as _install_v146_commercial_comparison_columns_patch
-from v147_commercial_8020_store_participation_patch import install as _install_v147_commercial_8020_store_participation_patch
-from v148_commercial_mockup_mobile_parity_patch import install as _install_v148_commercial_mockup_mobile_parity_patch
 from v149_operation_summary_restore_patch import install as _install_v149_operation_summary_restore_patch
 from v150_operations_endpoint_guard_patch import install as _install_v150_operations_endpoint_guard_patch
 from v151_project_cards_scope_patch import install as _install_v151_project_cards_scope_patch
 from v152_pdf_project_highlight_portrait_chart_patch import install as _install_v152_pdf_project_highlight_portrait_chart_patch
 from v153_project_scope_backend_authoritative_patch import install as _install_v153_project_scope_backend_authoritative_patch
 from v154_pdf_period_rules_patch import install_pre as _install_v154_pdf_period_pre, install_post as _install_v154_pdf_period_post
-from v155_visual_demo_option1_preserve_reports_patch import install as _install_v155_visual_demo_option1_preserve_reports_patch
+from v156_option1_scoped_visual_patch import install as _install_v156_option1_scoped_visual_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -153,30 +93,18 @@ _install_v125_operation_tabs_patch(web_app)
 _install_v126_operation_summary_patch(web_app)
 _install_v127_operation_demo_dashboard_patch(web_app)
 _install_v128_operation_demo_exact_patch(web_app)
-_install_v139_commercial_direct_dom_fix(web_app)
-_install_v140_commercial_demo_guard(web_app)
-_install_v141_commercial_mockup_source(web_app)
-_install_v141_commercial_exact_shadow_patch(web_app)
-_install_v142_commercial_mobile_fit_all_stores_patch(web_app)
-_install_v144_commercial_pre_demo_structure_patch(web_app)
-_install_v145_commercial_macro_models_patch(web_app)
-_install_v146_commercial_comparison_columns_patch(web_app)
-_install_v147_commercial_8020_store_participation_patch(web_app)
-_install_v148_commercial_mockup_mobile_parity_patch(web_app)
-# V149 al final: restaura Resumen de Operación por encima de capas anteriores.
+
+# Operación real preservada.
 _install_v149_operation_summary_restore_patch(web_app)
-# V150 al final: garantiza firma HTTP correcta de /api/operations.
 _install_v150_operations_endpoint_guard_patch(web_app)
-# V151: KPIs Día/Semana/Mes/Año sólo tiendas Proyecto; recuperación compara todas.
 _install_v151_project_cards_scope_patch(web_app)
-# V154 PRE: captura el generador PDF diario validado antes de que V152 lo reemplace.
+
+# Exportaciones y alcance Proyecto preservados.
 _install_v154_pdf_period_pre(web_app)
-# V152: PDF mixto con Proyecto resaltado y gráfica recuperación vertical.
 _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
-# V153: backend autoritativo para KPIs Proyecto en Compañía.
 _install_v153_project_scope_backend_authoritative_patch(web_app)
-# V154 POST: Día vuelve al PDF previo; vertical sólo Semana/Mes/Año; nombre sin proyecto.
 _install_v154_pdf_period_post(web_app)
-# V155 al final: sólo piel visual Opción 1; no altera tablas, gráficas ni exportaciones.
-_install_v155_visual_demo_option1_preserve_reports_patch(web_app)
+
+# V156: sólo diseño visual sobre módulos reales. No instala V139-V148 ni V155.
+_install_v156_option1_scoped_visual_patch(web_app)
 app = web_app.app
