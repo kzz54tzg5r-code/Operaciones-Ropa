@@ -37,6 +37,8 @@ conservando íntegramente las reglas y comparativos de V144. V146 hace explícit
 en ambas tablas el nombre de la tienda comparativa y el sugerido del mismo modelo
 en esa tienda. V147 agrega en Macro 80/20 la participación de la tienda filtrada:
 Σ sugerido tienda / Σ sugerido compañía y, por ID, venta tienda / venta compañía.
+V148 corrige la composición móvil para volver a la paridad visual de los bocetos:
+Macro 80/20 a ancho completo, tarjetas compactas y tablas con estructura pre-demo.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -88,6 +90,7 @@ from v144_commercial_pre_demo_structure_patch import install as _install_v144_co
 from v145_commercial_macro_models_patch import install as _install_v145_commercial_macro_models_patch
 from v146_commercial_comparison_columns_patch import install as _install_v146_commercial_comparison_columns_patch
 from v147_commercial_8020_store_participation_patch import install as _install_v147_commercial_8020_store_participation_patch
+from v148_commercial_mockup_mobile_parity_patch import install as _install_v148_commercial_mockup_mobile_parity_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -139,4 +142,5 @@ _install_v144_commercial_pre_demo_structure_patch(web_app)
 _install_v145_commercial_macro_models_patch(web_app)
 _install_v146_commercial_comparison_columns_patch(web_app)
 _install_v147_commercial_8020_store_participation_patch(web_app)
+_install_v148_commercial_mockup_mobile_parity_patch(web_app)
 app = web_app.app
