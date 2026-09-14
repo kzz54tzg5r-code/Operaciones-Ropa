@@ -40,7 +40,9 @@ en esa tienda. V147 agrega en Macro 80/20 la participación de la tienda filtrad
 V148 corrige la composición móvil para volver a la paridad visual de los bocetos:
 Macro 80/20 a ancho completo, tarjetas compactas y tablas con estructura pre-demo.
 V149 vuelve a colocar el Resumen real de Operación como primera pestaña y lo
-instala al final para evitar que capas posteriores lo oculten.
+instala al final para evitar que capas posteriores lo oculten. V150 re-registra
+/api/operations con Request tipado y evita que Centro Ejecutivo oculte errores
+estructurados como [object Object].
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -94,6 +96,7 @@ from v146_commercial_comparison_columns_patch import install as _install_v146_co
 from v147_commercial_8020_store_participation_patch import install as _install_v147_commercial_8020_store_participation_patch
 from v148_commercial_mockup_mobile_parity_patch import install as _install_v148_commercial_mockup_mobile_parity_patch
 from v149_operation_summary_restore_patch import install as _install_v149_operation_summary_restore_patch
+from v150_operations_endpoint_guard_patch import install as _install_v150_operations_endpoint_guard_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -147,4 +150,6 @@ _install_v147_commercial_8020_store_participation_patch(web_app)
 _install_v148_commercial_mockup_mobile_parity_patch(web_app)
 # V149 al final: restaura Resumen de Operación por encima de capas anteriores.
 _install_v149_operation_summary_restore_patch(web_app)
+# V150 al final: garantiza firma HTTP correcta de /api/operations.
+_install_v150_operations_endpoint_guard_patch(web_app)
 app = web_app.app
