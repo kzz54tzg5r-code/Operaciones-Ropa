@@ -51,6 +51,8 @@ alcance Proyecto autoritativo desde backend para que los KPIs de Compañía no
 puedan volver a tomar el agregado general en Día/Semana/Mes/Año. V154 devuelve
 el PDF Diario al formato validado previo y deja la hoja vertical de recuperación
 sólo para Semana/Mes/Año; además elimina "proyecto" del nombre descargado.
+V155 activa el demo visual Opción 1 sólo mediante estilos: conserva tablas,
+gráficas, cálculos y todas las descargas PDF/Excel existentes sin alterarlas.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -109,6 +111,7 @@ from v151_project_cards_scope_patch import install as _install_v151_project_card
 from v152_pdf_project_highlight_portrait_chart_patch import install as _install_v152_pdf_project_highlight_portrait_chart_patch
 from v153_project_scope_backend_authoritative_patch import install as _install_v153_project_scope_backend_authoritative_patch
 from v154_pdf_period_rules_patch import install_pre as _install_v154_pdf_period_pre, install_post as _install_v154_pdf_period_post
+from v155_visual_demo_option1_preserve_reports_patch import install as _install_v155_visual_demo_option1_preserve_reports_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -174,4 +177,6 @@ _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
 _install_v153_project_scope_backend_authoritative_patch(web_app)
 # V154 POST: Día vuelve al PDF previo; vertical sólo Semana/Mes/Año; nombre sin proyecto.
 _install_v154_pdf_period_post(web_app)
+# V155 al final: sólo piel visual Opción 1; no altera tablas, gráficas ni exportaciones.
+_install_v155_visual_demo_option1_preserve_reports_patch(web_app)
 app = web_app.app
