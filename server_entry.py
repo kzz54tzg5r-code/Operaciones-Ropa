@@ -1,8 +1,8 @@
 """Entrada de producción para Render.
 
-V157 mantiene intactos reportes, tablas, gráficas, PDF y Excel; retira las
-capas V102/V103/V104 de filtros que generaban banners/duplicados y deja un
-solo sistema de filtros nativo, con el diseño visual Opción 1 de los bocetos.
+V158 mantiene intactos reportes, tablas, gráficas, PDF y Excel; deja un único
+sistema de filtros visible construido sobre los selectores reales y ajusta el
+layout visual al boceto aprobado.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -49,6 +49,7 @@ from v152_pdf_project_highlight_portrait_chart_patch import install as _install_
 from v153_project_scope_backend_authoritative_patch import install as _install_v153_project_scope_backend_authoritative_patch
 from v154_pdf_period_rules_patch import install_pre as _install_v154_pdf_period_pre, install_post as _install_v154_pdf_period_post
 from v157_option1_boceto_filters_patch import install as _install_v157_option1_boceto_filters_patch
+from v158_boceto_exact_filters_patch import install as _install_v158_boceto_exact_filters_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -99,6 +100,7 @@ _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
 _install_v153_project_scope_backend_authoritative_patch(web_app)
 _install_v154_pdf_period_post(web_app)
 
-# V157: filtro único nativo + diseño Opción 1 de bocetos. Sin V102/V103/V104/V156.
+# V157 mantiene la base visual; V158 corrige filtro visible y paridad con boceto.
 _install_v157_option1_boceto_filters_patch(web_app)
+_install_v158_boceto_exact_filters_patch(web_app)
 app = web_app.app
