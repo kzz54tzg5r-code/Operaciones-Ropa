@@ -80,4 +80,41 @@ _install_v111_daily_percent_fix(web_app)
 _install_v112_sales_pdf_repair(web_app)
 _install_v113_sales_guard_patch(web_app)
 _install_v114_sales_layout_probe(web_app)
-_install_v115_daily_percent_fix(web_app)
+_install_v115_daily_pieces_percent_patch(web_app)
+_install_v116_reportlab_color_fix(web_app)
+_install_v116_daily_pdf_mirror_patch(web_app)
+_install_v117_operational_visual_parity_patch(web_app)
+_install_v119_centro_operativo_safe_annual_patch(web_app)
+_install_v120_centro_operativo_preserve_reports_patch(web_app)
+_install_v121_operation_indicator_patch(web_app)
+_install_v122_collaborator_entry_patch(web_app)
+_install_v123_operation_visibility_patch(web_app)
+_install_v124_operation_main_module_patch(web_app)
+_install_v125_operation_tabs_patch(web_app)
+_install_v126_operation_summary_patch(web_app)
+
+# IMPORTANTE V160: los parches V127/V128 eran demos temporales para Super Admin.
+# Ya no se instalan en producción porque deshabilitaban Año/Periodo/Tienda y
+# forzaban datos ficticios, impidiendo que el filtro real de tienda funcionara.
+
+# Operación real.
+_install_v149_operation_summary_restore_patch(web_app)
+_install_v150_operations_endpoint_guard_patch(web_app)
+_install_v151_project_cards_scope_patch(web_app)
+
+# Exportaciones y alcance Proyecto.
+_install_v154_pdf_period_pre(web_app)
+_install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
+_install_v153_project_scope_backend_authoritative_patch(web_app)
+_install_v154_pdf_period_post(web_app)
+
+# Base visual previa.
+_install_v157_option1_boceto_filters_patch(web_app)
+_install_v158_boceto_exact_filters_patch(web_app)
+
+# Operación por tienda, personal requerido y piezas pendientes.
+_install_v159_operation_store_staff_pending_patch(web_app)
+
+# V161 al final: una sola barra de filtros en todos los reportes y tarjetas de boceto.
+_install_v161_unified_boceto_filters_cards_patch(web_app)
+app = web_app.app
