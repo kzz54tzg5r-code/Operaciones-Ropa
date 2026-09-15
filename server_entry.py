@@ -9,7 +9,9 @@ los filtros reales por periodo/tienda y los cálculos reales de personal requeri
 V161 unifica definitivamente el filtro visual en Cambios y Muertos, Operación y
 Comercial y ajusta únicamente tarjetas/encabezados/pestañas sin tocar tablas ni
 gráficas. V162 compacta la vista móvil al boceto aprobado, sincroniza encabezados
-con Día/Semana/Mes/Año y muestra colaboradores necesarios para Origen.
+con Día/Semana/Mes/Año y muestra colaboradores necesarios para Origen. V163
+corrige barras de pestañas cruzadas entre módulos y elimina el bloque blanco del
+perfil cuando el menú lateral está colapsado.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -59,6 +61,7 @@ from v159_operation_store_staff_pending_patch import install as _install_v159_op
 from v161_unified_boceto_filters_cards_patch import install as _install_v161_unified_boceto_filters_cards_patch
 from v162_visual_parity_patch import install as _install_v162_visual_parity_patch
 from v162_dynamic_headers_staff_patch import install as _install_v162_dynamic_headers_staff_patch
+from v163_module_nav_cleanup_patch import install as _install_v163_module_nav_cleanup_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -111,7 +114,10 @@ _install_v158_boceto_exact_filters_patch(web_app)
 _install_v159_operation_store_staff_pending_patch(web_app)
 _install_v161_unified_boceto_filters_cards_patch(web_app)
 
-# V162 al final: paridad móvil con boceto, encabezados acordes al filtro y personal Origen.
+# V162: paridad móvil con boceto, encabezados acordes al filtro y personal Origen.
 _install_v162_visual_parity_patch(web_app)
 _install_v162_dynamic_headers_staff_patch(web_app)
+
+# V163 al final: navegación exclusiva por módulo y menú colapsado sin bloque blanco.
+_install_v163_module_nav_cleanup_patch(web_app)
 app = web_app.app
