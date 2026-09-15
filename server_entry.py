@@ -1,8 +1,8 @@
 """Entrada de producción para Render.
 
-V156 corrige el demo visual: mantiene intactos los reportes, tablas, gráficas,
-PDF y Excel; elimina las capas demo comerciales globales y aplica el diseño
-Opción 1 únicamente como presentación sobre cada módulo real.
+V157 mantiene intactos reportes, tablas, gráficas, PDF y Excel; retira las
+capas V102/V103/V104 de filtros que generaban banners/duplicados y deja un
+solo sistema de filtros nativo, con el diseño visual Opción 1 de los bocetos.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -17,9 +17,6 @@ from v93_daily_pdf_compact_patch import install as _install_v93_daily_pdf_compac
 from v94_zero_red_table_patch import install as _install_v94_zero_red_table_patch
 from v95_web_zero_red_fix import install as _install_v95_web_zero_red_fix
 from v96_center_exec_pdf_patch import install as _install_v96_center_exec_pdf_patch
-from v102_final_filter_switch_patch import install as _install_v102_final_filter_switch_patch
-from v103_compact_filter_bar_patch import install as _install_v103_compact_filter_bar_patch
-from v104_single_filter_patch import install as _install_v104_single_filter_patch
 from v105_week_month_pdf_mirror_patch import install as _install_v105_week_month_pdf_mirror_patch
 from v106_pdf_selftest_patch import install as _install_v106_pdf_selftest_patch
 from v107_portrait_recovery_chart_patch import install as _install_v107_portrait_recovery_chart_patch
@@ -51,7 +48,7 @@ from v151_project_cards_scope_patch import install as _install_v151_project_card
 from v152_pdf_project_highlight_portrait_chart_patch import install as _install_v152_pdf_project_highlight_portrait_chart_patch
 from v153_project_scope_backend_authoritative_patch import install as _install_v153_project_scope_backend_authoritative_patch
 from v154_pdf_period_rules_patch import install_pre as _install_v154_pdf_period_pre, install_post as _install_v154_pdf_period_post
-from v156_option1_scoped_visual_patch import install as _install_v156_option1_scoped_visual_patch
+from v157_option1_boceto_filters_patch import install as _install_v157_option1_boceto_filters_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -65,9 +62,6 @@ _install_v93_daily_pdf_compact_patch(web_app)
 _install_v94_zero_red_table_patch(web_app)
 _install_v95_web_zero_red_fix(web_app)
 _install_v96_center_exec_pdf_patch(web_app)
-_install_v102_final_filter_switch_patch(web_app)
-_install_v103_compact_filter_bar_patch(web_app)
-_install_v104_single_filter_patch(web_app)
 _install_v105_week_month_pdf_mirror_patch(web_app)
 _install_v106_pdf_selftest_patch(web_app)
 _install_v107_portrait_recovery_chart_patch(web_app)
@@ -105,6 +99,6 @@ _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
 _install_v153_project_scope_backend_authoritative_patch(web_app)
 _install_v154_pdf_period_post(web_app)
 
-# V156: sólo diseño visual sobre módulos reales. No instala V139-V148 ni V155.
-_install_v156_option1_scoped_visual_patch(web_app)
+# V157: filtro único nativo + diseño Opción 1 de bocetos. Sin V102/V103/V104/V156.
+_install_v157_option1_boceto_filters_patch(web_app)
 app = web_app.app
