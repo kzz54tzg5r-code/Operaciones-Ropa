@@ -3,7 +3,9 @@
 V158 mantiene intactos reportes, tablas, gráficas, PDF y Excel; deja un único
 sistema de filtros visible construido sobre los selectores reales y ajusta el
 layout visual al boceto aprobado. V159 agrega en Operación filtro por tienda,
-personal requerido y captura diaria de piezas pendientes.
+personal requerido y captura diaria de piezas pendientes. V160 retira las capas
+temporales DEMO de Operación para que Super Administrador use el Resumen real,
+los filtros reales por periodo/tienda y los cálculos reales de personal requerido.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -41,8 +43,6 @@ from v123_operation_visibility_patch import install as _install_v123_operation_v
 from v124_operation_main_module_patch import install as _install_v124_operation_main_module_patch
 from v125_operation_tabs_patch import install as _install_v125_operation_tabs_patch
 from v126_operation_summary_patch import install as _install_v126_operation_summary_patch
-from v127_operation_demo_dashboard_patch import install as _install_v127_operation_demo_dashboard_patch
-from v128_operation_demo_exact_patch import install as _install_v128_operation_demo_exact_patch
 from v149_operation_summary_restore_patch import install as _install_v149_operation_summary_restore_patch
 from v150_operations_endpoint_guard_patch import install as _install_v150_operations_endpoint_guard_patch
 from v151_project_cards_scope_patch import install as _install_v151_project_cards_scope_patch
@@ -88,24 +88,26 @@ _install_v123_operation_visibility_patch(web_app)
 _install_v124_operation_main_module_patch(web_app)
 _install_v125_operation_tabs_patch(web_app)
 _install_v126_operation_summary_patch(web_app)
-_install_v127_operation_demo_dashboard_patch(web_app)
-_install_v128_operation_demo_exact_patch(web_app)
 
-# Operación real preservada.
+# IMPORTANTE V160: los parches V127/V128 eran demos temporales para Super Admin.
+# Ya no se instalan en producción porque deshabilitaban Año/Periodo/Tienda y
+# forzaban datos ficticios, impidiendo que el filtro real de tienda funcionara.
+
+# Operación real.
 _install_v149_operation_summary_restore_patch(web_app)
 _install_v150_operations_endpoint_guard_patch(web_app)
 _install_v151_project_cards_scope_patch(web_app)
 
-# Exportaciones y alcance Proyecto preservados.
+# Exportaciones y alcance Proyecto.
 _install_v154_pdf_period_pre(web_app)
 _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
 _install_v153_project_scope_backend_authoritative_patch(web_app)
 _install_v154_pdf_period_post(web_app)
 
-# V157 mantiene la base visual; V158 corrige filtro visible y paridad con boceto.
+# Filtro único visible y responsive.
 _install_v157_option1_boceto_filters_patch(web_app)
 _install_v158_boceto_exact_filters_patch(web_app)
 
-# V159 al final para garantizar Operación por tienda, personal requerido y pendientes.
+# Operación por tienda, personal requerido y piezas pendientes.
 _install_v159_operation_store_staff_pending_patch(web_app)
 app = web_app.app
