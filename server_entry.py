@@ -2,7 +2,8 @@
 
 V158 mantiene intactos reportes, tablas, gráficas, PDF y Excel; deja un único
 sistema de filtros visible construido sobre los selectores reales y ajusta el
-layout visual al boceto aprobado.
+layout visual al boceto aprobado. V159 agrega en Operación filtro por tienda,
+personal requerido y captura diaria de piezas pendientes.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -50,6 +51,7 @@ from v153_project_scope_backend_authoritative_patch import install as _install_v
 from v154_pdf_period_rules_patch import install_pre as _install_v154_pdf_period_pre, install_post as _install_v154_pdf_period_post
 from v157_option1_boceto_filters_patch import install as _install_v157_option1_boceto_filters_patch
 from v158_boceto_exact_filters_patch import install as _install_v158_boceto_exact_filters_patch
+from v159_operation_store_staff_pending_patch import install as _install_v159_operation_store_staff_pending_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -103,4 +105,7 @@ _install_v154_pdf_period_post(web_app)
 # V157 mantiene la base visual; V158 corrige filtro visible y paridad con boceto.
 _install_v157_option1_boceto_filters_patch(web_app)
 _install_v158_boceto_exact_filters_patch(web_app)
+
+# V159 al final para garantizar Operación por tienda, personal requerido y pendientes.
+_install_v159_operation_store_staff_pending_patch(web_app)
 app = web_app.app
