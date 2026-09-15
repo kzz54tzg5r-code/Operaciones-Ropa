@@ -8,7 +8,8 @@ temporales DEMO de Operación para que Super Administrador use el Resumen real,
 los filtros reales por periodo/tienda y los cálculos reales de personal requerido.
 V161 unifica definitivamente el filtro visual en Cambios y Muertos, Operación y
 Comercial y ajusta únicamente tarjetas/encabezados/pestañas sin tocar tablas ni
-gráficas.
+gráficas. V162 compacta la vista móvil al boceto aprobado, sincroniza encabezados
+con Día/Semana/Mes/Año y muestra colaboradores necesarios para Origen.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -56,6 +57,8 @@ from v157_option1_boceto_filters_patch import install as _install_v157_option1_b
 from v158_boceto_exact_filters_patch import install as _install_v158_boceto_exact_filters_patch
 from v159_operation_store_staff_pending_patch import install as _install_v159_operation_store_staff_pending_patch
 from v161_unified_boceto_filters_cards_patch import install as _install_v161_unified_boceto_filters_cards_patch
+from v162_visual_parity_patch import install as _install_v162_visual_parity_patch
+from v162_dynamic_headers_staff_patch import install as _install_v162_dynamic_headers_staff_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -93,28 +96,22 @@ _install_v124_operation_main_module_patch(web_app)
 _install_v125_operation_tabs_patch(web_app)
 _install_v126_operation_summary_patch(web_app)
 
-# IMPORTANTE V160: los parches V127/V128 eran demos temporales para Super Admin.
-# Ya no se instalan en producción porque deshabilitaban Año/Periodo/Tienda y
-# forzaban datos ficticios, impidiendo que el filtro real de tienda funcionara.
-
-# Operación real.
+# Los demos V127/V128 no se instalan en producción: sólo se conserva su lenguaje visual.
 _install_v149_operation_summary_restore_patch(web_app)
 _install_v150_operations_endpoint_guard_patch(web_app)
 _install_v151_project_cards_scope_patch(web_app)
 
-# Exportaciones y alcance Proyecto.
 _install_v154_pdf_period_pre(web_app)
 _install_v152_pdf_project_highlight_portrait_chart_patch(web_app)
 _install_v153_project_scope_backend_authoritative_patch(web_app)
 _install_v154_pdf_period_post(web_app)
 
-# Base visual previa.
 _install_v157_option1_boceto_filters_patch(web_app)
 _install_v158_boceto_exact_filters_patch(web_app)
-
-# Operación por tienda, personal requerido y piezas pendientes.
 _install_v159_operation_store_staff_pending_patch(web_app)
-
-# V161 al final: una sola barra de filtros en todos los reportes y tarjetas de boceto.
 _install_v161_unified_boceto_filters_cards_patch(web_app)
+
+# V162 al final: paridad móvil con boceto, encabezados acordes al filtro y personal Origen.
+_install_v162_visual_parity_patch(web_app)
+_install_v162_dynamic_headers_staff_patch(web_app)
 app = web_app.app
