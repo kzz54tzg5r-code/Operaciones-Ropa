@@ -1,23 +1,10 @@
 """Entrada de producción para Render.
 
-V158 mantiene intactos reportes, tablas, gráficas, PDF y Excel; deja un único
-sistema de filtros visible construido sobre los selectores reales y ajusta el
-layout visual al boceto aprobado. V159 agrega en Operación filtro por tienda,
-personal requerido y captura diaria de piezas pendientes. V160 retira las capas
-temporales DEMO de Operación para que Super Administrador use el Resumen real,
-los filtros reales por periodo/tienda y los cálculos reales de personal requerido.
-V161 unifica definitivamente el filtro visual en Cambios y Muertos, Operación y
-Comercial y ajusta únicamente tarjetas/encabezados/pestañas sin tocar tablas ni
-gráficas. V162 compacta la vista móvil al boceto aprobado, sincroniza encabezados
-con Día/Semana/Mes/Año y muestra colaboradores necesarios para Origen. V163
-corrige barras de pestañas cruzadas entre módulos y elimina el bloque blanco del
-perfil cuando el menú lateral está colapsado. V164 conserva las tablas y gráficas
-existentes, aplica iconos al filtro único, pestañas y tarjetas del boceto, corrige
-Cerrar sesión y agrega Matriz de recolección con datos reales de Muertos, Cajas y
-Probador por día y horario. V165 elimina tabs redundantes de C&M, integra la Matriz
-horaria en Recorridos, alerta colaboradores sin productividad, deja Operación sólo
-para Origen, agrega Estatus en Comercial, prioriza MARCA, repara Ventas y devuelve
-todos los modelos necesarios para conformar el 80%.
+V166 reemplaza las capas visuales V164/V165 que usaban MutationObserver global.
+Conserva V161 como filtro base y agrega una capa final estable para Vista
+Día/Semanal/Mensual/Anual, roster de colaboradores, Matriz integrada a Recorridos,
+Operación exclusiva de Origen, filtros comerciales uniformes, Estatus/MARCA real,
+80/20 completo y reparación de meta/año anterior de Ventas.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -68,8 +55,7 @@ from v161_unified_boceto_filters_cards_patch import install as _install_v161_uni
 from v162_visual_parity_patch import install as _install_v162_visual_parity_patch
 from v162_dynamic_headers_staff_patch import install as _install_v162_dynamic_headers_staff_patch
 from v163_module_nav_cleanup_patch import install as _install_v163_module_nav_cleanup_patch
-from v164_filters_cards_collection_matrix_patch import install as _install_v164_filters_cards_collection_matrix_patch
-from v165_requested_fixes_patch import install as _install_v165_requested_fixes_patch
+from v166_stability_roster_filters_patch import install as _install_v166_stability_roster_filters_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -107,7 +93,7 @@ _install_v124_operation_main_module_patch(web_app)
 _install_v125_operation_tabs_patch(web_app)
 _install_v126_operation_summary_patch(web_app)
 
-# Los demos V127/V128 no se instalan en producción: sólo se conserva su lenguaje visual.
+# Los demos V127/V128 no se instalan en producción.
 _install_v149_operation_summary_restore_patch(web_app)
 _install_v150_operations_endpoint_guard_patch(web_app)
 _install_v151_project_cards_scope_patch(web_app)
@@ -122,16 +108,12 @@ _install_v158_boceto_exact_filters_patch(web_app)
 _install_v159_operation_store_staff_pending_patch(web_app)
 _install_v161_unified_boceto_filters_cards_patch(web_app)
 
-# V162: paridad móvil con boceto, encabezados acordes al filtro y personal Origen.
+# Paridad móvil y navegación por módulo.
 _install_v162_visual_parity_patch(web_app)
 _install_v162_dynamic_headers_staff_patch(web_app)
-
-# V163: navegación exclusiva por módulo y menú colapsado sin bloque blanco.
 _install_v163_module_nav_cleanup_patch(web_app)
 
-# V164: filtros/tabs/tarjetas del boceto + Matriz original.
-_install_v164_filters_cards_collection_matrix_patch(web_app)
-
-# V165 al final: correcciones solicitadas sobre producción real.
-_install_v165_requested_fixes_patch(web_app)
+# V164/V165 quedan fuera de producción: sus observers globales provocaban
+# re-render y movimiento continuo en Carga de datos. V166 absorbe sus funciones.
+_install_v166_stability_roster_filters_patch(web_app)
 app = web_app.app
