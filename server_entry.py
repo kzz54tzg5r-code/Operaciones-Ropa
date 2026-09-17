@@ -86,7 +86,6 @@ _install_v111_daily_percent_fix(web_app)
 _install_v112_sales_pdf_repair(web_app)
 _install_v113_sales_guard_patch(web_app)
 _install_v114_sales_layout_probe(web_app)
-_install_v115_daily_percent_fix(web_app) if False else None
 _install_v115_daily_pieces_percent_patch(web_app)
 _install_v116_reportlab_color_fix(web_app)
 _install_v116_daily_pdf_mirror_patch(web_app)
