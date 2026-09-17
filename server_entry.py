@@ -9,6 +9,10 @@ V167 corrige iconografía y cierre de sesión, resalta la Matriz sobre promedio,
 convierte Recorridos por día a tabla por tienda/fecha, agrega tendencias dinámicas
 de 4 periodos, estabiliza Operación y agrega comparativos de venta con ranking,
 diferencias contra Meta/año anterior y filtros Macro/Tiendas.
+V168 compacta filtros internos, corrige 80/20 por alcance, estabiliza Operación,
+reordena Recorridos por tienda/día, agrega comparación temporal y planeación de
+la semana siguiente con devoluciones y error de pronóstico, recupera Acordeón
+y lee el Resumen Ejecutivo rasterizado de los PDF de ventas mediante OCR.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -62,6 +66,8 @@ from v163_module_nav_cleanup_patch import install as _install_v163_module_nav_cl
 from v166_stability_roster_filters_patch import install as _install_v166_stability_roster_filters_patch
 from v167_backend_patch import install as _install_v167_backend_patch
 from v167_frontend_patch import install as _install_v167_frontend_patch
+from v168_backend_patch import install as _install_v168_backend_patch
+from v168_frontend_patch import install as _install_v168_frontend_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -122,7 +128,9 @@ _install_v163_module_nav_cleanup_patch(web_app)
 # V164/V165 quedan fuera de producción: sus observers globales provocaban
 # re-render y movimiento continuo en Carga de datos. V166 absorbe sus funciones.
 _install_v166_stability_roster_filters_patch(web_app)
-# V167 al final: correcciones solicitadas de iconos, Recorridos, Operación y Ventas.
 _install_v167_backend_patch(web_app)
 _install_v167_frontend_patch(web_app)
+# V168 al final para que sus reglas prevalezcan sobre las capas anteriores.
+_install_v168_backend_patch(web_app)
+_install_v168_frontend_patch(web_app)
 app = web_app.app
