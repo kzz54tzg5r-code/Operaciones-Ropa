@@ -5,6 +5,10 @@ Conserva V161 como filtro base y agrega una capa final estable para Vista
 Día/Semanal/Mensual/Anual, roster de colaboradores, Matriz integrada a Recorridos,
 Operación exclusiva de Origen, filtros comerciales uniformes, Estatus/MARCA real,
 80/20 completo y reparación de meta/año anterior de Ventas.
+V167 corrige iconografía y cierre de sesión, resalta la Matriz sobre promedio,
+convierte Recorridos por día a tabla por tienda/fecha, agrega tendencias dinámicas
+de 4 periodos, estabiliza Operación y agrega comparativos de venta con ranking,
+diferencias contra Meta/año anterior y filtros Macro/Tiendas.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -56,6 +60,8 @@ from v162_visual_parity_patch import install as _install_v162_visual_parity_patc
 from v162_dynamic_headers_staff_patch import install as _install_v162_dynamic_headers_staff_patch
 from v163_module_nav_cleanup_patch import install as _install_v163_module_nav_cleanup_patch
 from v166_stability_roster_filters_patch import install as _install_v166_stability_roster_filters_patch
+from v167_backend_patch import install as _install_v167_backend_patch
+from v167_frontend_patch import install as _install_v167_frontend_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -80,6 +86,7 @@ _install_v111_daily_percent_fix(web_app)
 _install_v112_sales_pdf_repair(web_app)
 _install_v113_sales_guard_patch(web_app)
 _install_v114_sales_layout_probe(web_app)
+_install_v115_daily_percent_fix(web_app) if False else None
 _install_v115_daily_pieces_percent_patch(web_app)
 _install_v116_reportlab_color_fix(web_app)
 _install_v116_daily_pdf_mirror_patch(web_app)
@@ -116,4 +123,7 @@ _install_v163_module_nav_cleanup_patch(web_app)
 # V164/V165 quedan fuera de producción: sus observers globales provocaban
 # re-render y movimiento continuo en Carga de datos. V166 absorbe sus funciones.
 _install_v166_stability_roster_filters_patch(web_app)
+# V167 al final: correcciones solicitadas de iconos, Recorridos, Operación y Ventas.
+_install_v167_backend_patch(web_app)
+_install_v167_frontend_patch(web_app)
 app = web_app.app
