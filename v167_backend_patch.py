@@ -221,8 +221,15 @@ def install(m):
                 path = m.resolve_entry_path(e)
                 if path.exists() and path.suffix.lower() == ".pdf":
                     cmp = pdf_compare(path, y); upd = {}
-                    if num(e.get("target_sales")) <= 0 and num(cmp.get("target_sales")) > 0: upd["target_sales"] = cmp["target_sales"]
-                    if num(e.get("previous_sales")) <= 0 and num(cmp.get("previous_sales")) > 0: upd["previous_sales"] = cmp["previous_sales"]
+                    parsed = {}
+                    try:
+                        parsed = dict(m.parse_sales_pdf(path, y, mo) or {})
+                    except Exception:
+                        parsed = {}
+                    target = num(cmp.get("target_sales")) or num(parsed.get("target_sales")) or num(parsed.get("total_goal"))
+                    previous = num(cmp.get("previous_sales")) or num(parsed.get("previous_sales"))
+                    if num(e.get("target_sales")) <= 0 and target > 0: upd["target_sales"] = target
+                    if num(e.get("previous_sales")) <= 0 and previous > 0: upd["previous_sales"] = previous
                     if upd:
                         try: m.update_entry("sales", str(e.get("id") or ""), **upd); e.update(upd)
                         except Exception: pass
@@ -258,6 +265,22 @@ def install(m):
         for mo in range(1,13):
             cur = values(yy,mo); prev = values(yy-1,mo)
             current = cur["sales"]; previous = prev["sales"] or cur["prev"]; goal = manual.get(mo,0.0) or cur["goal"]
+            if current <= 0:
+                try:
+                    from v112_sales_pdf_repair import _capacity_month_fallback
+                    cs, cp, _ = _capacity_month_fallback(m, yy, mo, "Compañía")
+                    if cs > 0:
+                        current = cs
+                        if cur["pieces"] <= 0: cur["pieces"] = cp
+                except Exception:
+                    pass
+            if previous <= 0:
+                try:
+                    from v112_sales_pdf_repair import _capacity_month_fallback
+                    ps, _pp, _ = _capacity_month_fallback(m, yy-1, mo, "Compañía")
+                    if ps > 0: previous = ps
+                except Exception:
+                    pass
             months.append({"month":mo,"label":labels[mo-1],"target":goal,"current":current,"previous":previous,"pieces":cur["pieces"],
                            "diff_goal":current-goal if goal else None,"pct_goal":(current/goal-1)*100 if goal else None,
                            "diff_previous":current-previous if previous else None,"pct_previous":(current/previous-1)*100 if previous else None})
@@ -284,6 +307,20 @@ def install(m):
         for st in stores:
             cur=latest.get((yy,st),{}); prev=latest.get((yy-1,st),{})
             current=num(cur.get("total_sales")); previous=num(prev.get("total_sales")) or num(cur.get("previous_sales")); goal=goals.get(st,0.0) or num(cur.get("target_sales"))
+            if current <= 0:
+                try:
+                    from v112_sales_pdf_repair import _capacity_month_fallback
+                    cs, _cp, _ = _capacity_month_fallback(m, yy, mo, st)
+                    if cs > 0: current = cs
+                except Exception:
+                    pass
+            if previous <= 0:
+                try:
+                    from v112_sales_pdf_repair import _capacity_month_fallback
+                    ps, _pp, _ = _capacity_month_fallback(m, yy-1, mo, st)
+                    if ps > 0: previous = ps
+                except Exception:
+                    pass
             rows.append({"store":st,"target":goal,"current":current,"previous":previous,"pieces":num(cur.get("total_pieces")),
                          "diff_goal":current-goal if goal else None,"pct_goal":(current/goal-1)*100 if goal else None,
                          "diff_previous":current-previous if previous else None,"pct_previous":(current/previous-1)*100 if previous else None})
