@@ -11,7 +11,10 @@ Comercial y ajusta únicamente tarjetas/encabezados/pestañas sin tocar tablas n
 gráficas. V162 compacta la vista móvil al boceto aprobado, sincroniza encabezados
 con Día/Semana/Mes/Año y muestra colaboradores necesarios para Origen. V163
 corrige barras de pestañas cruzadas entre módulos y elimina el bloque blanco del
-perfil cuando el menú lateral está colapsado.
+perfil cuando el menú lateral está colapsado. V164 conserva las tablas y gráficas
+existentes, aplica iconos al filtro único, pestañas y tarjetas del boceto, corrige
+Cerrar sesión y agrega Matriz de recolección con datos reales de Muertos, Cajas y
+Probador por día y horario.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -62,6 +65,7 @@ from v161_unified_boceto_filters_cards_patch import install as _install_v161_uni
 from v162_visual_parity_patch import install as _install_v162_visual_parity_patch
 from v162_dynamic_headers_staff_patch import install as _install_v162_dynamic_headers_staff_patch
 from v163_module_nav_cleanup_patch import install as _install_v163_module_nav_cleanup_patch
+from v164_filters_cards_collection_matrix_patch import install as _install_v164_filters_cards_collection_matrix_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -118,6 +122,9 @@ _install_v161_unified_boceto_filters_cards_patch(web_app)
 _install_v162_visual_parity_patch(web_app)
 _install_v162_dynamic_headers_staff_patch(web_app)
 
-# V163 al final: navegación exclusiva por módulo y menú colapsado sin bloque blanco.
+# V163: navegación exclusiva por módulo y menú colapsado sin bloque blanco.
 _install_v163_module_nav_cleanup_patch(web_app)
+
+# V164 al final: sólo filtros/tabs/tarjetas del boceto + nueva Matriz real.
+_install_v164_filters_cards_collection_matrix_patch(web_app)
 app = web_app.app
