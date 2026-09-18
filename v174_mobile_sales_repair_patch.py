@@ -154,8 +154,16 @@ def install(m):
     def choose_entries(latest, year, month, scope):
         vals = [e for (yy, mo, _), e in latest.items() if yy == year and mo == month]
         if scope != "Compañía":
+            # Primero usar un PDF específico de la tienda si existe. Si no existe,
+            # usar el PDF mensual de Compañía: ese archivo contiene el resumen OCR
+            # de las 17 tiendas y values_from_entry() puede extraer la fila exacta.
+            # Antes se devolvía [] y por eso al filtrar una tienda enero-agosto
+            # aparecían en $0 aunque el PDF sí tuviera la información.
             direct = [e for e in vals if norm(e.get("store")) == norm(scope)]
-            return direct
+            if direct:
+                return direct
+            company = [e for e in vals if is_company(e.get("store"))]
+            return company if company else vals
         company = [e for e in vals if is_company(e.get("store"))]
         return company if company else vals
 
