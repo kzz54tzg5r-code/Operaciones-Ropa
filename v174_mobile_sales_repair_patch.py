@@ -245,6 +245,23 @@ def install(m):
         except Exception:
             return (0.0, 0.0, "")
 
+    # Verificación de arranque sobre las fuentes reales ya publicadas. No inventa
+    # valores: sólo registra lo que el OCR/historial pudo reconciliar por mes.
+    try:
+        for _entry in _V174_ENTRIES:
+            _yy = int(_entry.get("year") or 0); _mo = int(_entry.get("month") or 0)
+            _v = values_from_entry(_entry, "Compañía")
+            print(
+                f"[V174-SALES-CHECK] {_yy}-{_mo:02d} "
+                f"actual={num(_v.get('current')):.0f} "
+                f"prev={num(_v.get('previous')):.0f} "
+                f"meta={num(_v.get('target')):.0f} "
+                f"tiendas={len(_v.get('stores') or {})}",
+                flush=True,
+            )
+    except Exception as exc:
+        print(f"[V174-SALES-CHECK] {type(exc).__name__}: {exc}", flush=True)
+
     @m.app.get("/api/commercial-sales-v174")
     async def commercial_sales_v174(
         request: Request, year: int | None = None,
