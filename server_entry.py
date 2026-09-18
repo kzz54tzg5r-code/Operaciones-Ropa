@@ -73,6 +73,7 @@ from v169_period_meta_patch import install as _install_v169_period_meta_patch
 from v169_period_freshness_patch import install as _install_v169_period_freshness_patch
 from v170_commercial_export_fix import install as _install_v170_commercial_export_fix
 from v171_responsive_typography_patch import install as _install_v171_responsive_typography_patch
+from v172_density_balance_patch import install as _install_v172_density_balance_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -142,4 +143,5 @@ _install_v168_frontend_patch(web_app)
 _install_v169_period_freshness_patch(web_app)
 _install_v170_commercial_export_fix(web_app)
 _install_v171_responsive_typography_patch(web_app)
+_install_v172_density_balance_patch(web_app)
 app = web_app.app
