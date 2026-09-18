@@ -13,6 +13,7 @@ V168 compacta filtros internos, corrige 80/20 por alcance, estabiliza Operación
 reordena Recorridos por tienda/día, agrega comparación temporal y planeación de
 la semana siguiente con devoluciones y error de pronóstico, recupera Acordeón
 y lee el Resumen Ejecutivo rasterizado de los PDF de ventas mediante OCR.
+V169 unifica los periodos disponibles de operación y conversión para no cortar Día en el 13.
 """
 import web_app
 from fastapi import Request as _FastAPIRequest
@@ -68,6 +69,7 @@ from v167_backend_patch import install as _install_v167_backend_patch
 from v167_frontend_patch import install as _install_v167_frontend_patch
 from v168_backend_patch import install as _install_v168_backend_patch
 from v168_frontend_patch import install as _install_v168_frontend_patch
+from v169_period_meta_patch import install as _install_v169_period_meta_patch
 from v169_period_freshness_patch import install as _install_v169_period_freshness_patch
 
 _v121_operation_module.Request = _FastAPIRequest
