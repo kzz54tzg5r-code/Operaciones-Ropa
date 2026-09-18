@@ -363,20 +363,64 @@ body[data-v163-module="analysis"] #analysisNav .switch{
   display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important
 }
 
-/* Filtros internos: exactamente el mismo patrón compacto que las pestañas superiores. */
+/* Filtros internos: mismo lenguaje visual que Macro compañía / Acordeón / Tiendas. */
 body[data-v163-module="analysis"] #page-macro .compact-filter,
-body[data-v163-module="analysis"] #page-sections .compact-filter{
-  padding:6px!important;margin:6px 0 9px!important
+body[data-v163-module="analysis"] #page-sections .compact-filter,
+body[data-v163-module="analysis"] #page-areas .compact-filter{
+  background:#fff!important;
+  border:1px solid var(--line)!important;
+  border-radius:12px!important;
+  padding:7px!important;
+  margin:7px 0 10px!important;
+  box-shadow:none!important
 }
 body[data-v163-module="analysis"] #page-macro .compact-filter .switches,
-body[data-v163-module="analysis"] #page-sections .compact-filter .switches{
-  display:grid!important;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))!important;
-  gap:4px!important;width:100%!important;overflow:visible!important;margin:2px 0 5px!important
+body[data-v163-module="analysis"] #page-sections .compact-filter .switches,
+body[data-v163-module="analysis"] #page-areas .compact-filter .switches{
+  display:flex!important;
+  grid-template-columns:none!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:5px!important;
+  width:100%!important;
+  overflow:visible!important;
+  margin:2px 0 5px!important;
+  padding:0!important
 }
 body[data-v163-module="analysis"] #page-macro .compact-filter .switches>button,
-body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button{
-  width:100%!important;min-width:0!important;min-height:42px!important;height:42px!important;
-  padding:5px 8px!important;margin:0!important;border-radius:9px!important
+body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button,
+body[data-v163-module="analysis"] #page-areas .compact-filter .switches>button{
+  flex:0 0 auto!important;
+  width:auto!important;
+  min-width:108px!important;
+  min-height:40px!important;
+  height:40px!important;
+  padding:7px 12px!important;
+  margin:0!important;
+  border:1px solid var(--line)!important;
+  border-radius:999px!important;
+  background:#fff!important;
+  color:var(--muted)!important;
+  font-size:8.5px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  box-shadow:none!important;
+  white-space:nowrap!important
+}
+body[data-v163-module="analysis"] #page-macro .compact-filter .switches>button.active,
+body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button.active,
+body[data-v163-module="analysis"] #page-areas .compact-filter .switches>button.active{
+  background:var(--blue)!important;
+  border-color:var(--blue)!important;
+  color:#fff!important
+}
+body[data-v163-module="analysis"] .compact-filter .filter-caption{
+  margin:2px 3px 5px!important;
+  color:#64768d!important;
+  font-size:8px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  text-transform:uppercase!important
 }
 body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 
@@ -405,12 +449,28 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
   }
   body[data-v163-module="analysis"] #analysisNav .switch{flex:0 0 105px!important;min-width:105px!important}
   body[data-v163-module="analysis"] #page-macro .compact-filter .switches,
-  body[data-v163-module="analysis"] #page-sections .compact-filter .switches{
-    display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important
+  body[data-v163-module="analysis"] #page-sections .compact-filter .switches,
+  body[data-v163-module="analysis"] #page-areas .compact-filter .switches{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    scrollbar-width:none!important;
+    -webkit-overflow-scrolling:touch!important
   }
+  body[data-v163-module="analysis"] #page-macro .compact-filter .switches::-webkit-scrollbar,
+  body[data-v163-module="analysis"] #page-sections .compact-filter .switches::-webkit-scrollbar,
+  body[data-v163-module="analysis"] #page-areas .compact-filter .switches::-webkit-scrollbar{display:none!important}
   body[data-v163-module="analysis"] #page-macro .compact-filter .switches>button,
-  body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button{
-    flex:0 0 96px!important;min-width:96px!important
+  body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button,
+  body[data-v163-module="analysis"] #page-areas .compact-filter .switches>button{
+    flex:0 0 auto!important;
+    min-width:96px!important;
+    width:auto!important;
+    min-height:36px!important;
+    height:36px!important;
+    padding:6px 10px!important;
+    font-size:8px!important
   }
   #v176ExcessKpi .v176-excess-sections{font-size:6.6px!important}
   #v176ExcessKpi .v176-excess-pieces{font-size:7px!important}
@@ -493,7 +553,7 @@ function excessFor(x){
   return {pieces:p,pct:cap>0?p/cap*100:0}
 }
 function renderExcess(){
-  if(!window.DASH?.kpis||!q('#page-macro .kpis'))return;
+  if(typeof DASH==='undefined'||!DASH?.kpis||!q('#page-macro .kpis'))return;
   let card=q('#v176ExcessKpi');
   if(!card){
     card=document.createElement('div');card.id='v176ExcessKpi';card.className='kpi';card.style.setProperty('--a','#ef376c');
@@ -518,7 +578,7 @@ function selectedAreaSection(){
 function selectedAreaGroup(){return q('[data-area-group].active')?.dataset.areaGroup||'Todas'}
 async function renderArea(){
   if(!macroActive()||!q('#macroAreaTable'))return;
-  const store=q('#store')?.value||'Compañía',week=q('#week')?.value||'',section=selectedAreaSection(),catalog=q('#catalog')?.value||'Todos',group=selectedAreaGroup();
+  const store=visibleStoreControl()?.value||q('#store')?.value||'Compañía',week=q('#week')?.value||'',section=selectedAreaSection(),catalog=q('#catalog')?.value||'Todos',group=selectedAreaGroup();
   const title=q('#macroAreaTitle');if(title)title.textContent='Ubicación · '+store+(section!=='Todas'?' · '+section:'')+(group!=='Todas'?' · '+group:'');
   try{
     const d=await A('/api/commercial-area-v176?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent(catalog),{timeoutMs:120000});
@@ -539,7 +599,7 @@ window.loadMacroAreaDetail=renderArea;
 
 function fixModelHead(){
   const head=q('#champTable')?.closest('table')?.querySelector('thead tr');if(!head)return;
-  const company=(q('#store')?.value||'Compañía')==='Compañía';
+  const company=(visibleStoreControl()?.value||q('#store')?.value||'Compañía')==='Compañía';
   head.innerHTML='<th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>'+(company?'Tipo ubicación':'Ubicación')+'</th><th>'+(company?'Exhibiciones':'Exhibición')+'</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th>';
 }
 function paretoGroup(){return q('[data-pareto-group].active')?.dataset.paretoGroup||'section'}
@@ -548,9 +608,9 @@ function renderPareto(rows){
   body.innerHTML=(rows||[]).map(r=>'<tr><td><b>'+esc(r.label)+'</b></td><td>'+pct(r.participation)+'</td><td>'+nf(r.models_80)+'</td><td>'+nf(r.models_20)+'</td><td>'+nf(r.models)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+money(r.sales_value)+'</td><td>'+n(r.suggested).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td><td>'+nf(r.ddi)+'</td><td>'+nf(r.capacity)+'</td><td>'+pct(r.occupancy)+'</td></tr>').join('')||'<tr><td colspan="11">Información no disponible.</td></tr>';
 }
 async function renderModels(force){
-  if(!macroActive()||modelsBusy||!window.DASH)return;
+  if(!macroActive()||modelsBusy)return;
   modelsBusy=true;
-  const store=q('#store')?.value||DASH.selected_store||'Compañía',week=q('#week')?.value||'',section=q('#section')?.value||'Todas',catalog=q('#catalog')?.value||'Todos',gb=paretoGroup();
+  const store=visibleStoreControl()?.value||q('#store')?.value||((typeof DASH!=='undefined'&&DASH?.selected_store)?DASH.selected_store:'Compañía'),week=q('#week')?.value||'',section=q('#section')?.value||'Todas',catalog=q('#catalog')?.value||'Todos',gb=paretoGroup();
   try{
     if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">Cargando 80/20…</td></tr>';
     if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">Cargando modelos lentos…</td></tr>';
@@ -687,7 +747,7 @@ async function renderSales176(existing,force){
   if(!macroActive()||salesBusy)return;
   salesBusy=true;
   try{
-    const ys=q('#salesExecYear'),store=q('#store')?.value||'Compañía',year=Number(ys?.value||2026);
+    const ys=q('#salesExecYear'),store=visibleStoreControl()?.value||q('#store')?.value||'Compañía',year=Number(ys?.value||2026);
     const d=existing&&force?existing:await A('/api/commercial-sales-v176?year='+year+'&month='+salesMonth+'&store='+encodeURIComponent(store),{timeoutMs:180000});
     window.__V176_SALES_DATA=d;salesMonth=Number(d.selected_month||0);
     prepareSalesControls(d);
