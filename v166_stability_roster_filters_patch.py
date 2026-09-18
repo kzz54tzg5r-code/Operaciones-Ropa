@@ -396,6 +396,10 @@ def install(m):
             if total>0:
                 hits=np.flatnonzero(models["cum_share"].to_numpy()>=80.0);last=int(hits[0]) if len(hits) else len(models)-1;models=models.iloc[:last+1].copy()
             else:models=models.head(50).copy()
+            # El detalle visual sólo publica los primeros 150. Cortar aquí evita
+            # construir etiquetas de cientos de modelos que no se muestran y reduce
+            # el pico de memoria del servicio de 512 MB.
+            models=models.head(150).copy()
             ids=set(models["__id"].astype(str));labels=work[work["__id"].isin(ids)].copy()
             def label_map(col,limit=3):
                 if col not in labels.columns:return {}

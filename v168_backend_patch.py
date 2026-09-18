@@ -142,6 +142,13 @@ def install(m):
                 work = m._capacity_scope_v45(frame, store, section, catalog)
                 if work is None or work.empty or "ID_ART" not in work.columns:
                     return rows
+                # V176/V166 ya limitan el detalle 80/20 a los modelos visibles.
+                # Filtrar antes de convertir a records evita materializar todo el
+                # catálogo de Compañía y estabiliza Render en 512 MB.
+                wanted_ids = {str(r.get("id_art") or "").strip() for r in rows if str(r.get("id_art") or "").strip()}
+                if wanted_ids:
+                    article_ids = work["ID_ART"].fillna("").astype(str).str.strip()
+                    work = work[article_ids.isin(wanted_ids)]
                 loc_map = defaultdict(set)
                 ex_map = defaultdict(set)
                 columns = set(work.columns)

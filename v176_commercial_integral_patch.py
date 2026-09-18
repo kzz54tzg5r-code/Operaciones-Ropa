@@ -201,10 +201,11 @@ def install(m):
                 return dict(row or {}), payload
         return {}, payload
 
-    def store_rows_from_entries(latest, months_to_use):
+    def store_rows_from_entries(latest, months_to_use, year):
         acc = defaultdict(lambda: {
             "current": 0.0, "previous": 0.0, "target": 0.0,
             "pieces": 0.0, "pieces_previous": 0.0, "months": 0,
+            "opening_month": None, "comparison_note": "",
         })
         cut_dates = []
         for mo in months_to_use:
@@ -215,21 +216,31 @@ def install(m):
             if payload.get("cut_date"):
                 cut_dates.append(str(payload.get("cut_date")))
             for name, row in (payload.get("stores") or {}).items():
+                is_puebla_sur = norm(name) == norm("Puebla Sur") and int(year) == 2026
+                # Puebla Sur inició operación en agosto 2026: no se le atribuyen
+                # meses previos ni un comparativo 2025 que no es homologable.
+                if is_puebla_sur and mo < 8:
+                    continue
                 x = acc[str(name)]
                 x["current"] += num(row.get("current"))
-                x["previous"] += num(row.get("previous"))
                 x["target"] += num(row.get("target"))
                 x["pieces"] += num(row.get("pieces"))
-                x["pieces_previous"] += num(row.get("pieces_previous"))
+                if is_puebla_sur:
+                    x["opening_month"] = 8
+                    x["comparison_note"] = "Apertura Ago 2026 · sin base comparable 2025"
+                else:
+                    x["previous"] += num(row.get("previous"))
+                    x["pieces_previous"] += num(row.get("pieces_previous"))
                 x["months"] += 1
         out = []
         for name, x in acc.items():
             cur, prev, goal = x["current"], x["previous"], x["target"]
+            special = bool(x.get("comparison_note"))
             out.append({
                 "store": name, **x,
                 "pct_goal": cur / goal * 100 if goal else None,
-                "pct_previous": (cur / prev - 1) * 100 if prev else None,
-                "pieces_growth": (
+                "pct_previous": None if special else ((cur / prev - 1) * 100 if prev else None),
+                "pieces_growth": None if special else (
                     (x["pieces"] / x["pieces_previous"] - 1) * 100
                     if x["pieces_previous"] else None
                 ),
@@ -239,6 +250,40 @@ def install(m):
             row["rank"] = i
         return out, (cut_dates[-1] if cut_dates else "")
 
+    def enrich_sales_months(rows, scope, latest, available, all_twelve=True):
+        indexed = {}
+        for raw in rows or []:
+            try:
+                mo = int(raw.get("month") or 0)
+            except Exception:
+                mo = 0
+            if mo in range(1, 13):
+                indexed[mo] = dict(raw)
+        result = []
+        month_range = range(1, 13) if all_twelve else sorted(indexed)
+        for mo in month_range:
+            row = dict(indexed.get(mo) or {})
+            row["month"] = mo
+            row["label"] = MONTH_LABELS[mo-1]
+            for key in ("current", "previous", "target", "pieces", "pieces_previous"):
+                row[key] = num(row.get(key))
+            entry = latest.get(mo)
+            vals, _payload = scope_ocr(entry, scope)
+            if vals:
+                row["pieces"] = num(vals.get("pieces")) or row["pieces"]
+                row["pieces_previous"] = num(vals.get("pieces_previous")) or row["pieces_previous"]
+            row["pdf_loaded"] = mo in available
+            row["pct_goal"] = row["current"] / row["target"] * 100 if row["target"] else None
+            row["pct_previous"] = (row["current"] / row["previous"] - 1) * 100 if row["previous"] else None
+            row["pieces_growth"] = (
+                (row["pieces"] / row["pieces_previous"] - 1) * 100
+                if row["pieces_previous"] else None
+            )
+            if not row.get("source"):
+                row["source"] = "PDF" if entry else "—"
+            result.append(row)
+        return result
+
     @m.app.get("/api/commercial-sales-v176")
     async def commercial_sales_v176(
         request: Request, year: int | None = None, month: int = 0,
@@ -246,7 +291,7 @@ def install(m):
     ):
         actor = m.require_user(request)
         yy = int(year or m.datetime.now().year)
-        scope = str(m.effective_store(actor, store) or "Compañía")
+        requested_scope = str(m.effective_store(actor, store) or "Compañía")
         latest = latest_sales_entries(yy)
         available = sorted(latest)
         max_month = max(available) if available else max(1, min(12, m.datetime.now().month))
@@ -257,35 +302,28 @@ def install(m):
         if sales_base is None:
             raise RuntimeError("Motor de ventas V174 no disponible")
 
-        # V174 entrega el acumulado estable y ya validado.
-        base = sales_base(request=request, year=yy, through_month=max_month, store=scope)
+        # Regla de lectura:
+        # - Mes específico => comparar todas las tiendas en gráfica/tabla.
+        # - Sin mes + Compañía => evolución por mes.
+        # - Sin mes + tienda => evolución mensual de esa tienda.
+        view_scope = "Compañía" if selected_month else requested_scope
+        base = sales_base(request=request, year=yy, through_month=max_month, store=view_scope)
         if inspect.isawaitable(base):
             base = await base
         base = dict(base or {})
-        months = [dict(x) for x in (base.get("months") or [])]
+        months = enrich_sales_months(base.get("months") or [], view_scope, latest, available, True)
 
-        # Enriquecer piezas del año anterior directamente del OCR.
-        for row in months:
-            mo = int(row.get("month") or 0)
-            entry = latest.get(mo)
-            vals, _payload = scope_ocr(entry, scope)
-            if vals:
-                row["pieces"] = num(vals.get("pieces")) or num(row.get("pieces"))
-                row["pieces_previous"] = num(vals.get("pieces_previous"))
-            else:
-                row.setdefault("pieces_previous", 0.0)
-            row["pdf_loaded"] = bool(entry)
-            row["pct_goal"] = (
-                num(row.get("current")) / num(row.get("target")) * 100
-                if num(row.get("target")) else None
-            )
-            row["pct_previous"] = (
-                (num(row.get("current")) / num(row.get("previous")) - 1) * 100
-                if num(row.get("previous")) else None
-            )
-            row["pieces_growth"] = (
-                (num(row.get("pieces")) / num(row.get("pieces_previous")) - 1) * 100
-                if num(row.get("pieces_previous")) else None
+        # La tabla mensual es deliberadamente independiente del filtro Tienda/Mes:
+        # siempre representa Compañía, enero-diciembre, y sólo cambia Pesos/Piezas.
+        if is_company(view_scope):
+            company_months = [dict(x) for x in months]
+        else:
+            company_base = sales_base(request=request, year=yy, through_month=max_month, store="Compañía")
+            if inspect.isawaitable(company_base):
+                company_base = await company_base
+            company_base = dict(company_base or {})
+            company_months = enrich_sales_months(
+                company_base.get("months") or [], "Compañía", latest, available, True
             )
 
         use_months = [selected_month] if selected_month else available
@@ -296,9 +334,11 @@ def install(m):
         total_pieces = sum(num(r.get("pieces")) for r in selected_rows)
         total_pieces_prev = sum(num(r.get("pieces_previous")) for r in selected_rows)
 
-        stores, store_cut = store_rows_from_entries(latest, use_months)
-        if not is_company(scope):
-            stores = [r for r in stores if norm(r.get("store")) == norm(scope)]
+        stores, store_cut = store_rows_from_entries(latest, use_months, yy)
+        # En un mes específico SIEMPRE se muestran todas las tiendas. Sólo en
+        # evolución acumulada se respeta un alcance de tienda individual.
+        if not selected_month and not is_company(requested_scope):
+            stores = [r for r in stores if norm(r.get("store")) == norm(requested_scope)]
 
         years = sorted(
             {int(e.get("year") or 0) for e in (m.load_manifest() or {}).get("sales", []) if int(e.get("year") or 0) > 0}
@@ -307,9 +347,11 @@ def install(m):
         )
         return {
             **base,
-            "year": yy, "previous_year": yy - 1, "store": scope,
+            "year": yy, "previous_year": yy - 1, "store": view_scope,
+            "requested_store": requested_scope,
             "selected_month": selected_month, "available_months": available,
-            "available_years": years, "months": months, "stores": stores,
+            "available_years": years, "months": months, "company_months": company_months,
+            "stores": stores,
             "display_mode": "stores" if selected_month else "months",
             "cut_date": store_cut or str(base.get("cut_date") or ""),
             "totals": {
@@ -323,7 +365,7 @@ def install(m):
                 "gap_to_goal": total_current - total_target if total_target else None,
             },
             "source_count": len(available),
-            "source_label": "PDF mensual · Meta/Año anterior validados · V176",
+            "source_label": "PDF mensual · comparativo por mes/tienda · V176",
         }
 
     # Asegura que las pestañas comerciales centrales sigan en el catálogo.
@@ -533,6 +575,9 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 .v176-chart-svg text{font-family:Inter,Segoe UI,Arial,sans-serif}
 .v176-chart-value{font-weight:900}.v176-chart-growth{font-weight:950}
 #salesExecThrough option[disabled]{color:#9aa7b7}
+.sales-chart-scroll{overflow-x:auto!important;overflow-y:hidden!important}
+.v176-chart-svg{display:block;width:auto!important;max-width:none!important;min-width:100%!important}
+.v176-opening{display:inline-block;font-size:8px;font-weight:900;color:#7a5d00;background:#fff7d6;border:1px solid #f1d46a;border-radius:999px;padding:3px 7px;white-space:nowrap}
 
 /* Ubicación agrupada. */
 .v176-area-company td:nth-child(1),.v176-area-company td:nth-child(2){font-weight:900}
@@ -617,7 +662,7 @@ const pct=v=>v==null||!Number.isFinite(Number(v))?'—':n(v).toFixed(1)+'%';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const monthLong=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false;
+let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false;const modelClientCache=new Map();
 
 async function A(url,opt){
   if(typeof window.api==='function')return window.api(url,opt);
@@ -739,27 +784,59 @@ function renderPareto(rows){
 }
 async function renderModels(force){
   if(!macroActive()||modelsBusy)return;
+  const store=visibleStoreControl()?.value||q('#store')?.value||((typeof DASH!=='undefined'&&DASH?.selected_store)?DASH.selected_store:'Compañía');
+  const week=q('#week')?.value||((typeof DASH!=='undefined'&&DASH?.week)?DASH.week:'');
+  const section=q('#section')?.value||'Todas',catalog=q('#catalog')?.value||'Todos',gb=paretoGroup();
+  // Nunca lanzar el análisis pesado antes de que el periodo esté listo.
+  if(!week)return;
+  const cacheKey=[week,store,section,catalog,gb].join('|');
+  const cached=modelClientCache.get(cacheKey);
   modelsBusy=true;
-  const store=visibleStoreControl()?.value||q('#store')?.value||((typeof DASH!=='undefined'&&DASH?.selected_store)?DASH.selected_store:'Compañía'),week=q('#week')?.value||'',section=q('#section')?.value||'Todas',catalog=q('#catalog')?.value||'Todos',gb=paretoGroup();
   try{
-    if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">Cargando 80/20…</td></tr>';
-    if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">Cargando modelos lentos…</td></tr>';
-    if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">Cargando sugerido 0 a 1…</td></tr>';
-    const d=await A('/api/commercial-models-v176?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent(catalog)+'&group_by='+encodeURIComponent(gb),{timeoutMs:240000});
+    if(!cached){
+      if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">Cargando 80/20…</td></tr>';
+      if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">Cargando modelos lentos…</td></tr>';
+      if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">Cargando sugerido 0 a 1…</td></tr>';
+    }
+    let d=cached&&!force?cached:null;
+    if(!d){
+      const url='/api/commercial-models-v176?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent(catalog)+'&group_by='+encodeURIComponent(gb);
+      try{
+        d=await A(url,{timeoutMs:240000});
+      }catch(first){
+        // Un reinicio de Render es transitorio. Reintentar una vez y, si ya
+        // existe una respuesta válida en memoria del navegador, conservarla.
+        if(cached)d=cached;
+        else{
+          await new Promise(resolve=>setTimeout(resolve,4500));
+          d=await A(url,{timeoutMs:240000});
+        }
+      }
+      if(d)modelClientCache.set(cacheKey,d);
+    }
+    if(!d)throw new Error('Sin respuesta de modelos');
     let ck={rows:[],editable:false};
     if(store!=='Compañía'){
       try{ck=await A('/api/model-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:60000})}catch(_){}
     }
     const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
     if(typeof window.renderModelRows==='function'){
-      window.renderModelRows(d.champions||[],d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+      window.renderModelRows((d.champions||[]).slice(0,150),d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
     }
     fixModelHead();renderPareto(d.pareto?.rows||[]);
   }catch(e){
-    const msg='No fue posible cargar la información: '+esc(e.message||e);
-    if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
-    if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">'+msg+'</td></tr>';
-    if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
+    if(cached){
+      try{
+        if(typeof window.renderModelRows==='function')window.renderModelRows((cached.champions||[]).slice(0,150),cached.slow||[],cached.zero||[],section,section,store,{},false,'',store);
+        fixModelHead();renderPareto(cached.pareto?.rows||[]);
+      }catch(_){}
+    }else{
+      const msg='No fue posible cargar la información. Reintentaremos al consultar nuevamente.';
+      if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
+      if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">'+msg+'</td></tr>';
+      if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
+      console.warn('[V176] modelos',e);
+    }
   }finally{modelsBusy=false}
 }
 window.loadModelTables=renderModels;
@@ -790,28 +867,40 @@ function graphRows(d){
 }
 function salesChart176(d){
   const host=q('#salesExecChart');if(!host)return;
-  const rows=graphRows(d),metric=salesMetric,W=Math.max(980,90*rows.length+100),H=340,L=68,R=18,T=45,B=52,pw=W-L-R,ph=H-T-B;
+  const rows=graphRows(d),metric=salesMetric,isStores=!!d.selected_month;
+  const W=Math.max(isStores?1320:1050,(isStores?118:105)*Math.max(rows.length,1)+120),H=390,L=72,R=24,T=76,B=62,pw=W-L-R,ph=H-T-B;
   const cur=r=>metric==='pieces'?n(r.pieces):n(r.current),prev=r=>metric==='pieces'?n(r.pieces_previous):n(r.previous);
   const vals=[];rows.forEach(r=>{vals.push(cur(r),prev(r));if(metric==='money')vals.push(n(r.target))});
-  const mx=Math.max(1,...vals)*1.16,y=v=>T+ph-n(v)/mx*ph,gw=pw/Math.max(rows.length,1),bw=Math.min(24,gw*.28);
-  let s='<svg class="v176-chart-svg" viewBox="0 0 '+W+' '+H+'">';
-  for(let i=0;i<=4;i++){const val=mx*i/4,yy=y(val);s+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#dce4ee"/><text x="'+(L-7)+'" y="'+(yy+3)+'" text-anchor="end" font-size="8" fill="#6b778c">'+shortVal(val,metric)+'</text>'}
+  const mx=Math.max(1,...vals)*1.18,y=v=>T+ph-n(v)/mx*ph,gw=pw/Math.max(rows.length,1),bw=Math.min(27,gw*.25),base=T+ph;
+  let svg='<svg class="v176-chart-svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+  for(let i=0;i<=4;i++){const val=mx*i/4,yy=y(val);svg+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#dce4ee"/><text x="'+(L-8)+'" y="'+(yy+3)+'" text-anchor="end" font-size="8" fill="#6b778c">'+shortVal(val,metric)+'</text>'}
   const pts=[];
   rows.forEach((r,i)=>{
-    const cx=L+gw*(i+.5),a=cur(r),b=prev(r),ya=y(a),yb=y(b),base=T+ph,g=n(r.target);
+    const cx=L+gw*(i+.5),a=cur(r),b=prev(r),g=n(r.target),ya=y(a),yb=y(b),yg=y(g);
     const gp=prev(r)>0?(a/prev(r)-1)*100:null,mp=n(r.target)>0?n(r.current)/n(r.target)*100:null;
-    s+='<rect x="'+(cx-bw-2)+'" y="'+ya+'" width="'+bw+'" height="'+Math.max(0,base-ya)+'" rx="3" fill="#1769e8"/>';
-    s+='<rect x="'+(cx+2)+'" y="'+yb+'" width="'+bw+'" height="'+Math.max(0,base-yb)+'" rx="3" fill="#9fb0c6"/>';
-    if(a>0)s+='<text class="v176-chart-value" x="'+(cx-bw/2-2)+'" y="'+Math.min(base-5,ya+14)+'" text-anchor="middle" font-size="7" fill="#fff">'+shortVal(a,metric)+'</text>';
-    if(b>0)s+='<text class="v176-chart-value" x="'+(cx+bw/2+2)+'" y="'+Math.min(base-5,yb+14)+'" text-anchor="middle" font-size="7" fill="#fff">'+shortVal(b,metric)+'</text>';
-    const top=Math.min(ya,yb,metric==='money'&&g>0?y(g):999);
-    if(gp!=null)s+='<text class="v176-chart-growth" x="'+cx+'" y="'+Math.max(11,top-13)+'" text-anchor="middle" font-size="8" fill="'+(gp>=0?'#118a52':'#d92d20')+'">'+(gp>=0?'+':'')+gp.toFixed(1)+'% vs '+d.previous_year+'</text>';
-    if(metric==='money'&&g>0){pts.push(cx+','+y(g));s+='<circle cx="'+cx+'" cy="'+y(g)+'" r="3" fill="#ec007c"/>';if(mp!=null)s+='<text x="'+cx+'" y="'+Math.max(20,y(g)-4)+'" text-anchor="middle" font-size="7" font-weight="900" fill="#b00063">'+mp.toFixed(1)+'% Meta</text>'}
-    const lab=String(r.label||r.store||'').length>13?String(r.label||r.store).slice(0,12)+'…':String(r.label||r.store||'');
-    s+='<text x="'+cx+'" y="'+(H-20)+'" text-anchor="middle" font-size="8" fill="#52657c">'+esc(lab)+'</text>';
+    svg+='<rect x="'+(cx-bw-3)+'" y="'+ya+'" width="'+bw+'" height="'+Math.max(0,base-ya)+'" rx="3" fill="#1769e8"/>';
+    svg+='<rect x="'+(cx+3)+'" y="'+yb+'" width="'+bw+'" height="'+Math.max(0,base-yb)+'" rx="3" fill="#9fb0c6"/>';
+    if(a>0){const inside=base-ya>30,ty=inside?ya+14:Math.max(T+10,ya-6);svg+='<text class="v176-chart-value" x="'+(cx-bw/2-3)+'" y="'+ty+'" text-anchor="middle" font-size="7" fill="'+(inside?'#fff':'#173f78')+'">'+shortVal(a,metric)+'</text>'}
+    if(b>0){const inside=base-yb>30,ty=inside?yb+14:Math.max(T+10,yb-6);svg+='<text class="v176-chart-value" x="'+(cx+bw/2+3)+'" y="'+ty+'" text-anchor="middle" font-size="7" fill="'+(inside?'#fff':'#52657d')+'">'+shortVal(b,metric)+'</text>'}
+    const top=Math.min(ya,yb,metric==='money'&&g>0?yg:9999);
+    if(gp!=null){
+      const gy=Math.max(14,top-34-(i%2)*10);
+      svg+='<text class="v176-chart-growth" x="'+cx+'" y="'+gy+'" text-anchor="middle" font-size="7.5" fill="'+(gp>=0?'#118a52':'#d92d20')+'">'+(gp>=0?'+':'')+gp.toFixed(1)+'% vs '+d.previous_year+'</text>';
+    }
+    if(metric==='money'&&g>0){
+      pts.push(cx+','+yg);
+      svg+='<circle cx="'+cx+'" cy="'+yg+'" r="3" fill="#ec007c"/>';
+      if(mp!=null){
+        let my=yg-8;
+        if(Math.abs(my-(Math.max(14,top-34-(i%2)*10)))<16)my=Math.min(base-8,yg+17);
+        svg+='<text x="'+cx+'" y="'+my+'" text-anchor="middle" font-size="7" font-weight="900" fill="#b00063">'+mp.toFixed(1)+'% Meta</text>';
+      }
+    }
+    const raw=String(r.label||r.store||''),lab=raw.length>16?raw.slice(0,15)+'…':raw;
+    svg+='<text x="'+cx+'" y="'+(H-23)+'" text-anchor="middle" font-size="8" fill="#52657c">'+esc(lab)+'</text>';
   });
-  if(metric==='money'&&pts.length>1)s+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="#ec007c" stroke-width="2.5"/>';
-  host.innerHTML=s+'</svg>';
+  if(metric==='money'&&pts.length>1)svg+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="#ec007c" stroke-width="2.5"/>';
+  host.innerHTML=svg+'</svg>';
 }
 function sortRows(rows){
   if(!salesSort.key)return rows;
@@ -827,25 +916,30 @@ function sortButton(key,label){
 }
 function bindSort(root,d){qa('[data-v176-sort]',root).forEach(b=>b.onclick=()=>{const k=b.dataset.v176Sort;salesSort.dir=salesSort.key===k?-salesSort.dir:-1;salesSort.key=k;renderSalesTables(d)})}
 function renderSalesTables(d){
-  const metric=salesMetric,monthSet=new Set(d.available_months||[]);
-  let rows=(d.months||[]).filter(r=>monthSet.has(Number(r.month)));
-  if(d.selected_month)rows=rows.filter(r=>Number(r.month)===Number(d.selected_month));
-  rows=rows.map(r=>({...r,pct_goal:r.target?n(r.current)/n(r.target)*100:null,pct_previous:metric==='pieces'?r.pieces_growth:r.pct_previous}));
-  rows=sortRows(rows);
+  const metric=salesMetric;
+  const rows=[...(d.company_months||d.months||[])].sort((a,b)=>n(a.month)-n(b.month));
   const table=q('#salesExecRows')?.closest('table'),head=table?.querySelector('thead tr');
-  if(head)head.innerHTML='<th>Mes</th><th>Meta</th><th>Venta '+d.year+'</th><th>Venta '+d.previous_year+'</th><th>'+sortButton('pct_goal','% Meta')+'</th><th>'+sortButton('pct_previous','% vs '+d.previous_year)+'</th><th>Venta pzas</th>';
-  q('#salesExecRows').innerHTML=rows.map(r=>{
+  const currentHead=metric==='pieces'?'Piezas '+d.year:'Venta '+d.year;
+  const previousHead=metric==='pieces'?'Piezas '+d.previous_year:'Venta '+d.previous_year;
+  const lastHead=metric==='pieces'?'Venta $':'Venta pzas';
+  if(head)head.innerHTML='<th>Mes</th><th>Meta</th><th id="salesYearTh">'+currentHead+'</th><th id="salesPrevTh">'+previousHead+'</th><th>'+(metric==='pieces'?'% Meta $':'% Meta')+'</th><th>% vs '+d.previous_year+'</th><th>'+lastHead+'</th>';
+  const monthBody=q('#salesExecRows');
+  if(monthBody)monthBody.innerHTML=rows.map(r=>{
+    const pctPrev=metric==='pieces'?r.pieces_growth:r.pct_previous;
     const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
-    return '<tr><td><b>'+esc(r.label)+'</b></td><td>'+money(r.target)+'</td><td><b>'+cv+'</b></td><td>'+pv+'</td><td class="'+tone(r.pct_goal,true)+'">'+pct(r.pct_goal)+'</td><td class="'+tone(r.pct_previous,false)+'">'+pct(r.pct_previous)+'</td><td>'+nf(r.pieces)+'</td></tr>'
+    const last=metric==='pieces'?money(r.current):nf(r.pieces);
+    return '<tr><td><b>'+esc(r.label)+'</b></td><td>'+(n(r.target)>0?money(r.target):'—')+'</td><td><b>'+cv+'</b></td><td>'+pv+'</td><td class="'+tone(r.pct_goal,true)+'">'+pct(r.pct_goal)+'</td><td class="'+tone(pctPrev,false)+'">'+pct(pctPrev)+'</td><td>'+last+'</td></tr>';
   }).join('');
-  bindSort(table,d);
 
   let box=q('#v168SalesStores');if(!box){box=document.createElement('div');box.id='v168SalesStores';q('#v109-sales-exec')?.append(box)}
   let stores=sortRows((d.stores||[]).map(r=>({...r,pct_previous:metric==='pieces'?r.pieces_growth:r.pct_previous})));
   const title=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta por tienda · acumulado meses cargados';
   box.innerHTML='<div class="title">'+title+'</div><div class="tablewrap"><table class="table v168-sales-rank v176-sales-rank"><thead><tr><th>#</th><th>Tienda</th><th>Meta</th><th>Venta '+d.year+'</th><th>Venta '+d.previous_year+'</th><th>'+sortButton('pct_goal','% Meta')+'</th><th>'+sortButton('pct_previous','% vs '+d.previous_year)+'</th></tr></thead><tbody>'+stores.map((r,i)=>{
     const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
-    return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+money(r.target)+'</td><td><b>'+cv+'</b></td><td>'+pv+'</td><td class="'+(n(r.pct_goal)>=100?'v176-pos':'v176-neg')+'">'+pct(r.pct_goal)+'</td><td class="'+(n(r.pct_previous)>=0?'v176-pos':'v176-neg')+'">'+pct(r.pct_previous)+'</td></tr>'
+    const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pct_previous);
+    const prevCell=r.comparison_note?'—':pv;
+    const targetCell=n(r.target)>0?money(r.target):'—';
+    return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+targetCell+'</td><td><b>'+cv+'</b></td><td>'+prevCell+'</td><td class="'+(r.pct_goal==null?'':(n(r.pct_goal)>=100?'v176-pos':'v176-neg'))+'">'+pct(r.pct_goal)+'</td><td class="'+(r.comparison_note?'':(n(r.pct_previous)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td></tr>';
   }).join('')+'</tbody></table></div>';
   bindSort(box,d);
 }
@@ -882,32 +976,42 @@ async function renderSales176(existing,force){
     window.__V176_SALES_DATA=d;salesMonth=Number(d.selected_month||0);
     prepareSalesControls(d);
     const t=d.totals||{},gap=n(t.gap_to_goal);
-    const kpi=(l,v,s,c,cl)=>'<div class="sales-kpi" style="--sk:'+c+'"><div class="sl">'+l+'</div><div class="sv '+(cl||'')+'">'+v+'</div><div class="ss">'+s+'</div></div>';
-    q('#salesExecKpis').innerHTML=
-      kpi('Meta acumulada',money(t.target),gap>=0?'Meta superada por '+money(gap):'Brecha '+money(Math.abs(gap)),'#ec007c')+
+    const kpi=(l,v,sub,c,cl)=>'<div class="sales-kpi" style="--sk:'+c+'"><div class="sl">'+l+'</div><div class="sv '+(cl||'')+'">'+v+'</div><div class="ss">'+sub+'</div></div>';
+    const kpis=q('#salesExecKpis');
+    if(kpis)kpis.innerHTML=
+      kpi('Meta acumulada',money(t.target),t.target?(gap>=0?'Meta superada por '+money(gap):'Brecha '+money(Math.abs(gap))):'Sin meta cargada','#ec007c')+
       kpi('Venta '+d.year,money(t.current),d.selected_month?monthLong[d.selected_month-1]:'Meses con PDF','#1769e8')+
       kpi('Venta '+d.previous_year,money(t.previous),'Mismo alcance','#9fb0c6')+
       kpi('Cumplimiento',pct(t.compliance),'Venta / Meta','#10b981',tone(t.compliance,true))+
       kpi('Crecimiento',pct(t.growth),d.year+' vs '+d.previous_year,'#f59e0b',tone(t.growth,false));
-    q('#salesExecSource').textContent=d.source_label+' · '+d.store;
-    q('#salesChartTitle').textContent=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta mensual '+d.year+' vs '+d.previous_year+' · '+d.store;
-    q('#salesCoverage').textContent=(d.available_months||[]).length+' PDF/mes disponibles'+(d.cut_date?' · último corte '+d.cut_date:'');
+    const empty=q('#salesExecEmpty');if(empty)empty.classList.toggle('hidden',n(t.current)>0||n(t.previous)>0||n(t.target)>0);
+    const src=q('#salesExecSource');if(src)src.textContent=d.source_label+' · '+d.store;
+    const title=q('#salesChartTitle');if(title)title.textContent=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta mensual '+d.year+' vs '+d.previous_year+' · '+d.store;
+    const coverage=q('#salesCoverage');if(coverage)coverage.textContent=(d.available_months||[]).length+' PDF/mes disponibles'+(d.cut_date?' · último corte '+d.cut_date:'');
     salesChart176(d);renderSalesTables(d);
-  }catch(e){console.warn('[V176] ventas',e);if(q('#salesExecSource'))q('#salesExecSource').textContent='Ventas: '+(e.message||e)}
-  finally{salesBusy=false}
+  }catch(e){
+    console.warn('[V176] ventas',e);
+    const src=q('#salesExecSource');if(src)src.textContent='Ventas: no fue posible actualizar en este intento. Conserva la última vista y vuelve a consultar.';
+  }finally{salesBusy=false}
 }
+window.loadSalesExecutive=function(){return renderSales176(null,true)};
 
-function refreshAll(){
+async function refreshAll(){
   fixSidebar();fixAnalysisNav();
   if(!activeAnalysis())return;
-  fixStores();
+  await fixStores();
   if(macroActive()){
-    renderExcess();renderArea();renderModels();
-    setTimeout(()=>{detachOldSalesListeners();renderSales176()},80);
+    renderExcess();
+    detachOldSalesListeners();
+    await renderSales176();
+    await renderArea();
+    await renderModels();
   }
 }
+let v176RefreshTimer=0;
 function schedule(){
-  [20,180,520,1150].forEach(ms=>setTimeout(refreshAll,ms));
+  clearTimeout(v176RefreshTimer);
+  v176RefreshTimer=setTimeout(()=>{refreshAll().catch(e=>console.warn('[V176] refresh',e))},140);
 }
 document.addEventListener('click',e=>{
   if(e.target.closest?.('#analysisNav,[data-main="analysis"],[data-area-section],[data-area-group],[data-pareto-group],#refresh,#sidebarToggle'))schedule();
@@ -918,7 +1022,7 @@ document.addEventListener('change',e=>{
   if(e.target.matches?.('#store,#week,#section,#catalog,#v166StatusSelect'))schedule();
 },true);
 if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
-  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(refreshAll,40);return r};wrapped.__v176=true;window.loadDash=wrapped;
+  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
 console.info('[V176] Comercial integral activo.');

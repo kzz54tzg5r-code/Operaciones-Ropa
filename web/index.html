@@ -1081,8 +1081,8 @@ async function loadParetoSummary(){
     $('#paretoSummaryTable').innerHTML=(d.rows||[]).map(r=>`<tr class="${PARETO_GROUP==='general'?'pareto-total':''}"><td><b>${r.label}</b></td><td>${pct(r.participation)}</td><td><b>${fmt(r.models_80)}</b></td><td>${fmt(r.models_20)}</td><td>${fmt(r.models)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${dec2(r.suggested)}</td><td>${fmt(r.ddi)}</td><td>${fmt(r.capacity)}</td><td>${r.occupancy==null?'N/D':pct(r.occupancy)}</td></tr>`).join('')||'<tr><td colspan="11">Información no disponible</td></tr>';
   }catch(e){$('#paretoSummaryTable').innerHTML=`<tr><td colspan="11">No fue posible calcular el 80/20: ${e.message||e}</td></tr>`}
 }
-$$('[data-pareto-group]').forEach(btn=>btn.onclick=()=>{PARETO_GROUP=btn.dataset.paretoGroup||'section';$$('[data-pareto-group]').forEach(x=>x.classList.toggle('active',x===btn));loadParetoSummary()});
-$$('[data-champ-section]').forEach(btn=>btn.onclick=()=>{const v=btn.dataset.champSection||'Todas';if($('#champSection'))$('#champSection').value=v;$$('[data-champ-section]').forEach(x=>x.classList.toggle('active',x===btn));loadModelTables()});
+$('[data-pareto-group]').forEach(btn=>btn.onclick=()=>{PARETO_GROUP=btn.dataset.paretoGroup||'section';$('[data-pareto-group]').forEach(x=>x.classList.toggle('active',x===btn));if(window.__V176_COMMERCIAL)(window.loadModelTables||loadModelTables)(true);else loadParetoSummary()});
+$('[data-champ-section]').forEach(btn=>btn.onclick=()=>{const v=btn.dataset.champSection||'Todas';if($('#champSection'))$('#champSection').value=v;$('[data-champ-section]').forEach(x=>x.classList.toggle('active',x===btn));(window.loadModelTables||loadModelTables)()});
 
 async function saveModelChecklist(sel,slows,scope){
   const id=sel.dataset.id,row=(slows||[]).find(x=>String(x.id_art)===String(id));
@@ -1126,7 +1126,7 @@ async function loadModelTables(){
         if(!CHECKLIST_CAPTURE_STORE||!stores.includes(CHECKLIST_CAPTURE_STORE))CHECKLIST_CAPTURE_STORE=stores[0]||'';
         sel.innerHTML=stores.map(s=>`<option value="${s}">${s}</option>`).join('');
         sel.value=CHECKLIST_CAPTURE_STORE;
-        sel.onchange=()=>{CHECKLIST_CAPTURE_STORE=sel.value;loadModelTables()};
+        sel.onchange=()=>{CHECKLIST_CAPTURE_STORE=sel.value;(window.loadModelTables||loadModelTables)()};
         target=CHECKLIST_CAPTURE_STORE;
       }
     }
@@ -1213,8 +1213,8 @@ async function downloadEvidencePdf(button){
 }
 
 function loginNorm(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
-$('#champSection')?.addEventListener('change',loadModelTables);
-$('#slowSection')?.addEventListener('change',loadModelTables);
+$('#champSection')?.addEventListener('change',()=>((window.loadModelTables||loadModelTables)()));
+$('#slowSection')?.addEventListener('change',()=>((window.loadModelTables||loadModelTables)()));
 
 function metricValue(s){
   const v=s?.[METRIC];
