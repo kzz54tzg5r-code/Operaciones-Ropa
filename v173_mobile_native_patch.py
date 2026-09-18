@@ -147,7 +147,7 @@ def install(m):
   const q=(s,r=document)=>r.querySelector(s);
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const mobile=()=>window.matchMedia('(max-width:900px)').matches;
-  const norm=v=>String(v||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/s+/g,' ').trim();
+  const norm=v=>String(v||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
   function headerIndex(headers,tests){
@@ -193,10 +193,10 @@ def install(m):
     list.className='v173-recovery-list';
     const rows=qa('tbody tr',table).filter(r=>qa('td',r).length>1);
     list.innerHTML=rows.map((row,i)=>{
-      const cells=qa('td',row).map(c=>String(c.textContent||'').replace(/s+/g,' ').trim());
+      const cells=qa('td',row).map(c=>String(c.textContent||'').replace(/\s+/g,' ').trim());
       const val=k=>idx[k]>=0?(cells[idx[k]]||'—'):'—';
-      const project=row.classList.contains('project-row') || /proyecto/i.test(val('store'));
-      const store=val('store').replace(/s*Proyectos*$/i,'').trim();
+      const project=row.classList.contains('project-row') || /\bproyecto\b/i.test(val('store'));
+      const store=val('store').replace(/\s*Proyecto\s*$/i,'').trim();
       const rank=idx.rank>=0?val('rank'):'#'+(i+1);
       const detailPairs=[
         ['Valor devolución',val('returnValue')],['Recuperación $',val('recoveredValue')],
