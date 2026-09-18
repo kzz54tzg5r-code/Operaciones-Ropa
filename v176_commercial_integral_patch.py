@@ -363,6 +363,100 @@ body[data-v163-module="analysis"] #analysisNav .switch{
   display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important
 }
 
+/* Filtro principal: misma barra visual que Macro compañía / Acordeón / Tiendas. */
+body[data-v163-module="analysis"] #v161FilterBar{
+  background:#fff!important;
+  border:1px solid var(--v161-line,#d5e1ee)!important;
+  border-radius:13px!important;
+  padding:4px!important;
+  margin:7px 0 9px!important;
+  box-shadow:none!important;
+  overflow:hidden!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:stretch!important;
+  gap:4px!important;
+  width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none!important;
+  -webkit-overflow-scrolling:touch!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid::-webkit-scrollbar{display:none!important}
+body[data-v163-module="analysis"] #v161FilterGrid .v161-field{
+  position:relative!important;
+  flex:1 1 0!important;
+  min-width:132px!important;
+  min-height:48px!important;
+  margin:0!important;
+  padding:4px 5px 3px 34px!important;
+  border:1px solid transparent!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  color:#284f7d!important;
+  box-shadow:none!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid .v161-field:hover,
+body[data-v163-module="analysis"] #v161FilterGrid .v161-field:focus-within{
+  background:#f5f8fc!important;
+  border-color:#e3ebf4!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid .v161-field label{
+  display:block!important;
+  margin:1px 0 0!important;
+  color:#6c7f96!important;
+  font-size:7px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  text-transform:uppercase!important;
+  letter-spacing:.02em!important;
+  pointer-events:none!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid .v161-field select,
+body[data-v163-module="analysis"] #v161FilterGrid .v161-field input{
+  width:100%!important;
+  height:29px!important;
+  min-height:29px!important;
+  padding:3px 22px 3px 0!important;
+  border:0!important;
+  border-radius:6px!important;
+  outline:0!important;
+  background:transparent!important;
+  color:#173f78!important;
+  font-size:9px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  box-shadow:none!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid .v166-filter-icon{
+  left:9px!important;
+  bottom:13px!important;
+  width:17px!important;
+  height:17px!important;
+  color:#176fe8!important
+}
+body[data-v163-module="analysis"] #v161FilterGrid .v161-apply{
+  flex:0 0 126px!important;
+  min-width:126px!important;
+  min-height:48px!important;
+  height:auto!important;
+  margin:0!important;
+  border:1px solid transparent!important;
+  border-radius:9px!important;
+  background:var(--v161-blue,#176fe8)!important;
+  color:#fff!important;
+  padding:7px 12px!important;
+  font-size:9px!important;
+  font-weight:950!important;
+  box-shadow:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important
+}
+
 /* Filtros internos: mismo lenguaje visual que Macro compañía / Acordeón / Tiendas. */
 body[data-v163-module="analysis"] #page-macro .compact-filter,
 body[data-v163-module="analysis"] #page-sections .compact-filter,
@@ -444,6 +538,40 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 #champTable th:nth-child(7),#champTable th:nth-child(8){min-width:105px}
 
 @media(max-width:900px){
+  body[data-v163-module="analysis"] #v161FilterBar{
+    padding:4px!important;
+    border-radius:11px!important;
+    overflow:hidden!important
+  }
+  body[data-v163-module="analysis"] #v161FilterGrid{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    gap:4px!important;
+    overflow-x:auto!important
+  }
+  body[data-v163-module="analysis"] #v161FilterGrid .v161-field{
+    flex:0 0 118px!important;
+    min-width:118px!important;
+    min-height:42px!important;
+    padding:3px 4px 2px 29px!important
+  }
+  body[data-v163-module="analysis"] #v161FilterGrid .v161-field label{font-size:6px!important}
+  body[data-v163-module="analysis"] #v161FilterGrid .v161-field select,
+  body[data-v163-module="analysis"] #v161FilterGrid .v161-field input{
+    height:27px!important;
+    min-height:27px!important;
+    font-size:8.5px!important;
+    padding-right:17px!important
+  }
+  body[data-v163-module="analysis"] #v161FilterGrid .v166-filter-icon{
+    left:7px!important;bottom:11px!important;width:15px!important;height:15px!important
+  }
+  body[data-v163-module="analysis"] #v161FilterGrid .v161-apply{
+    flex:0 0 102px!important;
+    min-width:102px!important;
+    min-height:42px!important;
+    font-size:8px!important
+  }
   body[data-v163-module="analysis"] #analysisNav:not(.hidden){
     display:flex!important;overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch!important
   }
