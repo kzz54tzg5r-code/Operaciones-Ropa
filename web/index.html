@@ -929,6 +929,13 @@ async function loadDash(storeOverride=null,sectionOverride=null){
     (d.stores_available||[]).forEach(s=>el.add(new Option(s,s)));
     if([...el.options].some(o=>o.value===old))el.value=old;
   });
+  // No perder el alcance solicitado al repoblar el selector. Antes la petición
+  // sí llegaba con Olivar (u otra tienda), pero el select regresaba visualmente
+  // a Compañía y los reportes inferiores volvían a consultar Compañía.
+  const selectedStoreControl=$('#store');
+  if(selectedStoreControl && [...selectedStoreControl.options].some(o=>o.value===selectedStore)){
+    selectedStoreControl.value=selectedStore;
+  }
 
   if(USER.role==='tienda'){
     ['store'].forEach(id=>{
@@ -938,8 +945,8 @@ async function loadDash(storeOverride=null,sectionOverride=null){
 
   renderDash(d);
   if(SUB==='macro'){
-    await loadMacroAreaDetail();
-    await loadModelTables();
+    await (window.loadMacroAreaDetail||loadMacroAreaDetail)();
+    await (window.loadModelTables||loadModelTables)();
   }
   $('#profileMeta').textContent=`V47 · Móvil · Excel capacidades · ${d.week||'sin periodo'}`;
   refreshHeaderClock();
