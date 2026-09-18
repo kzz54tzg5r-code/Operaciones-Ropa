@@ -471,10 +471,9 @@ body[data-v163-module="analysis"] #page-areas .compact-filter{
 body[data-v163-module="analysis"] #page-macro .compact-filter .switches,
 body[data-v163-module="analysis"] #page-sections .compact-filter .switches,
 body[data-v163-module="analysis"] #page-areas .compact-filter .switches{
-  display:flex!important;
-  grid-template-columns:none!important;
-  flex-wrap:wrap!important;
-  align-items:center!important;
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(108px,1fr))!important;
+  align-items:stretch!important;
   gap:5px!important;
   width:100%!important;
   overflow:visible!important;
@@ -484,22 +483,25 @@ body[data-v163-module="analysis"] #page-areas .compact-filter .switches{
 body[data-v163-module="analysis"] #page-macro .compact-filter .switches>button,
 body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button,
 body[data-v163-module="analysis"] #page-areas .compact-filter .switches>button{
-  flex:0 0 auto!important;
-  width:auto!important;
-  min-width:108px!important;
+  width:100%!important;
+  min-width:0!important;
   min-height:40px!important;
   height:40px!important;
-  padding:7px 12px!important;
+  padding:7px 10px!important;
   margin:0!important;
-  border:1px solid var(--line)!important;
-  border-radius:999px!important;
+  border:1px solid transparent!important;
+  border-radius:9px!important;
   background:#fff!important;
-  color:var(--muted)!important;
+  color:#284f7d!important;
   font-size:8.5px!important;
   line-height:1.1!important;
   font-weight:900!important;
   box-shadow:none!important;
-  white-space:nowrap!important
+  white-space:nowrap!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important
 }
 body[data-v163-module="analysis"] #page-macro .compact-filter .switches>button.active,
 body[data-v163-module="analysis"] #page-sections .compact-filter .switches>button.active,
