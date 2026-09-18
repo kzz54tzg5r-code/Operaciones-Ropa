@@ -71,6 +71,7 @@ from v168_backend_patch import install as _install_v168_backend_patch
 from v168_frontend_patch import install as _install_v168_frontend_patch
 from v169_period_meta_patch import install as _install_v169_period_meta_patch
 from v169_period_freshness_patch import install as _install_v169_period_freshness_patch
+from v170_commercial_export_fix import install as _install_v170_commercial_export_fix
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -138,4 +139,5 @@ _install_v168_backend_patch(web_app)
 _install_v168_frontend_patch(web_app)
 # V169 al final: cobertura y actualización de periodos tras nuevas cargas.
 _install_v169_period_freshness_patch(web_app)
+_install_v170_commercial_export_fix(web_app)
 app = web_app.app
