@@ -456,6 +456,8 @@ def install(m):
   window.fetch=function(input,init){
     try{
       let raw=typeof input==='string'?input:(input?.url||'');
+      if(raw.includes('/api/commercial-sales-summary-v167')) raw=raw.replace('/api/commercial-sales-summary-v167','/api/commercial-sales-v174');
+      if(raw.includes('/api/commercial-sales-summary')) raw=raw.replace('/api/commercial-sales-summary','/api/commercial-sales-v174');
       if(raw.includes('/api/commercial-sales-v170')) raw=raw.replace('/api/commercial-sales-v170','/api/commercial-sales-v174');
       if(raw.includes('/api/commercial-sales-v168')) raw=raw.replace('/api/commercial-sales-v168','/api/commercial-sales-v174');
       if(typeof input==='string') input=raw; else if(raw!==input?.url) input=new Request(raw,input);
@@ -468,8 +470,27 @@ def install(m):
 
     @m.app.middleware("http")
     async def v174_html(request, call_next):
+        # Unifica TODAS las rutas históricas de Ventas en V174. V109/V167/V168/V170
+        # seguían disparando llamadas en paralelo y la última respuesta podía pisar
+        # Meta/Año anterior correctos con la respuesta vieja. El ruteo se hace en
+        # servidor para que móvil, escritorio y llamadas antiguas reciban el mismo
+        # payload validado por mes.
+        original_path = request.scope.get("path", "")
+        sales_aliases = {
+            "/api/commercial-sales-summary",
+            "/api/commercial-sales-summary-v167",
+            "/api/commercial-sales-v168",
+            "/api/commercial-sales-v170",
+        }
+        rerouted = request.method == "GET" and original_path in sales_aliases
+        if rerouted:
+            request.scope["path"] = "/api/commercial-sales-v174"
+            request.scope["raw_path"] = b"/api/commercial-sales-v174"
         response = await call_next(request)
-        if request.url.path == "/" and response.headers.get("content-type", "").startswith("text/html"):
+        if rerouted:
+            request.scope["path"] = original_path
+            request.scope["raw_path"] = original_path.encode("utf-8")
+        if original_path == "/" and response.headers.get("content-type", "").startswith("text/html"):
             body = b""
             async for chunk in response.body_iterator:
                 body += chunk
