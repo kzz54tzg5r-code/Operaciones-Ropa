@@ -455,11 +455,15 @@ def install(m):
         try:
             if cache.exists() and cache.stat().st_mtime >= path.stat().st_mtime:
                 cached = json.loads(cache.read_text(encoding="utf-8"))
-                toluca = (cached.get("stores") or {}).get("Toluca") or {}
-                # Reprocesar sólo cuando el caché viejo dejó Toluca con venta actual
-                # pero sin año anterior. Así corregimos el caso puntual sin forzar
-                # OCR de todos los PDF históricos.
-                if not (num(toluca.get("current")) > 0 and num(toluca.get("previous")) <= 0):
+                cached_stores = cached.get("stores") or {}
+                toluca = cached_stores.get("Toluca") or {}
+                puebla_sur = cached_stores.get("Puebla Sur") or {}
+                # Reprocesar sólo los PDF cuyo caché viejo quedó incompleto:
+                # Toluca sin año anterior o Puebla Sur (post-apertura) sin meta.
+                # Así no forzamos OCR de todos los meses históricos.
+                needs_toluca = num(toluca.get("current")) > 0 and num(toluca.get("previous")) <= 0
+                needs_puebla_sur = num(puebla_sur.get("current")) > 0 and num(puebla_sur.get("target")) <= 0
+                if not (needs_toluca or needs_puebla_sur):
                     return cached
         except Exception: pass
         result = {"company":{}, "stores":{}, "cut_date":"", "ocr":False, "error":""}
