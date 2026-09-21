@@ -578,6 +578,11 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 .sales-chart-scroll{overflow-x:auto!important;overflow-y:hidden!important}
 .v176-chart-svg{display:block;width:auto!important;max-width:none!important;min-width:100%!important}
 .v176-opening{display:inline-block;font-size:8px;font-weight:900;color:#7a5d00;background:#fff7d6;border:1px solid #f1d46a;border-radius:999px;padding:3px 7px;white-space:nowrap}
+.v176-month-store-bar{display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;margin:7px 0 6px}
+.v176-month-store-filter{display:flex;flex-direction:column;gap:3px;min-width:205px}
+.v176-month-store-filter span{font-size:7px;line-height:1;font-weight:950;color:#667085;text-transform:uppercase;letter-spacing:.025em}
+.v176-month-store-filter select{height:38px;min-height:38px;border:1px solid #cad8e8;border-radius:9px;background:#fff;color:#173f78;padding:6px 30px 6px 10px;font-size:9px;font-weight:900;box-shadow:none;outline:none}
+.v176-month-store-filter select:focus{border-color:#176fe8;box-shadow:0 0 0 2px rgba(23,111,232,.10)}
 
 /* Ubicación agrupada. */
 .v176-area-company td:nth-child(1),.v176-area-company td:nth-child(2){font-weight:900}
@@ -649,6 +654,9 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
   }
   #v176ExcessKpi .v176-excess-sections{font-size:6.6px!important}
   #v176ExcessKpi .v176-excess-pieces{font-size:7px!important}
+  .v176-month-store-bar{justify-content:flex-start;margin:6px 0 5px}
+  .v176-month-store-filter{min-width:165px;max-width:210px}
+  .v176-month-store-filter select{height:34px;min-height:34px;font-size:8px}
 }
 </style>'''
 
@@ -662,7 +670,7 @@ const pct=v=>v==null||!Number.isFinite(Number(v))?'—':n(v).toFixed(1)+'%';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const monthLong=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false;const modelClientCache=new Map();
+let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false,salesTableStore='Compañía',salesTableBusy=false,salesTableData=null;const modelClientCache=new Map();
 
 async function A(url,opt){
   if(typeof window.api==='function')return window.api(url,opt);
@@ -874,32 +882,48 @@ function salesChart176(d){
   const mx=Math.max(1,...vals)*1.18,y=v=>T+ph-n(v)/mx*ph,gw=pw/Math.max(rows.length,1),bw=Math.min(27,gw*.25),base=T+ph;
   let svg='<svg class="v176-chart-svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
   for(let i=0;i<=4;i++){const val=mx*i/4,yy=y(val);svg+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#dce4ee"/><text x="'+(L-8)+'" y="'+(yy+3)+'" text-anchor="end" font-size="8" fill="#6b778c">'+shortVal(val,metric)+'</text>'}
-  const pts=[];
+  const pts=[];let metaOverlays='';
   rows.forEach((r,i)=>{
     const cx=L+gw*(i+.5),a=cur(r),b=prev(r),g=n(r.target),ya=y(a),yb=y(b),yg=y(g);
     const gp=prev(r)>0?(a/prev(r)-1)*100:null,mp=n(r.target)>0?n(r.current)/n(r.target)*100:null;
     svg+='<rect x="'+(cx-bw-3)+'" y="'+ya+'" width="'+bw+'" height="'+Math.max(0,base-ya)+'" rx="3" fill="#1769e8"/>';
     svg+='<rect x="'+(cx+3)+'" y="'+yb+'" width="'+bw+'" height="'+Math.max(0,base-yb)+'" rx="3" fill="#9fb0c6"/>';
-    if(a>0){const inside=base-ya>30,ty=inside?ya+14:Math.max(T+10,ya-6);svg+='<text class="v176-chart-value" x="'+(cx-bw/2-3)+'" y="'+ty+'" text-anchor="middle" font-size="7" fill="'+(inside?'#fff':'#173f78')+'">'+shortVal(a,metric)+'</text>'}
-    if(b>0){const inside=base-yb>30,ty=inside?yb+14:Math.max(T+10,yb-6);svg+='<text class="v176-chart-value" x="'+(cx+bw/2+3)+'" y="'+ty+'" text-anchor="middle" font-size="7" fill="'+(inside?'#fff':'#52657d')+'">'+shortVal(b,metric)+'</text>'}
-    const top=Math.min(ya,yb,metric==='money'&&g>0?yg:9999);
-    if(gp!=null){
-      const gy=Math.max(14,top-34-(i%2)*10);
-      svg+='<text class="v176-chart-growth" x="'+cx+'" y="'+gy+'" text-anchor="middle" font-size="7.5" fill="'+(gp>=0?'#118a52':'#d92d20')+'">'+(gp>=0?'+':'')+gp.toFixed(1)+'% vs '+d.previous_year+'</text>';
+
+    // Valor dentro de la parte inferior de cada barra. Si la barra es demasiado
+    // corta, se coloca inmediatamente arriba para conservar legibilidad.
+    if(a>0){
+      const h=Math.max(0,base-ya),inside=h>=22,ty=inside?base-7:Math.max(T+10,ya-5);
+      svg+='<text class="v176-chart-value" x="'+(cx-bw/2-3)+'" y="'+ty+'" text-anchor="middle" font-size="7" fill="'+(inside?'#fff':'#173f78')+'">'+shortVal(a,metric)+'</text>';
     }
+    if(b>0){
+      const h=Math.max(0,base-yb),inside=h>=22,ty=inside?base-7:Math.max(T+10,yb-5);
+      svg+='<text class="v176-chart-value" x="'+(cx+bw/2+3)+'" y="'+ty+'" text-anchor="middle" font-size="7" fill="'+(inside?'#fff':'#52657d')+'">'+shortVal(b,metric)+'</text>';
+    }
+
+    const top=Math.min(ya,yb,metric==='money'&&g>0?yg:9999);
+    const growthY=gp!=null?Math.max(14,top-34-(i%2)*10):null;
+    if(gp!=null){
+      svg+='<text class="v176-chart-growth" x="'+cx+'" y="'+growthY+'" text-anchor="middle" font-size="7.5" fill="'+(gp>=0?'#118a52':'#d92d20')+'">'+(gp>=0?'+':'')+gp.toFixed(1)+'% vs '+d.previous_year+'</text>';
+    }
+
     if(metric==='money'&&g>0){
       pts.push(cx+','+yg);
       svg+='<circle cx="'+cx+'" cy="'+yg+'" r="3" fill="#ec007c"/>';
       if(mp!=null){
-        let my=yg-8;
-        if(Math.abs(my-(Math.max(14,top-34-(i%2)*10)))<16)my=Math.min(base-8,yg+17);
-        svg+='<text x="'+cx+'" y="'+my+'" text-anchor="middle" font-size="7" font-weight="900" fill="#b00063">'+mp.toFixed(1)+'% Meta</text>';
+        const label=mp.toFixed(1)+'% Meta';
+        const pillW=Math.max(48,label.length*4.25+12),pillH=15;
+        let labelY=Math.max(T+12,yg-10);
+        if(growthY!=null&&Math.abs(labelY-growthY)<18)labelY=Math.min(base-12,yg+18);
+        const pillX=cx-pillW/2,pillY=labelY-10.5;
+        metaOverlays+='<rect x="'+pillX+'" y="'+pillY+'" width="'+pillW+'" height="'+pillH+'" rx="7.5" fill="#fff0f7" stroke="#ec007c" stroke-width=".7" opacity=".98"/>';
+        metaOverlays+='<text x="'+cx+'" y="'+labelY+'" text-anchor="middle" font-size="7" font-weight="950" fill="#b00063">'+label+'</text>';
       }
     }
     const raw=String(r.label||r.store||''),lab=raw.length>16?raw.slice(0,15)+'…':raw;
     svg+='<text x="'+cx+'" y="'+(H-23)+'" text-anchor="middle" font-size="8" fill="#52657c">'+esc(lab)+'</text>';
   });
   if(metric==='money'&&pts.length>1)svg+='<polyline points="'+pts.join(' ')+'" fill="none" stroke="#ec007c" stroke-width="2.5"/>';
+  svg+=metaOverlays;
   host.innerHTML=svg+'</svg>';
 }
 function sortRows(rows){
@@ -915,22 +939,94 @@ function sortButton(key,label){
   return '<button class="v176-sales-sort" data-v176-sort="'+key+'">'+label+mark+'</button>'
 }
 function bindSort(root,d){qa('[data-v176-sort]',root).forEach(b=>b.onclick=()=>{const k=b.dataset.v176Sort;salesSort.dir=salesSort.key===k?-salesSort.dir:-1;salesSort.key=k;renderSalesTables(d)})}
-function renderSalesTables(d){
+function monthlyStoreOptions(){
+  const src=visibleStoreControl()||q('#store');
+  const values=[];
+  if(src){
+    [...src.options].forEach(o=>{
+      const value=String(o.value||'').trim(),label=String(o.textContent||value).trim();
+      if(value&&!values.some(x=>x.value===value))values.push({value,label});
+    });
+  }
+  if(!values.some(x=>x.value==='Compañía'))values.unshift({value:'Compañía',label:'Compañía'});
+  return values;
+}
+function ensureMonthTableStoreControl(d){
+  const wrap=q('#salesExecRows')?.closest('.tablewrap');if(!wrap)return null;
+  let bar=q('#v176MonthStoreBar');
+  if(!bar){
+    bar=document.createElement('div');bar.id='v176MonthStoreBar';bar.className='v176-month-store-bar';
+    bar.innerHTML='<label class="v176-month-store-filter"><span>Tienda</span><select id="v176MonthStoreSelect" aria-label="Tienda para tabla mensual"></select></label>';
+    wrap.parentNode.insertBefore(bar,wrap);
+  }
+  const sel=q('#v176MonthStoreSelect',bar),opts=monthlyStoreOptions();
+  if(sel){
+    const previous=salesTableStore||'Compañía';
+    sel.innerHTML=opts.map(o=>'<option value="'+esc(o.value)+'">'+esc(o.label)+'</option>').join('');
+    salesTableStore=opts.some(o=>o.value===previous)?previous:'Compañía';
+    sel.value=salesTableStore;
+    if(!sel.dataset.v176bound){
+      sel.dataset.v176bound='1';
+      sel.addEventListener('change',()=>{
+        salesTableStore=sel.value||'Compañía';
+        salesTableData=null;
+        loadMonthTableStore(window.__V176_SALES_DATA);
+      });
+    }
+  }
+  return sel;
+}
+function renderMonthTableRows(d,rows){
   const metric=salesMetric;
-  const rows=[...(d.company_months||d.months||[])].sort((a,b)=>n(a.month)-n(b.month));
+  const ordered=[...(rows||[])].sort((a,b)=>n(a.month)-n(b.month));
   const table=q('#salesExecRows')?.closest('table'),head=table?.querySelector('thead tr');
   const currentHead=metric==='pieces'?'Piezas '+d.year:'Venta '+d.year;
   const previousHead=metric==='pieces'?'Piezas '+d.previous_year:'Venta '+d.previous_year;
   const lastHead=metric==='pieces'?'Venta $':'Venta pzas';
   if(head)head.innerHTML='<th>Mes</th><th>Meta</th><th id="salesYearTh">'+currentHead+'</th><th id="salesPrevTh">'+previousHead+'</th><th>'+(metric==='pieces'?'% Meta $':'% Meta')+'</th><th>% vs '+d.previous_year+'</th><th>'+lastHead+'</th>';
   const monthBody=q('#salesExecRows');
-  if(monthBody)monthBody.innerHTML=rows.map(r=>{
+  if(monthBody)monthBody.innerHTML=ordered.map(r=>{
     const pctPrev=metric==='pieces'?r.pieces_growth:r.pct_previous;
     const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
     const last=metric==='pieces'?money(r.current):nf(r.pieces);
     return '<tr><td><b>'+esc(r.label)+'</b></td><td>'+(n(r.target)>0?money(r.target):'—')+'</td><td><b>'+cv+'</b></td><td>'+pv+'</td><td class="'+tone(r.pct_goal,true)+'">'+pct(r.pct_goal)+'</td><td class="'+tone(pctPrev,false)+'">'+pct(pctPrev)+'</td><td>'+last+'</td></tr>';
-  }).join('');
+  }).join('')||'<tr><td colspan="7">Sin información para la tienda seleccionada.</td></tr>';
+}
+async function loadMonthTableStore(baseD){
+  if(!baseD||salesTableBusy)return;
+  ensureMonthTableStoreControl(baseD);
+  if(salesTableStore==='Compañía'){
+    salesTableData={year:baseD.year,store:'Compañía',months:baseD.company_months||baseD.months||[]};
+    renderMonthTableRows(baseD,salesTableData.months);
+    return;
+  }
+  if(salesTableData&&Number(salesTableData.year)===Number(baseD.year)&&salesTableData.store===salesTableStore){
+    renderMonthTableRows(baseD,salesTableData.months||[]);
+    return;
+  }
+  salesTableBusy=true;
+  const body=q('#salesExecRows');
+  if(body)body.innerHTML='<tr><td colspan="7">Cargando '+esc(salesTableStore)+'…</td></tr>';
+  try{
+    const data=await A('/api/commercial-sales-v176?year='+encodeURIComponent(baseD.year)+'&month=0&store='+encodeURIComponent(salesTableStore),{timeoutMs:180000});
+    salesTableData={year:data.year,store:salesTableStore,months:data.months||[]};
+    renderMonthTableRows(baseD,salesTableData.months);
+  }catch(e){
+    if(body)body.innerHTML='<tr><td colspan="7">No fue posible consultar '+esc(salesTableStore)+'.</td></tr>';
+    console.warn('[V176] tabla mensual por tienda',e);
+  }finally{salesTableBusy=false}
+}
+function renderSalesTables(d){
+  ensureMonthTableStoreControl(d);
+  if(salesTableStore==='Compañía'){
+    renderMonthTableRows(d,d.company_months||d.months||[]);
+  }else if(salesTableData&&Number(salesTableData.year)===Number(d.year)&&salesTableData.store===salesTableStore){
+    renderMonthTableRows(d,salesTableData.months||[]);
+  }else{
+    setTimeout(()=>loadMonthTableStore(d),0);
+  }
 
+  const metric=salesMetric;
   let box=q('#v168SalesStores');if(!box){box=document.createElement('div');box.id='v168SalesStores';q('#v109-sales-exec')?.append(box)}
   let stores=sortRows((d.stores||[]).map(r=>({...r,pct_previous:metric==='pieces'?r.pieces_growth:r.pct_previous})));
   const title=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta por tienda · acumulado meses cargados';
