@@ -335,6 +335,73 @@ def install(m):
         total_pieces_prev = sum(num(r.get("pieces_previous")) for r in selected_rows)
 
         stores, store_cut = store_rows_from_entries(latest, use_months, yy)
+
+        # Reparación selectiva por tienda. El OCR de la tabla resumen puede perder
+        # una sola celda (caso observado: Toluca, Venta 2025). V174 ya dispone de
+        # respaldo por tienda/mismo mes, así que sólo consultamos las filas que
+        # llegaron incompletas, sin inventar cifras.
+        if selected_month:
+            async def _store_month_detail(store_name):
+                detail = sales_base(
+                    request=request, year=yy,
+                    through_month=selected_month, store=store_name,
+                )
+                if inspect.isawaitable(detail):
+                    detail = await detail
+                rows = list((detail or {}).get("months") or [])
+                return dict(rows[selected_month-1]) if len(rows) >= selected_month else {}
+
+            by_store = {norm(r.get("store")): r for r in stores}
+            for row in list(stores):
+                current_value = num(row.get("current"))
+                missing_previous = current_value > 0 and num(row.get("previous")) <= 0
+                missing_target = current_value > 0 and num(row.get("target")) <= 0
+                is_puebla_sur = norm(row.get("store")) == norm("Puebla Sur") and yy == 2026
+                if not (missing_previous or missing_target or is_puebla_sur):
+                    continue
+                try:
+                    month_row = await _store_month_detail(str(row.get("store") or ""))
+                except Exception as exc:
+                    print(f"[V176-SALES-STORE-REPAIR] {row.get('store')}: {type(exc).__name__}: {exc}", flush=True)
+                    month_row = {}
+                if missing_previous and not is_puebla_sur and num(month_row.get("previous")) > 0:
+                    row["previous"] = num(month_row.get("previous"))
+                    row["pieces_previous"] = num(month_row.get("pieces_previous"))
+                if missing_target and num(month_row.get("target")) > 0:
+                    row["target"] = num(month_row.get("target"))
+                if num(row.get("pieces")) <= 0 and num(month_row.get("pieces")) > 0:
+                    row["pieces"] = num(month_row.get("pieces"))
+                cur = num(row.get("current")); prev = num(row.get("previous")); goal = num(row.get("target"))
+                row["pct_goal"] = cur / goal * 100 if goal else None
+                row["pct_previous"] = (cur / prev - 1) * 100 if prev and not is_puebla_sur else None
+                if is_puebla_sur:
+                    row["opening_month"] = 8
+                    row["comparison_note"] = "Apertura Ago 2026 · comparación 2025 no aplica"
+
+            # Puebla Sur debe aparecer desde agosto aunque una lectura OCR puntual
+            # no haya reconocido su renglón. Se recupera del motor estable por tienda.
+            puebla_key = norm("Puebla Sur")
+            if yy == 2026 and selected_month >= 8 and puebla_key not in by_store:
+                try:
+                    puebla_month = await _store_month_detail("Puebla Sur")
+                except Exception:
+                    puebla_month = {}
+                if any(num(puebla_month.get(k)) > 0 for k in ("current","target","pieces")):
+                    cur = num(puebla_month.get("current")); goal = num(puebla_month.get("target"))
+                    stores.append({
+                        "store": "Puebla Sur",
+                        "current": cur, "previous": 0.0, "target": goal,
+                        "pieces": num(puebla_month.get("pieces")), "pieces_previous": 0.0,
+                        "months": 1, "opening_month": 8,
+                        "comparison_note": "Apertura Ago 2026 · comparación 2025 no aplica",
+                        "pct_goal": cur / goal * 100 if goal else None,
+                        "pct_previous": None, "pieces_growth": None,
+                    })
+
+            stores.sort(key=lambda x: (-num(x.get("current")), norm(x.get("store"))))
+            for rank, row in enumerate(stores, 1):
+                row["rank"] = rank
+
         # En un mes específico SIEMPRE se muestran todas las tiendas. Sólo en
         # evolución acumulada se respeta un alcance de tienda individual.
         if not selected_month and not is_company(requested_scope):
@@ -578,6 +645,8 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 .sales-chart-scroll{overflow-x:auto!important;overflow-y:hidden!important}
 .v176-chart-svg{display:block;width:auto!important;max-width:none!important;min-width:100%!important}
 .v176-opening{display:inline-block;font-size:8px;font-weight:900;color:#7a5d00;background:#fff7d6;border:1px solid #f1d46a;border-radius:999px;padding:3px 7px;white-space:nowrap}
+.v176-general-row td{font-weight:950!important;background:#eef4fb!important;border-top:2px solid #18477f!important;color:#103d73!important}
+.v176-general-row td:first-child{color:#18477f!important}
 .v176-month-store-bar{display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;margin:7px 0 6px}
 .v176-month-store-filter,.v176-store-sales-month-filter{display:flex;flex-direction:column;gap:3px;min-width:205px}
 .v176-month-store-filter span,.v176-store-sales-month-filter span{font-size:7px;line-height:1;font-weight:950;color:#667085;text-transform:uppercase;letter-spacing:.025em}
@@ -989,12 +1058,32 @@ function renderMonthTableRows(d,rows){
   const lastHead=metric==='pieces'?'Venta $':'Venta pzas';
   if(head)head.innerHTML='<th>Mes</th><th>Meta</th><th id="salesYearTh">'+currentHead+'</th><th id="salesPrevTh">'+previousHead+'</th><th>'+(metric==='pieces'?'% Meta $':'% Meta')+'</th><th>% vs '+d.previous_year+'</th><th>'+lastHead+'</th>';
   const monthBody=q('#salesExecRows');
-  if(monthBody)monthBody.innerHTML=ordered.map(r=>{
+  if(!monthBody)return;
+  const detail=ordered.map(r=>{
     const pctPrev=metric==='pieces'?r.pieces_growth:r.pct_previous;
     const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
     const last=metric==='pieces'?money(r.current):nf(r.pieces);
     return '<tr><td><b>'+esc(r.label)+'</b></td><td>'+(n(r.target)>0?money(r.target):'—')+'</td><td><b>'+cv+'</b></td><td>'+pv+'</td><td class="'+tone(r.pct_goal,true)+'">'+pct(r.pct_goal)+'</td><td class="'+tone(pctPrev,false)+'">'+pct(pctPrev)+'</td><td>'+last+'</td></tr>';
-  }).join('')||'<tr><td colspan="7">Sin información para la tienda seleccionada.</td></tr>';
+  }).join('');
+
+  if(!ordered.length){
+    monthBody.innerHTML='<tr><td colspan="7">Sin información para la tienda seleccionada.</td></tr>';
+    return;
+  }
+  const totals=ordered.reduce((a,r)=>{
+    a.target+=n(r.target);a.current+=n(r.current);a.previous+=n(r.previous);
+    a.pieces+=n(r.pieces);a.piecesPrevious+=n(r.pieces_previous);return a;
+  },{target:0,current:0,previous:0,pieces:0,piecesPrevious:0});
+  const goalPct=totals.target?totals.current/totals.target*100:null;
+  const prevPct=metric==='pieces'
+    ?(totals.piecesPrevious?(totals.pieces/totals.piecesPrevious-1)*100:null)
+    :(totals.previous?(totals.current/totals.previous-1)*100:null);
+  const totalCurrent=metric==='pieces'?nf(totals.pieces):money(totals.current);
+  const totalPrevious=metric==='pieces'?nf(totals.piecesPrevious):money(totals.previous);
+  const totalLast=metric==='pieces'?money(totals.current):nf(totals.pieces);
+  const pueblaNoCompare=salesTableStore==='Puebla Sur'&&Number(d.year)===2026;
+  monthBody.innerHTML=detail+
+    '<tr class="v176-general-row"><td>GENERAL</td><td>'+money(totals.target)+'</td><td>'+totalCurrent+'</td><td>'+(pueblaNoCompare?'No aplica':totalPrevious)+'</td><td>'+pct(goalPct)+'</td><td>'+(pueblaNoCompare?'No aplica':pct(prevPct))+'</td><td>'+totalLast+'</td></tr>';
 }
 async function loadMonthTableStore(baseD){
   if(!baseD||salesTableBusy)return;
@@ -1031,6 +1120,10 @@ function renderStoreSalesTable(baseD,data){
   let box=q('#v168SalesStores');if(!box){box=document.createElement('div');box.id='v168SalesStores';q('#v109-sales-exec')?.append(box)}
   let stores=sortRows(((data&&data.stores)||[]).map(r=>({...r,pct_previous:metric==='pieces'?r.pieces_growth:r.pct_previous})));
   const opts=['<option value="0">Todos los meses</option>'].concat((baseD.available_months||[]).map(m=>'<option value="'+m+'">'+monthLong[m-1]+'</option>'));
+  const t=(data&&data.totals)||{},totalGrowth=metric==='pieces'?t.pieces_growth:t.growth;
+  const totalCurrent=metric==='pieces'?nf(t.pieces):money(t.current);
+  const totalPrevious=metric==='pieces'?nf(t.pieces_previous):money(t.previous);
+  const totalRow='<tr class="v176-general-row"><td></td><td>GENERAL</td><td>'+money(t.target)+'</td><td>'+totalCurrent+'</td><td>'+totalPrevious+'</td><td>'+pct(t.compliance)+'</td><td>'+pct(totalGrowth)+'</td></tr>';
   box.innerHTML=
     '<div class="v176-store-sales-head">'+
       '<div class="title">'+storeSalesTitle(baseD,month)+'</div>'+
@@ -1040,10 +1133,10 @@ function renderStoreSalesTable(baseD,data){
     (stores.length?stores.map((r,i)=>{
       const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
       const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pct_previous);
-      const prevCell=r.comparison_note?'—':pv;
+      const prevCell=r.comparison_note?'No aplica':pv;
       const targetCell=n(r.target)>0?money(r.target):'—';
       return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+targetCell+'</td><td><b>'+cv+'</b></td><td>'+prevCell+'</td><td class="'+(r.pct_goal==null?'':(n(r.pct_goal)>=100?'v176-pos':'v176-neg'))+'">'+pct(r.pct_goal)+'</td><td class="'+(r.comparison_note?'':(n(r.pct_previous)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td></tr>';
-    }).join(''):'<tr><td colspan="7">Sin información para el periodo seleccionado.</td></tr>')+
+    }).join('')+totalRow:'<tr><td colspan="7">Sin información para el periodo seleccionado.</td></tr>')+
     '</tbody></table></div>';
 
   const sel=q('#v176StoreSalesMonth',box);
