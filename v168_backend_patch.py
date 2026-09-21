@@ -436,35 +436,11 @@ def install(m):
         if raw_value <= 0: return min(candidates)
         return min(candidates, key=lambda x: abs(x - raw_value))
 
-    def choose_from_signed_diff(raw_value, current, signed_diff):
-        raw_value = num(raw_value); current = num(current); signed_diff = num(signed_diff)
-        if raw_value > 0:
-            return choose_consistent(raw_value, current, signed_diff)
-        # En el resumen del PDF las columnas "Dif. Meta" / "Dif. 2025"
-        # representan Venta actual - referencia. Conservar el signo permite
-        # reconstruir la referencia cuando OCR pierde únicamente esa celda.
-        inferred = current - signed_diff
-        if current > 0 and signed_diff != 0 and inferred > 0:
-            ratio = inferred / current
-            if .20 <= ratio <= 3.0:
-                return inferred
-        return 0.0
-
     def ocr_sales_pdf(path: Path, cache_key: str):
         cache = OCR_DIR / f"{re.sub(r'[^A-Za-z0-9_-]+','_',cache_key or path.stem)}.json"
         try:
             if cache.exists() and cache.stat().st_mtime >= path.stat().st_mtime:
-                cached = json.loads(cache.read_text(encoding="utf-8"))
-                cached_stores = cached.get("stores") or {}
-                toluca = cached_stores.get("Toluca") or {}
-                puebla_sur = cached_stores.get("Puebla Sur") or {}
-                # Reprocesar sólo los PDF cuyo caché viejo quedó incompleto:
-                # Toluca sin año anterior o Puebla Sur (post-apertura) sin meta.
-                # Así no forzamos OCR de todos los meses históricos.
-                needs_toluca = num(toluca.get("current")) > 0 and num(toluca.get("previous")) <= 0
-                needs_puebla_sur = num(puebla_sur.get("current")) > 0 and num(puebla_sur.get("target")) <= 0
-                if not (needs_toluca or needs_puebla_sur):
-                    return cached
+                return json.loads(cache.read_text(encoding="utf-8"))
         except Exception: pass
         result = {"company":{}, "stores":{}, "cut_date":"", "ocr":False, "error":""}
         try:
@@ -523,8 +499,7 @@ def install(m):
                         if a<=xc<b and re.search(r"\d",token["text"]): vals.append(parse_number_token(token["text"]))
                     return max(vals,key=lambda x:abs(x)) if vals else 0.0
                 raw_goal=zone(.40,.48); raw_prev=zone(.48,.545); current=zone(.545,.625); diff_goal=zone(.675,.755); diff_prev=zone(.805,.86)
-                goal=choose_from_signed_diff(raw_goal,current,diff_goal)
-                previous=choose_from_signed_diff(raw_prev,current,diff_prev)
+                goal=choose_consistent(raw_goal,current,diff_goal) if raw_goal>0 else 0.0; previous=choose_consistent(raw_prev,current,diff_prev) if raw_prev>0 else 0.0
                 record={"store":STORE_CODES[code],"target":goal,"previous":previous,"current":current,"pieces_previous":zone(.15,.215),"pieces":zone(.215,.30),"code":code}
                 score=record["current"]+record["previous"]+record["target"]; old=parsed.get(code)
                 if old is None or score>old[0]: parsed[code]=(score,record)

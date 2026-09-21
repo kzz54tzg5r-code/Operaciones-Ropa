@@ -14,8 +14,10 @@ Solicitado 2026-09-18:
 from __future__ import annotations
 
 from collections import defaultdict
+import difflib
 import inspect
 import math
+import re
 import threading
 import time
 import unicodedata
@@ -201,6 +203,112 @@ def install(m):
                 return dict(row or {}), payload
         return {}, payload
 
+    store_repair_cache = {}
+
+    def targeted_store_ocr(entry, store_name):
+        """OCR puntual de una fila sin alterar el caché/total corporativo V168."""
+        if not entry:
+            return {}
+        key = (str(entry.get("id") or ""), norm(store_name))
+        cached = store_repair_cache.get(key)
+        if cached is not None:
+            return dict(cached)
+        wanted = "TOLUC" if norm(store_name) == norm("Toluca") else ("PUESU" if norm(store_name) == norm("Puebla Sur") else "")
+        if not wanted:
+            return {}
+        result = {}
+        try:
+            import pdfplumber
+            import pytesseract
+            from pytesseract import Output
+            path = m.resolve_entry_path(entry)
+            if not path.exists():
+                return {}
+            with pdfplumber.open(path) as pdf:
+                if not pdf.pages:
+                    return {}
+                image = pdf.pages[0].to_image(resolution=180).original
+            w, h = image.size
+            crop = image.crop((int(.03*w), int(.66*h), int(.97*w), int(.985*h)))
+            df = pytesseract.image_to_data(crop, lang="eng", config="--psm 6", output_type=Output.DATAFRAME)
+            try:
+                df = df.dropna(subset=["text"])
+            except Exception:
+                pass
+            tokens = []
+            for _, rr in df.iterrows():
+                txt = str(rr.get("text") or "").strip()
+                if txt:
+                    tokens.append({
+                        "text": txt, "left": float(rr.get("left") or 0),
+                        "top": float(rr.get("top") or 0), "width": float(rr.get("width") or 0),
+                    })
+            tokens.sort(key=lambda x: x["top"])
+            groups = []
+            for token in tokens:
+                group = None
+                for candidate in reversed(groups[-6:]):
+                    if abs(candidate["top"] - token["top"]) <= 6:
+                        group = candidate; break
+                if group is None:
+                    group = {"top": token["top"], "tokens": []}; groups.append(group)
+                group["tokens"].append(token)
+
+            cw = crop.size[0]
+            def clean_code(value):
+                return re.sub(r"[^A-Z]", "", str(value or "").upper().replace("1","I").replace("0","O"))
+            def parse_token(value):
+                raw = str(value or "").replace("$","").replace(",","").replace(" ","").replace("O","0").replace("o","0")
+                raw = re.sub(r"[^0-9.-]", "", raw)
+                try: return float(raw)
+                except Exception: return 0.0
+            def infer(raw_value, current, signed_diff):
+                raw_value = num(raw_value); current = num(current); signed_diff = num(signed_diff)
+                if raw_value > 0:
+                    if current <= 0 or signed_diff == 0:
+                        return raw_value
+                    delta = abs(signed_diff)
+                    choices = [max(current-delta,0.0), current+delta]
+                    return min(choices, key=lambda x: abs(x-raw_value))
+                candidate = current - signed_diff
+                if current > 0 and signed_diff != 0 and candidate > 0 and .20 <= candidate/current <= 3.0:
+                    return candidate
+                return 0.0
+
+            for group in groups:
+                line = sorted(group["tokens"], key=lambda x: x["left"])
+                codes = []
+                for token in line:
+                    code = clean_code(token["text"])
+                    if code:
+                        score = difflib.SequenceMatcher(None, code, wanted).ratio()
+                        if score >= .55:
+                            codes.append(score)
+                if not codes:
+                    continue
+                def zone(a,b):
+                    vals=[]
+                    for token in line:
+                        xc=(token["left"]+token["width"]/2)/cw
+                        if a<=xc<b and re.search(r"\d",token["text"]):
+                            vals.append(parse_token(token["text"]))
+                    return max(vals,key=lambda x:abs(x)) if vals else 0.0
+                raw_goal=zone(.40,.48); raw_prev=zone(.48,.545); current=zone(.545,.625)
+                diff_goal=zone(.675,.755); diff_prev=zone(.805,.86)
+                result={
+                    "target": infer(raw_goal,current,diff_goal),
+                    "previous": infer(raw_prev,current,diff_prev),
+                    "current": num(current),
+                    "pieces_previous": zone(.15,.215),
+                    "pieces": zone(.215,.30),
+                }
+                break
+        except Exception as exc:
+            print(f"[V176-TARGETED-OCR] {store_name}: {type(exc).__name__}: {exc}", flush=True)
+            result = {}
+        store_repair_cache[key] = dict(result)
+        return result
+
     def store_rows_from_entries(latest, months_to_use, year):
         acc = defaultdict(lambda: {
             "current": 0.0, "previous": 0.0, "target": 0.0,
@@ -371,6 +479,21 @@ def install(m):
                     row["target"] = num(month_row.get("target"))
                 if num(row.get("pieces")) <= 0 and num(month_row.get("pieces")) > 0:
                     row["pieces"] = num(month_row.get("pieces"))
+
+                # Si el motor normal sigue con una celda vacía, reparar únicamente
+                # Toluca/Puebla Sur desde la fila visual del PDF. No modifica los
+                # totales ni el OCR corporativo almacenado.
+                still_missing_prev = num(row.get("current")) > 0 and num(row.get("previous")) <= 0 and not is_puebla_sur
+                still_missing_target = num(row.get("current")) > 0 and num(row.get("target")) <= 0
+                if still_missing_prev or still_missing_target:
+                    targeted = targeted_store_ocr(latest.get(selected_month), str(row.get("store") or ""))
+                    if still_missing_prev and num(targeted.get("previous")) > 0:
+                        row["previous"] = num(targeted.get("previous"))
+                        row["pieces_previous"] = num(targeted.get("pieces_previous")) or num(row.get("pieces_previous"))
+                    if still_missing_target and num(targeted.get("target")) > 0:
+                        row["target"] = num(targeted.get("target"))
+                    if num(row.get("pieces")) <= 0 and num(targeted.get("pieces")) > 0:
+                        row["pieces"] = num(targeted.get("pieces"))
                 cur = num(row.get("current")); prev = num(row.get("previous")); goal = num(row.get("target"))
                 row["pct_goal"] = cur / goal * 100 if goal else None
                 row["pct_previous"] = (cur / prev - 1) * 100 if prev and not is_puebla_sur else None
@@ -386,6 +509,13 @@ def install(m):
                     puebla_month = await _store_month_detail("Puebla Sur")
                 except Exception:
                     puebla_month = {}
+                targeted_puebla = targeted_store_ocr(latest.get(selected_month), "Puebla Sur")
+                if num(puebla_month.get("current")) <= 0 and num(targeted_puebla.get("current")) > 0:
+                    puebla_month["current"] = num(targeted_puebla.get("current"))
+                if num(puebla_month.get("target")) <= 0 and num(targeted_puebla.get("target")) > 0:
+                    puebla_month["target"] = num(targeted_puebla.get("target"))
+                if num(puebla_month.get("pieces")) <= 0 and num(targeted_puebla.get("pieces")) > 0:
+                    puebla_month["pieces"] = num(targeted_puebla.get("pieces"))
                 if any(num(puebla_month.get(k)) > 0 for k in ("current","target","pieces")):
                     cur = num(puebla_month.get("current")); goal = num(puebla_month.get("target"))
                     stores.append({
