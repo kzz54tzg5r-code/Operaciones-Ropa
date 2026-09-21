@@ -1356,22 +1356,19 @@ async function renderModels(force){
       if(d)modelClientCache.set(cacheKey,d);
     }
     if(!d)throw new Error('Sin respuesta de modelos');
-
-    const champLocal=q('[data-champ-section].active')?.dataset.champSection||'Todas';
-    const slowLocal=q('#slowSection')?.value||'Todas';
-    const zeroLocal=q('#zeroSection')?.value||slowLocal;
-    const bySection=(rows,value)=>value==='Todas'?[...(rows||[])]:[...(rows||[])].filter(x=>String(x.section||'').toLowerCase().startsWith(String(value).toLowerCase()));
-    const champRows=bySection(d.champions,champLocal);
-    const slowRows=bySection(d.slow,slowLocal);
-    const zeroRows=bySection(d.zero,zeroLocal);
-
     let ck={rows:[],editable:false};
     if(store!=='Compañía'){
       try{ck=await A('/api/model-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:60000})}catch(_){}
     }
     const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
     if(typeof window.renderModelRows==='function'){
-      window.renderModelRows(champRows.slice(0,150),slowRows,zeroRows,champLocal,slowLocal,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+      try{
+        window.renderModelRows((d.champions||[]).slice(0,150),d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+      }catch(renderErr){
+        console.warn('[V176] renderModelRows retry',renderErr);
+        await new Promise(resolve=>setTimeout(resolve,0));
+        window.renderModelRows((d.champions||[]).slice(0,150),d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+      }
     }
     fixModelHead();renderPareto(d.pareto?.rows||[]);
   }catch(e){
