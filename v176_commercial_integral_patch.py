@@ -864,6 +864,67 @@ body[data-v163-module="analysis"] #page-macro .compact-filter .filter-caption{
   margin:2px 3px 5px!important
 }
 
+/* Ubicación: Sección a la izquierda y Área a la derecha, compactos y sin encimarse. */
+body[data-v163-module="analysis"] .v176-location-filter-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  grid-template-rows:auto auto!important;
+  column-gap:10px!important;
+  row-gap:2px!important;
+  align-items:start!important;
+  padding:8px 10px!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid>#macroAreaSectionSwitch{
+  grid-column:1!important;grid-row:2!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid>#macroAreaGroupSwitch{
+  grid-column:2!important;grid-row:2!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid>.filter-caption:first-child{
+  grid-column:1!important;grid-row:1!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid>#macroAreaSectionSwitch+.filter-caption{
+  grid-column:2!important;grid-row:1!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid #macroAreaSectionSwitch,
+body[data-v163-module="analysis"] .v176-location-filter-grid #macroAreaGroupSwitch,
+body[data-v163-module="analysis"] .v176-slow-filter-grid .v176-select-tabs{
+  margin:0!important;gap:3px!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid #macroAreaSectionSwitch>button,
+body[data-v163-module="analysis"] .v176-location-filter-grid #macroAreaGroupSwitch>button,
+body[data-v163-module="analysis"] .v176-slow-filter-grid .v176-select-tabs>button{
+  min-width:0!important;
+  height:34px!important;min-height:34px!important;
+  padding:5px 7px!important;
+  font-size:7.5px!important;
+  gap:5px!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid .v176-tab-icon,
+body[data-v163-module="analysis"] .v176-slow-filter-grid .v176-tab-icon{
+  width:15px!important;height:15px!important;flex-basis:15px!important
+}
+body[data-v163-module="analysis"] .v176-location-filter-grid .v176-tab-icon svg,
+body[data-v163-module="analysis"] .v176-slow-filter-grid .v176-tab-icon svg{
+  width:14px!important;height:14px!important
+}
+
+/* Modelos lentos: mismo par de filtros Sección / Área en dos mitades. */
+body[data-v163-module="analysis"] .v176-slow-filter-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:10px!important;
+  align-items:start!important;
+  width:100%!important;
+  margin:0 0 7px!important
+}
+body[data-v163-module="analysis"] .v176-slow-filter-half{
+  min-width:0!important
+}
+body[data-v163-module="analysis"] .v176-slow-filter-half>.filter-caption{
+  margin:0 3px 5px!important
+}
+
 /* Modelos lentos: el select original se oculta y se refleja como pestañas. */
 body[data-v163-module="analysis"] #slowSection.v176-select-tab-source{
   display:none!important
@@ -873,6 +934,24 @@ body[data-v163-module="analysis"] .v176-select-tabs{
 }
 
 @media(max-width:900px){
+  body[data-v163-module="analysis"] .v176-location-filter-grid,
+  body[data-v163-module="analysis"] .v176-slow-filter-grid{
+    grid-template-columns:1fr!important;
+    row-gap:6px!important
+  }
+  body[data-v163-module="analysis"] .v176-location-filter-grid>.filter-caption:first-child{
+    grid-column:1!important;grid-row:1!important
+  }
+  body[data-v163-module="analysis"] .v176-location-filter-grid>#macroAreaSectionSwitch{
+    grid-column:1!important;grid-row:2!important
+  }
+  body[data-v163-module="analysis"] .v176-location-filter-grid>#macroAreaSectionSwitch+.filter-caption{
+    grid-column:1!important;grid-row:3!important
+  }
+  body[data-v163-module="analysis"] .v176-location-filter-grid>#macroAreaGroupSwitch{
+    grid-column:1!important;grid-row:4!important
+  }
+
   body[data-v163-module="analysis"] #metricSwitch,
   body[data-v163-module="analysis"] #macroAreaSectionSwitch,
   body[data-v163-module="analysis"] #macroAreaGroupSwitch,
@@ -1022,7 +1101,7 @@ const pct=v=>v==null||!Number.isFinite(Number(v))?'—':n(v).toFixed(1)+'%';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const monthLong=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false,salesTableStore='Compañía',salesTableBusy=false,salesTableData=null,salesStoreTableMonth=0,salesStoreTableBusy=false,salesStoreTableData=null;const modelClientCache=new Map();
+let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false,salesTableStore='Compañía',salesTableBusy=false,salesTableData=null,salesStoreTableMonth=0,salesStoreTableBusy=false,salesStoreTableData=null,slowAreaFilter='Todas';const modelClientCache=new Map();
 
 async function A(url,opt){
   if(typeof window.api==='function')return window.api(url,opt);
@@ -1106,7 +1185,7 @@ function v176IconName(groupId,label){
     if(t.includes('bodega'))return 'box';
     if(t.includes('ddi'))return 'clock';
   }
-  if(groupId==='macroAreaGroupSwitch'){
+  if(groupId==='macroAreaGroupSwitch'||groupId==='v176SlowAreaTabs'){
     if(t.includes('colgado'))return 'hanger';
     if(t.includes('doblado'))return 'layers';
     if(t.includes('jeans'))return 'tag';
@@ -1243,6 +1322,65 @@ function bindHorizontalTabActions(){
   });
 }
 
+function arrangeLocationFilterHalves(){
+  const sec=q('#macroAreaSectionSwitch'),area=q('#macroAreaGroupSwitch');
+  const panel=sec?.parentElement;
+  if(panel&&area?.parentElement===panel)panel.classList.add('v176-location-filter-grid');
+}
+
+function ensureSlowFilterPair(){
+  const sel=q('#slowSection');
+  const sectionTabs=q('#v176SlowSectionTabs');
+  if(!sel||!sectionTabs)return;
+
+  const panel=sel.closest('.panel.compact-filter')||sel.parentElement?.parentElement;
+  if(!panel)return;
+
+  // Oculta únicamente el control select legado; las pestañas quedan visibles.
+  if(sel.parentElement)sel.parentElement.style.setProperty('display','none','important');
+
+  let grid=q('#v176SlowFilterGrid');
+  if(!grid){
+    grid=document.createElement('div');
+    grid.id='v176SlowFilterGrid';
+    grid.className='v176-slow-filter-grid';
+
+    const left=document.createElement('div');
+    left.className='v176-slow-filter-half';
+    left.innerHTML='<div class="filter-caption">Sección</div>';
+
+    const right=document.createElement('div');
+    right.className='v176-slow-filter-half';
+    right.innerHTML='<div class="filter-caption">Área</div><div class="v176-select-tabs" id="v176SlowAreaTabs"></div>';
+
+    grid.append(left,right);
+    panel.insertBefore(grid,panel.firstChild);
+    left.append(sectionTabs);
+  }else{
+    const left=grid.children[0];
+    if(left&&sectionTabs.parentElement!==left)left.append(sectionTabs);
+  }
+
+  if(!sel.dataset.v176slowrefresh){
+    sel.dataset.v176slowrefresh='1';
+    sel.addEventListener('change',()=>renderModels(false));
+  }
+
+  const areaTabs=q('#v176SlowAreaTabs');
+  if(areaTabs){
+    const values=['Todas','Colgado','Doblado','Jeans','Lencería'];
+    areaTabs.innerHTML=values.map(v=>
+      '<button type="button" class="'+(v===slowAreaFilter?'active':'')+'" data-slow-area="'+esc(v)+'">'+esc(v)+'</button>'
+    ).join('');
+    decorateHorizontalTabGroup('v176SlowAreaTabs');
+    qa('button[data-slow-area]',areaTabs).forEach(btn=>btn.onclick=()=>{
+      slowAreaFilter=btn.dataset.slowArea||'Todas';
+      setHorizontalActive(areaTabs,btn);
+      renderModels(false);
+    });
+  }
+}
+
 function installCompactTableFilters(){
   // El nombre se conserva para no romper llamadas previas, pero ahora restaura
   // exactamente filtros tipo pestaña horizontal.
@@ -1256,6 +1394,9 @@ function installCompactTableFilters(){
   // Modelos lentos y sugerido 0 a 1 también usan pestañas horizontales con icono.
   tabsFromSelect('slowSection','v176SlowSectionTabs');
   tabsFromSelect('zeroSection','v176ZeroSectionTabs');
+
+  arrangeLocationFilterHalves();
+  ensureSlowFilterPair();
 
   // Reaplica iconos por si otro parche regeneró botones después del primer render.
   ['metricSwitch','macroAreaSectionSwitch','macroAreaGroupSwitch','paretoGroupSwitch','champSectionSwitch','rubroSectionSwitch','v176SlowSectionTabs','v176ZeroSectionTabs']
@@ -1356,6 +1497,16 @@ async function renderModels(force){
       if(d)modelClientCache.set(cacheKey,d);
     }
     if(!d)throw new Error('Sin respuesta de modelos');
+
+    const slowSection=q('#slowSection')?.value||'Todas';
+    const normFilter=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+    const slowRows=(d.slow||[]).filter(row=>{
+      const sec=normFilter(row.section),area=normFilter(row.location||row.area||row.location_type||row.type_location);
+      const secOk=slowSection==='Todas'||sec.startsWith(normFilter(slowSection));
+      const areaOk=slowAreaFilter==='Todas'||area.includes(normFilter(slowAreaFilter));
+      return secOk&&areaOk;
+    });
+
     let ck={rows:[],editable:false};
     if(store!=='Compañía'){
       try{ck=await A('/api/model-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:60000})}catch(_){}
@@ -1363,18 +1514,29 @@ async function renderModels(force){
     const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
     if(typeof window.renderModelRows==='function'){
       try{
-        window.renderModelRows((d.champions||[]).slice(0,150),d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+        window.renderModelRows((d.champions||[]).slice(0,150),slowRows,d.zero||[],section,slowSection,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+        if(q('#slowTitle'))q('#slowTitle').textContent='Modelos lentos · '+store+' · '+slowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
       }catch(renderErr){
         console.warn('[V176] renderModelRows retry',renderErr);
         await new Promise(resolve=>setTimeout(resolve,0));
-        window.renderModelRows((d.champions||[]).slice(0,150),d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+        window.renderModelRows((d.champions||[]).slice(0,150),slowRows,d.zero||[],section,slowSection,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+        if(q('#slowTitle'))q('#slowTitle').textContent='Modelos lentos · '+store+' · '+slowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
       }
     }
     fixModelHead();renderPareto(d.pareto?.rows||[]);
   }catch(e){
     if(cached){
       try{
-        if(typeof window.renderModelRows==='function')window.renderModelRows((cached.champions||[]).slice(0,150),cached.slow||[],cached.zero||[],section,section,store,{},false,'',store);
+        if(typeof window.renderModelRows==='function'){
+          const cachedSlowSection=q('#slowSection')?.value||'Todas';
+          const nf=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+          const cachedSlow=(cached.slow||[]).filter(row=>{
+            const sec=nf(row.section),area=nf(row.location||row.area||row.location_type||row.type_location);
+            return (cachedSlowSection==='Todas'||sec.startsWith(nf(cachedSlowSection)))&&(slowAreaFilter==='Todas'||area.includes(nf(slowAreaFilter)));
+          });
+          window.renderModelRows((cached.champions||[]).slice(0,150),cachedSlow,cached.zero||[],section,cachedSlowSection,store,{},false,'',store);
+          if(q('#slowTitle'))q('#slowTitle').textContent='Modelos lentos · '+store+' · '+cachedSlowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
+        }
         fixModelHead();renderPareto(cached.pareto?.rows||[]);
       }catch(_){}
     }else{
