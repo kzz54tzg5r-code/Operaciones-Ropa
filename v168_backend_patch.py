@@ -407,7 +407,7 @@ def install(m):
         "OLIVA":"Olivar", "PUEBL":"Puebla", "TOLUC":"Toluca", "QUERE":"Querétaro",
         "VERAC":"Veracruz", "ATEMA":"Atemajac", "LEON":"León", "MIRAV":"Miravalle", "AGUAS":"Aguascalientes",
     }
-    OCR_DIR = Path(getattr(m, "DATA_ROOT", Path.home()/"OperacionesRopaData")) / "commercial" / "sales_ocr_v168"
+    OCR_DIR = Path(getattr(m, "DATA_ROOT", Path.home()/"OperacionesRopaData")) / "commercial" / "sales_ocr_v168_restore_20260921"
     OCR_DIR.mkdir(parents=True, exist_ok=True)
     OCR_LOCK = threading.RLock()
 
