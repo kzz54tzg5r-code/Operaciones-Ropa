@@ -821,7 +821,11 @@ body[data-v163-module="analysis"] .v176-select-tabs>button{
   align-items:center!important;
   justify-content:center!important;
   gap:8px!important;
-  box-shadow:none!important
+  box-shadow:none!important;
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  position:relative!important;
+  z-index:3!important
 }
 .v176-tab-icon{
   display:inline-flex!important;
@@ -1137,16 +1141,22 @@ function decorateHorizontalTabGroup(groupId){
 
 function restoreButtonTabs(groupId){
   const group=q('#'+groupId);if(!group)return;
-  // Borra cualquier selector compacto generado por versiones anteriores.
+  // Reactiva la botonera nativa. V166 había agregado esta clase para sustituirla
+  // por dropdowns; al retirarla las pestañas vuelven a recibir clics normalmente.
   const parent=group.parentElement;
   qa('.v176-table-filter-row',parent||document).forEach(row=>row.remove());
-  group.classList.remove('v176-switches-hidden');
-  ['display','width','height','min-height','margin','padding','overflow'].forEach(p=>group.style.removeProperty(p));
+  group.classList.remove('v176-switches-hidden','v166-native-internal-hidden');
+  ['display','width','height','min-height','margin','padding','overflow','pointer-events'].forEach(p=>group.style.removeProperty(p));
+  qa('button',group).forEach(b=>{
+    b.disabled=false;
+    b.style.setProperty('pointer-events','auto','important');
+  });
   decorateHorizontalTabGroup(groupId);
 }
 
 function tabsFromSelect(selectId,tabsId){
   const sel=q('#'+selectId);if(!sel)return;
+  sel.parentElement?.classList.remove('v166-native-internal-hidden');
   let tabs=q('#'+tabsId);
   if(!tabs){
     tabs=document.createElement('div');
@@ -1170,6 +1180,69 @@ function tabsFromSelect(selectId,tabsId){
   sel.classList.add('v176-select-tab-source');
 }
 
+function setHorizontalActive(group,btn){
+  if(!group||!btn)return;
+  qa('button',group).forEach(x=>x.classList.toggle('active',x===btn));
+}
+
+function bindHorizontalTabActions(){
+  const metric=q('#metricSwitch');
+  qa('button[data-metric]',metric||document).forEach(btn=>{
+    btn.onclick=()=>{
+      setHorizontalActive(metric,btn);
+      try{METRIC=btn.dataset.metric||'suggested'}catch(_){}
+      try{if(typeof renderBars==='function')renderBars()}catch(e){console.warn('[V176] metric tab',e)}
+    };
+  });
+
+  const sec=q('#macroAreaSectionSwitch');
+  qa('button[data-area-section]',sec||document).forEach(btn=>{
+    btn.onclick=()=>{
+      setHorizontalActive(sec,btn);
+      try{MACRO_AREA_SECTION=btn.dataset.areaSection||'Todas'}catch(_){}
+      setTimeout(()=>renderArea().catch?.(()=>{}),0);
+    };
+  });
+
+  const area=q('#macroAreaGroupSwitch');
+  qa('button[data-area-group]',area||document).forEach(btn=>{
+    btn.onclick=()=>{
+      setHorizontalActive(area,btn);
+      try{MACRO_AREA_GROUP=btn.dataset.areaGroup||'Todas'}catch(_){}
+      setTimeout(()=>renderArea().catch?.(()=>{}),0);
+    };
+  });
+
+  const pareto=q('#paretoGroupSwitch');
+  qa('button[data-pareto-group]',pareto||document).forEach(btn=>{
+    btn.onclick=()=>{
+      setHorizontalActive(pareto,btn);
+      try{PARETO_GROUP=btn.dataset.paretoGroup||'section'}catch(_){}
+      setTimeout(()=>renderModels(true).catch?.(()=>{}),0);
+    };
+  });
+
+  const champ=q('#champSectionSwitch');
+  qa('button[data-champ-section]',champ||document).forEach(btn=>{
+    btn.onclick=()=>{
+      setHorizontalActive(champ,btn);
+      const value=btn.dataset.champSection||'Todas';
+      const sel=q('#champSection');
+      if(sel)sel.value=value;
+      setTimeout(()=>renderModels(true).catch?.(()=>{}),0);
+    };
+  });
+
+  const rubro=q('#rubroSectionSwitch');
+  qa('button[data-rubro-section]',rubro||document).forEach(btn=>{
+    btn.onclick=()=>{
+      setHorizontalActive(rubro,btn);
+      try{RUBRO_SECTION=btn.dataset.rubroSection||'Todas'}catch(_){}
+      try{if(typeof loadCommercialDetail==='function')loadCommercialDetail('rubro')}catch(e){console.warn('[V176] rubro tab',e)}
+    };
+  });
+}
+
 function installCompactTableFilters(){
   // El nombre se conserva para no romper llamadas previas, pero ahora restaura
   // exactamente filtros tipo pestaña horizontal.
@@ -1187,6 +1260,8 @@ function installCompactTableFilters(){
   // Reaplica iconos por si otro parche regeneró botones después del primer render.
   ['metricSwitch','macroAreaSectionSwitch','macroAreaGroupSwitch','paretoGroupSwitch','champSectionSwitch','rubroSectionSwitch','v176SlowSectionTabs','v176ZeroSectionTabs']
     .forEach(decorateHorizontalTabGroup);
+
+  bindHorizontalTabActions();
 }
 
 function excessFor(x){
@@ -1281,13 +1356,22 @@ async function renderModels(force){
       if(d)modelClientCache.set(cacheKey,d);
     }
     if(!d)throw new Error('Sin respuesta de modelos');
+
+    const champLocal=q('[data-champ-section].active')?.dataset.champSection||'Todas';
+    const slowLocal=q('#slowSection')?.value||'Todas';
+    const zeroLocal=q('#zeroSection')?.value||slowLocal;
+    const bySection=(rows,value)=>value==='Todas'?[...(rows||[])]:[...(rows||[])].filter(x=>String(x.section||'').toLowerCase().startsWith(String(value).toLowerCase()));
+    const champRows=bySection(d.champions,champLocal);
+    const slowRows=bySection(d.slow,slowLocal);
+    const zeroRows=bySection(d.zero,zeroLocal);
+
     let ck={rows:[],editable:false};
     if(store!=='Compañía'){
       try{ck=await A('/api/model-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:60000})}catch(_){}
     }
     const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
     if(typeof window.renderModelRows==='function'){
-      window.renderModelRows((d.champions||[]).slice(0,150),d.slow||[],d.zero||[],section,section,store,map,!!ck.editable,store==='Compañía'?'':store,store);
+      window.renderModelRows(champRows.slice(0,150),slowRows,zeroRows,champLocal,slowLocal,store,map,!!ck.editable,store==='Compañía'?'':store,store);
     }
     fixModelHead();renderPareto(d.pareto?.rows||[]);
   }catch(e){
