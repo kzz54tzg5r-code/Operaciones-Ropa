@@ -249,6 +249,13 @@ def install(m):
 #page-sellthrough .v177-st-note{font-size:8px;color:#64748b;margin:6px 0}
 #analysisNav [data-sub="sellthrough"] .v177-nav-ico{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;margin-right:6px;vertical-align:middle}
 #analysisNav [data-sub="sellthrough"] .v177-nav-ico svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+/* Un solo icono por pestaña. V165/V167 pueden ejecutarse en distinto orden y
+   antes dejaban dos capas de iconos visibles en la barra comercial. */
+#analysisNav .switch:has(.v167-tab-icon) .v164-tab-icon,
+#analysisNav .switch:has(.v167-tab-icon) .v166-tab-icon{display:none!important}
+#analysisNav [data-sub="sellthrough"] .v164-tab-icon,
+#analysisNav [data-sub="sellthrough"] .v166-tab-icon,
+#analysisNav [data-sub="sellthrough"] .v167-tab-icon{display:none!important}
 @media(max-width:900px){
   #page-sellthrough .v177-st-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
   #page-sellthrough .v177-st-kpi{padding:9px 10px}
@@ -263,7 +270,33 @@ def install(m):
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const nf=v=>Number(v||0).toLocaleString('es-MX',{maximumFractionDigits:0});
   const p1=v=>Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
-  let band='all',busy=false,lastData=null;
+  let band='all',busy=false,lastData=null,navObserver=null,navDedupeBusy=false;
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+  function dedupeAnalysisNavIcons(){
+    const nav=q('#analysisNav');if(!nav||navDedupeBusy)return;
+    navDedupeBusy=true;
+    try{
+      qa('.switch',nav).forEach(btn=>{
+        const icons=qa('.v164-tab-icon,.v166-tab-icon,.v167-tab-icon,.v177-nav-ico',btn);
+        if(icons.length<=1)return;
+        let keep=null;
+        if(btn.dataset.sub==='sellthrough')keep=icons.find(x=>x.classList.contains('v177-nav-ico'))||icons[0];
+        else keep=icons.find(x=>x.classList.contains('v167-tab-icon'))||
+                  icons.find(x=>x.classList.contains('v164-tab-icon'))||
+                  icons.find(x=>x.classList.contains('v166-tab-icon'))||icons[0];
+        icons.forEach(x=>{if(x!==keep)x.remove()});
+      });
+    }finally{navDedupeBusy=false}
+  }
+
+  function watchAnalysisNav(){
+    const nav=q('#analysisNav');if(!nav)return;
+    dedupeAnalysisNavIcons();
+    if(navObserver)return;
+    navObserver=new MutationObserver(()=>dedupeAnalysisNavIcons());
+    navObserver.observe(nav,{childList:true,subtree:true});
+  }
 
   function ensureUI(){
     const nav=q('#analysisNav');
@@ -304,12 +337,33 @@ def install(m):
         renderRows(lastData);
       });
     }
+    watchAnalysisNav();
+    dedupeAnalysisNavIcons();
   }
 
   async function A(url){
-    const res=await fetch(url,{credentials:'same-origin',cache:'no-store'});
-    if(!res.ok){let msg='Error '+res.status;try{const j=await res.json();msg=j.detail||msg}catch(_){}throw new Error(msg)}
-    return res.json();
+    let lastError=null;
+    const waits=[0,3500,6500,9000];
+    for(let attempt=0;attempt<waits.length;attempt++){
+      if(waits[attempt])await sleep(waits[attempt]);
+      try{
+        const res=await fetch(url,{credentials:'same-origin',cache:'no-store'});
+        if(res.ok)return res.json();
+        let msg='Error '+res.status;
+        try{const j=await res.json();msg=j.detail||msg}catch(_){}
+        const err=new Error(msg);err.status=res.status;
+        if(![502,503,504].includes(res.status))throw err;
+        lastError=err;
+      }catch(e){
+        if(e?.status&&!([502,503,504].includes(e.status)))throw e;
+        lastError=e;
+      }
+      const body=q('#v177StRows');
+      if(body&&attempt<waits.length-1){
+        body.innerHTML='<tr><td colspan="12">Preparando Sell Through… reintentando automáticamente ('+(attempt+2)+'/'+waits.length+').</td></tr>';
+      }
+    }
+    throw lastError||new Error('No fue posible consultar Sell Through');
   }
 
   function inBand(x){
@@ -359,7 +413,8 @@ def install(m):
       const d=await A('/api/commercial-sellthrough-v177?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent('Todos'));
       render(d);
     }catch(e){
-      if(body)body.innerHTML='<tr><td colspan="12">No fue posible cargar Sell Through: '+esc(e.message||e)+'</td></tr>';
+      if(body)body.innerHTML='<tr><td colspan="12">No fue posible cargar Sell Through: '+esc(e.message||e)+'. Reintentando al estabilizar el servicio…</td></tr>';
+      setTimeout(()=>{if(q('#page-sellthrough.active')&&!busy)load()},12000);
     }finally{busy=false}
   }
 
@@ -387,6 +442,8 @@ def install(m):
     if(e.target.matches?.('#week,#store,#section')&&q('#page-sellthrough.active'))load();
   },true);
   document.addEventListener('click',e=>{
+    const navBtn=e.target.closest?.('#analysisNav .switch');
+    if(navBtn)setTimeout(dedupeAnalysisNavIcons,0);
     const b=e.target.closest?.('#analysisNav [data-sub="sellthrough"]');
     if(b){e.preventDefault();e.stopImmediatePropagation();openSellThrough();}
   },true);
