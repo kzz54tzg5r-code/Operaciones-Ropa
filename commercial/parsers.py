@@ -263,6 +263,9 @@ _CAPACITY_RAW_HEADERS = {
     "PRECIO MENUDEO", "PRECIO VENTA", "PRECIO", "PRECIO OFERTA",
     "EXISTENCIA PISO", "PISO", "EXISTENCIA BODEGA", "BODEGA", "EXISTENCIA TOTAL", "EXISTENCIA",
     "EXISTENCIA CEDIS", "EXISTENCIA EN CEDIS", "EXISTENCIA CEDIS PZAS", "EXIST CEDIS", "EXIST. CEDIS", "INVENTARIO CEDIS", "CEDIS",
+    "TRANSITO", "TRÁNSITO", "EN TRANSITO", "EN TRÁNSITO", "EXISTENCIA TRANSITO", "EXISTENCIA TRÁNSITO",
+    "MERCANCIA EN TRANSITO", "MERCANCÍA EN TRÁNSITO", "TRANSITO PZAS", "TRÁNSITO PZAS",
+    "PZAS EN TRANSITO", "PZAS EN TRÁNSITO",
     "SUG 7", "SUGERIDO 7", "VPD", "DIAS DE INVENTARIO SUG 7", "DDI", "DIAS STOCK",
     "VTA EN PZAS 7", "VENTA PZAS 7", "VTA EN PZAS 30", "VENTA PZAS 30", "VTA ACUM MES EN PZAS", "VENTA PZAS",
     "VTA ACUM AÑO EN PZAS", "VTA ACUM ANO EN PZAS", "VTA ACUM AÑO PZAS", "VTA ACUM ANO PZAS",
@@ -437,6 +440,12 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
         "EXISTENCIA CEDIS", "EXISTENCIA EN CEDIS", "EXISTENCIA CEDIS PZAS",
         "EXIST CEDIS", "EXIST. CEDIS", "INVENTARIO CEDIS", "CEDIS"
     ], 0))
+    out["Tránsito"] = to_number(_series(source, [
+        "TRANSITO", "TRÁNSITO", "EN TRANSITO", "EN TRÁNSITO",
+        "EXISTENCIA TRANSITO", "EXISTENCIA TRÁNSITO",
+        "MERCANCIA EN TRANSITO", "MERCANCÍA EN TRÁNSITO",
+        "TRANSITO PZAS", "TRÁNSITO PZAS", "PZAS EN TRANSITO", "PZAS EN TRÁNSITO"
+    ], 0))
     out["VPD"] = to_number(_series(source, ["SUG 7", "SUGERIDO 7", "VPD"], 0))
     out["DDI"] = to_number(_series(source, ["DIAS DE INVENTARIO SUG 7", "DDI", "DIAS STOCK"], 0))
     computed_ddi = out["Existencia"].div(out["VPD"].replace(0, np.nan))
@@ -487,7 +496,7 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
     valid = out["Tienda"].ne("") & ~out["Modelo"].isin(["", "nan", "None"])
     out = out.loc[valid].copy()
     numeric_cols = [
-        "Existencia piso", "Existencia bodega", "Existencia", "Existencia CEDIS", "VPD", "DDI",
+        "Existencia piso", "Existencia bodega", "Existencia", "Existencia CEDIS", "Tránsito", "VPD", "DDI",
         "Venta pzas 7", "Venta pzas 30", "Venta pzas", "Venta pzas año", "Venta $ 7", "Venta $ mes", "Venta $", "Costo unitario",
         "Precio unitario", "Inversión", "Utilidad %", "Utilidad $", "Capacidad", "Excedente",
     ]

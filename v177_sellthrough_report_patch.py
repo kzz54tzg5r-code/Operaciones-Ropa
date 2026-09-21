@@ -277,7 +277,7 @@ def install(m):
             "week": week, "store": selected_store, "section": section,
             "catalog": "Tipo catálogo vigente", "status": "Vigente",
             "rows": [], "totals": {},
-            "formula": "Vta acum pzs / (Vta acum pzs + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
+            "formula": "Vta acum pzs / (Vta acum pzs + Existencia + Tránsito" + (" + Existencia CEDIS" if company_scope else "") + ")",
             "source": "Base de muertos y cambios + Excel de capacidades",
             "sales_scope": "Acumulado meses disponibles en Base de muertos y cambios",
         }
@@ -346,9 +346,10 @@ def install(m):
         agg["__id"] = work["__id"]
         agg["existence"] = pd.to_numeric(work.get("Existencia", 0), errors="coerce").fillna(0.0)
         agg["cedis_existence"] = pd.to_numeric(work.get("Existencia CEDIS", 0), errors="coerce").fillna(0.0)
+        agg["transit"] = pd.to_numeric(work.get("Tránsito", 0), errors="coerce").fillna(0.0)
         agg["suggested"] = pd.to_numeric(work.get("VPD", 0), errors="coerce").fillna(0.0)
 
-        sums = agg.groupby("__id", sort=False)[["existence","suggested"]].sum()
+        sums = agg.groupby("__id", sort=False)[["existence","transit","suggested"]].sum()
         # CEDIS es inventario central y normalmente se repite por tienda para el
         # mismo modelo. Tomar el máximo por ID evita multiplicarlo por 17 tiendas.
         cedis = agg.groupby("__id", sort=False)["cedis_existence"].max().rename("cedis_existence")
@@ -376,7 +377,9 @@ def install(m):
             numeric[col] = numeric[col].fillna(default).astype(str)
 
         models = numeric.reset_index().rename(columns={"__id":"id_art"})
-        models["inventory_for_sell"] = models["existence"] + (models["cedis_existence"] if company_scope else 0.0)
+        # Tránsito sí entra al Sell Through tanto en Compañía como por tienda.
+        # CEDIS entra sólo en Compañía, como se definió previamente.
+        models["inventory_for_sell"] = models["existence"] + models["transit"] + (models["cedis_existence"] if company_scope else 0.0)
         models["available_base"] = models["sales_pzas"] + models["inventory_for_sell"]
         models["sell_through"] = (
             models["sales_pzas"] / models["available_base"].replace(0, pd.NA) * 100
@@ -385,7 +388,8 @@ def install(m):
         total_sales = float(models["sales_pzas"].sum())
         total_exist = float(models["existence"].sum())
         total_cedis = float(models["cedis_existence"].sum())
-        total_inventory_for_sell = total_exist + (total_cedis if company_scope else 0.0)
+        total_transit = float(models["transit"].sum())
+        total_inventory_for_sell = total_exist + total_transit + (total_cedis if company_scope else 0.0)
         total_base = total_sales + total_inventory_for_sell
         overall = (total_sales / total_base * 100) if total_base else 0.0
         total_models = int(len(models))
@@ -410,6 +414,7 @@ def install(m):
                 "sales_pzas": num(row.get("sales_pzas")),
                 "existence": num(row.get("existence")),
                 "cedis_existence": num(row.get("cedis_existence")),
+                "transit": num(row.get("transit")),
                 "inventory_for_sell": num(row.get("inventory_for_sell")),
                 "available_base": num(row.get("available_base")),
                 "suggested": num(row.get("suggested")),
@@ -428,6 +433,7 @@ def install(m):
                 "sales_pzas": total_sales,
                 "existence": total_exist,
                 "cedis_existence": total_cedis,
+                "transit": total_transit,
                 "inventory_for_sell": total_inventory_for_sell,
                 "available_base": total_base,
                 "models": total_models,
@@ -435,7 +441,7 @@ def install(m):
                 "mid50_79": mid,
                 "under50": low,
             },
-            "formula": "Vta acum pzs / (Vta acum pzs + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
+            "formula": "Vta acum pzs / (Vta acum pzs + Existencia + Tránsito" + (" + Existencia CEDIS" if company_scope else "") + ")",
             "source": "Base de muertos y cambios + Excel de capacidades",
             "sales_scope": "Acumulado " + (" + ".join(sales_months) if sales_months else "meses disponibles"),
             "sales_months": sales_months,
@@ -449,13 +455,13 @@ def install(m):
         print(
             f"[V177-SELLTHROUGH] {week} {selected_store} {section} "
             f"modelos={total_models} ST={overall:.1f}% VTA_ACUM={total_sales:.0f} "
-            f"CEDIS={total_cedis:.0f} include_cedis={company_scope} meses={sales_months}",
+            f"CEDIS={total_cedis:.0f} TRANSITO={total_transit:.0f} include_cedis={company_scope} meses={sales_months}",
             flush=True,
         )
         return payload
 
     css = r'''<style id="v177-sellthrough-css">
-#page-sellthrough .v177-st-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:9px 0}
+#page-sellthrough .v177-st-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:9px 0}
 #page-sellthrough .v177-st-kpi{background:#fff;border:1px solid #d9e4f1;border-radius:12px;padding:12px 14px;min-width:0}
 #page-sellthrough .v177-st-kpi .lab{font-size:8px;font-weight:950;color:#66768d;text-transform:uppercase}
 #page-sellthrough .v177-st-kpi .val{font-size:22px;font-weight:950;color:#123f7b;margin-top:3px}
@@ -549,8 +555,8 @@ def install(m):
         '</div>'+
         '<div class="v177-st-note" id="v177StFormula">Sell Through con Vta acum pzs por ID desde Base de muertos y cambios. En Compañía incluye existencia CEDIS; por tienda CEDIS sólo se muestra y no entra al cálculo.</div>'+
         '<div class="tablewrap"><table class="table v177-st-table"><thead><tr>'+
-          '<th>#</th><th>% Sell Through</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Vta acum pzs</th><th>Existencia</th><th>Existencia CEDIS</th><th>Base disponible</th><th>Sugerido 7</th>'+
-        '</tr></thead><tbody id="v177StRows"><tr><td colspan="12">Selecciona Sell Through para consultar.</td></tr></tbody></table></div>';
+          '<th>#</th><th>% Sell Through</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Vta acum pzs</th><th>Existencia</th><th>Existencia CEDIS</th><th>Tránsito</th><th>Base disponible</th><th>Sugerido 7</th>'+
+        '</tr></thead><tbody id="v177StRows"><tr><td colspan="13">Selecciona Sell Through para consultar.</td></tr></tbody></table></div>';
       const anchor=q('#page-more')||q('#page-analysis-upload')||q('#appView');
       if(anchor?.parentNode)anchor.parentNode.insertBefore(page,anchor);
       else document.body.appendChild(page);
@@ -583,7 +589,7 @@ def install(m):
       }
       const body=q('#v177StRows');
       if(body&&attempt<waits.length-1){
-        body.innerHTML='<tr><td colspan="12">Preparando Sell Through… reintentando automáticamente ('+(attempt+2)+'/'+waits.length+').</td></tr>';
+        body.innerHTML='<tr><td colspan="13">Preparando Sell Through… reintentando automáticamente ('+(attempt+2)+'/'+waits.length+').</td></tr>';
       }
     }
     throw lastError||new Error('No fue posible consultar Sell Through');
@@ -605,8 +611,8 @@ def install(m):
     const rows=(d.rows||[]).filter(inBand);
     const body=q('#v177StRows');
     if(body)body.innerHTML=rows.map((r,i)=>
-      '<tr><td><b>#'+(i+1)+'</b></td><td>'+pill(r.sell_through)+'</td><td>'+esc(r.id_art)+'</td><td><b>'+esc(r.model)+'</b></td><td>'+esc(r.brand)+'</td><td>'+esc(r.section)+'</td><td>'+esc(r.rubro)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+nf(r.existence)+'</td><td>'+nf(r.cedis_existence)+'</td><td>'+nf(r.available_base)+'</td><td>'+Number(r.suggested||0).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td></tr>'
-    ).join('')||'<tr><td colspan="12">Sin modelos para este rango.</td></tr>';
+      '<tr><td><b>#'+(i+1)+'</b></td><td>'+pill(r.sell_through)+'</td><td>'+esc(r.id_art)+'</td><td><b>'+esc(r.model)+'</b></td><td>'+esc(r.brand)+'</td><td>'+esc(r.section)+'</td><td>'+esc(r.rubro)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+nf(r.existence)+'</td><td>'+nf(r.cedis_existence)+'</td><td>'+nf(r.transit)+'</td><td>'+nf(r.available_base)+'</td><td>'+Number(r.suggested||0).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td></tr>'
+    ).join('')||'<tr><td colspan="13">Sin modelos para este rango.</td></tr>';
   }
   function render(d){
     lastData=d;
@@ -617,18 +623,19 @@ def install(m):
       '<div class="v177-st-kpi"><div class="lab">Vta acum pzs</div><div class="val">'+nf(t.sales_pzas)+'</div><div class="note">'+esc(d.sales_scope||'Acumulado anual')+'</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Existencia</div><div class="val">'+nf(t.existence)+'</div><div class="note">inventario en tiendas</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Existencia CEDIS</div><div class="val">'+nf(t.cedis_existence)+'</div><div class="note">'+(d.cedis_in_sellthrough?'incluida en Compañía':'sólo informativa por tienda')+'</div></div>'+
+      '<div class="v177-st-kpi"><div class="lab">Tránsito</div><div class="val">'+nf(t.transit)+'</div><div class="note">incluido en Sell Through</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Modelos ≥ 80%</div><div class="val">'+nf(t.over80)+'</div><div class="note">de '+nf(t.models)+' modelos</div></div>';
     const ctx=q('#v177StContext');
     if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Tipo catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades');
     const formula=q('#v177StFormula');
-    if(formula)formula.textContent='Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Existencia)')+'. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
+    if(formula)formula.textContent='Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Existencia + Tránsito)')+'. Tránsito sí se considera en todos los alcances. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
     renderRows(d);
   }
 
   async function load(){
     if(busy)return;
     ensureUI();busy=true;
-    const body=q('#v177StRows');if(body)body.innerHTML='<tr><td colspan="12">Cargando Sell Through…</td></tr>';
+    const body=q('#v177StRows');if(body)body.innerHTML='<tr><td colspan="13">Cargando Sell Through…</td></tr>';
     try{
       const week=q('#week')?.value||'';
       const store=q('#store')?.value||'Compañía';
@@ -636,10 +643,67 @@ def install(m):
       const d=await A('/api/commercial-sellthrough-v177?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent('Todos'));
       render(d);
     }catch(e){
-      if(body)body.innerHTML='<tr><td colspan="12">No fue posible cargar Sell Through: '+esc(e.message||e)+'. Reintentando al estabilizar el servicio…</td></tr>';
+      if(body)body.innerHTML='<tr><td colspan="13">No fue posible cargar Sell Through: '+esc(e.message||e)+'. Reintentando al estabilizar el servicio…</td></tr>';
       setTimeout(()=>{if(q('#page-sellthrough.active')&&!busy)load()},12000);
     }finally{busy=false}
   }
+
+  async function fixedCapacityUpload(file,logTarget,button){
+    if(!file)return;
+    const logNode=q(logTarget);
+    const say=msg=>{if(logNode){logNode.classList?.remove('hidden');logNode.textContent=msg}};
+    const fd=new FormData();fd.append('file',file,file.name);
+    button.disabled=true;button.textContent='Procesando Excel…';
+    say('Subiendo '+file.name+'… No cierres esta pestaña.');
+    try{
+      const start=await fetch('/api/upload/jobs/capacity',{method:'POST',body:fd,credentials:'same-origin',cache:'no-store'});
+      const raw=await start.text();let job={};try{job=raw?JSON.parse(raw):{}}catch(_){}
+      if(!start.ok)throw new Error(job.detail||job.message||('Error HTTP '+start.status));
+      if(!job.id)throw new Error('El servidor no devolvió identificador de carga.');
+      localStorage.setItem('operacionesRopaUploadJob.capacity',job.id);
+      for(;;){
+        await sleep(2500);
+        const res=await fetch('/api/upload/jobs/'+encodeURIComponent(job.id),{credentials:'same-origin',cache:'no-store'});
+        const txt=await res.text();let state={};try{state=txt?JSON.parse(txt):{}}catch(_){}
+        if(!res.ok)throw new Error(state.detail||state.message||('Error HTTP '+res.status));
+        say((state.message||'Procesando capacidades…')+'\nProgreso: '+Number(state.progress||0).toLocaleString('es-MX')+'%');
+        if(state.status==='complete'){
+          localStorage.removeItem('operacionesRopaUploadJob.capacity');
+          const result=state.result||{};
+          say('Capacidades procesadas correctamente.\n\nRegistros: '+Number(result.rows||0).toLocaleString('es-MX')+'\nTiendas: '+Number(result.stores||0).toLocaleString('es-MX')+'\nLa nueva versión ya quedó publicada.');
+          try{if(typeof loadUploadHistories==='function')await loadUploadHistories()}catch(_){}
+          try{if(typeof safeRefreshDash==='function')await safeRefreshDash()}catch(_){}
+          break;
+        }
+        if(state.status==='error'||state.status==='interrupted'){
+          localStorage.removeItem('operacionesRopaUploadJob.capacity');
+          throw new Error(state.error||state.message||'No fue posible procesar el Excel.');
+        }
+      }
+    }catch(e){
+      say('Error procesando capacidades: '+(e?.message||e));
+    }finally{
+      button.disabled=false;button.textContent='Procesar Excel';
+    }
+  }
+
+  // El botón de la pantalla Análisis Comercial dejó de emitir solicitudes en
+  // algunos navegadores. Este listener delegado en captura no depende del
+  // onclick legado y garantiza que el archivo seleccionado se envíe.
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest?.('#analysisCapUploadBtn,#uploadCap');
+    if(!btn)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    const analysis=btn.id==='analysisCapUploadBtn';
+    const input=q(analysis?'#analysisCapFile':'#capFile');
+    const file=input?.files?.[0];
+    const target=analysis?'#analysisUploadLog':'#log';
+    if(!file){
+      const node=q(target);if(node)node.textContent='Selecciona Excel de capacidades/existencias.';
+      return;
+    }
+    fixedCapacityUpload(file,target,btn);
+  },true);
 
   function openSellThrough(){
     ensureUI();
@@ -674,7 +738,7 @@ def install(m):
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureUI,{once:true});
   else ensureUI();
   setTimeout(ensureUI,300);setTimeout(ensureUI,1200);
-  console.info('[V177] Sell Through real restaurado.');
+  console.info('[V180] Sell Through con tránsito y carga de capacidades robusta.');
 })();
 </script>'''
 
