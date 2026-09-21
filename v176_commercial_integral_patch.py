@@ -803,13 +803,13 @@ body[data-v163-module="analysis"] #champSectionSwitch>button,
 body[data-v163-module="analysis"] #rubroSectionSwitch>button,
 body[data-v163-module="analysis"] .v176-select-tabs>button{
   flex:1 1 0!important;
-  min-width:112px!important;
+  min-width:126px!important;
   width:auto!important;
-  height:38px!important;
-  min-height:38px!important;
+  height:40px!important;
+  min-height:40px!important;
   padding:7px 12px!important;
   margin:0!important;
-  border:1px solid #d7e1ee!important;
+  border:1px solid transparent!important;
   border-radius:9px!important;
   background:#fff!important;
   color:#173f78!important;
@@ -820,7 +820,19 @@ body[data-v163-module="analysis"] .v176-select-tabs>button{
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
+  gap:8px!important;
   box-shadow:none!important
+}
+.v176-tab-icon{
+  display:inline-flex!important;
+  width:18px!important;height:18px!important;flex:0 0 18px!important;
+  align-items:center!important;justify-content:center!important;
+  color:currentColor!important;pointer-events:none!important
+}
+.v176-tab-icon svg{
+  width:17px!important;height:17px!important;
+  stroke:currentColor!important;fill:none!important;stroke-width:1.9!important;
+  stroke-linecap:round!important;stroke-linejoin:round!important
 }
 body[data-v163-module="analysis"] #metricSwitch>button.active,
 body[data-v163-module="analysis"] #macroAreaSectionSwitch>button.active,
@@ -875,11 +887,12 @@ body[data-v163-module="analysis"] .v176-select-tabs{
   body[data-v163-module="analysis"] #rubroSectionSwitch>button,
   body[data-v163-module="analysis"] .v176-select-tabs>button{
     flex:0 0 auto!important;
-    min-width:94px!important;
-    height:34px!important;
-    min-height:34px!important;
+    min-width:116px!important;
+    height:36px!important;
+    min-height:36px!important;
     padding:6px 10px!important;
-    font-size:8px!important
+    font-size:8px!important;
+    gap:6px!important
   }
 }
 
@@ -1066,6 +1079,62 @@ function fixAnalysisNav(){
   });
 }
 
+const v176TabIcons={
+  grid:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 8-9 5-9-5"/><path d="m3 8 9-5 9 5v8l-9 5-9-5Z"/><path d="M12 13v8"/></svg>',
+  layers:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  store:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h18"/><path d="m5 10 1-6h12l1 6"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>',
+  map:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 5-3 8 3 5-3v15l-5 3-8-3-5 3Z"/><path d="M8 3v15"/><path d="M16 6v15"/></svg>',
+  tag:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13 11 22l-9-9V4h9l9 9Z"/><circle cx="7" cy="9" r="1.5"/></svg>',
+  list:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>',
+  table:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M9 4v16"/></svg>',
+  user:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.4-4 4.1-6 8-6s6.6 2 8 6"/></svg>',
+  hanger:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6a2 2 0 1 1 3.5 1.3L12 9"/><path d="m12 9 9 7H3l9-7Z"/></svg>'
+};
+function v176IconName(groupId,label){
+  const t=String(label||'').toLowerCase();
+  if(groupId==='metricSwitch'){
+    if(t.includes('suger'))return 'chart';
+    if(t.includes('exist'))return 'box';
+    if(t.includes('piso'))return 'store';
+    if(t.includes('bodega'))return 'box';
+    if(t.includes('ddi'))return 'clock';
+  }
+  if(groupId==='macroAreaGroupSwitch'){
+    if(t.includes('colgado'))return 'hanger';
+    if(t.includes('doblado'))return 'layers';
+    if(t.includes('jeans'))return 'tag';
+    if(t.includes('lencer'))return 'hanger';
+    return 'grid';
+  }
+  if(groupId==='paretoGroupSwitch'){
+    if(t.includes('área')||t.includes('area'))return 'map';
+    if(t.includes('catálogo')||t.includes('catalogo'))return 'list';
+    if(t.includes('macro'))return 'table';
+    return 'grid';
+  }
+  if(groupId==='champSectionSwitch'||groupId==='rubroSectionSwitch'||groupId==='macroAreaSectionSwitch'||groupId==='v176SlowSectionTabs'||groupId==='v176ZeroSectionTabs'){
+    if(t.includes('dama'))return 'user';
+    if(t.includes('caballero'))return 'user';
+    if(t.includes('infantil'))return 'user';
+    return 'grid';
+  }
+  return 'grid';
+}
+function decorateHorizontalTabGroup(groupId){
+  const group=q('#'+groupId);if(!group)return;
+  qa('button',group).forEach(btn=>{
+    btn.querySelectorAll('.v176-tab-icon').forEach(x=>x.remove());
+    const label=(btn.textContent||'').replace(/\s+/g,' ').trim();
+    const icon=document.createElement('span');
+    icon.className='v176-tab-icon';
+    icon.innerHTML=v176TabIcons[v176IconName(groupId,label)]||v176TabIcons.grid;
+    btn.prepend(icon);
+  });
+}
+
 function restoreButtonTabs(groupId){
   const group=q('#'+groupId);if(!group)return;
   // Borra cualquier selector compacto generado por versiones anteriores.
@@ -1073,6 +1142,7 @@ function restoreButtonTabs(groupId){
   qa('.v176-table-filter-row',parent||document).forEach(row=>row.remove());
   group.classList.remove('v176-switches-hidden');
   ['display','width','height','min-height','margin','padding','overflow'].forEach(p=>group.style.removeProperty(p));
+  decorateHorizontalTabGroup(groupId);
 }
 
 function tabsFromSelect(selectId,tabsId){
@@ -1088,6 +1158,7 @@ function tabsFromSelect(selectId,tabsId){
   tabs.innerHTML=[...sel.options].map(o=>
     '<button type="button" class="'+(o.value===current?'active':'')+'" data-value="'+esc(o.value)+'">'+esc(o.textContent||o.value)+'</button>'
   ).join('');
+  decorateHorizontalTabGroup(tabsId);
   qa('button',tabs).forEach(btn=>btn.addEventListener('click',()=>{
     const value=btn.dataset.value||'';
     if(sel.value!==value){
@@ -1109,8 +1180,13 @@ function installCompactTableFilters(){
   ['v176MetricSelectField','v176AreaSectionSelectField','v176AreaGroupSelectField','v176ParetoSelectField','v176ChampSectionSelectField','v176RubroSectionSelectField']
     .forEach(id=>q('#'+id)?.remove());
 
-  // Modelos lentos también usa pestaña horizontal.
+  // Modelos lentos y sugerido 0 a 1 también usan pestañas horizontales con icono.
   tabsFromSelect('slowSection','v176SlowSectionTabs');
+  tabsFromSelect('zeroSection','v176ZeroSectionTabs');
+
+  // Reaplica iconos por si otro parche regeneró botones después del primer render.
+  ['metricSwitch','macroAreaSectionSwitch','macroAreaGroupSwitch','paretoGroupSwitch','champSectionSwitch','rubroSectionSwitch','v176SlowSectionTabs','v176ZeroSectionTabs']
+    .forEach(decorateHorizontalTabGroup);
 }
 
 function excessFor(x){
