@@ -579,10 +579,13 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 .v176-chart-svg{display:block;width:auto!important;max-width:none!important;min-width:100%!important}
 .v176-opening{display:inline-block;font-size:8px;font-weight:900;color:#7a5d00;background:#fff7d6;border:1px solid #f1d46a;border-radius:999px;padding:3px 7px;white-space:nowrap}
 .v176-month-store-bar{display:flex;justify-content:flex-end;align-items:flex-end;gap:8px;margin:7px 0 6px}
-.v176-month-store-filter{display:flex;flex-direction:column;gap:3px;min-width:205px}
-.v176-month-store-filter span{font-size:7px;line-height:1;font-weight:950;color:#667085;text-transform:uppercase;letter-spacing:.025em}
-.v176-month-store-filter select{height:38px;min-height:38px;border:1px solid #cad8e8;border-radius:9px;background:#fff;color:#173f78;padding:6px 30px 6px 10px;font-size:9px;font-weight:900;box-shadow:none;outline:none}
-.v176-month-store-filter select:focus{border-color:#176fe8;box-shadow:0 0 0 2px rgba(23,111,232,.10)}
+.v176-month-store-filter,.v176-store-sales-month-filter{display:flex;flex-direction:column;gap:3px;min-width:205px}
+.v176-month-store-filter span,.v176-store-sales-month-filter span{font-size:7px;line-height:1;font-weight:950;color:#667085;text-transform:uppercase;letter-spacing:.025em}
+.v176-month-store-filter select,.v176-store-sales-month-filter select{height:38px;min-height:38px;border:1px solid #cad8e8;border-radius:9px;background:#fff;color:#173f78;padding:6px 30px 6px 10px;font-size:9px;font-weight:900;box-shadow:none;outline:none}
+.v176-month-store-filter select:focus,.v176-store-sales-month-filter select:focus{border-color:#176fe8;box-shadow:0 0 0 2px rgba(23,111,232,.10)}
+.v176-store-sales-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:14px 0 7px}
+.v176-store-sales-head .title{margin:0!important}
+.v176-store-sales-month-filter{min-width:190px}
 
 /* Ubicación agrupada. */
 .v176-area-company td:nth-child(1),.v176-area-company td:nth-child(2){font-weight:900}
@@ -655,8 +658,9 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
   #v176ExcessKpi .v176-excess-sections{font-size:6.6px!important}
   #v176ExcessKpi .v176-excess-pieces{font-size:7px!important}
   .v176-month-store-bar{justify-content:flex-start;margin:6px 0 5px}
-  .v176-month-store-filter{min-width:165px;max-width:210px}
-  .v176-month-store-filter select{height:34px;min-height:34px;font-size:8px}
+  .v176-month-store-filter,.v176-store-sales-month-filter{min-width:165px;max-width:210px}
+  .v176-month-store-filter select,.v176-store-sales-month-filter select{height:34px;min-height:34px;font-size:8px}
+  .v176-store-sales-head{align-items:flex-start;margin:10px 0 6px}
 }
 </style>'''
 
@@ -670,7 +674,7 @@ const pct=v=>v==null||!Number.isFinite(Number(v))?'—':n(v).toFixed(1)+'%';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const monthLong=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false,salesTableStore='Compañía',salesTableBusy=false,salesTableData=null;const modelClientCache=new Map();
+let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false,salesTableStore='Compañía',salesTableBusy=false,salesTableData=null,salesStoreTableMonth=0,salesStoreTableBusy=false,salesStoreTableData=null;const modelClientCache=new Map();
 
 async function A(url,opt){
   if(typeof window.api==='function')return window.api(url,opt);
@@ -1016,6 +1020,63 @@ async function loadMonthTableStore(baseD){
     console.warn('[V176] tabla mensual por tienda',e);
   }finally{salesTableBusy=false}
 }
+function storeSalesTitle(d,month){
+  const m=Number(month||0);
+  if(!m)return 'Venta por tienda · acumulado anual';
+  const now=new Date(),isCurrent=Number(d.year)===now.getFullYear()&&m===(now.getMonth()+1);
+  return 'Venta por tienda · '+(isCurrent?'acumulado ':'')+monthLong[m-1];
+}
+function renderStoreSalesTable(baseD,data){
+  const metric=salesMetric,month=Number(salesStoreTableMonth||0);
+  let box=q('#v168SalesStores');if(!box){box=document.createElement('div');box.id='v168SalesStores';q('#v109-sales-exec')?.append(box)}
+  let stores=sortRows(((data&&data.stores)||[]).map(r=>({...r,pct_previous:metric==='pieces'?r.pieces_growth:r.pct_previous})));
+  const opts=['<option value="0">Todos los meses</option>'].concat((baseD.available_months||[]).map(m=>'<option value="'+m+'">'+monthLong[m-1]+'</option>'));
+  box.innerHTML=
+    '<div class="v176-store-sales-head">'+
+      '<div class="title">'+storeSalesTitle(baseD,month)+'</div>'+
+      '<label class="v176-store-sales-month-filter"><span>Mes</span><select id="v176StoreSalesMonth">'+opts.join('')+'</select></label>'+
+    '</div>'+
+    '<div class="tablewrap"><table class="table v168-sales-rank v176-sales-rank"><thead><tr><th>#</th><th>Tienda</th><th>Meta</th><th>Venta '+baseD.year+'</th><th>Venta '+baseD.previous_year+'</th><th>'+sortButton('pct_goal','% Meta')+'</th><th>'+sortButton('pct_previous','% vs '+baseD.previous_year)+'</th></tr></thead><tbody>'+
+    (stores.length?stores.map((r,i)=>{
+      const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
+      const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pct_previous);
+      const prevCell=r.comparison_note?'—':pv;
+      const targetCell=n(r.target)>0?money(r.target):'—';
+      return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+targetCell+'</td><td><b>'+cv+'</b></td><td>'+prevCell+'</td><td class="'+(r.pct_goal==null?'':(n(r.pct_goal)>=100?'v176-pos':'v176-neg'))+'">'+pct(r.pct_goal)+'</td><td class="'+(r.comparison_note?'':(n(r.pct_previous)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td></tr>';
+    }).join(''):'<tr><td colspan="7">Sin información para el periodo seleccionado.</td></tr>')+
+    '</tbody></table></div>';
+
+  const sel=q('#v176StoreSalesMonth',box);
+  if(sel){
+    sel.value=String(month);
+    sel.addEventListener('change',()=>{
+      salesStoreTableMonth=Number(sel.value||0);
+      salesStoreTableData=null;
+      loadStoreSalesMonth(baseD);
+    });
+  }
+  bindSort(box,baseD);
+}
+async function loadStoreSalesMonth(baseD){
+  if(!baseD||salesStoreTableBusy)return;
+  const month=Number(salesStoreTableMonth||0);
+  if(salesStoreTableData&&Number(salesStoreTableData.year)===Number(baseD.year)&&Number(salesStoreTableData.month)===month){
+    renderStoreSalesTable(baseD,salesStoreTableData.payload);
+    return;
+  }
+  salesStoreTableBusy=true;
+  let box=q('#v168SalesStores');
+  if(!box){box=document.createElement('div');box.id='v168SalesStores';q('#v109-sales-exec')?.append(box)}
+  box.innerHTML='<div class="v176-store-sales-head"><div class="title">'+storeSalesTitle(baseD,month)+'</div><label class="v176-store-sales-month-filter"><span>Mes</span><select disabled><option>Cargando…</option></select></label></div>';
+  try{
+    const data=await A('/api/commercial-sales-v176?year='+encodeURIComponent(baseD.year)+'&month='+encodeURIComponent(month)+'&store='+encodeURIComponent('Compañía'),{timeoutMs:180000});
+    salesStoreTableData={year:baseD.year,month,payload:data};
+    renderStoreSalesTable(baseD,data);
+  }catch(e){
+    box.innerHTML='<div class="v176-store-sales-head"><div class="title">'+storeSalesTitle(baseD,month)+'</div></div><div class="tablewrap"><table class="table"><tbody><tr><td>No fue posible consultar la venta por tienda.</td></tr></tbody></table></div>';
+    console.warn('[V176] venta por tienda por mes',e);
+  }finally{salesStoreTableBusy=false}
+}
 function renderSalesTables(d){
   ensureMonthTableStoreControl(d);
   if(salesTableStore==='Compañía'){
@@ -1026,18 +1087,13 @@ function renderSalesTables(d){
     setTimeout(()=>loadMonthTableStore(d),0);
   }
 
-  const metric=salesMetric;
-  let box=q('#v168SalesStores');if(!box){box=document.createElement('div');box.id='v168SalesStores';q('#v109-sales-exec')?.append(box)}
-  let stores=sortRows((d.stores||[]).map(r=>({...r,pct_previous:metric==='pieces'?r.pieces_growth:r.pct_previous})));
-  const title=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta por tienda · acumulado meses cargados';
-  box.innerHTML='<div class="title">'+title+'</div><div class="tablewrap"><table class="table v168-sales-rank v176-sales-rank"><thead><tr><th>#</th><th>Tienda</th><th>Meta</th><th>Venta '+d.year+'</th><th>Venta '+d.previous_year+'</th><th>'+sortButton('pct_goal','% Meta')+'</th><th>'+sortButton('pct_previous','% vs '+d.previous_year)+'</th></tr></thead><tbody>'+stores.map((r,i)=>{
-    const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
-    const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pct_previous);
-    const prevCell=r.comparison_note?'—':pv;
-    const targetCell=n(r.target)>0?money(r.target):'—';
-    return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+targetCell+'</td><td><b>'+cv+'</b></td><td>'+prevCell+'</td><td class="'+(r.pct_goal==null?'':(n(r.pct_goal)>=100?'v176-pos':'v176-neg'))+'">'+pct(r.pct_goal)+'</td><td class="'+(r.comparison_note?'':(n(r.pct_previous)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td></tr>';
-  }).join('')+'</tbody></table></div>';
-  bindSort(box,d);
+  // "Venta por tienda" tiene su propio selector compacto de Mes y no depende
+  // del selector de mes de la gráfica superior.
+  if(salesStoreTableData&&Number(salesStoreTableData.year)===Number(d.year)&&Number(salesStoreTableData.month)===Number(salesStoreTableMonth||0)){
+    renderStoreSalesTable(d,salesStoreTableData.payload);
+  }else{
+    setTimeout(()=>loadStoreSalesMonth(d),0);
+  }
 }
 function prepareSalesControls(d){
   const ms=q('#salesExecThrough'),ys=q('#salesExecYear');
@@ -1059,6 +1115,7 @@ function detachOldSalesListeners(){
     const c=old.cloneNode(true);c.dataset.v176clone='1';c.dataset.v168='1';old.replaceWith(c);
     c.addEventListener('change',()=>{
       if(id==='salesExecThrough')salesMonth=Number(c.value||0);
+      if(id==='salesExecYear'){salesTableData=null;salesStoreTableData=null;}
       renderSales176(null,true);
     });
   });
