@@ -772,7 +772,8 @@ body[data-v163-module="analysis"] #rubroSectionSwitch.v176-switches-hidden{
 }
 .v176-table-filter-row{
   display:flex!important;align-items:flex-end!important;justify-content:flex-start!important;
-  flex-wrap:wrap!important;gap:8px!important;margin:4px 0 7px!important
+  flex-wrap:wrap!important;gap:8px!important;margin:4px 0 7px!important;
+  width:auto!important;max-width:100%!important
 }
 .v176-table-filter-field{
   display:flex!important;flex-direction:column!important;gap:3px!important;
@@ -804,11 +805,10 @@ body[data-v163-module="analysis"] #page-macro #checklistStoreSelect:focus{
   border-color:#176fe8!important;box-shadow:0 0 0 2px rgba(23,111,232,.10)!important
 }
 .v176-compact-converted{
-  width:fit-content!important;max-width:100%!important;min-width:0!important;
-  padding:7px 9px!important
+  width:100%!important;max-width:none!important;min-width:0!important
 }
 .v176-compact-converted>.filter-caption{display:none!important}
-.v176-compact-converted .v176-table-filter-row{margin:0!important}
+.v176-compact-converted .v176-table-filter-row{margin:0 0 7px!important}
 #metricSwitch.v176-switches-hidden + #bars{margin-top:2px!important}
 
 /* KPI de excedente. */
@@ -997,70 +997,82 @@ function fixAnalysisNav(){
 function compactSelectFromButtons(groupId,selectId,label,dataKey){
   const group=q('#'+groupId);if(!group)return null;
   const buttons=qa('button',group);if(!buttons.length)return null;
+  const parent=group.parentElement;if(!parent)return null;
+
+  // Oculta únicamente la botonera original; no modifica el tamaño ni el
+  // layout del panel, gráfica o tabla que la contiene.
+  group.classList.add('v176-switches-hidden');
+  group.style.setProperty('display','none','important');
+  group.style.setProperty('width','0','important');
+  group.style.setProperty('height','0','important');
+  group.style.setProperty('min-height','0','important');
+  group.style.setProperty('margin','0','important');
+  group.style.setProperty('padding','0','important');
+
+  const oldCaption=group.previousElementSibling;
+  if(oldCaption?.classList?.contains('filter-caption')){
+    oldCaption.style.setProperty('display','none','important');
+  }
+
   let field=q('#'+selectId+'Field');
   if(!field){
     field=document.createElement('label');
-    field.id=selectId+'Field';field.className='v176-table-filter-field';
+    field.id=selectId+'Field';
+    field.className='v176-table-filter-field';
     field.innerHTML='<span>'+label+'</span><select id="'+selectId+'" aria-label="'+label+'"></select>';
-    let row=group.previousElementSibling;
-    if(!row||!row.classList?.contains('v176-table-filter-row')){
-      row=document.createElement('div');row.className='v176-table-filter-row';
-      group.parentNode.insertBefore(row,group);
+
+    let row=q('.v176-table-filter-row',parent);
+    if(!row){
+      row=document.createElement('div');
+      row.className='v176-table-filter-row';
+      parent.insertBefore(row,parent.firstChild);
     }
     row.append(field);
   }
+
   const sel=q('#'+selectId,field);
-  const active=buttons.find(b=>b.classList.contains('active'))||buttons[0];
   const optionValue=b=>String(b.dataset[dataKey]||b.textContent||'').trim();
+  const active=buttons.find(b=>b.classList.contains('active'))||buttons[0];
   const current=active?optionValue(active):'';
-  sel.innerHTML=buttons.map(b=>'<option value="'+esc(optionValue(b))+'">'+esc((b.textContent||'').trim())+'</option>').join('');
+
+  sel.innerHTML=buttons.map(b=>
+    '<option value="'+esc(optionValue(b))+'">'+esc((b.textContent||'').trim())+'</option>'
+  ).join('');
   if([...sel.options].some(o=>o.value===current))sel.value=current;
+
   if(!sel.dataset.v176bound){
     sel.dataset.v176bound='1';
     sel.addEventListener('change',()=>{
       const target=buttons.find(b=>optionValue(b)===sel.value);
       if(target){
         target.click();
-        setTimeout(()=>{const now=buttons.find(b=>b.classList.contains('active'));if(now)sel.value=optionValue(now)},30);
+        setTimeout(()=>{
+          const now=buttons.find(b=>b.classList.contains('active'));
+          if(now)sel.value=optionValue(now);
+          // Algunos renders recrean estilos/clases del grupo; mantenerlo oculto.
+          group.style.setProperty('display','none','important');
+        },30);
       }
     });
   }
-  group.classList.add('v176-switches-hidden');
-  return {field,select:sel,group};
+  return {field,select:sel,group,parent};
 }
 
 function installCompactTableFilters(){
-  // Comparativo Compañía: Sugerido / Existencia / Piso / Bodega / DDI.
-  const metric=compactSelectFromButtons('metricSwitch','v176MetricSelect','Indicador','metric');
-  if(metric)metric.group.parentElement?.classList.add('v176-compact-converted');
+  // Sólo sustituye los filtros. No cambia el diseño/tamaño de los reportes.
+  compactSelectFromButtons('metricSwitch','v176MetricSelect','Indicador','metric');
 
-  // Ubicación: dos selectores compactos, conservando el comportamiento existente.
   const sec=compactSelectFromButtons('macroAreaSectionSwitch','v176AreaSectionSelect','Sección','areaSection');
   const area=compactSelectFromButtons('macroAreaGroupSwitch','v176AreaGroupSelect','Área','areaGroup');
-  if(sec&&area){
-    const secRow=sec.field.parentElement,areaRow=area.field.parentElement;
-    if(secRow!==areaRow){
-      secRow.append(area.field);
-      if(!areaRow.children.length)areaRow.remove();
-    }
-    sec.group.parentElement?.classList.add('v176-compact-converted');
-  }else if(sec){
-    sec.group.parentElement?.classList.add('v176-compact-converted');
-  }else if(area){
-    area.group.parentElement?.classList.add('v176-compact-converted');
+  if(sec&&area&&sec.field.parentElement!==area.field.parentElement){
+    sec.field.parentElement.append(area.field);
+    const other=area.field.parentElement;
+    if(other && !other.children.length)other.remove();
   }
 
-  // Macro 80/20: Desglose en un selector compacto.
-  const pareto=compactSelectFromButtons('paretoGroupSwitch','v176ParetoSelect','Desglose','paretoGroup');
-  if(pareto)pareto.group.parentElement?.classList.add('v176-compact-converted');
-
-  // Modelos 80/20: filtro de sección con el mismo selector compacto.
-  const champ=compactSelectFromButtons('champSectionSwitch','v176ChampSectionSelect','Sección','champSection');
-  if(champ)champ.group.parentElement?.classList.add('v176-compact-converted');
-
-  // Sección / Rubro: mismo patrón compacto para evitar otra botonera grande.
-  const rubro=compactSelectFromButtons('rubroSectionSwitch','v176RubroSectionSelect','Sección','rubroSection');
-  if(rubro)rubro.group.parentElement?.classList.add('v176-compact-converted');
+  compactSelectFromButtons('paretoGroupSwitch','v176ParetoSelect','Desglose','paretoGroup');
+  compactSelectFromButtons('champSectionSwitch','v176ChampSectionSelect','Sección','champSection');
+  compactSelectFromButtons('rubroSectionSwitch','v176RubroSectionSelect','Sección','rubroSection');
 }
 
 function excessFor(x){
@@ -1504,6 +1516,7 @@ window.loadSalesExecutive=function(){return renderSales176(null,true)};
 async function refreshAll(){
   fixSidebar();fixAnalysisNav();
   if(!activeAnalysis())return;
+  qa('.v176-compact-converted').forEach(el=>el.classList.remove('v176-compact-converted'));
   installCompactTableFilters();
   await fixStores();
   if(macroActive()){
@@ -1528,7 +1541,7 @@ document.addEventListener('change',e=>{
   if(e.target.matches?.('#store,#week,#section,#catalog,#v166StatusSelect'))schedule();
 },true);
 if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
-  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
+  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();qa('.v176-compact-converted').forEach(el=>el.classList.remove('v176-compact-converted'));installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
 console.info('[V176] Comercial integral activo.');
