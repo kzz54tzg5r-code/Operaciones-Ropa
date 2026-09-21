@@ -77,7 +77,6 @@ from v172_density_balance_patch import install as _install_v172_density_balance_
 from v174_mobile_sales_repair_patch import install as _install_v174_mobile_sales_repair_patch
 from v175_compact_filter_tabs_patch import install as _install_v175_compact_filter_tabs_patch
 from v176_commercial_integral_patch import install as _install_v176_commercial_integral_patch
-from v177_scale_800_foundation_patch import install as _install_v177_scale_800_foundation_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -151,5 +150,4 @@ _install_v172_density_balance_patch(web_app)
 _install_v174_mobile_sales_repair_patch(web_app)
 _install_v175_compact_filter_tabs_patch(web_app)
 _install_v176_commercial_integral_patch(web_app)
-_install_v177_scale_800_foundation_patch(web_app)
 app = web_app.app
