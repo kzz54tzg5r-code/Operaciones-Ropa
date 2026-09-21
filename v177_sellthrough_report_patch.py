@@ -8,6 +8,9 @@ from __future__ import annotations
 import math
 import time
 import unicodedata
+import json
+import sqlite3
+import threading
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -46,6 +49,201 @@ def install(m):
 
     cache = {}
 
+    # Ventas acumuladas reales por ID desde las hojas mensuales de
+    # "Base de muertos y cambios". Se conserva en SQLite para no cargar
+    # cientos de miles de filas en RAM cada vez que se abre Sell Through.
+    sales_cache_path = m.DATA_ROOT / "sellthrough_sales_by_id.sqlite3"
+    sales_cache_lock = threading.Lock()
+    sales_cache_state = {"building": False, "error": "", "built_at": 0.0}
+
+    def _ops_sales_source():
+        return m.DATA_ROOT / "cambios_muertos_actual.xlsx"
+
+    def _ops_sales_source_stamp(path):
+        try:
+            stat = path.stat()
+            return f"{stat.st_mtime_ns}:{stat.st_size}"
+        except Exception:
+            return ""
+
+    def _month_sort_key(name):
+        key = norm(name)
+        months = {
+            "enero":1,"febrero":2,"marzo":3,"abril":4,"mayo":5,"junio":6,
+            "julio":7,"agosto":8,"septiembre":9,"setiembre":9,"octubre":10,
+            "noviembre":11,"diciembre":12,
+        }
+        return next((n for label,n in months.items() if label in key),99)
+
+    def _sales_cache_meta():
+        if not sales_cache_path.exists():
+            return {}
+        try:
+            con=sqlite3.connect(sales_cache_path)
+            try:
+                return {str(k):str(v) for k,v in con.execute("SELECT k,v FROM meta")}
+            finally:
+                con.close()
+        except Exception:
+            return {}
+
+    def _sales_cache_ready():
+        src=_ops_sales_source()
+        if not src.exists() or not sales_cache_path.exists():
+            return False
+        meta=_sales_cache_meta()
+        return (
+            meta.get("version")=="2"
+            and meta.get("source_stamp")==_ops_sales_source_stamp(src)
+        )
+
+    def _build_sales_cache():
+        src=_ops_sales_source()
+        if not src.exists():
+            raise FileNotFoundError("No está disponible el archivo vigente de Base de muertos y cambios")
+        tmp=sales_cache_path.with_suffix(".tmp.sqlite3")
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
+        target=sqlite3.connect(tmp)
+        try:
+            target.executescript("""
+                PRAGMA journal_mode=OFF;
+                PRAGMA synchronous=OFF;
+                PRAGMA temp_store=FILE;
+                CREATE TABLE meta(k TEXT PRIMARY KEY,v TEXT NOT NULL);
+                CREATE TABLE sales(
+                    store TEXT NOT NULL,
+                    id_art TEXT NOT NULL,
+                    month_source TEXT NOT NULL,
+                    sales REAL NOT NULL,
+                    PRIMARY KEY(store,id_art,month_source)
+                );
+                CREATE INDEX idx_sales_id ON sales(id_art);
+                CREATE INDEX idx_sales_store ON sales(store);
+            """)
+            with m._xlsx_stream_book(src) as book:
+                names=list(book["sheet_paths"])
+                sheets=[name for name in names if m._monthly_sheet_name(name)]
+                sheets=sorted(sheets,key=lambda x:(_month_sort_key(x),norm(x)))
+                archive=book["archive"]; shared_value=book["shared_value"]
+                months_used=[]
+                for sheet in sheets:
+                    member=book["sheet_paths"].get(sheet,"")
+                    if not member or member not in archive.namelist():
+                        continue
+                    rows=m._xlsx_monthly_rows(archive,member,shared_value)
+                    next(rows,None)  # encabezado superior
+                    next(rows,None)  # subtítulos
+                    batch=[]
+                    for values in rows:
+                        values=dict(values or {})
+                        store=m._normalize_store_value(values.get(25,""))
+                        art=m._clean_occurrence(values.get(1,""))
+                        if not store or not art:
+                            continue
+                        try:
+                            sale=float(values.get(26,0) or 0)
+                            if not math.isfinite(sale) or sale<=0:
+                                continue
+                        except Exception:
+                            continue
+                        batch.append((store,art,sheet,sale))
+                        if len(batch)>=5000:
+                            target.executemany(
+                                """INSERT INTO sales(store,id_art,month_source,sales)
+                                   VALUES(?,?,?,?)
+                                   ON CONFLICT(store,id_art,month_source)
+                                   DO UPDATE SET sales=sales+excluded.sales""",
+                                batch,
+                            )
+                            batch.clear()
+                    if batch:
+                        target.executemany(
+                            """INSERT INTO sales(store,id_art,month_source,sales)
+                               VALUES(?,?,?,?)
+                               ON CONFLICT(store,id_art,month_source)
+                               DO UPDATE SET sales=sales+excluded.sales""",
+                            batch,
+                        )
+                    months_used.append(sheet)
+                    target.commit()
+
+            stamp=_ops_sales_source_stamp(src)
+            target.executemany(
+                "INSERT OR REPLACE INTO meta(k,v) VALUES(?,?)",
+                [
+                    ("version","2"),
+                    ("source_stamp",stamp),
+                    ("months",json.dumps(months_used,ensure_ascii=False)),
+                    ("built_at",str(time.time())),
+                    ("source_file",src.name),
+                ],
+            )
+            target.commit()
+        finally:
+            target.close()
+        tmp.replace(sales_cache_path)
+
+    def _start_sales_cache_build():
+        if _sales_cache_ready():
+            return
+        with sales_cache_lock:
+            if sales_cache_state["building"]:
+                return
+            sales_cache_state["building"]=True
+            sales_cache_state["error"]=""
+        def worker():
+            try:
+                _build_sales_cache()
+                sales_cache_state["built_at"]=time.time()
+                print("[V179-SELLTHROUGH] Cache de ventas por ID construido desde Base de muertos y cambios.",flush=True)
+            except Exception as exc:
+                sales_cache_state["error"]=f"{type(exc).__name__}: {exc}"
+                print(f"[V179-SELLTHROUGH] Error construyendo ventas por ID: {sales_cache_state['error']}",flush=True)
+            finally:
+                sales_cache_state["building"]=False
+        threading.Thread(target=worker,name="sellthrough-sales-cache",daemon=True).start()
+
+    def _sales_by_id(selected_store, company_scope):
+        if not _sales_cache_ready():
+            _start_sales_cache_build()
+            return None, [], "building"
+        try:
+            con=sqlite3.connect(sales_cache_path)
+            try:
+                if company_scope:
+                    rows=con.execute(
+                        "SELECT id_art,SUM(sales) FROM sales GROUP BY id_art"
+                    ).fetchall()
+                else:
+                    rows=con.execute(
+                        "SELECT id_art,SUM(sales) FROM sales WHERE store=? GROUP BY id_art",
+                        (selected_store,),
+                    ).fetchall()
+                meta={str(k):str(v) for k,v in con.execute("SELECT k,v FROM meta")}
+            finally:
+                con.close()
+            try:
+                months=json.loads(meta.get("months") or "[]")
+            except Exception:
+                months=[]
+            return {str(art):float(value or 0) for art,value in rows}, months, "ready"
+        except Exception as exc:
+            sales_cache_state["error"]=f"{type(exc).__name__}: {exc}"
+            return None, [], "error"
+
+    # Inicia la reconstrucción en segundo plano poco después del arranque para
+    # que la primera visita a Sell Through normalmente encuentre el cache listo.
+    def _warm_sales_cache():
+        try:
+            time.sleep(4)
+            _start_sales_cache_build()
+        except Exception:
+            pass
+    threading.Thread(target=_warm_sales_cache,name="sellthrough-sales-warm",daemon=True).start()
+
     @m.app.get("/api/commercial-sellthrough-v177")
     def commercial_sellthrough_v177(
         request: Request,
@@ -59,19 +257,29 @@ def install(m):
         company_scope = norm(selected_store) == norm("Compañía")
         # Sell Through es un reporte especial: usa únicamente los registros cuyo
         # campo TIPO CATALOGO MAX VIG esté marcado como VIGENTE.
-        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ytd-cedis")
+        sales_stamp=_ops_sales_source_stamp(_ops_sales_source())
+        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales", sales_stamp)
         now = time.monotonic()
         cached = cache.get(key)
         if cached and now - cached[0] < 300:
             return cached[1]
+
+        sales_map, sales_months, sales_state = _sales_by_id(selected_store, company_scope)
+        if sales_state=="building":
+            from fastapi import HTTPException
+            raise HTTPException(503,"Preparando ventas acumuladas por ID desde Base de muertos y cambios")
+        if sales_state=="error" or sales_map is None:
+            from fastapi import HTTPException
+            raise HTTPException(503,sales_cache_state.get("error") or "No fue posible preparar las ventas acumuladas por ID")
 
         frame = m._capacity_frame_for_period(week)
         empty_payload = {
             "week": week, "store": selected_store, "section": section,
             "catalog": "Tipo catálogo vigente", "status": "Vigente",
             "rows": [], "totals": {},
-            "formula": "Venta anual / (Venta anual + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
-            "source": "Excel de capacidades",
+            "formula": "Vta acum pzs / (Vta acum pzs + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
+            "source": "Base de muertos y cambios + Excel de capacidades",
+            "sales_scope": "Acumulado meses disponibles en Base de muertos y cambios",
         }
         if frame is None or frame.empty:
             return empty_payload
@@ -131,27 +339,24 @@ def install(m):
             empty_payload["status_filter_applied"] = status_filter_applied
             return empty_payload
 
-        # Venta de todo el año. La nueva normalización toma directamente la
-        # columna anual del Excel. El fallback sólo mantiene compatibilidad si una
-        # fuente histórica no trae todavía esa columna.
-        annual_col = "Venta pzas año" if "Venta pzas año" in work.columns else "Venta pzas"
-        annual_values = pd.to_numeric(work.get(annual_col, 0), errors="coerce").fillna(0.0)
-        if annual_col == "Venta pzas año" and float(annual_values.sum()) <= 0 and "Venta pzas" in work.columns:
-            annual_col = "Venta pzas"
-            annual_values = pd.to_numeric(work.get("Venta pzas", 0), errors="coerce").fillna(0.0)
-
+        # La venta acumulada viene de Base de muertos y cambios, donde cada
+        # hoja mensual contiene venta por ID y tienda desde abril. La existencia
+        # continúa viniendo del Excel de capacidades.
         agg = pd.DataFrame(index=work.index)
         agg["__id"] = work["__id"]
-        agg["sales_pzas"] = annual_values
         agg["existence"] = pd.to_numeric(work.get("Existencia", 0), errors="coerce").fillna(0.0)
         agg["cedis_existence"] = pd.to_numeric(work.get("Existencia CEDIS", 0), errors="coerce").fillna(0.0)
         agg["suggested"] = pd.to_numeric(work.get("VPD", 0), errors="coerce").fillna(0.0)
 
-        sums = agg.groupby("__id", sort=False)[["sales_pzas","existence","suggested"]].sum()
+        sums = agg.groupby("__id", sort=False)[["existence","suggested"]].sum()
         # CEDIS es inventario central y normalmente se repite por tienda para el
         # mismo modelo. Tomar el máximo por ID evita multiplicarlo por 17 tiendas.
         cedis = agg.groupby("__id", sort=False)["cedis_existence"].max().rename("cedis_existence")
         numeric = sums.join(cedis, how="left").fillna({"cedis_existence": 0.0})
+        numeric["sales_pzas"] = [
+            float(sales_map.get(str(ident),0.0) or 0.0)
+            for ident in numeric.index
+        ]
 
         meta_cols = {
             "model": "Modelo",
@@ -230,9 +435,10 @@ def install(m):
                 "mid50_79": mid,
                 "under50": low,
             },
-            "formula": "Venta anual / (Venta anual + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
-            "source": "Excel de capacidades",
-            "sales_scope": "Acumulado anual" if annual_col == "Venta pzas año" else "Acumulado disponible en fuente",
+            "formula": "Vta acum pzs / (Vta acum pzs + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
+            "source": "Base de muertos y cambios + Excel de capacidades",
+            "sales_scope": "Acumulado " + (" + ".join(sales_months) if sales_months else "meses disponibles"),
+            "sales_months": sales_months,
             "cedis_in_sellthrough": company_scope,
             "status_filter_applied": status_filter_applied,
             "status_source": source_status_col,
@@ -242,8 +448,8 @@ def install(m):
         cache[key] = (now, payload)
         print(
             f"[V177-SELLTHROUGH] {week} {selected_store} {section} "
-            f"modelos={total_models} ST={overall:.1f}% YTD={total_sales:.0f} "
-            f"CEDIS={total_cedis:.0f} include_cedis={company_scope}",
+            f"modelos={total_models} ST={overall:.1f}% VTA_ACUM={total_sales:.0f} "
+            f"CEDIS={total_cedis:.0f} include_cedis={company_scope} meses={sales_months}",
             flush=True,
         )
         return payload
@@ -331,7 +537,7 @@ def install(m):
       page.className='page';page.id='page-sellthrough';
       page.innerHTML=
         '<div class="title">Sell Through</div>'+
-        '<div class="subtitle">Rotación por modelo con venta acumulada del año · Tipo catálogo vigente.</div>'+
+        '<div class="subtitle">Rotación por modelo con venta acumulada por ID desde Base de muertos y cambios · Tipo catálogo vigente.</div>'+
         '<div class="v177-st-kpis" id="v177StKpis"></div>'+
         '<div class="v177-st-head"><div><div class="title" style="margin:0">Ranking de modelos</div><div class="v177-st-note" id="v177StContext"></div></div>'+
           '<div class="v177-st-tabs" id="v177StTabs">'+
@@ -341,9 +547,9 @@ def install(m):
             '<button type="button" data-st-band="low">&lt; 50%</button>'+
           '</div>'+
         '</div>'+
-        '<div class="v177-st-note" id="v177StFormula">Sell Through con venta acumulada anual. En Compañía incluye existencia CEDIS; por tienda CEDIS sólo se muestra y no entra al cálculo.</div>'+
+        '<div class="v177-st-note" id="v177StFormula">Sell Through con Vta acum pzs por ID desde Base de muertos y cambios. En Compañía incluye existencia CEDIS; por tienda CEDIS sólo se muestra y no entra al cálculo.</div>'+
         '<div class="tablewrap"><table class="table v177-st-table"><thead><tr>'+
-          '<th>#</th><th>% Sell Through</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Venta pzas año</th><th>Existencia</th><th>Existencia CEDIS</th><th>Base disponible</th><th>Sugerido 7</th>'+
+          '<th>#</th><th>% Sell Through</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Vta acum pzs</th><th>Existencia</th><th>Existencia CEDIS</th><th>Base disponible</th><th>Sugerido 7</th>'+
         '</tr></thead><tbody id="v177StRows"><tr><td colspan="12">Selecciona Sell Through para consultar.</td></tr></tbody></table></div>';
       const anchor=q('#page-more')||q('#page-analysis-upload')||q('#appView');
       if(anchor?.parentNode)anchor.parentNode.insertBefore(page,anchor);
@@ -408,14 +614,14 @@ def install(m):
     const k=q('#v177StKpis');
     if(k)k.innerHTML=
       '<div class="v177-st-kpi"><div class="lab">Sell Through general</div><div class="val">'+p1(t.sell_through)+'</div><div class="note">'+(d.cedis_in_sellthrough?'incluye CEDIS':'CEDIS no entra al cálculo')+'</div></div>'+
-      '<div class="v177-st-kpi"><div class="lab">Venta pzas año</div><div class="val">'+nf(t.sales_pzas)+'</div><div class="note">'+esc(d.sales_scope||'Acumulado anual')+'</div></div>'+
+      '<div class="v177-st-kpi"><div class="lab">Vta acum pzs</div><div class="val">'+nf(t.sales_pzas)+'</div><div class="note">'+esc(d.sales_scope||'Acumulado anual')+'</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Existencia</div><div class="val">'+nf(t.existence)+'</div><div class="note">inventario en tiendas</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Existencia CEDIS</div><div class="val">'+nf(t.cedis_existence)+'</div><div class="note">'+(d.cedis_in_sellthrough?'incluida en Compañía':'sólo informativa por tienda')+'</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Modelos ≥ 80%</div><div class="val">'+nf(t.over80)+'</div><div class="note">de '+nf(t.models)+' modelos</div></div>';
     const ctx=q('#v177StContext');
-    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Tipo catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Excel capacidades');
+    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Tipo catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades');
     const formula=q('#v177StFormula');
-    if(formula)formula.textContent='Sell Through = '+(d.formula||'Venta anual / (Venta anual + Existencia)')+'. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
+    if(formula)formula.textContent='Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Existencia)')+'. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
     renderRows(d);
   }
 

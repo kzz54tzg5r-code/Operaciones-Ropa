@@ -2016,7 +2016,7 @@ def _xlsx_monthly_rows(archive: zipfile.ZipFile, member: str, shared_value):
             tag=_xml_local_name(elem.tag)
             if tag=="c":
                 column=_xlsx_column_index(elem.attrib.get("r", ""))
-                if column in (1,7,24,25) or column>=29:
+                if column in (1,7,24,25,26) or column>=29:
                     current[column]=_xlsx_cell_value(elem,shared_value)
                 elem.clear()
             elif tag=="row":
