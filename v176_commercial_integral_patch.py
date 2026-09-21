@@ -759,57 +759,129 @@ body[data-v163-module="analysis"] .compact-filter .filter-caption{
 }
 body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 
-/* Selectores compactos de tablas: Comparativo, Ubicación y Macro 80/20. */
-.v176-switches-hidden{display:none!important}
-body[data-v163-module="analysis"] #metricSwitch.v176-switches-hidden,
-body[data-v163-module="analysis"] #macroAreaSectionSwitch.v176-switches-hidden,
-body[data-v163-module="analysis"] #macroAreaGroupSwitch.v176-switches-hidden,
-body[data-v163-module="analysis"] #paretoGroupSwitch.v176-switches-hidden,
-body[data-v163-module="analysis"] #champSectionSwitch.v176-switches-hidden,
-body[data-v163-module="analysis"] #rubroSectionSwitch.v176-switches-hidden{
-  display:none!important;width:0!important;height:0!important;min-height:0!important;
-  margin:0!important;padding:0!important;overflow:hidden!important
+/* Filtros tipo pestaña horizontal: sólo cambia los controles, no los reportes. */
+.v176-table-filter-row,.v176-table-filter-field{display:none!important}
+.v176-switches-hidden{display:flex!important}
+
+body[data-v163-module="analysis"] #metricSwitch,
+body[data-v163-module="analysis"] #macroAreaSectionSwitch,
+body[data-v163-module="analysis"] #macroAreaGroupSwitch,
+body[data-v163-module="analysis"] #paretoGroupSwitch,
+body[data-v163-module="analysis"] #champSectionSwitch,
+body[data-v163-module="analysis"] #rubroSectionSwitch,
+body[data-v163-module="analysis"] .v176-select-tabs{
+  position:static!important;
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:stretch!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:0!important;
+  gap:4px!important;
+  margin:0 0 8px!important;
+  padding:0!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  scrollbar-width:none!important;
+  -webkit-overflow-scrolling:touch!important
 }
-.v176-table-filter-row{
-  display:flex!important;align-items:flex-end!important;justify-content:flex-start!important;
-  flex-wrap:wrap!important;gap:8px!important;margin:4px 0 7px!important;
-  width:auto!important;max-width:100%!important
+body[data-v163-module="analysis"] #metricSwitch::-webkit-scrollbar,
+body[data-v163-module="analysis"] #macroAreaSectionSwitch::-webkit-scrollbar,
+body[data-v163-module="analysis"] #macroAreaGroupSwitch::-webkit-scrollbar,
+body[data-v163-module="analysis"] #paretoGroupSwitch::-webkit-scrollbar,
+body[data-v163-module="analysis"] #champSectionSwitch::-webkit-scrollbar,
+body[data-v163-module="analysis"] #rubroSectionSwitch::-webkit-scrollbar,
+body[data-v163-module="analysis"] .v176-select-tabs::-webkit-scrollbar{display:none!important}
+
+body[data-v163-module="analysis"] #metricSwitch>button,
+body[data-v163-module="analysis"] #macroAreaSectionSwitch>button,
+body[data-v163-module="analysis"] #macroAreaGroupSwitch>button,
+body[data-v163-module="analysis"] #paretoGroupSwitch>button,
+body[data-v163-module="analysis"] #champSectionSwitch>button,
+body[data-v163-module="analysis"] #rubroSectionSwitch>button,
+body[data-v163-module="analysis"] .v176-select-tabs>button{
+  flex:1 1 0!important;
+  min-width:112px!important;
+  width:auto!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:7px 12px!important;
+  margin:0!important;
+  border:1px solid #d7e1ee!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  color:#173f78!important;
+  font-size:8.5px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-shadow:none!important
 }
-.v176-table-filter-field{
-  display:flex!important;flex-direction:column!important;gap:3px!important;
-  min-width:185px!important;max-width:235px!important;margin:0!important
+body[data-v163-module="analysis"] #metricSwitch>button.active,
+body[data-v163-module="analysis"] #macroAreaSectionSwitch>button.active,
+body[data-v163-module="analysis"] #macroAreaGroupSwitch>button.active,
+body[data-v163-module="analysis"] #paretoGroupSwitch>button.active,
+body[data-v163-module="analysis"] #champSectionSwitch>button.active,
+body[data-v163-module="analysis"] #rubroSectionSwitch>button.active,
+body[data-v163-module="analysis"] .v176-select-tabs>button.active{
+  background:#176fe8!important;
+  border-color:#176fe8!important;
+  color:#fff!important;
+  box-shadow:0 2px 8px rgba(23,111,232,.14)!important
 }
-.v176-table-filter-field>span{
-  font-size:7px!important;line-height:1!important;font-weight:950!important;
-  color:#667085!important;text-transform:uppercase!important;letter-spacing:.025em!important
+
+/* Los dos filtros de Ubicación van en filas independientes para que nunca se encimen. */
+body[data-v163-module="analysis"] #macroAreaSectionSwitch,
+body[data-v163-module="analysis"] #macroAreaGroupSwitch{
+  clear:both!important
 }
-.v176-table-filter-field select{
-  width:100%!important;height:38px!important;min-height:38px!important;
-  border:1px solid #cad8e8!important;border-radius:9px!important;
-  background:#fff!important;color:#173f78!important;
-  padding:6px 30px 6px 10px!important;font-size:9px!important;font-weight:900!important;
-  box-shadow:none!important;outline:none!important
+body[data-v163-module="analysis"] #page-macro .compact-filter{
+  overflow:visible!important
 }
-.v176-table-filter-field select:focus{
-  border-color:#176fe8!important;box-shadow:0 0 0 2px rgba(23,111,232,.10)!important
+body[data-v163-module="analysis"] #page-macro .compact-filter .filter-caption{
+  display:block!important;
+  margin:2px 3px 5px!important
 }
-body[data-v163-module="analysis"] #page-macro #slowSection,
-body[data-v163-module="analysis"] #page-macro #checklistStoreSelect{
-  height:38px!important;min-height:38px!important;max-width:235px!important;
-  border:1px solid #cad8e8!important;border-radius:9px!important;background:#fff!important;
-  color:#173f78!important;padding:6px 30px 6px 10px!important;
-  font-size:9px!important;font-weight:900!important;box-shadow:none!important;outline:none!important
+
+/* Modelos lentos: el select original se oculta y se refleja como pestañas. */
+body[data-v163-module="analysis"] #slowSection.v176-select-tab-source{
+  display:none!important
 }
-body[data-v163-module="analysis"] #page-macro #slowSection:focus,
-body[data-v163-module="analysis"] #page-macro #checklistStoreSelect:focus{
-  border-color:#176fe8!important;box-shadow:0 0 0 2px rgba(23,111,232,.10)!important
+body[data-v163-module="analysis"] .v176-select-tabs{
+  margin-top:4px!important
 }
-.v176-compact-converted{
-  width:100%!important;max-width:none!important;min-width:0!important
+
+@media(max-width:900px){
+  body[data-v163-module="analysis"] #metricSwitch,
+  body[data-v163-module="analysis"] #macroAreaSectionSwitch,
+  body[data-v163-module="analysis"] #macroAreaGroupSwitch,
+  body[data-v163-module="analysis"] #paretoGroupSwitch,
+  body[data-v163-module="analysis"] #champSectionSwitch,
+  body[data-v163-module="analysis"] #rubroSectionSwitch,
+  body[data-v163-module="analysis"] .v176-select-tabs{
+    gap:4px!important;
+    margin-bottom:6px!important
+  }
+  body[data-v163-module="analysis"] #metricSwitch>button,
+  body[data-v163-module="analysis"] #macroAreaSectionSwitch>button,
+  body[data-v163-module="analysis"] #macroAreaGroupSwitch>button,
+  body[data-v163-module="analysis"] #paretoGroupSwitch>button,
+  body[data-v163-module="analysis"] #champSectionSwitch>button,
+  body[data-v163-module="analysis"] #rubroSectionSwitch>button,
+  body[data-v163-module="analysis"] .v176-select-tabs>button{
+    flex:0 0 auto!important;
+    min-width:94px!important;
+    height:34px!important;
+    min-height:34px!important;
+    padding:6px 10px!important;
+    font-size:8px!important
+  }
 }
-.v176-compact-converted>.filter-caption{display:none!important}
-.v176-compact-converted .v176-table-filter-row{margin:0 0 7px!important}
-#metricSwitch.v176-switches-hidden + #bars{margin-top:2px!important}
 
 /* KPI de excedente. */
 #v176ExcessKpi .v176-excess-sections{display:block;margin-top:3px;font-size:9px;line-height:1.35;color:#667085}
@@ -994,85 +1066,51 @@ function fixAnalysisNav(){
   });
 }
 
-function compactSelectFromButtons(groupId,selectId,label,dataKey){
-  const group=q('#'+groupId);if(!group)return null;
-  const buttons=qa('button',group);if(!buttons.length)return null;
-  const parent=group.parentElement;if(!parent)return null;
+function restoreButtonTabs(groupId){
+  const group=q('#'+groupId);if(!group)return;
+  // Borra cualquier selector compacto generado por versiones anteriores.
+  const parent=group.parentElement;
+  qa('.v176-table-filter-row',parent||document).forEach(row=>row.remove());
+  group.classList.remove('v176-switches-hidden');
+  ['display','width','height','min-height','margin','padding','overflow'].forEach(p=>group.style.removeProperty(p));
+}
 
-  // Oculta únicamente la botonera original; no modifica el tamaño ni el
-  // layout del panel, gráfica o tabla que la contiene.
-  group.classList.add('v176-switches-hidden');
-  group.style.setProperty('display','none','important');
-  group.style.setProperty('width','0','important');
-  group.style.setProperty('height','0','important');
-  group.style.setProperty('min-height','0','important');
-  group.style.setProperty('margin','0','important');
-  group.style.setProperty('padding','0','important');
-
-  const oldCaption=group.previousElementSibling;
-  if(oldCaption?.classList?.contains('filter-caption')){
-    oldCaption.style.setProperty('display','none','important');
+function tabsFromSelect(selectId,tabsId){
+  const sel=q('#'+selectId);if(!sel)return;
+  let tabs=q('#'+tabsId);
+  if(!tabs){
+    tabs=document.createElement('div');
+    tabs.id=tabsId;
+    tabs.className='v176-select-tabs';
+    sel.parentNode.insertBefore(tabs,sel.nextSibling);
   }
-
-  let field=q('#'+selectId+'Field');
-  if(!field){
-    field=document.createElement('label');
-    field.id=selectId+'Field';
-    field.className='v176-table-filter-field';
-    field.innerHTML='<span>'+label+'</span><select id="'+selectId+'" aria-label="'+label+'"></select>';
-
-    let row=q('.v176-table-filter-row',parent);
-    if(!row){
-      row=document.createElement('div');
-      row.className='v176-table-filter-row';
-      parent.insertBefore(row,parent.firstChild);
-    }
-    row.append(field);
-  }
-
-  const sel=q('#'+selectId,field);
-  const optionValue=b=>String(b.dataset[dataKey]||b.textContent||'').trim();
-  const active=buttons.find(b=>b.classList.contains('active'))||buttons[0];
-  const current=active?optionValue(active):'';
-
-  sel.innerHTML=buttons.map(b=>
-    '<option value="'+esc(optionValue(b))+'">'+esc((b.textContent||'').trim())+'</option>'
+  const current=sel.value;
+  tabs.innerHTML=[...sel.options].map(o=>
+    '<button type="button" class="'+(o.value===current?'active':'')+'" data-value="'+esc(o.value)+'">'+esc(o.textContent||o.value)+'</button>'
   ).join('');
-  if([...sel.options].some(o=>o.value===current))sel.value=current;
-
-  if(!sel.dataset.v176bound){
-    sel.dataset.v176bound='1';
-    sel.addEventListener('change',()=>{
-      const target=buttons.find(b=>optionValue(b)===sel.value);
-      if(target){
-        target.click();
-        setTimeout(()=>{
-          const now=buttons.find(b=>b.classList.contains('active'));
-          if(now)sel.value=optionValue(now);
-          // Algunos renders recrean estilos/clases del grupo; mantenerlo oculto.
-          group.style.setProperty('display','none','important');
-        },30);
-      }
-    });
-  }
-  return {field,select:sel,group,parent};
+  qa('button',tabs).forEach(btn=>btn.addEventListener('click',()=>{
+    const value=btn.dataset.value||'';
+    if(sel.value!==value){
+      sel.value=value;
+      sel.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    qa('button',tabs).forEach(x=>x.classList.toggle('active',x===btn));
+  }));
+  sel.classList.add('v176-select-tab-source');
 }
 
 function installCompactTableFilters(){
-  // Sólo sustituye los filtros. No cambia el diseño/tamaño de los reportes.
-  compactSelectFromButtons('metricSwitch','v176MetricSelect','Indicador','metric');
+  // El nombre se conserva para no romper llamadas previas, pero ahora restaura
+  // exactamente filtros tipo pestaña horizontal.
+  ['metricSwitch','macroAreaSectionSwitch','macroAreaGroupSwitch','paretoGroupSwitch','champSectionSwitch','rubroSectionSwitch']
+    .forEach(restoreButtonTabs);
 
-  const sec=compactSelectFromButtons('macroAreaSectionSwitch','v176AreaSectionSelect','Sección','areaSection');
-  const area=compactSelectFromButtons('macroAreaGroupSwitch','v176AreaGroupSelect','Área','areaGroup');
-  if(sec&&area&&sec.field.parentElement!==area.field.parentElement){
-    sec.field.parentElement.append(area.field);
-    const other=area.field.parentElement;
-    if(other && !other.children.length)other.remove();
-  }
+  // Remueve campos select compactos que pudieron quedar de una ejecución anterior.
+  ['v176MetricSelectField','v176AreaSectionSelectField','v176AreaGroupSelectField','v176ParetoSelectField','v176ChampSectionSelectField','v176RubroSectionSelectField']
+    .forEach(id=>q('#'+id)?.remove());
 
-  compactSelectFromButtons('paretoGroupSwitch','v176ParetoSelect','Desglose','paretoGroup');
-  compactSelectFromButtons('champSectionSwitch','v176ChampSectionSelect','Sección','champSection');
-  compactSelectFromButtons('rubroSectionSwitch','v176RubroSectionSelect','Sección','rubroSection');
+  // Modelos lentos también usa pestaña horizontal.
+  tabsFromSelect('slowSection','v176SlowSectionTabs');
 }
 
 function excessFor(x){
@@ -1100,9 +1138,9 @@ function renderExcess(){
 }
 
 function selectedAreaSection(){
-  return q('#v176AreaSectionSelect')?.value||q('[data-area-section].active')?.dataset.areaSection||q('#section')?.value||'Todas'
+  return q('[data-area-section].active')?.dataset.areaSection||q('#section')?.value||'Todas'
 }
-function selectedAreaGroup(){return q('#v176AreaGroupSelect')?.value||q('[data-area-group].active')?.dataset.areaGroup||'Todas'}
+function selectedAreaGroup(){return q('[data-area-group].active')?.dataset.areaGroup||'Todas'}
 async function renderArea(){
   if(!macroActive()||!q('#macroAreaTable'))return;
   const store=visibleStoreControl()?.value||q('#store')?.value||'Compañía',week=q('#week')?.value||'',section=selectedAreaSection(),catalog=q('#catalog')?.value||'Todos',group=selectedAreaGroup();
@@ -1129,7 +1167,7 @@ function fixModelHead(){
   const company=(visibleStoreControl()?.value||q('#store')?.value||'Compañía')==='Compañía';
   head.innerHTML='<th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>'+(company?'Tipo ubicación':'Ubicación')+'</th><th>'+(company?'Exhibiciones':'Exhibición')+'</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th>';
 }
-function paretoGroup(){return q('#v176ParetoSelect')?.value||q('[data-pareto-group].active')?.dataset.paretoGroup||'section'}
+function paretoGroup(){return q('[data-pareto-group].active')?.dataset.paretoGroup||'section'}
 function renderPareto(rows){
   const body=q('#paretoSummaryTable');if(!body)return;
   body.innerHTML=(rows||[]).map(r=>'<tr><td><b>'+esc(r.label)+'</b></td><td>'+pct(r.participation)+'</td><td>'+nf(r.models_80)+'</td><td>'+nf(r.models_20)+'</td><td>'+nf(r.models)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+money(r.sales_value)+'</td><td>'+n(r.suggested).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td><td>'+nf(r.ddi)+'</td><td>'+nf(r.capacity)+'</td><td>'+pct(r.occupancy)+'</td></tr>').join('')||'<tr><td colspan="11">Información no disponible.</td></tr>';
@@ -1516,7 +1554,6 @@ window.loadSalesExecutive=function(){return renderSales176(null,true)};
 async function refreshAll(){
   fixSidebar();fixAnalysisNav();
   if(!activeAnalysis())return;
-  qa('.v176-compact-converted').forEach(el=>el.classList.remove('v176-compact-converted'));
   installCompactTableFilters();
   await fixStores();
   if(macroActive()){
@@ -1541,7 +1578,7 @@ document.addEventListener('change',e=>{
   if(e.target.matches?.('#store,#week,#section,#catalog,#v166StatusSelect'))schedule();
 },true);
 if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
-  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();qa('.v176-compact-converted').forEach(el=>el.classList.remove('v176-compact-converted'));installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
+  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
 console.info('[V176] Comercial integral activo.');
