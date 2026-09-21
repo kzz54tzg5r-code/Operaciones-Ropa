@@ -759,6 +759,38 @@ body[data-v163-module="analysis"] .compact-filter .filter-caption{
 }
 body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 
+/* Selectores compactos de tablas: Comparativo, Ubicación y Macro 80/20. */
+.v176-switches-hidden{display:none!important}
+.v176-table-filter-row{
+  display:flex!important;align-items:flex-end!important;justify-content:flex-start!important;
+  flex-wrap:wrap!important;gap:8px!important;margin:4px 0 7px!important
+}
+.v176-table-filter-field{
+  display:flex!important;flex-direction:column!important;gap:3px!important;
+  min-width:185px!important;max-width:235px!important;margin:0!important
+}
+.v176-table-filter-field>span{
+  font-size:7px!important;line-height:1!important;font-weight:950!important;
+  color:#667085!important;text-transform:uppercase!important;letter-spacing:.025em!important
+}
+.v176-table-filter-field select{
+  width:100%!important;height:38px!important;min-height:38px!important;
+  border:1px solid #cad8e8!important;border-radius:9px!important;
+  background:#fff!important;color:#173f78!important;
+  padding:6px 30px 6px 10px!important;font-size:9px!important;font-weight:900!important;
+  box-shadow:none!important;outline:none!important
+}
+.v176-table-filter-field select:focus{
+  border-color:#176fe8!important;box-shadow:0 0 0 2px rgba(23,111,232,.10)!important
+}
+.v176-compact-converted{
+  width:fit-content!important;max-width:100%!important;min-width:0!important;
+  padding:7px 9px!important
+}
+.v176-compact-converted>.filter-caption{display:none!important}
+.v176-compact-converted .v176-table-filter-row{margin:0!important}
+#metricSwitch.v176-switches-hidden + #bars{margin-top:2px!important}
+
 /* KPI de excedente. */
 #v176ExcessKpi .v176-excess-sections{display:block;margin-top:3px;font-size:9px;line-height:1.35;color:#667085}
 #v176ExcessKpi .v176-excess-pieces{display:block;font-size:10px;color:#52657d}
@@ -860,6 +892,10 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
   .v176-month-store-filter,.v176-store-sales-month-filter{min-width:165px;max-width:210px}
   .v176-month-store-filter select,.v176-store-sales-month-filter select{height:34px;min-height:34px;font-size:8px}
   .v176-store-sales-head{align-items:flex-start;margin:10px 0 6px}
+  .v176-table-filter-row{gap:5px!important;margin:3px 0 6px!important}
+  .v176-table-filter-field{min-width:145px!important;max-width:185px!important}
+  .v176-table-filter-field select{height:34px!important;min-height:34px!important;font-size:8px!important}
+  .v176-compact-converted{width:100%!important;padding:6px!important}
 }
 </style>'''
 
@@ -934,6 +970,62 @@ function fixAnalysisNav(){
   });
 }
 
+function compactSelectFromButtons(groupId,selectId,label,dataKey){
+  const group=q('#'+groupId);if(!group)return null;
+  const buttons=qa('button',group);if(!buttons.length)return null;
+  let field=q('#'+selectId+'Field');
+  if(!field){
+    field=document.createElement('label');
+    field.id=selectId+'Field';field.className='v176-table-filter-field';
+    field.innerHTML='<span>'+label+'</span><select id="'+selectId+'" aria-label="'+label+'"></select>';
+    let row=group.previousElementSibling;
+    if(!row||!row.classList?.contains('v176-table-filter-row')){
+      row=document.createElement('div');row.className='v176-table-filter-row';
+      group.parentNode.insertBefore(row,group);
+    }
+    row.append(field);
+  }
+  const sel=q('#'+selectId,field);
+  const active=buttons.find(b=>b.classList.contains('active'))||buttons[0];
+  const optionValue=b=>String(b.dataset[dataKey]||b.textContent||'').trim();
+  const current=active?optionValue(active):'';
+  sel.innerHTML=buttons.map(b=>'<option value="'+esc(optionValue(b))+'">'+esc((b.textContent||'').trim())+'</option>').join('');
+  if([...sel.options].some(o=>o.value===current))sel.value=current;
+  if(!sel.dataset.v176bound){
+    sel.dataset.v176bound='1';
+    sel.addEventListener('change',()=>{
+      const target=buttons.find(b=>optionValue(b)===sel.value);
+      if(target){
+        target.click();
+        setTimeout(()=>{const now=buttons.find(b=>b.classList.contains('active'));if(now)sel.value=optionValue(now)},30);
+      }
+    });
+  }
+  group.classList.add('v176-switches-hidden');
+  return {field,select:sel,group};
+}
+
+function installCompactTableFilters(){
+  // Comparativo Compañía: Sugerido / Existencia / Piso / Bodega / DDI.
+  compactSelectFromButtons('metricSwitch','v176MetricSelect','Indicador','metric');
+
+  // Ubicación: dos selectores compactos, conservando el comportamiento existente.
+  const sec=compactSelectFromButtons('macroAreaSectionSwitch','v176AreaSectionSelect','Sección','areaSection');
+  const area=compactSelectFromButtons('macroAreaGroupSwitch','v176AreaGroupSelect','Área','areaGroup');
+  if(sec&&area){
+    const secRow=sec.field.parentElement,areaRow=area.field.parentElement;
+    if(secRow!==areaRow){
+      secRow.append(area.field);
+      if(!areaRow.children.length)areaRow.remove();
+    }
+    sec.group.parentElement?.classList.add('v176-compact-converted');
+  }
+
+  // Macro 80/20: Desglose en un selector compacto.
+  const pareto=compactSelectFromButtons('paretoGroupSwitch','v176ParetoSelect','Desglose','paretoGroup');
+  if(pareto)pareto.group.parentElement?.classList.add('v176-compact-converted');
+}
+
 function excessFor(x){
   const ex=n(x?.existence),cap=n(x?.capacity),p=Math.max(ex-cap,0);
   return {pieces:p,pct:cap>0?p/cap*100:0}
@@ -959,9 +1051,9 @@ function renderExcess(){
 }
 
 function selectedAreaSection(){
-  return q('[data-area-section].active')?.dataset.areaSection||q('#section')?.value||'Todas'
+  return q('#v176AreaSectionSelect')?.value||q('[data-area-section].active')?.dataset.areaSection||q('#section')?.value||'Todas'
 }
-function selectedAreaGroup(){return q('[data-area-group].active')?.dataset.areaGroup||'Todas'}
+function selectedAreaGroup(){return q('#v176AreaGroupSelect')?.value||q('[data-area-group].active')?.dataset.areaGroup||'Todas'}
 async function renderArea(){
   if(!macroActive()||!q('#macroAreaTable'))return;
   const store=visibleStoreControl()?.value||q('#store')?.value||'Compañía',week=q('#week')?.value||'',section=selectedAreaSection(),catalog=q('#catalog')?.value||'Todos',group=selectedAreaGroup();
@@ -988,7 +1080,7 @@ function fixModelHead(){
   const company=(visibleStoreControl()?.value||q('#store')?.value||'Compañía')==='Compañía';
   head.innerHTML='<th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>'+(company?'Tipo ubicación':'Ubicación')+'</th><th>'+(company?'Exhibiciones':'Exhibición')+'</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th>';
 }
-function paretoGroup(){return q('[data-pareto-group].active')?.dataset.paretoGroup||'section'}
+function paretoGroup(){return q('#v176ParetoSelect')?.value||q('[data-pareto-group].active')?.dataset.paretoGroup||'section'}
 function renderPareto(rows){
   const body=q('#paretoSummaryTable');if(!body)return;
   body.innerHTML=(rows||[]).map(r=>'<tr><td><b>'+esc(r.label)+'</b></td><td>'+pct(r.participation)+'</td><td>'+nf(r.models_80)+'</td><td>'+nf(r.models_20)+'</td><td>'+nf(r.models)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+money(r.sales_value)+'</td><td>'+n(r.suggested).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td><td>'+nf(r.ddi)+'</td><td>'+nf(r.capacity)+'</td><td>'+pct(r.occupancy)+'</td></tr>').join('')||'<tr><td colspan="11">Información no disponible.</td></tr>';
@@ -1375,6 +1467,7 @@ window.loadSalesExecutive=function(){return renderSales176(null,true)};
 async function refreshAll(){
   fixSidebar();fixAnalysisNav();
   if(!activeAnalysis())return;
+  installCompactTableFilters();
   await fixStores();
   if(macroActive()){
     renderExcess();
@@ -1398,7 +1491,7 @@ document.addEventListener('change',e=>{
   if(e.target.matches?.('#store,#week,#section,#catalog,#v166StatusSelect'))schedule();
 },true);
 if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
-  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
+  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
 console.info('[V176] Comercial integral activo.');
