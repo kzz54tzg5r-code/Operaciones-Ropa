@@ -761,6 +761,15 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
 
 /* Selectores compactos de tablas: Comparativo, Ubicación y Macro 80/20. */
 .v176-switches-hidden{display:none!important}
+body[data-v163-module="analysis"] #metricSwitch.v176-switches-hidden,
+body[data-v163-module="analysis"] #macroAreaSectionSwitch.v176-switches-hidden,
+body[data-v163-module="analysis"] #macroAreaGroupSwitch.v176-switches-hidden,
+body[data-v163-module="analysis"] #paretoGroupSwitch.v176-switches-hidden,
+body[data-v163-module="analysis"] #champSectionSwitch.v176-switches-hidden,
+body[data-v163-module="analysis"] #rubroSectionSwitch.v176-switches-hidden{
+  display:none!important;width:0!important;height:0!important;min-height:0!important;
+  margin:0!important;padding:0!important;overflow:hidden!important
+}
 .v176-table-filter-row{
   display:flex!important;align-items:flex-end!important;justify-content:flex-start!important;
   flex-wrap:wrap!important;gap:8px!important;margin:4px 0 7px!important
@@ -781,6 +790,17 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
   box-shadow:none!important;outline:none!important
 }
 .v176-table-filter-field select:focus{
+  border-color:#176fe8!important;box-shadow:0 0 0 2px rgba(23,111,232,.10)!important
+}
+body[data-v163-module="analysis"] #page-macro #slowSection,
+body[data-v163-module="analysis"] #page-macro #checklistStoreSelect{
+  height:38px!important;min-height:38px!important;max-width:235px!important;
+  border:1px solid #cad8e8!important;border-radius:9px!important;background:#fff!important;
+  color:#173f78!important;padding:6px 30px 6px 10px!important;
+  font-size:9px!important;font-weight:900!important;box-shadow:none!important;outline:none!important
+}
+body[data-v163-module="analysis"] #page-macro #slowSection:focus,
+body[data-v163-module="analysis"] #page-macro #checklistStoreSelect:focus{
   border-color:#176fe8!important;box-shadow:0 0 0 2px rgba(23,111,232,.10)!important
 }
 .v176-compact-converted{
@@ -895,6 +915,10 @@ body[data-v163-module="analysis"] .v166-internal-filter{display:none!important}
   .v176-table-filter-row{gap:5px!important;margin:3px 0 6px!important}
   .v176-table-filter-field{min-width:145px!important;max-width:185px!important}
   .v176-table-filter-field select{height:34px!important;min-height:34px!important;font-size:8px!important}
+  body[data-v163-module="analysis"] #page-macro #slowSection,
+  body[data-v163-module="analysis"] #page-macro #checklistStoreSelect{
+    height:34px!important;min-height:34px!important;font-size:8px!important;max-width:185px!important
+  }
   .v176-compact-converted{width:100%!important;padding:6px!important}
 }
 </style>'''
@@ -1007,7 +1031,8 @@ function compactSelectFromButtons(groupId,selectId,label,dataKey){
 
 function installCompactTableFilters(){
   // Comparativo Compañía: Sugerido / Existencia / Piso / Bodega / DDI.
-  compactSelectFromButtons('metricSwitch','v176MetricSelect','Indicador','metric');
+  const metric=compactSelectFromButtons('metricSwitch','v176MetricSelect','Indicador','metric');
+  if(metric)metric.group.parentElement?.classList.add('v176-compact-converted');
 
   // Ubicación: dos selectores compactos, conservando el comportamiento existente.
   const sec=compactSelectFromButtons('macroAreaSectionSwitch','v176AreaSectionSelect','Sección','areaSection');
@@ -1019,11 +1044,23 @@ function installCompactTableFilters(){
       if(!areaRow.children.length)areaRow.remove();
     }
     sec.group.parentElement?.classList.add('v176-compact-converted');
+  }else if(sec){
+    sec.group.parentElement?.classList.add('v176-compact-converted');
+  }else if(area){
+    area.group.parentElement?.classList.add('v176-compact-converted');
   }
 
   // Macro 80/20: Desglose en un selector compacto.
   const pareto=compactSelectFromButtons('paretoGroupSwitch','v176ParetoSelect','Desglose','paretoGroup');
   if(pareto)pareto.group.parentElement?.classList.add('v176-compact-converted');
+
+  // Modelos 80/20: filtro de sección con el mismo selector compacto.
+  const champ=compactSelectFromButtons('champSectionSwitch','v176ChampSectionSelect','Sección','champSection');
+  if(champ)champ.group.parentElement?.classList.add('v176-compact-converted');
+
+  // Sección / Rubro: mismo patrón compacto para evitar otra botonera grande.
+  const rubro=compactSelectFromButtons('rubroSectionSwitch','v176RubroSectionSelect','Sección','rubroSection');
+  if(rubro)rubro.group.parentElement?.classList.add('v176-compact-converted');
 }
 
 function excessFor(x){
