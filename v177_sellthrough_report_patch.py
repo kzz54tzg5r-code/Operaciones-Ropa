@@ -56,46 +56,86 @@ def install(m):
     ):
         actor = m.require_user(request)
         selected_store = str(m.effective_store(actor, store) or "Compañía")
-        key = (week, norm(selected_store), norm(section), norm(catalog))
+        company_scope = norm(selected_store) == norm("Compañía")
+        # Sell Through es un reporte especial: siempre usa TIPO CATALOGO MAX VIG
+        # y únicamente modelos cuyo Estatus de catálogo sea vigente.
+        key = (week, norm(selected_store), norm(section), "max-vig-vigentes-ytd-cedis")
         now = time.monotonic()
         cached = cache.get(key)
         if cached and now - cached[0] < 300:
             return cached[1]
 
         frame = m._capacity_frame_for_period(week)
+        empty_payload = {
+            "week": week, "store": selected_store, "section": section,
+            "catalog": "TIPO CATALOGO MAX VIG", "status": "Vigente",
+            "rows": [], "totals": {},
+            "formula": "Venta anual / (Venta anual + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
+            "source": "Excel de capacidades",
+        }
         if frame is None or frame.empty:
-            return {
-                "week": week, "store": selected_store, "section": section,
-                "catalog": catalog, "rows": [], "totals": {},
-                "formula": "Venta pzas / (Venta pzas + Existencia)",
-            }
+            return empty_payload
 
-        work = m._capacity_scope_v45(frame, selected_store, section, catalog)
+        # No dependemos del selector global de catálogo: el campo fuente de este
+        # reporte es siempre TIPO CATALOGO MAX VIG.
+        work = m._capacity_scope_v45(frame, selected_store, section, "Todos")
         if work is None or work.empty or "ID_ART" not in work.columns:
-            return {
-                "week": week, "store": selected_store, "section": section,
-                "catalog": catalog, "rows": [], "totals": {},
-                "formula": "Venta pzas / (Venta pzas + Existencia)",
-            }
+            return empty_payload
 
         pd = m.pd
         work = work.copy()
+
+        # Sólo registros con catálogo MAX VIG informado.
+        if "Tipo catálogo" in work.columns:
+            cat = work["Tipo catálogo"].fillna("").astype(str).str.strip()
+            work = work[~cat.isin(["", "nan", "None"])]
+
+        # Sólo vigentes según Estatus de catálogo. Evita falsos positivos como
+        # "NO VIGENTE", "INACTIVO", "BAJA" o "DESCONTINUADO".
+        status_col = "Estatus catálogo" if "Estatus catálogo" in work.columns else (
+            "Estatus comercial" if "Estatus comercial" in work.columns else ""
+        )
+        status_filter_applied = bool(status_col)
+        if status_col:
+            status_key = work[status_col].fillna("").astype(str).map(norm)
+            active = status_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
+            active = active & ~status_key.str.contains(
+                r"no\s+vig|inactiv|baja|descontinu|cancel|suspend",
+                regex=True, na=False,
+            )
+            work = work[active]
+
+        if work.empty:
+            empty_payload["status_filter_applied"] = status_filter_applied
+            return empty_payload
+
         work["__id"] = work["ID_ART"].fillna("").astype(str).str.strip()
         work = work[~work["__id"].isin(["", "nan", "None"])]
         if work.empty:
-            return {
-                "week": week, "store": selected_store, "section": section,
-                "catalog": catalog, "rows": [], "totals": {},
-                "formula": "Venta pzas / (Venta pzas + Existencia)",
-            }
+            empty_payload["status_filter_applied"] = status_filter_applied
+            return empty_payload
 
-        pcol, _vcol = m._capacity_period_columns(week)
+        # Venta de todo el año. La nueva normalización toma directamente la
+        # columna anual del Excel. El fallback sólo mantiene compatibilidad si una
+        # fuente histórica no trae todavía esa columna.
+        annual_col = "Venta pzas año" if "Venta pzas año" in work.columns else "Venta pzas"
+        annual_values = pd.to_numeric(work.get(annual_col, 0), errors="coerce").fillna(0.0)
+        if annual_col == "Venta pzas año" and float(annual_values.sum()) <= 0 and "Venta pzas" in work.columns:
+            annual_col = "Venta pzas"
+            annual_values = pd.to_numeric(work.get("Venta pzas", 0), errors="coerce").fillna(0.0)
+
         agg = pd.DataFrame(index=work.index)
         agg["__id"] = work["__id"]
-        agg["sales_pzas"] = pd.to_numeric(work.get(pcol, 0), errors="coerce").fillna(0.0)
+        agg["sales_pzas"] = annual_values
         agg["existence"] = pd.to_numeric(work.get("Existencia", 0), errors="coerce").fillna(0.0)
+        agg["cedis_existence"] = pd.to_numeric(work.get("Existencia CEDIS", 0), errors="coerce").fillna(0.0)
         agg["suggested"] = pd.to_numeric(work.get("VPD", 0), errors="coerce").fillna(0.0)
-        numeric = agg.groupby("__id", sort=False)[["sales_pzas","existence","suggested"]].sum()
+
+        sums = agg.groupby("__id", sort=False)[["sales_pzas","existence","suggested"]].sum()
+        # CEDIS es inventario central y normalmente se repite por tienda para el
+        # mismo modelo. Tomar el máximo por ID evita multiplicarlo por 17 tiendas.
+        cedis = agg.groupby("__id", sort=False)["cedis_existence"].max().rename("cedis_existence")
+        numeric = sums.join(cedis, how="left").fillna({"cedis_existence": 0.0})
 
         meta_cols = {
             "model": "Modelo",
@@ -115,14 +155,17 @@ def install(m):
             numeric[col] = numeric[col].fillna(default).astype(str)
 
         models = numeric.reset_index().rename(columns={"__id":"id_art"})
-        models["available_base"] = models["sales_pzas"] + models["existence"]
+        models["inventory_for_sell"] = models["existence"] + (models["cedis_existence"] if company_scope else 0.0)
+        models["available_base"] = models["sales_pzas"] + models["inventory_for_sell"]
         models["sell_through"] = (
             models["sales_pzas"] / models["available_base"].replace(0, pd.NA) * 100
         ).fillna(0.0).clip(lower=0, upper=100)
 
         total_sales = float(models["sales_pzas"].sum())
         total_exist = float(models["existence"].sum())
-        total_base = total_sales + total_exist
+        total_cedis = float(models["cedis_existence"].sum())
+        total_inventory_for_sell = total_exist + (total_cedis if company_scope else 0.0)
+        total_base = total_sales + total_inventory_for_sell
         overall = (total_sales / total_base * 100) if total_base else 0.0
         total_models = int(len(models))
         over80 = int((models["sell_through"] >= 80).sum())
@@ -145,6 +188,8 @@ def install(m):
                 "rubro": str(row.get("rubro") or "Sin rubro"),
                 "sales_pzas": num(row.get("sales_pzas")),
                 "existence": num(row.get("existence")),
+                "cedis_existence": num(row.get("cedis_existence")),
+                "inventory_for_sell": num(row.get("inventory_for_sell")),
                 "available_base": num(row.get("available_base")),
                 "suggested": num(row.get("suggested")),
                 "sell_through": num(row.get("sell_through")),
@@ -154,33 +199,40 @@ def install(m):
             "week": week,
             "store": selected_store,
             "section": section,
-            "catalog": catalog,
+            "catalog": "TIPO CATALOGO MAX VIG",
+            "status": "Vigente",
             "rows": rows,
             "totals": {
                 "sell_through": overall,
                 "sales_pzas": total_sales,
                 "existence": total_exist,
+                "cedis_existence": total_cedis,
+                "inventory_for_sell": total_inventory_for_sell,
                 "available_base": total_base,
                 "models": total_models,
                 "over80": over80,
                 "mid50_79": mid,
                 "under50": low,
             },
-            "formula": "Venta pzas / (Venta pzas + Existencia)",
+            "formula": "Venta anual / (Venta anual + Existencia" + (" + Existencia CEDIS" if company_scope else "") + ")",
             "source": "Excel de capacidades",
+            "sales_scope": "Acumulado anual" if annual_col == "Venta pzas año" else "Acumulado disponible en fuente",
+            "cedis_in_sellthrough": company_scope,
+            "status_filter_applied": status_filter_applied,
         }
         if len(cache) >= 24:
             cache.pop(next(iter(cache)))
         cache[key] = (now, payload)
         print(
             f"[V177-SELLTHROUGH] {week} {selected_store} {section} "
-            f"modelos={total_models} ST={overall:.1f}%",
+            f"modelos={total_models} ST={overall:.1f}% YTD={total_sales:.0f} "
+            f"CEDIS={total_cedis:.0f} include_cedis={company_scope}",
             flush=True,
         )
         return payload
 
     css = r'''<style id="v177-sellthrough-css">
-#page-sellthrough .v177-st-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:9px 0}
+#page-sellthrough .v177-st-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:9px 0}
 #page-sellthrough .v177-st-kpi{background:#fff;border:1px solid #d9e4f1;border-radius:12px;padding:12px 14px;min-width:0}
 #page-sellthrough .v177-st-kpi .lab{font-size:8px;font-weight:950;color:#66768d;text-transform:uppercase}
 #page-sellthrough .v177-st-kpi .val{font-size:22px;font-weight:950;color:#123f7b;margin-top:3px}
@@ -229,7 +281,7 @@ def install(m):
       page.className='page';page.id='page-sellthrough';
       page.innerHTML=
         '<div class="title">Sell Through</div>'+
-        '<div class="subtitle">Rotación real por modelo con venta e inventario del periodo seleccionado.</div>'+
+        '<div class="subtitle">Rotación por modelo con venta acumulada del año · TIPO CATALOGO MAX VIG · sólo vigentes.</div>'+
         '<div class="v177-st-kpis" id="v177StKpis"></div>'+
         '<div class="v177-st-head"><div><div class="title" style="margin:0">Ranking de modelos</div><div class="v177-st-note" id="v177StContext"></div></div>'+
           '<div class="v177-st-tabs" id="v177StTabs">'+
@@ -239,10 +291,10 @@ def install(m):
             '<button type="button" data-st-band="low">&lt; 50%</button>'+
           '</div>'+
         '</div>'+
-        '<div class="v177-st-note">Sell Through = Venta pzas / (Venta pzas + Existencia actual). Fuente: Excel de capacidades vigente.</div>'+
+        '<div class="v177-st-note" id="v177StFormula">Sell Through con venta acumulada anual. En Compañía incluye existencia CEDIS; por tienda CEDIS sólo se muestra y no entra al cálculo.</div>'+
         '<div class="tablewrap"><table class="table v177-st-table"><thead><tr>'+
-          '<th>#</th><th>% Sell Through</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Venta pzas</th><th>Existencia</th><th>Base disponible</th><th>Sugerido 7</th>'+
-        '</tr></thead><tbody id="v177StRows"><tr><td colspan="11">Selecciona Sell Through para consultar.</td></tr></tbody></table></div>';
+          '<th>#</th><th>% Sell Through</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Venta pzas año</th><th>Existencia</th><th>Existencia CEDIS</th><th>Base disponible</th><th>Sugerido 7</th>'+
+        '</tr></thead><tbody id="v177StRows"><tr><td colspan="12">Selecciona Sell Through para consultar.</td></tr></tbody></table></div>';
       const anchor=q('#page-more')||q('#page-analysis-upload')||q('#appView');
       if(anchor?.parentNode)anchor.parentNode.insertBefore(page,anchor);
       else document.body.appendChild(page);
@@ -276,36 +328,38 @@ def install(m):
     const rows=(d.rows||[]).filter(inBand);
     const body=q('#v177StRows');
     if(body)body.innerHTML=rows.map((r,i)=>
-      '<tr><td><b>#'+(i+1)+'</b></td><td>'+pill(r.sell_through)+'</td><td>'+esc(r.id_art)+'</td><td><b>'+esc(r.model)+'</b></td><td>'+esc(r.brand)+'</td><td>'+esc(r.section)+'</td><td>'+esc(r.rubro)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+nf(r.existence)+'</td><td>'+nf(r.available_base)+'</td><td>'+Number(r.suggested||0).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td></tr>'
-    ).join('')||'<tr><td colspan="11">Sin modelos para este rango.</td></tr>';
+      '<tr><td><b>#'+(i+1)+'</b></td><td>'+pill(r.sell_through)+'</td><td>'+esc(r.id_art)+'</td><td><b>'+esc(r.model)+'</b></td><td>'+esc(r.brand)+'</td><td>'+esc(r.section)+'</td><td>'+esc(r.rubro)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+nf(r.existence)+'</td><td>'+nf(r.cedis_existence)+'</td><td>'+nf(r.available_base)+'</td><td>'+Number(r.suggested||0).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td></tr>'
+    ).join('')||'<tr><td colspan="12">Sin modelos para este rango.</td></tr>';
   }
   function render(d){
     lastData=d;
     const t=d.totals||{};
     const k=q('#v177StKpis');
     if(k)k.innerHTML=
-      '<div class="v177-st-kpi"><div class="lab">Sell Through general</div><div class="val">'+p1(t.sell_through)+'</div><div class="note">ponderado por piezas</div></div>'+
-      '<div class="v177-st-kpi"><div class="lab">Venta pzas</div><div class="val">'+nf(t.sales_pzas)+'</div><div class="note">periodo seleccionado</div></div>'+
-      '<div class="v177-st-kpi"><div class="lab">Existencia</div><div class="val">'+nf(t.existence)+'</div><div class="note">inventario actual</div></div>'+
+      '<div class="v177-st-kpi"><div class="lab">Sell Through general</div><div class="val">'+p1(t.sell_through)+'</div><div class="note">'+(d.cedis_in_sellthrough?'incluye CEDIS':'CEDIS no entra al cálculo')+'</div></div>'+
+      '<div class="v177-st-kpi"><div class="lab">Venta pzas año</div><div class="val">'+nf(t.sales_pzas)+'</div><div class="note">'+esc(d.sales_scope||'Acumulado anual')+'</div></div>'+
+      '<div class="v177-st-kpi"><div class="lab">Existencia</div><div class="val">'+nf(t.existence)+'</div><div class="note">inventario en tiendas</div></div>'+
+      '<div class="v177-st-kpi"><div class="lab">Existencia CEDIS</div><div class="val">'+nf(t.cedis_existence)+'</div><div class="note">'+(d.cedis_in_sellthrough?'incluida en Compañía':'sólo informativa por tienda')+'</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Modelos ≥ 80%</div><div class="val">'+nf(t.over80)+'</div><div class="note">de '+nf(t.models)+' modelos</div></div>';
     const ctx=q('#v177StContext');
-    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · '+(d.week||'Periodo actual')+' · '+(d.source||'Excel capacidades');
+    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · TIPO CATALOGO MAX VIG · Vigentes · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Excel capacidades');
+    const formula=q('#v177StFormula');
+    if(formula)formula.textContent='Sell Through = '+(d.formula||'Venta anual / (Venta anual + Existencia)')+'. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
     renderRows(d);
   }
 
   async function load(){
     if(busy)return;
     ensureUI();busy=true;
-    const body=q('#v177StRows');if(body)body.innerHTML='<tr><td colspan="11">Cargando Sell Through…</td></tr>';
+    const body=q('#v177StRows');if(body)body.innerHTML='<tr><td colspan="12">Cargando Sell Through…</td></tr>';
     try{
       const week=q('#week')?.value||'';
       const store=q('#store')?.value||'Compañía';
       const section=q('#section')?.value||'Todas';
-      const catalog=q('#catalog')?.value||'Todos';
-      const d=await A('/api/commercial-sellthrough-v177?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent(catalog));
+      const d=await A('/api/commercial-sellthrough-v177?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent('Todos'));
       render(d);
     }catch(e){
-      if(body)body.innerHTML='<tr><td colspan="11">No fue posible cargar Sell Through: '+esc(e.message||e)+'</td></tr>';
+      if(body)body.innerHTML='<tr><td colspan="12">No fue posible cargar Sell Through: '+esc(e.message||e)+'</td></tr>';
     }finally{busy=false}
   }
 
@@ -330,7 +384,7 @@ def install(m):
   window.loadSellThroughV177=load;
 
   document.addEventListener('change',e=>{
-    if(e.target.matches?.('#week,#store,#section,#catalog,#v166StatusSelect')&&q('#page-sellthrough.active'))load();
+    if(e.target.matches?.('#week,#store,#section')&&q('#page-sellthrough.active'))load();
   },true);
   document.addEventListener('click',e=>{
     const b=e.target.closest?.('#analysisNav [data-sub="sellthrough"]');

@@ -262,13 +262,20 @@ _CAPACITY_RAW_HEADERS = {
     "MARCA PRICE", "MARCA", "PRECIO MAYOREO", "COSTO", "COSTO UNITARIO",
     "PRECIO MENUDEO", "PRECIO VENTA", "PRECIO", "PRECIO OFERTA",
     "EXISTENCIA PISO", "PISO", "EXISTENCIA BODEGA", "BODEGA", "EXISTENCIA TOTAL", "EXISTENCIA",
+    "EXISTENCIA CEDIS", "EXISTENCIA EN CEDIS", "EXISTENCIA CEDIS PZAS", "EXIST CEDIS", "EXIST. CEDIS", "INVENTARIO CEDIS", "CEDIS",
     "SUG 7", "SUGERIDO 7", "VPD", "DIAS DE INVENTARIO SUG 7", "DDI", "DIAS STOCK",
     "VTA EN PZAS 7", "VENTA PZAS 7", "VTA EN PZAS 30", "VENTA PZAS 30", "VTA ACUM MES EN PZAS", "VENTA PZAS",
+    "VTA ACUM AÑO EN PZAS", "VTA ACUM ANO EN PZAS", "VTA ACUM AÑO PZAS", "VTA ACUM ANO PZAS",
+    "VENTA ACUM AÑO EN PZAS", "VENTA ACUM ANO EN PZAS", "VENTA ACUM AÑO PZAS", "VENTA ACUM ANO PZAS",
+    "VTA ACUM ANUAL EN PZAS", "VENTA ACUM ANUAL EN PZAS", "VTA AÑO EN PZAS", "VTA ANO EN PZAS", "VENTA PZAS AÑO", "VENTA PZAS ANO",
     "VTA EN $ 7", "VENTA $ 7", "VTA ACUM MES EN $", "VENTA ACUM MES EN $",
     "TIPO CATALOGO MAX VIG", "TIPO CATÁLOGO MAX VIG",
     "CAPACIDAD MAX TIENDA(PV)", "CAPACIDAD", "BANDA OBJETIVO",
     "EXCEDENTE A 60 DIAS", "EXCEDENTE", "ULTIMA ENTRADA CEDIS A TIENDA", "ÚLTIMA ENTRADA CEDIS A TIENDA",
-    "PZAS ULT ENTRADA", "PZAS ULTIMA ENTRADA", "ESTATUS COMERCIAL", "ESTATUS",
+    "PZAS ULT ENTRADA", "PZAS ULTIMA ENTRADA",
+    "ESTATUS DE CATALOGO", "ESTATUS DE CATÁLOGO", "ESTATUS CATALOGO", "ESTATUS CATÁLOGO",
+    "ESTATUS CATALOGO MAX VIG", "ESTATUS CATÁLOGO MAX VIG", "STATUS CATALOGO", "STATUS CATÁLOGO",
+    "ESTATUS COMERCIAL", "ESTATUS",
 }
 _CAPACITY_RAW_HEADERS_NORM = {norm_text(x) for x in _CAPACITY_RAW_HEADERS}
 _XLSX_ROW_END = b"</row>"
@@ -426,6 +433,10 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
     existence = to_number(_series(source, ["EXISTENCIA TOTAL", "EXISTENCIA"], 0))
     calculated_existence = out["Existencia piso"] + out["Existencia bodega"]
     out["Existencia"] = existence.where(existence > 0, calculated_existence)
+    out["Existencia CEDIS"] = to_number(_series(source, [
+        "EXISTENCIA CEDIS", "EXISTENCIA EN CEDIS", "EXISTENCIA CEDIS PZAS",
+        "EXIST CEDIS", "EXIST. CEDIS", "INVENTARIO CEDIS", "CEDIS"
+    ], 0))
     out["VPD"] = to_number(_series(source, ["SUG 7", "SUGERIDO 7", "VPD"], 0))
     out["DDI"] = to_number(_series(source, ["DIAS DE INVENTARIO SUG 7", "DDI", "DIAS STOCK"], 0))
     computed_ddi = out["Existencia"].div(out["VPD"].replace(0, np.nan))
@@ -433,6 +444,15 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
     out["Venta pzas 7"] = to_number(_series(source, ["VTA EN PZAS 7", "VENTA PZAS 7"], 0))
     out["Venta pzas 30"] = to_number(_series(source, ["VTA EN PZAS 30", "VENTA PZAS 30", "VTA ACUM MES EN PZAS"], 0))
     out["Venta pzas"] = to_number(_series(source, ["VTA ACUM MES EN PZAS", "VTA EN PZAS 30", "VENTA PZAS"], 0))
+    out["Venta pzas año"] = to_number(_series(source, [
+        "VTA ACUM AÑO EN PZAS", "VTA ACUM ANO EN PZAS",
+        "VTA ACUM AÑO PZAS", "VTA ACUM ANO PZAS",
+        "VENTA ACUM AÑO EN PZAS", "VENTA ACUM ANO EN PZAS",
+        "VENTA ACUM AÑO PZAS", "VENTA ACUM ANO PZAS",
+        "VTA ACUM ANUAL EN PZAS", "VENTA ACUM ANUAL EN PZAS",
+        "VTA AÑO EN PZAS", "VTA ANO EN PZAS",
+        "VENTA PZAS AÑO", "VENTA PZAS ANO"
+    ], 0))
     out["Venta $ 7"] = to_number(_series(source, ["VTA EN $ 7", "VENTA $ 7"], 0))
     out["Venta $ mes"] = to_number(_series(source, ["VTA ACUM MES EN $", "VENTA ACUM MES EN $"], 0))
     out["Venta $"] = out["Venta $ 7"].where(out["Venta $ 7"] > 0, out["Venta $ mes"])
@@ -448,7 +468,17 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
         _series(source, ["ULTIMA ENTRADA CEDIS A TIENDA", "ÚLTIMA ENTRADA CEDIS A TIENDA"], pd.NaT)
     )
     out["Pzas última entrada"] = to_number(_series(source, ["PZAS ULT ENTRADA", "PZAS ULTIMA ENTRADA"], 0))
+    out["Estatus catálogo"] = _series(source, [
+        "ESTATUS DE CATALOGO", "ESTATUS DE CATÁLOGO",
+        "ESTATUS CATALOGO", "ESTATUS CATÁLOGO",
+        "ESTATUS CATALOGO MAX VIG", "ESTATUS CATÁLOGO MAX VIG",
+        "STATUS CATALOGO", "STATUS CATÁLOGO"
+    ], "").astype(str).str.strip()
     out["Estatus comercial"] = _series(source, ["ESTATUS COMERCIAL", "ESTATUS"], "").astype(str).str.strip()
+    # Si la fuente sólo expone ESTATUS genérico, úsalo también como respaldo
+    # para el estatus de catálogo requerido por Sell Through.
+    empty_status = out["Estatus catálogo"].isin(["", "nan", "None"])
+    out.loc[empty_status, "Estatus catálogo"] = out.loc[empty_status, "Estatus comercial"]
     out["Fuente"] = path.name
     # El DataFrame crudo ya no es necesario; liberarlo reduce el pico de memoria
     # durante la normalización del archivo grande.
@@ -457,8 +487,8 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
     valid = out["Tienda"].ne("") & ~out["Modelo"].isin(["", "nan", "None"])
     out = out.loc[valid].copy()
     numeric_cols = [
-        "Existencia piso", "Existencia bodega", "Existencia", "VPD", "DDI",
-        "Venta pzas 7", "Venta pzas 30", "Venta pzas", "Venta $ 7", "Venta $ mes", "Venta $", "Costo unitario",
+        "Existencia piso", "Existencia bodega", "Existencia", "Existencia CEDIS", "VPD", "DDI",
+        "Venta pzas 7", "Venta pzas 30", "Venta pzas", "Venta pzas año", "Venta $ 7", "Venta $ mes", "Venta $", "Costo unitario",
         "Precio unitario", "Inversión", "Utilidad %", "Utilidad $", "Capacidad", "Excedente",
     ]
     for column in numeric_cols:

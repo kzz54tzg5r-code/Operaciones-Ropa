@@ -2833,7 +2833,7 @@ def _capacity_unique_model_sets():
 
 CAPACITY_NORMALIZED_DIR = DATA_ROOT / "capacity_normalized"
 CAPACITY_NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
-CAPACITY_CACHE_SCHEMA = 48
+CAPACITY_CACHE_SCHEMA = 49
 
 def _capacity_cache_path(entry_id: str) -> Path:
     safe=re.sub(r"[^0-9A-Za-z_-]+","_",str(entry_id or "capacity"))
@@ -2867,8 +2867,8 @@ def _prepare_capacity_frame(frame: pd.DataFrame) -> pd.DataFrame:
 
     date_columns={"Última entrada CEDIS a tienda"}
     numeric_columns={
-        "Existencia piso","Existencia bodega","Existencia","VPD","DDI",
-        "Venta pzas 7","Venta pzas 30","Venta pzas","Venta $ 7","Venta $ mes","Venta $",
+        "Existencia piso","Existencia bodega","Existencia","Existencia CEDIS","VPD","DDI",
+        "Venta pzas 7","Venta pzas 30","Venta pzas","Venta pzas año","Venta $ 7","Venta $ mes","Venta $",
         "Costo unitario","Precio unitario","Inversión","Utilidad %","Utilidad $",
         "Capacidad","Excedente","Pzas última entrada",
     }
@@ -2905,6 +2905,11 @@ def _load_capacity_cache(entry: dict) -> pd.DataFrame:
             frame=pd.read_pickle(cache_path)
             if isinstance(frame,pd.DataFrame):
                 old_schema=int(frame.attrs.get("capacity_cache_schema") or 0)
+                if old_schema != CAPACITY_CACHE_SCHEMA:
+                    # V49 necesita columnas que no existían en el pickle normalizado:
+                    # venta anual, existencia CEDIS y estatus de catálogo. Volver al
+                    # Excel fuente una sola vez evita fabricar ceros a partir del cache viejo.
+                    return pd.DataFrame()
                 frame=_prepare_capacity_frame(frame)
                 target=_capacity_cache_path(str(entry.get("id") or ""))
                 if old_schema!=CAPACITY_CACHE_SCHEMA or cache_path!=target:
