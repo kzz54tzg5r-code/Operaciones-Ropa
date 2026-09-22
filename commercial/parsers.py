@@ -8,6 +8,7 @@ import re
 import unicodedata
 import zipfile
 import html
+import gc
 
 import numpy as np
 import pandas as pd
@@ -306,34 +307,33 @@ def _xlsx_decode_cell(attrs: bytes, body: bytes, shared: list[str]):
     return html.unescape(raw.decode("utf-8","ignore"))
 
 
-def _fast_capacity_xlsx(path: Path) -> pd.DataFrame:
-    """Lee sólo las columnas necesarias de la primera hoja XLSX.
+def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
+    """Itera la primera hoja del XLSX conservando sólo columnas comerciales.
 
-    El archivo operativo real supera 195 mil filas y el XML de la hoja ronda
-    400 MB descomprimido. openpyxl tarda varios minutos porque crea objetos para
-    cada celda. Este lector recorre el XML una sola vez y conserva únicamente
-    las columnas que alimentan los KPIs/reportes del módulo.
+    La versión anterior retenía las ~196 mil filas crudas completas en listas de
+    Python antes de normalizarlas. En Render eso elevaba el pico por encima de
+    512 MB. Ahora cada bloque se entrega y se libera antes de leer el siguiente.
     """
     shared=[]
-    column_data={}
     with zipfile.ZipFile(path) as archive:
         if "xl/sharedStrings.xml" in archive.namelist():
-            # sharedStrings es pequeño en el archivo real; extracción por regex
-            # evita cargar openpyxl y mantiene caracteres especiales.
             raw_ss=archive.read("xl/sharedStrings.xml")
             for block in re.findall(rb'<si>(.*?)</si>', raw_ss, flags=re.S):
-                pieces=re.findall(rb'<t(?:\s[^>]*)?>(.*?)</t>', block, flags=re.S)
+                pieces=re.findall(rb'<t(?:\\s[^>]*)?>(.*?)</t>', block, flags=re.S)
                 shared.append(html.unescape(b"".join(pieces).decode("utf-8","ignore")))
+            del raw_ss
 
         sheet_name="xl/worksheets/sheet1.xml"
         if sheet_name not in archive.namelist():
-            return pd.DataFrame()
+            return
 
         selected_by_col={}
         selected_headers=[]
         selected_cell_re=None
         buffer=b""
         row_no=0
+        rows_in_chunk=0
+        column_data={}
         with archive.open(sheet_name) as stream:
             while True:
                 chunk=stream.read(4*1024*1024)
@@ -353,13 +353,11 @@ def _fast_capacity_xlsx(path: Path) -> pd.DataFrame:
                                 selected_by_col[col_text]=header
                                 selected_headers.append(header)
                         if not selected_by_col:
-                            return pd.DataFrame()
+                            return
                         column_data={header:[] for header in selected_headers}
-                        # B no puede capturar BA porque después de la alternativa
-                        # se exige el número de fila.
-                        alt="|".join(sorted((re.escape(c) for c in selected_by_col), key=len, reverse=True))
+                        alt="|".join(sorted((re.escape(col) for col in selected_by_col),key=len,reverse=True))
                         selected_cell_re=re.compile(
-                            rb'<c\s+([^>]*?\br="(' + alt.encode("ascii") + rb')\d+"[^>]*)>(.*?)</c>',
+                            rb'<c\\s+([^>]*?\\br="(' + alt.encode("ascii") + rb')\\d+"[^>]*)>(.*?)</c>',
                             re.S,
                         )
                         continue
@@ -370,14 +368,28 @@ def _fast_capacity_xlsx(path: Path) -> pd.DataFrame:
                         header=selected_by_col.get(col.decode("ascii","ignore"))
                         if header:
                             rec[header]=_xlsx_decode_cell(attrs,body,shared)
-                    if rec:
-                        for header in selected_headers:
-                            column_data[header].append(rec.get(header,""))
+                    if not rec:
+                        continue
+                    for header in selected_headers:
+                        column_data[header].append(rec.get(header,""))
+                    rows_in_chunk += 1
+                    if rows_in_chunk >= max(1000,int(chunk_rows)):
+                        yield pd.DataFrame(column_data)
+                        column_data={header:[] for header in selected_headers}
+                        rows_in_chunk=0
 
-    if not column_data or not next(iter(column_data.values()),[]):
-        return pd.DataFrame(columns=selected_headers)
-    return pd.DataFrame(column_data)
+        if selected_headers and rows_in_chunk:
+            yield pd.DataFrame(column_data)
 
+
+def _fast_capacity_xlsx(path: Path) -> pd.DataFrame:
+    """Compatibilidad: une bloques, manteniendo acotada la lectura cruda."""
+    parts=list(_iter_fast_capacity_xlsx(path))
+    if not parts:
+        return pd.DataFrame()
+    if len(parts)==1:
+        return parts[0]
+    return pd.concat(parts,ignore_index=True,copy=False)
 
 def _capacity_date_series(series: pd.Series) -> pd.Series:
     # Excel guarda fechas como seriales cuando la celda es numérica.
@@ -388,19 +400,11 @@ def _capacity_date_series(series: pd.Series) -> pd.Series:
         result.loc[mask]=pd.to_datetime(numeric.loc[mask],unit="D",origin="1899-12-30",errors="coerce")
     return result
 
-def read_capacity_file(path: str | Path) -> pd.DataFrame:
-    """Normaliza el catálogo/capacidades a una fila por tienda y modelo."""
-    path = Path(path)
-    if path.suffix.lower()==".xlsx":
-        try:
-            source = _fast_capacity_xlsx(path)
-        except Exception:
-            source = _read_sheet(path, 0)
-    else:
-        source = _read_sheet(path, 0)
-    if source.empty:
+def _normalize_capacity_source(source: pd.DataFrame, path: str | Path) -> pd.DataFrame:
+    """Normaliza un bloque de capacidades sin conservar el XLSX crudo completo."""
+    path=Path(path)
+    if source is None or source.empty:
         return pd.DataFrame()
-
     store = _series(source, ["TIENDA", "SUCURSAL", "TIENDA/SUCURSAL"])
     section_detail = _series(source, ["SECCION", "SECCIÓN"])
     category = _series(source, ["CATEGORIA", "CATEGORÍA"])
@@ -504,6 +508,81 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
         out[column] = pd.to_numeric(out[column], errors="coerce").fillna(0.0)
     return out.reset_index(drop=True)
 
+
+
+def _compress_capacity_chunk(frame: pd.DataFrame) -> pd.DataFrame:
+    """Comprime textos repetidos antes de acumular el siguiente bloque."""
+    if frame is None or frame.empty:
+        return frame
+    for column in list(frame.columns):
+        series=frame[column]
+        if isinstance(series.dtype,pd.CategoricalDtype):
+            continue
+        if pd.api.types.is_object_dtype(series.dtype) or pd.api.types.is_string_dtype(series.dtype):
+            clean=series.fillna("").astype(str).str.strip()
+            frame[column]=pd.Categorical(clean)
+            del clean
+    return frame
+
+
+def _combine_capacity_chunks(parts: list[pd.DataFrame]) -> pd.DataFrame:
+    """Une bloques ya comprimidos evitando recrear millones de strings Python."""
+    if not parts:
+        return pd.DataFrame()
+    if len(parts)==1:
+        return parts[0].reset_index(drop=True)
+    columns=list(parts[0].columns)
+    combined={}
+    for column in columns:
+        series_list=[part[column] for part in parts if column in part.columns]
+        if not series_list:
+            continue
+        if all(isinstance(series.dtype,pd.CategoricalDtype) for series in series_list):
+            try:
+                cat=pd.api.types.union_categoricals(
+                    [series.array for series in series_list],
+                    sort_categories=False,
+                    ignore_order=True,
+                )
+                combined[column]=pd.Series(cat)
+                continue
+            except Exception:
+                pass
+        combined[column]=pd.concat(series_list,ignore_index=True,copy=False)
+    result=pd.DataFrame(combined)
+    return result.reset_index(drop=True)
+
+
+def read_capacity_file(path: str | Path) -> pd.DataFrame:
+    """Normaliza capacidades con lectura por bloques para limitar memoria pico."""
+    path=Path(path)
+    if path.suffix.lower()==".xlsx":
+        parts=[]
+        try:
+            for raw in _iter_fast_capacity_xlsx(path,chunk_rows=6000):
+                normalized=_normalize_capacity_source(raw,path)
+                del raw
+                if normalized.empty:
+                    continue
+                parts.append(_compress_capacity_chunk(normalized))
+                del normalized
+                if len(parts)%6==0:
+                    gc.collect()
+            if parts:
+                result=_combine_capacity_chunks(parts)
+                parts.clear()
+                gc.collect()
+                return result
+        except Exception:
+            parts.clear()
+            gc.collect()
+            # Conserva el lector tolerante como respaldo para XLSX no estándar.
+            source=_read_sheet(path,0)
+            return _compress_capacity_chunk(_normalize_capacity_source(source,path))
+        return pd.DataFrame()
+
+    source=_read_sheet(path,0)
+    return _compress_capacity_chunk(_normalize_capacity_source(source,path))
 
 def _infer_sheet_date(sheet_name: str) -> pd.Timestamp:
     months = {
