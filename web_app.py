@@ -2847,7 +2847,7 @@ def _capacity_unique_model_sets():
 
 CAPACITY_NORMALIZED_DIR = DATA_ROOT / "capacity_normalized"
 CAPACITY_NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
-CAPACITY_CACHE_SCHEMA = 51
+CAPACITY_CACHE_SCHEMA = 50
 
 _CAPACITY_STORE_ALIAS_BY_KEY={
     login_key("Guadalajara"):"Atemajac",
@@ -4483,18 +4483,47 @@ def export_checklist_evidence(request: Request, week: str):
     c.save();data=bio.getvalue()
     return Response(content=data,media_type="application/pdf",headers={"Content-Disposition":f'attachment; filename="evidencias_{_safe_path_component(week or "periodo")}.pdf"'})
 
+_COMMERCIAL_DETAIL_RESULT_CACHE={}
+_COMMERCIAL_DETAIL_RESULT_LOCK=threading.RLock()
+
 @app.get("/api/commercial-detail")
 @_serialized_capacity
-def commercial_detail(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos"):
+def commercial_detail(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos", mode: str="both"):
     u=require_user(request)
     store=effective_store(u,store)
+    mode_key=str(mode or "both").strip().lower()
+    if mode_key not in ("rubro","area","both"):
+        mode_key="both"
+
+    entry=_capacity_source_entry(week or "") or {}
+    stamp=str(entry.get("id") or entry.get("uploaded_at") or entry.get("name") or week or "")
+    cache_key=(stamp,store,section,catalog,mode_key)
+    with _COMMERCIAL_DETAIL_RESULT_LOCK:
+        cached=_COMMERCIAL_DETAIL_RESULT_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+
     frame=_capacity_frame_for_period(week or "")
     if frame.empty:
         return {"week":week or "","store":store,"section":section,"rubros":[],"locations":[],"warnings":["Carga y procesa el Excel de capacidades para habilitar este reporte."]}
-    work=_capacity_scope_v45(frame,store,section,catalog)
-    rubros=_capacity_rubros_v45(work,section,week or "")
-    locations=_capacity_location_detail(store,section,catalog,week or "")
-    return {"week":week or "","store":store,"section":section,"catalog":catalog,"rubros":rubros,"locations":locations,"warnings":[]}
+
+    rubros=[]
+    locations=[]
+    if mode_key in ("rubro","both"):
+        work=_capacity_scope_v45(frame,store,section,catalog)
+        rubros=_capacity_rubros_v45(work,section,week or "")
+        del work
+        _release_process_memory()
+    if mode_key in ("area","both"):
+        locations=_capacity_location_detail(store,section,catalog,week or "")
+        _release_process_memory()
+
+    payload={"week":week or "","store":store,"section":section,"catalog":catalog,"rubros":rubros,"locations":locations,"warnings":[]}
+    with _COMMERCIAL_DETAIL_RESULT_LOCK:
+        if len(_COMMERCIAL_DETAIL_RESULT_CACHE)>=32:
+            _COMMERCIAL_DETAIL_RESULT_CACHE.pop(next(iter(_COMMERCIAL_DETAIL_RESULT_CACHE)))
+        _COMMERCIAL_DETAIL_RESULT_CACHE[cache_key]=payload
+    return payload
 
 
 _OPERATIONS_REPARSE_LOCK=threading.Lock()
