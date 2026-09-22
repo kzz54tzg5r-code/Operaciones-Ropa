@@ -527,6 +527,10 @@ def install(m):
     # ---------- Reprocesar automáticamente PDFs ya cargados que quedaron en cero ----------
     @m.app.on_event("startup")
     def _schedule_repair_existing_sales():
+        # Reparaciones masivas sólo bajo ejecución explícita; en Render el
+        # arranque debe permanecer disponible para las cargas de Excel.
+        if not m.os.environ.get("OPERACIONES_ROPA_REPAIR_SALES_ON_STARTUP"):
+            return
         def worker():
             time.sleep(12)
             try:
