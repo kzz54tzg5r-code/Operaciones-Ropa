@@ -2847,7 +2847,30 @@ def _capacity_unique_model_sets():
 
 CAPACITY_NORMALIZED_DIR = DATA_ROOT / "capacity_normalized"
 CAPACITY_NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
-CAPACITY_CACHE_SCHEMA = 50
+CAPACITY_CACHE_SCHEMA = 51
+
+_CAPACITY_STORE_ALIAS_BY_KEY={
+    login_key("Guadalajara"):"Atemajac",
+    login_key("Atemajac"):"Atemajac",
+    login_key("Guadalajara Miravalle"):"Miravalle",
+    login_key("Miravalle Guadalajara"):"Miravalle",
+    login_key("Miravalle"):"Miravalle",
+}
+
+def _canonical_capacity_store_name(value: str) -> str:
+    raw=str(value or "").strip()
+    return _CAPACITY_STORE_ALIAS_BY_KEY.get(login_key(raw),raw)
+
+def _canonical_capacity_store_key(value: str) -> str:
+    return login_key(_canonical_capacity_store_name(value))
+
+def _capacity_store_match_keys(value: str) -> set[str]:
+    key=_canonical_capacity_store_key(value)
+    if key==login_key("Atemajac"):
+        return {login_key("Atemajac"),login_key("Guadalajara")}
+    if key==login_key("Miravalle"):
+        return {login_key("Miravalle"),login_key("Guadalajara Miravalle"),login_key("Miravalle Guadalajara")}
+    return {key}
 
 def _capacity_cache_path(entry_id: str) -> Path:
     safe=re.sub(r"[^0-9A-Za-z_-]+","_",str(entry_id or "capacity"))
@@ -2863,6 +2886,17 @@ def _prepare_capacity_frame(frame: pd.DataFrame) -> pd.DataFrame:
     """
     if not isinstance(frame,pd.DataFrame) or frame.empty:
         return frame
+    # Canonicalizar tiendas incluso si el pickle ya estaba normalizado.
+    # En el Excel, Atemajac llega como "Guadalajara" y Miravalle puede llegar
+    # como "Guadalajara Miravalle". Esta normalización debe ocurrir antes del
+    # early-return para no conservar aliases viejos en memoria.
+    if "Tienda" in frame.columns:
+        stores=frame["Tienda"].fillna("").astype(str).str.strip()
+        canonical=stores.map(_canonical_capacity_store_name)
+        frame["Tienda"]=canonical
+        frame["_TiendaKey"]=pd.Categorical(canonical.map(login_key))
+        del stores,canonical
+
     ready=(
         int(frame.attrs.get("capacity_cache_schema") or 0)==CAPACITY_CACHE_SCHEMA
         and "Área reporte" in frame.columns and "Pasillo operativo" in frame.columns
@@ -2870,14 +2904,6 @@ def _prepare_capacity_frame(frame: pd.DataFrame) -> pd.DataFrame:
     )
     if ready:
         return frame
-
-    if "Tienda" in frame.columns:
-        stores=frame["Tienda"].fillna("").astype(str).str.strip()
-        keys=stores.map(login_key)
-        stores=stores.mask(keys==login_key("Guadalajara"),"Atemajac")
-        stores=stores.mask(keys.isin([login_key("Guadalajara Miravalle"),login_key("Miravalle Guadalajara")]),"Miravalle")
-        frame["Tienda"]=stores
-        del stores,keys
 
     date_columns={"Última entrada CEDIS a tienda"}
     numeric_columns={
@@ -3173,12 +3199,20 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
     }
     num_frame=pd.DataFrame(index=work.index)
     num_frame["__id"]=work["__id"]
+    num_frame["__store"]=work.get("Tienda",pd.Series("",index=work.index)).fillna("").astype(str).map(_canonical_capacity_store_key)
     for dest,src in num_sources.items():
         if src in work.columns:
             num_frame[dest]=pd.to_numeric(work[src],errors="coerce").fillna(0.0)
         else:
             num_frame[dest]=0.0
-    numeric=num_frame.groupby("__id",sort=False).sum(numeric_only=True)
+
+    # El archivo puede repetir el mismo ID_ART de una tienda por tener más de una
+    # ubicación/exhibición. Existencia, sugerido y ventas son métricas del modelo,
+    # no de cada ubicación; sumarlas duplicaba valores. Primero conservar el valor
+    # de la tienda/modelo y sólo después sumar entre tiendas para Compañía.
+    numeric_cols=[x for x in num_sources if x in num_frame.columns]
+    per_store=num_frame.groupby(["__store","__id"],sort=False,observed=True)[numeric_cols].max()
+    numeric=per_store.groupby(level="__id",sort=False).sum(numeric_only=True)
 
     # Existencia CEDIS es inventario central por modelo y suele repetirse en
     # varias filas/ubicaciones. Se conserva el máximo por ID_ART para evitar
@@ -3194,8 +3228,17 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
     # DDI del archivo = Días de inventario SUG 7. No se suma; se conserva el
     # promedio de los registros que forman el modelo en el alcance seleccionado.
     if "DDI" in work.columns:
-        ddi_src=pd.to_numeric(work["DDI"],errors="coerce").replace([np.inf,-np.inf],np.nan)
-        ddi=ddi_src.groupby(work["__id"]).mean().rename("ddi")
+        ddi_tmp=pd.DataFrame({
+            "__store":work.get("Tienda",pd.Series("",index=work.index)).fillna("").astype(str).map(_canonical_capacity_store_key),
+            "__id":work["__id"],
+            "ddi":pd.to_numeric(work["DDI"],errors="coerce").replace([np.inf,-np.inf],np.nan),
+            "suggested":pd.to_numeric(work.get("VPD",0),errors="coerce").fillna(0.0),
+        })
+        ddi_store=ddi_tmp.groupby(["__store","__id"],sort=False,observed=True).agg({"ddi":"max","suggested":"max"}).reset_index()
+        weighted=(ddi_store["ddi"].fillna(0)*ddi_store["suggested"]).groupby(ddi_store["__id"]).sum()
+        weights=ddi_store["suggested"].groupby(ddi_store["__id"]).sum().replace(0,np.nan)
+        fallback=ddi_store.groupby("__id",sort=False)["ddi"].mean()
+        ddi=(weighted/weights).fillna(fallback).rename("ddi")
         numeric=numeric.join(ddi,how="left")
     else:
         numeric["ddi"]=0.0
@@ -3312,19 +3355,25 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             return {}
         return tmp.groupby("__id",sort=False)[src_col].agg(lambda s:_combine_labels(s,3)).to_dict()
 
-    location_col="Ubicación detalle" if "Ubicación detalle" in labels.columns else ("Pasillo" if "Pasillo" in labels.columns else "")
+    location_col=(
+        "Pasillo operativo" if "Pasillo operativo" in labels.columns
+        else ("Ubicación detalle" if "Ubicación detalle" in labels.columns else ("Pasillo" if "Pasillo" in labels.columns else ""))
+    )
 
-    # Ubicación operativa y exhibición se separan. Antes una fila como
-    # "Botadero Ropa 23" aparecía también dentro de Ubicación. Ahora, si la fila
-    # está clasificada como exhibición, sólo se muestra en Exhibición.
     location_map={}
     exhibition_map={}
+    jeans_variant_map={}
+    jeans_tokens=("FERGINO","SEVEN","SEVEN JEANS","SEVEN ELEVEN","SURPRISE")
+
     if location_col:
-        if "Exhibición" in labels.columns:
-            exp_kind=labels["Exhibición"].fillna("").astype(str).str.strip()
-            operational=labels[exp_kind.isin(["","nan","None","—"])].copy()
-        else:
-            operational=labels.copy()
+        exp_kind=labels.get("Exhibición",pd.Series("",index=labels.index)).fillna("").astype(str).str.strip()
+        area_kind=labels.get("Área reporte",pd.Series("",index=labels.index)).fillna("").astype(str).map(login_key)
+        exp_upper=exp_kind.map(login_key).str.upper()
+        jeans_variant=(area_kind==login_key("Jeans")) & exp_upper.apply(lambda x:any(tok in x for tok in jeans_tokens))
+
+        # Fergino/Seven/Sprise son ubicaciones dentro de Jeans, aunque el archivo
+        # las traiga en la columna Exhibición. No deben mostrarse separadas.
+        operational=labels[(exp_kind.isin(["","nan","None","—"])) | jeans_variant].copy()
         if not operational.empty:
             tmp=operational[["__id",location_col]].copy()
             tmp[location_col]=tmp[location_col].fillna("").astype(str).str.strip()
@@ -3332,41 +3381,72 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             if not tmp.empty:
                 location_map=tmp.groupby("__id",sort=False)[location_col].agg(lambda s:_combine_labels(s,3)).to_dict()
 
-    if location_col and "Exhibición" in labels.columns:
-        exp=labels[["__id",location_col,"Exhibición"]].copy()
-        exp["Exhibición"]=exp["Exhibición"].fillna("").astype(str).str.strip()
-        exp[location_col]=exp[location_col].fillna("").astype(str).str.strip()
-        exp=exp[
-            ~exp["Exhibición"].isin(["","nan","None","—"])
-            & ~exp[location_col].isin(["","nan","None","—"])
-        ].drop_duplicates(["__id","Exhibición",location_col])
+        if jeans_variant.any():
+            jt=labels.loc[jeans_variant,["__id","Exhibición"]].copy()
+            jt["Exhibición"]=jt["Exhibición"].fillna("").astype(str).str.strip()
+            jeans_variant_map=jt.groupby("__id",sort=False)["Exhibición"].agg(lambda s:_combine_labels(s,3)).to_dict()
 
-        def compact_exhibitions(group):
-            kinds={}
-            order=[]
-            for row in group[[location_col,"Exhibición"]].itertuples(index=False,name=None):
-                raw_loc=str(row[0] or "").strip()
-                kind=str(row[1] or "").strip()
-                if not kind:
+        # Sólo las exhibiciones reales permanecen en la columna Exhibición.
+        if "Exhibición" in labels.columns:
+            exp=labels.loc[~jeans_variant,["__id",location_col,"Exhibición"]].copy()
+            exp["Exhibición"]=exp["Exhibición"].fillna("").astype(str).str.strip()
+            exp[location_col]=exp[location_col].fillna("").astype(str).str.strip()
+            exp=exp[
+                ~exp["Exhibición"].isin(["","nan","None","—"])
+                & ~exp[location_col].isin(["","nan","None","—"])
+            ].drop_duplicates(["__id","Exhibición",location_col])
+
+            def compact_exhibitions(group):
+                kinds={}
+                order=[]
+                for row in group[[location_col,"Exhibición"]].itertuples(index=False,name=None):
+                    raw_loc=str(row[0] or "").strip()
+                    kind=str(row[1] or "").strip()
+                    if not kind:
+                        continue
+                    if kind not in kinds:
+                        kinds[kind]=[]
+                        order.append(kind)
+                    nums=re.findall(r"(?<!\d)(\d+[A-Za-z]?)(?!\d)",raw_loc)
+                    for number in nums:
+                        number=number.upper()
+                        if number not in kinds[kind]:
+                            kinds[kind].append(number)
+                parts=[]
+                for kind in order[:5]:
+                    nums=kinds.get(kind,[])[:10]
+                    parts.append(kind+(" "+", ".join(nums) if nums else ""))
+                return " · ".join(parts)
+
+            if not exp.empty:
+                for rid,group in exp.groupby("__id",sort=False,observed=True):
+                    exhibition_map[str(rid)]=compact_exhibitions(group)
+
+        # Limpieza de ubicaciones redundantes: "Mesa 45 / Mesa" -> "Mesa 45".
+        for rid,value in list(location_map.items()):
+            items=[x.strip() for x in str(value or "").split(" / ") if x.strip()]
+            specific=[]
+            for item in items:
+                k=login_key(item)
+                if k in (login_key("Mesa"),login_key("Jeans"),login_key("Pasillo colgado")) and any(login_key(x)!=k and login_key(x).startswith(k) for x in items):
                     continue
-                if kind not in kinds:
-                    kinds[kind]=[]
-                    order.append(kind)
-                # Ej.: Botadero Ropa 23 + Botadero Ropa 24 => Botadero 23, 24.
-                nums=re.findall(r"(?<!\\d)(\\d+[A-Za-z]?)(?!\\d)",raw_loc)
-                for number in nums:
-                    number=number.upper()
-                    if number not in kinds[kind]:
-                        kinds[kind].append(number)
-            parts=[]
-            for kind in order[:5]:
-                nums=kinds.get(kind,[])[:10]
-                parts.append(kind+(" "+", ".join(nums) if nums else ""))
-            return " · ".join(parts)
+                if item not in specific:
+                    specific.append(item)
+            location_map[rid]=" / ".join(specific[:3])
 
-        if not exp.empty:
-            for rid,group in exp.groupby("__id",sort=False,observed=True):
-                exhibition_map[str(rid)]=compact_exhibitions(group)
+        # Adjuntar subtipo Jeans a la ubicación operativa, nunca a Exhibición.
+        for rid,variant in jeans_variant_map.items():
+            base=str(location_map.get(str(rid),"") or "").strip()
+            var=str(variant or "").strip()
+            if not var:
+                continue
+            if base and login_key(var) not in login_key(base):
+                if login_key(base)==login_key("Jeans"):
+                    location_map[str(rid)]="Jeans "+var
+                else:
+                    location_map[str(rid)]=base+" · "+var
+            elif not base:
+                location_map[str(rid)]="Jeans "+var
 
     if not exhibition_map:
         exhibition_map=compact_labels("Exhibición")
@@ -3419,14 +3499,21 @@ def _capacity_8020_summary(store: str="Compañía", section: str="Todas", catalo
     work["Área reporte"]=_capacity_area_report_series(work)
     # Agregación numérica a nivel modelo.
     agg=pd.DataFrame({"__id":work["__id"]})
+    agg["__store"]=work.get("Tienda",pd.Series("",index=work.index)).fillna("").astype(str).map(_canonical_capacity_store_key)
     for dst,src in (("sales_pzas",pcol),("sales_value",vcol),("suggested","VPD"),("existence","Existencia"),("capacity","Capacidad")):
         agg[dst]=pd.to_numeric(work.get(src,0),errors="coerce").fillna(0.0)
-    model=agg.groupby("__id",sort=False).sum(numeric_only=True)
-    ddi_src=pd.to_numeric(work.get("DDI",0),errors="coerce").fillna(0.0)
-    sug_src=pd.to_numeric(work.get("VPD",0),errors="coerce").fillna(0.0)
-    weighted=(ddi_src*sug_src).groupby(work["__id"]).sum()
-    weights=sug_src.groupby(work["__id"]).sum().replace(0,np.nan)
-    model["ddi"]=(weighted/weights).fillna(ddi_src.groupby(work["__id"]).mean()).fillna(0.0)
+    per_store=agg.groupby(["__store","__id"],sort=False,observed=True)[["sales_pzas","sales_value","suggested","existence","capacity"]].max()
+    model=per_store.groupby(level="__id",sort=False).sum(numeric_only=True)
+
+    ddi_tmp=pd.DataFrame({
+        "__store":agg["__store"],"__id":work["__id"],
+        "ddi":pd.to_numeric(work.get("DDI",0),errors="coerce").replace([np.inf,-np.inf],np.nan),
+        "suggested":pd.to_numeric(work.get("VPD",0),errors="coerce").fillna(0.0),
+    }).groupby(["__store","__id"],sort=False,observed=True).agg({"ddi":"max","suggested":"max"}).reset_index()
+    weighted=(ddi_tmp["ddi"].fillna(0)*ddi_tmp["suggested"]).groupby(ddi_tmp["__id"]).sum()
+    weights=ddi_tmp["suggested"].groupby(ddi_tmp["__id"]).sum().replace(0,np.nan)
+    fallback=ddi_tmp.groupby("__id",sort=False)["ddi"].mean()
+    model["ddi"]=(weighted/weights).fillna(fallback).fillna(0.0)
     model=model.sort_values(["sales_value","sales_pzas","existence"],ascending=[False,False,False]).reset_index()
     total=float(model["sales_value"].sum())
     model["cum_share"]=model["sales_value"].cumsum()/total*100 if total>0 else 0.0
@@ -3743,24 +3830,35 @@ def _operational_location_series(frame: pd.DataFrame) -> pd.Series:
 def _capacity_scope_v45(frame: pd.DataFrame, store: str="Compañía", section: str="Todas", catalog: str="Todos", add_area: bool=False) -> pd.DataFrame:
     if frame is None or frame.empty:return pd.DataFrame()
     work=frame
+    raw_store_keys=(
+        work["_TiendaKey"].astype(str)
+        if "_TiendaKey" in work.columns
+        else work["Tienda"].fillna("").astype(str).map(login_key)
+    )
     if store and store!="Compañía":
-        store_keys=work["_TiendaKey"] if "_TiendaKey" in work.columns else work["Tienda"].map(login_key)
-        work=work[store_keys==login_key(store)]
+        wanted=_capacity_store_match_keys(store)
+        work=work[raw_store_keys.isin(wanted)]
     else:
-        active=set(store_names(True) or PROJECT_STORES)
-        work=work[work["Tienda"].isin(active)]
+        active_names=store_names(True) or PROJECT_STORES
+        active_keys={_canonical_capacity_store_key(x) for x in active_names}
+        canonical_keys=work["Tienda"].fillna("").astype(str).map(_canonical_capacity_store_key)
+        work=work[canonical_keys.isin(active_keys)]
     if section and section!="Todas":
-        section_keys=work["_SeccionKey"] if "_SeccionKey" in work.columns else work["Sección"].map(login_key)
+        section_keys=work["_SeccionKey"].astype(str) if "_SeccionKey" in work.columns else work["Sección"].map(login_key)
         work=work[section_keys==login_key(section)]
     if catalog and catalog not in ("Todos","Todas","") and "Tipo catálogo" in work.columns:
-        catalog_keys=work["_CatalogKey"] if "_CatalogKey" in work.columns else work["Tipo catálogo"].map(login_key)
+        catalog_keys=work["_CatalogKey"].astype(str) if "_CatalogKey" in work.columns else work["Tipo catálogo"].map(login_key)
         work=work[catalog_keys==login_key(catalog)]
     if work.empty:return work.copy()
     work=work.copy()
+    # A partir de aquí todas las tablas consumen el nombre comercial, no el alias
+    # del Excel. Esto evita mezclar Guadalajara/Atemajac en agrupaciones y caches.
+    if "Tienda" in work.columns:
+        work["Tienda"]=work["Tienda"].fillna("").astype(str).map(_canonical_capacity_store_name)
+        work["_TiendaKey"]=work["Tienda"].map(login_key)
     if add_area:
         work["Área reporte"]=_capacity_area_report_series(work)
     return work
-
 
 def _ddi_weighted(g: pd.DataFrame) -> float:
     if g is None or g.empty:return 0.0
