@@ -1429,6 +1429,20 @@ const modelClientCache=new Map(),areaClientCache=new Map(),salesClientCache=new 
 const ANALYSIS_STORE_KEY_V183='operacionesRopa.analysisStore';
 const rememberStoreV183=value=>{const v=String(value||'Compañía').trim()||'Compañía';try{localStorage.setItem(ANALYSIS_STORE_KEY_V183,v)}catch(_){}return v};
 const rememberedStoreV183=()=>{try{return localStorage.getItem(ANALYSIS_STORE_KEY_V183)||''}catch(_){return ''}};
+let commercialScopeStore=rememberedStoreV183()||'Compañía',commercialScopeVersion=0;
+let modelRequestSeq=0,salesRequestSeq=0,areaRequestSeq=0,modelBusyKey='',salesBusyKey='';
+const storeKeyV185=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const setCommercialScopeStore=value=>{
+  const v=String(value||'Compañía').trim()||'Compañía';
+  if(storeKeyV185(v)!==storeKeyV185(commercialScopeStore)){commercialScopeVersion++;commercialScopeStore=v}
+  else commercialScopeStore=v;
+  rememberStoreV183(v);
+  return v;
+};
+const currentCommercialStore=()=>{
+  const dash=(typeof DASH!=='undefined'&&DASH?.selected_store)?String(DASH.selected_store):'';
+  return commercialScopeStore||dash||visibleStoreControl()?.value||q('#store')?.value||'Compañía';
+};
 
 async function A(url,opt){
   if(typeof window.api==='function')return window.api(url,opt);
@@ -1460,7 +1474,7 @@ async function fixStores(){
     const d=await A('/api/commercial-filter-options-v176?week='+encodeURIComponent(week),{timeoutMs:30000});
     const native=q('#store'),facade=visibleStoreControl();
     const controls=[native,facade].filter(Boolean);
-    const current=(rememberedStoreV183()||facade?.value||native?.value||'Compañía');
+    const current=(commercialScopeStore||rememberedStoreV183()||facade?.value||native?.value||'Compañía');
     controls.forEach(sel=>{
       const before=sel.value;
       sel.innerHTML='';
@@ -1473,12 +1487,14 @@ async function fixStores(){
     if(facade&&facade!==native&&!facade.dataset.v176store){
       facade.dataset.v176store='1';
       facade.addEventListener('change',async()=>{
-        const wanted=rememberStoreV183(facade.value||'Compañía');
+        const wanted=setCommercialScopeStore(facade.value||'Compañía');
         if(native)native.value=wanted;
-        modelClientCache.clear();areaClientCache.clear();
+        modelRequestSeq++;salesRequestSeq++;areaRequestSeq++;
+        modelsBusy=false;salesBusy=false;modelBusyKey='';salesBusyKey='';
         try{
           await window.loadDash?.(wanted,q('#section')?.value||'Todas');
-        }catch(e){console.warn('[V181] cambio de tienda',e)}
+          setTimeout(()=>refreshAll().catch(e=>console.warn('[V185] refresh tienda',e)),20);
+        }catch(e){console.warn('[V185] cambio de tienda',e)}
         if(native)native.value=wanted;
         if([...facade.options].some(o=>o.value===wanted))facade.value=wanted;
       });
@@ -1749,6 +1765,8 @@ function renderExcess(){
     card=document.createElement('div');card.id='v176ExcessKpi';card.className='kpi';card.style.setProperty('--a','#ef376c');
     q('#page-macro .kpis').append(card);
   }
+  const dashScope=String(DASH.selected_store||'Compañía');
+  if(storeKeyV185(dashScope)!==storeKeyV185(currentCommercialStore()))return;
   const total=excessFor(DASH.kpis),secs=DASH.sections||[];
   const detail=['Dama','Caballero','Infantil'].map(name=>{
     const row=secs.find(x=>String(x.section||'').toLowerCase().startsWith(name.toLowerCase()));
@@ -1756,7 +1774,7 @@ function renderExcess(){
     const short=name==='Caballero'?'Cab.':name==='Infantil'?'Inf.':'Dama';
     return short+' '+pct(z.pct)+' · '+nf(z.pieces)+' pzas';
   }).join(' · ');
-  const excessScope=visibleStoreControl()?.value||q('#store')?.value||'Compañía';
+  const excessScope=dashScope;
   card.innerHTML='<div class="lab">% Excedente'+(excessScope!=='Compañía'?' · '+esc(excessScope):'')+'</div><div class="val">'+pct(total.pct)+'</div>'+
     '<span class="v176-excess-pieces">'+nf(total.pieces)+' piezas sobre capacidad</span>'+
     '<span class="v176-excess-sections">'+detail+'</span>';
@@ -1769,7 +1787,8 @@ function selectedAreaSection(){
 function selectedAreaGroup(){return q('[data-area-group].active')?.dataset.areaGroup||'Todas'}
 async function renderArea(){
   if(!macroActive()||!q('#macroAreaTable'))return;
-  const store=visibleStoreControl()?.value||q('#store')?.value||'Compañía',week=q('#week')?.value||'',section=selectedAreaSection(),catalog=q('#catalog')?.value||'Todos',group=selectedAreaGroup();
+  const requestId=++areaRequestSeq;
+  const store=currentCommercialStore(),week=q('#week')?.value||'',section=selectedAreaSection(),catalog=q('#catalog')?.value||'Todos',group=selectedAreaGroup();
   const title=q('#macroAreaTitle');if(title)title.textContent='Ubicación · '+store+(section!=='Todas'?' · '+section:'')+(group!=='Todas'?' · '+group:'');
   try{
     const areaKey=[week,store,section,catalog].join('|');
@@ -1779,6 +1798,7 @@ async function renderArea(){
       if(areaClientCache.size>=24)areaClientCache.delete(areaClientCache.keys().next().value);
       areaClientCache.set(areaKey,d);
     }
+    if(requestId!==areaRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
     let rows=(d.rows||[]).filter(r=>group==='Todas'||r.group===group);
     const table=q('#macroAreaTable')?.closest('table'),head=table?.querySelector('thead tr'),body=q('#macroAreaTable');
     if(d.mode==='grouped'){
@@ -1796,7 +1816,7 @@ window.loadMacroAreaDetail=renderArea;
 
 function fixModelHead(){
   const head=q('#champTable')?.closest('table')?.querySelector('thead tr');if(!head)return;
-  const company=(visibleStoreControl()?.value||q('#store')?.value||'Compañía')==='Compañía';
+  const company=currentCommercialStore()==='Compañía';
   head.innerHTML='<th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>'+(company?'Tipo ubicación':'Ubicación')+'</th><th>'+(company?'Exhibiciones':'Exhibición')+'</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Exist. CEDIS</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th>';
 }
 function paretoGroup(){return q('[data-pareto-group].active')?.dataset.paretoGroup||'section'}
@@ -1805,14 +1825,16 @@ function renderPareto(rows){
   body.innerHTML=(rows||[]).map(r=>'<tr><td><b>'+esc(r.label)+'</b></td><td>'+pct(r.participation)+'</td><td>'+nf(r.models_80)+'</td><td>'+nf(r.models_20)+'</td><td>'+nf(r.models)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+money(r.sales_value)+'</td><td>'+n(r.suggested).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td><td>'+nf(r.ddi)+'</td><td>'+nf(r.capacity)+'</td><td>'+pct(r.occupancy)+'</td></tr>').join('')||'<tr><td colspan="11">Información no disponible.</td></tr>';
 }
 async function renderModels(force){
-  if(!macroActive()||modelsBusy)return;
-  const store=visibleStoreControl()?.value||q('#store')?.value||((typeof DASH!=='undefined'&&DASH?.selected_store)?DASH.selected_store:'Compañía');
+  if(!macroActive())return;
+  const store=currentCommercialStore();
   const week=q('#week')?.value||((typeof DASH!=='undefined'&&DASH?.week)?DASH.week:'');
   const section=q('#section')?.value||'Todas',catalog=q('#catalog')?.value||'Todos',gb=paretoGroup();
   if(!week)return;
   const cacheKey=[week,store,section,catalog,gb].join('|');
+  if(modelsBusy&&modelBusyKey===cacheKey&&!force)return;
   const cached=modelClientCache.get(cacheKey);
-  modelsBusy=true;
+  const requestId=++modelRequestSeq;
+  modelsBusy=true;modelBusyKey=cacheKey;
 
   const syncTitles=(slowSection,count80=0)=>{
     const ct=q('#champTitle');if(ct)ct.textContent='Modelos 80/20 · '+store+' · '+section+' · '+nf(count80)+' modelos 80%';
@@ -1841,9 +1863,13 @@ async function renderModels(force){
 
       // Secuencial para que Render libere temporales entre cálculos.
       const champData=await fetchMode('80_20');
+      if(requestId!==modelRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
       const slowData=await fetchMode('slow');
+      if(requestId!==modelRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
       const zeroData=await fetchMode('suggested_zero');
+      if(requestId!==modelRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
       const paretoData=await fetchMode('pareto');
+      if(requestId!==modelRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
       d={
         week,store,section,catalog,
         champions:champData.champions||[],
@@ -1854,6 +1880,7 @@ async function renderModels(force){
       modelClientCache.set(cacheKey,d);
     }
     if(!d)throw new Error('Sin respuesta de modelos');
+    if(requestId!==modelRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
 
     const slowSection=q('#slowSection')?.value||'Todas';
     const normFilter=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -1894,7 +1921,9 @@ async function renderModels(force){
       if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
       console.warn('[V181] modelos',e);
     }
-  }finally{modelsBusy=false}
+  }finally{
+    if(requestId===modelRequestSeq){modelsBusy=false;modelBusyKey=''}
+  }
 }
 window.loadModelTables=renderModels;
 
@@ -2195,17 +2224,20 @@ function detachOldSalesListeners(){
   });
 }
 async function renderSales176(existing,force){
-  if(!macroActive()||salesBusy)return;
-  salesBusy=true;
+  if(!macroActive())return;
+  const ys=q('#salesExecYear'),store=currentCommercialStore(),year=Number(ys?.value||2026);
+  const salesKey=[year,salesMonth,store].join('|');
+  if(salesBusy&&salesBusyKey===salesKey&&!force)return;
+  const requestId=++salesRequestSeq;
+  salesBusy=true;salesBusyKey=salesKey;
   try{
-    const ys=q('#salesExecYear'),store=visibleStoreControl()?.value||rememberedStoreV183()||q('#store')?.value||'Compañía',year=Number(ys?.value||2026);
-    const salesKey=[year,salesMonth,store].join('|');
     let d=existing&&force?existing:(!force?salesClientCache.get(salesKey):null);
     if(!d){
       d=await A('/api/commercial-sales-v176?year='+year+'&month='+salesMonth+'&store='+encodeURIComponent(store),{timeoutMs:180000});
       if(salesClientCache.size>=24)salesClientCache.delete(salesClientCache.keys().next().value);
       salesClientCache.set(salesKey,d);
     }
+    if(requestId!==salesRequestSeq||storeKeyV185(store)!==storeKeyV185(currentCommercialStore()))return;
     window.__V176_SALES_DATA=d;salesMonth=Number(d.selected_month||0);
     prepareSalesControls(d);
     const t=d.totals||{},gap=n(t.gap_to_goal);
@@ -2227,7 +2259,9 @@ async function renderSales176(existing,force){
   }catch(e){
     console.warn('[V176] ventas',e);
     const src=q('#salesExecSource');if(src)src.textContent='Ventas: no fue posible actualizar en este intento. Conserva la última vista y vuelve a consultar.';
-  }finally{salesBusy=false}
+  }finally{
+    if(requestId===salesRequestSeq){salesBusy=false;salesBusyKey=''}
+  }
 }
 window.loadSalesExecutive=function(){return renderSales176(null,true)};
 
@@ -2359,10 +2393,12 @@ document.addEventListener('change',e=>{
   // delegado no se pierde al reconstruirse el filtro.
   const facadeStore=e.target.closest?.('#v161FilterGrid select[data-source="store"]');
   if(facadeStore){
-    const wanted=rememberStoreV183(facadeStore.value||'Compañía');
+    const wanted=setCommercialScopeStore(facadeStore.value||'Compañía');
     const native=q('#store');
     if(native)native.value=wanted;
     modelClientCache.clear();
+    modelRequestSeq++;salesRequestSeq++;areaRequestSeq++;
+    modelsBusy=false;salesBusy=false;modelBusyKey='';salesBusyKey='';
     clearTimeout(v181StoreScopeTimer);
     v181StoreScopeTimer=setTimeout(async()=>{
       try{
@@ -2378,14 +2414,28 @@ document.addEventListener('change',e=>{
   }
   // #store/#week/#section/#catalog ya tienen manejadores nativos que llaman
   // loadDash. Duplicarlos aquí lanzaba varias consultas pesadas simultáneas.
+  if(e.target.matches?.('#store')){
+    const wanted=setCommercialScopeStore(e.target.value||'Compañía');
+    modelRequestSeq++;salesRequestSeq++;areaRequestSeq++;
+    modelsBusy=false;salesBusy=false;modelBusyKey='';salesBusyKey='';
+    setTimeout(()=>refreshAll().catch(err=>console.warn('[V185] native store refresh',err)),20);
+    return;
+  }
   if(e.target.matches?.('#v166StatusSelect'))schedule();
 },true);
 if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
   const old=window.loadDash;
   const wrapped=async function(storeOverride=null,sectionOverride=null){
-    const visible=visibleStoreControl()?.value||q('#store')?.value||'Compañía';
-    const wanted=storeOverride||visible;
+    const inStores=!!q('#page-stores')?.classList.contains('active');
+    const visible=visibleStoreControl()?.value||q('#store')?.value||commercialScopeStore||'Compañía';
+    const wanted=storeOverride||(!inStores?currentCommercialStore():visible);
+    if(!inStores)setCommercialScopeStore(wanted);
+    const versionAtStart=commercialScopeVersion;
     const r=await old.call(this,wanted,sectionOverride);
+    if(!inStores&&(versionAtStart!==commercialScopeVersion||storeKeyV185(wanted)!==storeKeyV185(currentCommercialStore()))){
+      setTimeout(()=>window.loadDash?.(currentCommercialStore(),sectionOverride),0);
+      return r;
+    }
     const native=q('#store'),facade=visibleStoreControl(),scope=r?.selected_store||wanted;
     if(native&&[...native.options].some(o=>o.value===scope))native.value=scope;
     if(facade&&[...facade.options].some(o=>o.value===scope))facade.value=scope;
@@ -2395,7 +2445,7 @@ if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
   wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V184] Participacion SubCat vs CIA/Regla + Comercial optimizado.');
+console.info('[V185] Filtro tienda autoritativo, alias Atemajac y tablas sin respuestas obsoletas.');
 })();
 </script>'''
 
@@ -2416,7 +2466,7 @@ console.info('[V184] Participacion SubCat vs CIA/Regla + Comercial optimizado.')
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V184",
+                "X-Operations-UI-Version": "V185",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
