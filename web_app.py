@@ -5179,35 +5179,39 @@ def _process_capacity_entry(entry: dict, filename: str) -> dict:
                 pass
             return {"ok":True,"file":filename,"rows":int(len(cached)),"stores":int(cached["Tienda"].nunique()) if "Tienda" in cached.columns else 0,"message":"Excel ya estaba procesado; se reutilizó el catálogo normalizado","cached":True}
 
-    update_entry("capacities",entry["id"],status="Procesando",error="")
-    try:
-        # Libera el catálogo anterior antes de normalizar uno nuevo. En el plan
-        # Starter evita sumar dos DataFrames completos durante la carga.
-        _CAPACITY_FRAME_CACHE.update({"path":"","mtime":None,"frame":None})
-        _CAPACITY_RECURRENCE_CACHE.clear()
-        gc.collect()
-        # IMPORTANTE: el XLSX real supera 195 mil registros. Se procesa fuera del
-        # hilo principal para que Uvicorn y las demás pestañas sigan respondiendo.
-        def parse_capacity():
-            with _CAPACITY_ANALYTICS_LOCK:
-                return _prepare_capacity_frame(read_capacity_file(path))
-        df=parse_capacity()
-        if df.empty:
-            raise ValueError("El Excel se abrió pero no se identificaron filas de capacidades/existencias")
+    # Incluye todo el ciclo en el mismo candado que otras tareas pesadas.
+    # En Render la carga de PDF, las consultas y el Excel comparten 512 MB.
+    with _RESOURCE_HEAVY_LOCK:
+        update_entry("capacities",entry["id"],status="Procesando",error="")
+        try:
+            # Libera el catálogo anterior antes de normalizar uno nuevo. En el plan
+            # Starter evita sumar dos DataFrames completos durante la carga.
+            _CAPACITY_FRAME_CACHE.update({"path":"","mtime":None,"frame":None})
+            _CAPACITY_RECURRENCE_CACHE.clear()
+            _clear_operations_caches(clear_meta_file=False)
+            _release_process_memory()
+            # IMPORTANTE: el XLSX real supera 195 mil registros. Se procesa fuera del
+            # hilo principal para que Uvicorn y las demás pestañas sigan respondiendo.
+            def parse_capacity():
+                with _CAPACITY_ANALYTICS_LOCK:
+                    return _prepare_capacity_frame(read_capacity_file(path))
+            df=parse_capacity()
+            if df.empty:
+                raise ValueError("El Excel se abrió pero no se identificaron filas de capacidades/existencias")
 
-        cache_path=_capacity_cache_path(entry["id"])
-        df.to_pickle(cache_path)
-        cache_rel=str(cache_path.relative_to(DATA_ROOT))
-        mtime=path.stat().st_mtime if path.exists() else None
-        _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":df})
-        stores=sorted(df["Tienda"].dropna().unique().tolist()) if "Tienda" in df.columns else []
-        report_date=_capacity_report_date({**entry,"name":filename})
-        iso=report_date.isocalendar(); report_week=f"{iso.year}-W{iso.week:02d}"; report_month=f"{report_date.year:04d}-{report_date.month:02d}"
-        update_entry("capacities",entry["id"],status="Procesado",rows=int(len(df)),stores=stores,cache_file=cache_rel,error="",report_date=report_date.isoformat(),week=report_week,month=report_month,data_source="Excel capacidades")
-        return {"ok":True,"file":filename,"rows":int(len(df)),"stores":int(df["Tienda"].nunique()) if "Tienda" in df.columns else 0,"message":"Excel procesado correctamente y catálogo optimizado para consultas rápidas","cached":False}
-    except Exception as exc:
-        update_entry("capacities",entry["id"],status="Error",error=str(exc))
-        raise
+            cache_path=_capacity_cache_path(entry["id"])
+            df.to_pickle(cache_path)
+            cache_rel=str(cache_path.relative_to(DATA_ROOT))
+            mtime=path.stat().st_mtime if path.exists() else None
+            _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":df})
+            stores=sorted(df["Tienda"].dropna().unique().tolist()) if "Tienda" in df.columns else []
+            report_date=_capacity_report_date({**entry,"name":filename})
+            iso=report_date.isocalendar(); report_week=f"{iso.year}-W{iso.week:02d}"; report_month=f"{report_date.year:04d}-{report_date.month:02d}"
+            update_entry("capacities",entry["id"],status="Procesado",rows=int(len(df)),stores=stores,cache_file=cache_rel,error="",report_date=report_date.isoformat(),week=report_week,month=report_month,data_source="Excel capacidades")
+            return {"ok":True,"file":filename,"rows":int(len(df)),"stores":int(df["Tienda"].nunique()) if "Tienda" in df.columns else 0,"message":"Excel procesado correctamente y catálogo optimizado para consultas rápidas","cached":False}
+        except Exception as exc:
+            update_entry("capacities",entry["id"],status="Error",error=str(exc))
+            raise
 
 @app.post("/api/upload/capacity")
 async def upload_capacity(request: Request,file:UploadFile=File(...)):
