@@ -56,6 +56,8 @@ def install(m):
             path = str(request.url.path or "")
             allowed = (
                 "/api/lingerie-checklist",
+                "/api/commercial-bootstrap-v188",
+                "/api/settings/report-tabs",
                 "/api/me/change-password",
                 "/api/me/complete-temporary-password",
             )
