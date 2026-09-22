@@ -1450,7 +1450,8 @@ function renderExcess(){
     const short=name==='Caballero'?'Cab.':name==='Infantil'?'Inf.':'Dama';
     return short+' '+pct(z.pct)+' · '+nf(z.pieces)+' pzas';
   }).join(' · ');
-  card.innerHTML='<div class="lab">% Excedente</div><div class="val">'+pct(total.pct)+'</div>'+
+  const excessScope=visibleStoreControl()?.value||q('#store')?.value||'Compañía';
+  card.innerHTML='<div class="lab">% Excedente'+(excessScope!=='Compañía'?' · '+esc(excessScope):'')+'</div><div class="val">'+pct(total.pct)+'</div>'+
     '<span class="v176-excess-pieces">'+nf(total.pieces)+' piezas sobre capacidad</span>'+
     '<span class="v176-excess-sections">'+detail+'</span>';
   window.setTimeout(()=>{if(typeof window.__V166_STABLE_UI!=='undefined'){}},0);
@@ -1930,7 +1931,31 @@ document.addEventListener('click',e=>{
   if(e.target.closest?.('[data-area-section],[data-area-group]'))setTimeout(renderArea,80);
   if(e.target.closest?.('[data-pareto-group]'))setTimeout(()=>renderModels(true),80);
 },true);
+let v181StoreScopeTimer=0;
 document.addEventListener('change',e=>{
+  // El filtro superior V161 es una fachada que se recrea varias veces. Su
+  // listener propio sí actualizaba Ventas/Área/Modelos, pero podía no ejecutar
+  // /api/dashboard; por eso los KPIs se quedaban en Compañía. Este listener
+  // delegado no se pierde al reconstruirse el filtro.
+  const facadeStore=e.target.closest?.('#v161FilterGrid select[data-source="store"]');
+  if(facadeStore){
+    const wanted=facadeStore.value||'Compañía';
+    const native=q('#store');
+    if(native)native.value=wanted;
+    modelClientCache.clear();
+    clearTimeout(v181StoreScopeTimer);
+    v181StoreScopeTimer=setTimeout(async()=>{
+      try{
+        const section=q('#section')?.value||'Todas';
+        await window.loadDash?.(wanted,section);
+        const n=q('#store'),f=visibleStoreControl();
+        if(n&&[...n.options].some(o=>o.value===wanted))n.value=wanted;
+        if(f&&[...f.options].some(o=>o.value===wanted))f.value=wanted;
+        console.info('[V182] Dashboard comercial actualizado a',wanted);
+      }catch(err){console.warn('[V182] filtro tienda dashboard',err)}
+    },25);
+    return;
+  }
   // #store/#week/#section/#catalog ya tienen manejadores nativos que llaman
   // loadDash. Duplicarlos aquí lanzaba varias consultas pesadas simultáneas.
   if(e.target.matches?.('#v166StatusSelect'))schedule();
@@ -1950,7 +1975,7 @@ if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
   wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V181] Comercial por tienda y modelos 80/20 completos activo.');
+console.info('[V182] Filtro por tienda aplicado también a Macro/KPIs.');
 })();
 </script>'''
 
@@ -1971,7 +1996,7 @@ console.info('[V181] Comercial por tienda y modelos 80/20 completos activo.');
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V181",
+                "X-Operations-UI-Version": "V182",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
