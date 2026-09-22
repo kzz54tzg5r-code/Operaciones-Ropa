@@ -3428,7 +3428,9 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             specific=[]
             for item in items:
                 k=login_key(item)
-                if k in (login_key("Mesa"),login_key("Jeans"),login_key("Pasillo colgado")) and any(login_key(x)!=k and login_key(x).startswith(k) for x in items):
+                if k in (login_key("Mesa"),login_key("Jeans")) and any(login_key(x)!=k and login_key(x).startswith(k) for x in items):
+                    continue
+                if k==login_key("Pasillo colgado") and any("colgad" in login_key(x) and login_key(x)!=k for x in items):
                     continue
                 if item not in specific:
                     specific.append(item)
@@ -3448,8 +3450,8 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             elif not base:
                 location_map[str(rid)]="Jeans "+var
 
-    if not exhibition_map:
-        exhibition_map=compact_labels("Exhibición")
+    # Si no hubo exhibiciones reales, conservar la columna vacía. No usar un
+    # fallback crudo porque volvería a poner Fergino/Seven en Exhibición.
     store_map=compact_labels("Tienda")
 
     rows=[]
