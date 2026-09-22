@@ -69,25 +69,19 @@ def install(m):
         managed = [str(x).strip() for x in (m.store_names(True) or []) if str(x).strip()]
         detected = []
         try:
-            frame = m._capacity_frame_for_period(week)
-            if frame is not None and not frame.empty and "Tienda" in frame.columns:
-                detected = [
-                    str(x).strip() for x in frame["Tienda"].dropna().astype(str).unique().tolist()
-                    if str(x).strip() and norm(x) not in ("nan", "none", "compania")
-                ]
+            entry=m._capacity_source_entry(week) or {}
+            detected=[str(x).strip() for x in (entry.get("stores") or []) if str(x).strip()]
+            canon=getattr(m,"_canonical_capacity_store_name",lambda x:x)
+            detected=[str(canon(x) or "").strip() for x in detected if str(canon(x) or "").strip()]
         except Exception:
             detected = []
 
-        # Catálogo configurado primero; detectadas después. Así no desaparece una
-        # tienda por diferencias de alias en el Excel.
-        out = []
-        seen = set()
-        for x in managed + detected:
-            k = norm(x)
+        out=[];seen=set()
+        for x in managed+detected:
+            k=norm(x)
             if not k or k in seen:
                 continue
-            seen.add(k)
-            out.append(x)
+            seen.add(k);out.append(x)
         return {"stores": out, "company": True}
 
     # --------------------- Ubicación / Área -----------------------
@@ -2372,20 +2366,46 @@ async function loadSubcatParticipation(force=false){
   }
 }
 window.loadSubcatParticipation=loadSubcatParticipation;
-q('#subcatRuleCard')?.addEventListener('toggle',()=>{if(q('#subcatRuleCard')?.open)loadSubcatParticipation(false)});
+['#subcatCiaCard','#subcatRuleCard'].forEach(sel=>{
+  q(sel)?.addEventListener('toggle',()=>{if(q(sel)?.open)loadSubcatParticipation(false)});
+});
 
+let v187LazyObserver=null;
+function setupCommercialLazy(){
+  if(!macroActive())return;
+  if(v187LazyObserver){try{v187LazyObserver.disconnect()}catch(_){}}
+  const fire=(kind)=>{
+    const run=()=>kind==='area'?renderArea():renderModels();
+    if('requestIdleCallback' in window)requestIdleCallback(run,{timeout:900});
+    else setTimeout(run,120);
+  };
+  if('IntersectionObserver' in window){
+    v187LazyObserver=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(!entry.isIntersecting)return;
+        const kind=entry.target.dataset.v187Lazy;
+        v187LazyObserver.unobserve(entry.target);
+        fire(kind);
+      });
+    },{rootMargin:'240px 0px'});
+    const area=q('#macroAreaTable')?.closest('.tablewrap')||q('#macroAreaTable');
+    const models=q('#champTitle')||q('#champTable');
+    if(area){area.dataset.v187Lazy='area';v187LazyObserver.observe(area)}
+    if(models){models.dataset.v187Lazy='models';v187LazyObserver.observe(models)}
+  }else{
+    setTimeout(()=>{renderArea();renderModels()},900);
+  }
+}
 async function refreshAll(){
   fixSidebar();fixAnalysisNav();
   if(!activeAnalysis())return;
   installCompactTableFilters();
   await fixStores();
-  if(sectionsActive())await loadSubcatParticipation();
   if(macroActive()){
     renderExcess();
     detachOldSalesListeners();
     await renderSales176();
-    await renderArea();
-    await renderModels();
+    setupCommercialLazy();
   }
 }
 let v176RefreshTimer=0;
@@ -2394,7 +2414,7 @@ function schedule(){
   v176RefreshTimer=setTimeout(()=>{refreshAll().catch(e=>console.warn('[V176] refresh',e))},140);
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest?.('#analysisNav,[data-main="analysis"],[data-area-section],[data-area-group],[data-pareto-group],#refresh,#sidebarToggle,#subcatCiaCard,#subcatRuleCard'))schedule();
+  if(e.target.closest?.('#analysisNav,[data-main="analysis"],[data-area-section],[data-area-group],[data-pareto-group],#refresh,#sidebarToggle'))schedule();
   if(e.target.closest?.('[data-area-section],[data-area-group]'))setTimeout(renderArea,80);
   if(e.target.closest?.('[data-pareto-group]'))setTimeout(()=>renderModels(true),80);
 },true);
@@ -2452,13 +2472,13 @@ if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
     const native=q('#store'),facade=visibleStoreControl(),scope=r?.selected_store||wanted;
     if(native&&[...native.options].some(o=>o.value===scope))native.value=scope;
     if(facade&&[...facade.options].some(o=>o.value===scope))facade.value=scope;
-    setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176();if(sectionsActive())loadSubcatParticipation(false)},60);
+    setTimeout(()=>{refreshAll().catch(e=>console.warn('[V187] refresh posterior a dashboard',e))},80);
     return r;
   };
   wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V186] Tienda autoritativa + métricas sin duplicados + ubicaciones Jeans corregidas.');
+console.info('[V187] Carga comercial progresiva, Rubro separado y móvil estabilizado.');
 })();
 </script>'''
 
@@ -2479,7 +2499,7 @@ console.info('[V186] Tienda autoritativa + métricas sin duplicados + ubicacione
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V186",
+                "X-Operations-UI-Version": "V187",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
