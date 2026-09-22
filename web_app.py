@@ -3840,36 +3840,35 @@ def _operational_location_series(frame: pd.DataFrame) -> pd.Series:
 
 
 def _capacity_scope_v45(frame: pd.DataFrame, store: str="Compañía", section: str="Todas", catalog: str="Todos", add_area: bool=False) -> pd.DataFrame:
-    if frame is None or frame.empty:return pd.DataFrame()
+    """Filtra capacidades sin duplicar el catálogo completo en RAM.
+
+    El frame normalizado ya trae Tienda canónica, _TiendaKey, _SeccionKey,
+    _CatalogKey y Área reporte. En Compañía/Todas/Todos devolvemos el mismo
+    frame; los filtros específicos sólo materializan el subconjunto requerido.
+    """
+    if frame is None or frame.empty:
+        return pd.DataFrame()
+
     work=frame
-    raw_store_keys=(
-        work["_TiendaKey"].astype(str)
-        if "_TiendaKey" in work.columns
-        else work["Tienda"].fillna("").astype(str).map(login_key)
-    )
     if store and store!="Compañía":
         wanted=_capacity_store_match_keys(store)
-        work=work[raw_store_keys.isin(wanted)]
-    else:
-        active_names=store_names(True) or PROJECT_STORES
-        active_keys={_canonical_capacity_store_key(x) for x in active_names}
-        canonical_keys=work["Tienda"].fillna("").astype(str).map(_canonical_capacity_store_key)
-        work=work[canonical_keys.isin(active_keys)]
-    if section and section!="Todas":
-        section_keys=work["_SeccionKey"].astype(str) if "_SeccionKey" in work.columns else work["Sección"].map(login_key)
+        store_keys=work["_TiendaKey"].astype(str) if "_TiendaKey" in work.columns else work["Tienda"].fillna("").astype(str).map(login_key)
+        work=work[store_keys.isin(wanted)]
+
+    if section and section!="Todas" and not work.empty:
+        section_keys=work["_SeccionKey"].astype(str) if "_SeccionKey" in work.columns else work["Sección"].fillna("").astype(str).map(login_key)
         work=work[section_keys==login_key(section)]
-    if catalog and catalog not in ("Todos","Todas","") and "Tipo catálogo" in work.columns:
-        catalog_keys=work["_CatalogKey"].astype(str) if "_CatalogKey" in work.columns else work["Tipo catálogo"].map(login_key)
+
+    if catalog and catalog not in ("Todos","Todas","") and "Tipo catálogo" in work.columns and not work.empty:
+        catalog_keys=work["_CatalogKey"].astype(str) if "_CatalogKey" in work.columns else work["Tipo catálogo"].fillna("").astype(str).map(login_key)
         work=work[catalog_keys==login_key(catalog)]
-    if work.empty:return work.copy()
-    work=work.copy()
-    # A partir de aquí todas las tablas consumen el nombre comercial, no el alias
-    # del Excel. Esto evita mezclar Guadalajara/Atemajac en agrupaciones y caches.
-    if "Tienda" in work.columns:
-        work["Tienda"]=work["Tienda"].fillna("").astype(str).map(_canonical_capacity_store_name)
-        work["_TiendaKey"]=work["Tienda"].map(login_key)
-    if add_area:
-        work["Área reporte"]=_capacity_area_report_series(work)
+
+    if work.empty:
+        return work
+
+    if add_area and "Área reporte" not in work.columns:
+        work=work.copy()
+        work["Área reporte"]=pd.Categorical(_capacity_area_report_series(work))
     return work
 
 def _ddi_weighted(g: pd.DataFrame) -> float:
@@ -3883,134 +3882,179 @@ def _ddi_weighted(g: pd.DataFrame) -> float:
     return float(vals.mean()) if len(vals) else 0.0
 
 
-def _capacity_metrics(g: pd.DataFrame, period: str="") -> dict:
-    if g is None or g.empty:
-        return {"existence":0.0,"floor":0.0,"warehouse":0.0,"suggested":0.0,"capacity":0.0,"ddi":0.0,"occupancy":0.0,"sales_pzas":0.0,"sales_value":0.0,"utility_value":0.0}
+def _capacity_model_basis_v188(g: pd.DataFrame, period: str="") -> pd.DataFrame:
+    """Una fila por tienda + ID_ART, reutilizable por todos los KPIs del dashboard."""
+    if g is None or g.empty or "ID_ART" not in g.columns:
+        return pd.DataFrame()
 
     pcol,vcol=_capacity_period_columns(period)
-    tmp=pd.DataFrame(index=g.index)
-    tmp["store"]=g.get("Tienda",pd.Series("",index=g.index)).fillna("").astype(str).map(_canonical_capacity_store_key)
-    tmp["id_art"]=g.get("ID_ART",pd.Series("",index=g.index)).fillna("").astype(str).str.strip()
-    empty=tmp["id_art"].isin(["","nan","None"])
-    if empty.any():
-        tmp.loc[empty,"id_art"]="__row_"+tmp.index[empty].astype(str)
+    def col(name, fallback=None):
+        return name if name in g.columns else fallback
 
-    numeric_map={
-        "existence":"Existencia","floor":"Existencia piso","warehouse":"Existencia bodega",
-        "suggested":"VPD","capacity":"Capacidad","sales_pzas":pcol,"sales_value":vcol,
-        "ddi":"DDI","utility_pct":"Utilidad %",
-    }
-    for dst,src in numeric_map.items():
+    group_store="_TiendaKey" if "_TiendaKey" in g.columns else "Tienda"
+    agg={}
+    if "Tienda" in g.columns: agg["store"]=("Tienda","first")
+    if "Sección" in g.columns: agg["section"]=("Sección","first")
+    if "Área reporte" in g.columns: agg["area"]=("Área reporte","first")
+    for dest,src in (
+        ("existence","Existencia"),("floor","Existencia piso"),("warehouse","Existencia bodega"),
+        ("suggested","VPD"),("capacity","Capacidad"),("sales_pzas",pcol),("sales_value",vcol),
+        ("ddi","DDI"),("utility_pct","Utilidad %")
+    ):
         if src in g.columns:
-            tmp[dst]=pd.to_numeric(g[src],errors="coerce").replace([np.inf,-np.inf],np.nan).fillna(0.0)
+            agg[dest]=(src,"max")
+
+    try:
+        basis=g.groupby([group_store,"ID_ART"],sort=False,observed=True,dropna=False).agg(**agg).reset_index(drop=True)
+    except Exception:
+        # Respaldo para archivos antiguos sin categorías consistentes.
+        slim=pd.DataFrame(index=g.index)
+        slim["store_key"]=g.get("_TiendaKey",g.get("Tienda","")).astype(str)
+        slim["id_art"]=g["ID_ART"].fillna("").astype(str).str.strip()
+        slim["store"]=g.get("Tienda","").astype(str)
+        slim["section"]=g.get("Sección","").astype(str)
+        slim["area"]=g.get("Área reporte","").astype(str)
+        for dest,src in (
+            ("existence","Existencia"),("floor","Existencia piso"),("warehouse","Existencia bodega"),
+            ("suggested","VPD"),("capacity","Capacidad"),("sales_pzas",pcol),("sales_value",vcol),
+            ("ddi","DDI"),("utility_pct","Utilidad %")
+        ):
+            slim[dest]=pd.to_numeric(g[src],errors="coerce").fillna(0.0) if src in g.columns else 0.0
+        basis=slim.groupby(["store_key","id_art"],sort=False,observed=True).agg(
+            store=("store","first"),section=("section","first"),area=("area","first"),
+            existence=("existence","max"),floor=("floor","max"),warehouse=("warehouse","max"),
+            suggested=("suggested","max"),capacity=("capacity","max"),sales_pzas=("sales_pzas","max"),
+            sales_value=("sales_value","max"),ddi=("ddi","max"),utility_pct=("utility_pct","max"),
+        ).reset_index(drop=True)
+
+    for name in ("existence","floor","warehouse","suggested","capacity","sales_pzas","sales_value","ddi","utility_pct"):
+        if name not in basis.columns:
+            basis[name]=0.0
         else:
-            tmp[dst]=0.0
+            basis[name]=pd.to_numeric(basis[name],errors="coerce").replace([np.inf,-np.inf],np.nan).fillna(0.0)
+    if "store" not in basis.columns:basis["store"]=""
+    if "section" not in basis.columns:basis["section"]="Sin sección"
+    if "area" not in basis.columns:basis["area"]=""
+    basis["utility_value"]=basis["sales_value"]*basis["utility_pct"]/100.0
+    return basis
 
-    basis=tmp.groupby(["store","id_art"],sort=False,observed=True).agg({
-        "existence":"max","floor":"max","warehouse":"max","suggested":"max",
-        "capacity":"max","sales_pzas":"max","sales_value":"max","ddi":"max","utility_pct":"max",
-    }).reset_index()
 
-    ex=float(basis["existence"].sum());floor=float(basis["floor"].sum());wh=float(basis["warehouse"].sum())
-    sug=float(basis["suggested"].sum());cap=float(basis["capacity"].sum())
-    sp=float(basis["sales_pzas"].sum());sv=float(basis["sales_value"].sum())
-    if float(basis["suggested"].sum())>0:
-        ddi=float((basis["ddi"]*basis["suggested"]).sum()/basis["suggested"].sum())
+def _capacity_metrics_from_basis_v188(basis: pd.DataFrame) -> dict:
+    if basis is None or basis.empty:
+        return {"existence":0.0,"floor":0.0,"warehouse":0.0,"suggested":0.0,"capacity":0.0,"ddi":0.0,"occupancy":0.0,"sales_pzas":0.0,"sales_value":0.0,"utility_value":0.0}
+    ex=float(basis["existence"].sum()); floor=float(basis["floor"].sum()); wh=float(basis["warehouse"].sum())
+    sug=float(basis["suggested"].sum()); cap=float(basis["capacity"].sum())
+    sp=float(basis["sales_pzas"].sum()); sv=float(basis["sales_value"].sum()); uv=float(basis["utility_value"].sum())
+    if sug>0:
+        ddi=float((basis["ddi"]*basis["suggested"]).sum()/sug)
     else:
         positive=basis.loc[basis["ddi"]>0,"ddi"]
         ddi=float(positive.mean()) if len(positive) else 0.0
-    uv=float((basis["sales_value"]*basis["utility_pct"]/100.0).sum())
-    return {
-        "existence":ex,"floor":floor,"warehouse":wh,"suggested":sug,"capacity":cap,
-        "ddi":ddi,"occupancy":ex/cap*100 if cap else 0.0,
-        "sales_pzas":sp,"sales_value":sv,"utility_value":uv,
-    }
+    return {"existence":ex,"floor":floor,"warehouse":wh,"suggested":sug,"capacity":cap,
+            "ddi":ddi,"occupancy":ex/cap*100 if cap else 0.0,
+            "sales_pzas":sp,"sales_value":sv,"utility_value":uv}
 
-def _capacity_sections_v45(work: pd.DataFrame, period: str=""):
-    if work.empty:return []
-    total=_capacity_metrics(work,period)
-    rows=[]
-    order={"Dama":0,"Caballero":1,"Infantil":2,"Sin sección":9}
-    for name,g in work.groupby("Sección",dropna=False,sort=False):
-        m=_capacity_metrics(g,period)
-        rows.append({"section":str(name or "Sin sección"),**m,
+
+def _capacity_metrics(g: pd.DataFrame, period: str="") -> dict:
+    return _capacity_metrics_from_basis_v188(_capacity_model_basis_v188(g,period))
+
+
+def _capacity_sections_from_basis_v188(basis: pd.DataFrame):
+    if basis is None or basis.empty:return []
+    total=_capacity_metrics_from_basis_v188(basis)
+    rows=[];order={"Dama":0,"Caballero":1,"Infantil":2,"Sin sección":9}
+    for name,g in basis.groupby("section",dropna=False,sort=False,observed=True):
+        m=_capacity_metrics_from_basis_v188(g)
+        label=str(name or "Sin sección")
+        rows.append({"section":label,**m,
             "part_pieces":m["sales_pzas"]/total["sales_pzas"]*100 if total["sales_pzas"] else 0.0,
             "utility":m["utility_value"]/total["utility_value"]*100 if total["utility_value"] else 0.0,
             "part_inventory":m["existence"]/total["existence"]*100 if total["existence"] else 0.0})
     return sorted(rows,key=lambda r:(order.get(r["section"],8),r["section"]))
 
 
-def _capacity_locations_v45(work: pd.DataFrame, period: str=""):
-    if work.empty:return []
-    if "Área reporte" not in work.columns:
-        work=work.copy(); work["Área reporte"]=_capacity_area_report_series(work)
+def _capacity_sections_v45(work: pd.DataFrame, period: str=""):
+    return _capacity_sections_from_basis_v188(_capacity_model_basis_v188(work,period))
+
+
+def _capacity_locations_from_basis_v188(basis: pd.DataFrame):
+    if basis is None or basis.empty or "area" not in basis.columns:return []
     rows=[]
-    for name,g in work.groupby("Área reporte",dropna=False,sort=False):
-        m=_capacity_metrics(g,period)
-        rows.append({"location":str(name or "Sin ubicación"),**m})
+    for name,g in basis.groupby("area",dropna=False,sort=False,observed=True):
+        label=str(name or "Sin ubicación")
+        if not label or label in ("nan","None"):continue
+        rows.append({"location":label,**_capacity_metrics_from_basis_v188(g)})
     return sorted(rows,key=lambda r:-float(r.get("suggested") or 0))
+
+
+def _capacity_locations_v45(work: pd.DataFrame, period: str=""):
+    return _capacity_locations_from_basis_v188(_capacity_model_basis_v188(work,period))
+
+
+def _capacity_store_comparative_from_basis_v188(basis: pd.DataFrame, managed: list[str]):
+    if basis is None or basis.empty:
+        return [{"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None} for name in managed]
+    by_key={login_key(str(name)):g for name,g in basis.groupby(basis["store"].astype(str).map(login_key),sort=False)}
+    rows=[]
+    for name in managed:
+        g=by_key.get(login_key(name))
+        if g is None or g.empty:
+            rows.append({"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None})
+        else:
+            rows.append({"store":name,"available":True,**_capacity_metrics_from_basis_v188(g)})
+    return rows
 
 
 def _capacity_store_comparative_v45(frame: pd.DataFrame, managed: list[str], section: str, catalog: str, period: str):
     base=_capacity_scope_v45(frame,"Compañía",section,catalog)
-    if base.empty:
-        return [{"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None} for name in managed]
-    rows=[]
-    for name in managed:
-        scoped=_capacity_scope_v45(base,name,"Todas","Todos")
-        if scoped.empty:
-            rows.append({"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None})
-            continue
-        rows.append({"store":name,"available":True,**_capacity_metrics(scoped,period)})
-    return rows
+    return _capacity_store_comparative_from_basis_v188(_capacity_model_basis_v188(base,period),managed)
 
 def _capacity_rubros_v45(work: pd.DataFrame, section: str="Todas", period: str=""):
-    if work is None or work.empty or "Subcategoría" not in work.columns:
+    if work is None or work.empty or "Subcategoría" not in work.columns or "ID_ART" not in work.columns:
         return []
-
-    base=work
-    rub=base["Subcategoría"].fillna("").astype(str).str.strip()
-    valid=~rub.isin(["","nan","None"])
-    if not valid.any():
-        return []
-
-    idx=base.index[valid]
-    tmp=pd.DataFrame(index=idx)
-    tmp["store"]=base.loc[idx,"Tienda"].fillna("").astype(str).map(_canonical_capacity_store_key) if "Tienda" in base.columns else ""
-    tmp["section"]=base.loc[idx,"Sección"].fillna("Sin sección").astype(str).str.strip().replace({"":"Sin sección","nan":"Sin sección","None":"Sin sección"}) if "Sección" in base.columns else (section if section!="Todas" else "Compañía")
-    tmp["rubro"]=rub.loc[idx]
-    tmp["id_art"]=base.loc[idx,"ID_ART"].fillna("").astype(str).str.strip() if "ID_ART" in base.columns else ""
-    empty=tmp["id_art"].isin(["","nan","None"])
-    if empty.any():tmp.loc[empty,"id_art"]="__row_"+tmp.index[empty].astype(str)
 
     pcol,vcol=_capacity_period_columns(period)
-    numeric_map={"capacity":"Capacidad","floor":"Existencia piso","warehouse":"Existencia bodega","existence":"Existencia","suggested":"VPD","sales_pzas":pcol,"sales_value":vcol,"ddi":"DDI","utility_pct":"Utilidad %"}
-    for dest,src in numeric_map.items():
-        tmp[dest]=pd.to_numeric(base.loc[idx,src],errors="coerce").replace([np.inf,-np.inf],np.nan).fillna(0.0) if src in base.columns else 0.0
+    group_store="_TiendaKey" if "_TiendaKey" in work.columns else "Tienda"
+    keys=[group_store,"ID_ART","Sección","Subcategoría"]
+    agg={}
+    for dest,src in (
+        ("capacity","Capacidad"),("floor","Existencia piso"),("warehouse","Existencia bodega"),
+        ("existence","Existencia"),("suggested","VPD"),("sales_pzas",pcol),("sales_value",vcol),
+        ("ddi","DDI"),("utility_pct","Utilidad %")
+    ):
+        if src in work.columns:agg[dest]=(src,"max")
+    if not agg:return []
 
-    per_model=tmp.groupby(["section","rubro","store","id_art"],sort=False,observed=True).agg({
-        "capacity":"max","floor":"max","warehouse":"max","existence":"max","suggested":"max",
-        "sales_pzas":"max","sales_value":"max","ddi":"max","utility_pct":"max",
-    }).reset_index()
+    per_model=work.groupby(keys,sort=False,observed=True,dropna=False).agg(**agg).reset_index()
+    # Eliminar subcategorías vacías después de agrupar, sin convertir el catálogo entero a object.
+    rub_txt=per_model["Subcategoría"].astype(str).str.strip()
+    per_model=per_model[~rub_txt.isin(["","nan","None"])].copy()
+    if per_model.empty:return []
+
+    for col in ("capacity","floor","warehouse","existence","suggested","sales_pzas","sales_value","ddi","utility_pct"):
+        if col not in per_model.columns:per_model[col]=0.0
+        else:per_model[col]=pd.to_numeric(per_model[col],errors="coerce").fillna(0.0)
     per_model["ddi_weighted"]=per_model["ddi"]*per_model["suggested"]
     per_model["utility_value"]=per_model["sales_value"]*per_model["utility_pct"]/100.0
 
-    agg=per_model.groupby(["section","rubro"],sort=False,observed=True).agg(
-        models=("id_art","nunique"),capacity=("capacity","sum"),floor=("floor","sum"),
+    grouped=per_model.groupby(["Sección","Subcategoría"],sort=False,observed=True,dropna=False)
+    aggdf=grouped.agg(
+        models=("ID_ART","nunique"),capacity=("capacity","sum"),floor=("floor","sum"),
         warehouse=("warehouse","sum"),existence=("existence","sum"),suggested=("suggested","sum"),
         sales_pzas=("sales_pzas","sum"),sales_value=("sales_value","sum"),
         utility_value=("utility_value","sum"),ddi_weighted=("ddi_weighted","sum"),
     ).reset_index()
-    agg["ddi"]=np.where(agg["suggested"]>0,agg["ddi_weighted"]/agg["suggested"],0.0)
-    agg["occupancy"]=np.where(agg["capacity"]>0,agg["existence"]/agg["capacity"]*100,np.nan)
+    aggdf["ddi"]=np.where(aggdf["suggested"]>0,aggdf["ddi_weighted"]/aggdf["suggested"],0.0)
+    aggdf["occupancy"]=np.where(aggdf["capacity"]>0,aggdf["existence"]/aggdf["capacity"]*100,np.nan)
 
     rows=[]
-    for r in agg.itertuples(index=False):
+    for r in aggdf.itertuples(index=False):
         rows.append({
-            "store":"Compañía","section":str(r.section or "Sin sección"),
-            "rubro":str(r.rubro or "Sin subcategoría"),"models":int(r.models or 0),
-            "capacity":float(r.capacity or 0),"floor":float(r.floor or 0),"warehouse":float(r.warehouse or 0),
-            "existence":float(r.existence or 0),"suggested":float(r.suggested or 0),"ddi":float(r.ddi or 0),
+            "store":"Compañía","section":str(getattr(r,"Sección") or "Sin sección"),
+            "rubro":str(getattr(r,"Subcategoría") or "Sin subcategoría"),
+            "models":int(r.models or 0),"capacity":float(r.capacity or 0),"floor":float(r.floor or 0),
+            "warehouse":float(r.warehouse or 0),"existence":float(r.existence or 0),
+            "suggested":float(r.suggested or 0),"ddi":float(r.ddi or 0),
             "sales_pzas":float(r.sales_pzas or 0),"sales_value":float(r.sales_value or 0),
             "utility_value":float(r.utility_value or 0),
             "occupancy":None if pd.isna(r.occupancy) else float(r.occupancy),
@@ -4066,19 +4110,47 @@ def dashboard(request: Request, week: str|None=None, store: str="Compañía", se
     if u["role"]=="tienda":managed=[u.get("store") or ""]
     if frame.empty:
         return {"week":selected,"weeks":periods,"stores_available":managed,"processed_pdfs":0,"expected_pdfs":0,
-            "data_source":"Excel de capacidades","source_file":"","kpis":_capacity_metrics(pd.DataFrame(),selected),"stores":[],"sections":[],"locations":[],"champions":[],"slow":[],"user":u,"selected_store":store,"selected_section":section,"selected_catalog":catalog}
+            "data_source":"Excel de capacidades","source_file":"","kpis":_capacity_metrics_from_basis_v188(pd.DataFrame()),"stores":[],"sections":[],"locations":[],"champions":[],"slow":[],"user":u,"selected_store":store,"selected_section":section,"selected_catalog":catalog}
+
+    # Un solo scope + un solo groupby a nivel modelo. Antes se reconstruía el
+    # mismo catálogo varias veces para KPI, secciones y 17 tiendas y podía superar
+    # los 512 MB del plan Starter.
     work=_capacity_scope_v45(frame,store,section,catalog)
-    k=_capacity_metrics(work,selected)
-    sections=_capacity_sections_v45(_capacity_scope_v45(frame,store,"Todas",catalog),selected)
+    basis=_capacity_model_basis_v188(work,selected)
+    k=_capacity_metrics_from_basis_v188(basis)
+
+    # Las tarjetas por sección deben respetar tienda/catálogo, pero ignorar el
+    # filtro superior de sección para poder mostrar el contexto completo.
+    if section=="Todas":
+        section_basis=basis
+    else:
+        section_work=_capacity_scope_v45(frame,store,"Todas",catalog)
+        section_basis=_capacity_model_basis_v188(section_work,selected)
+    sections=_capacity_sections_from_basis_v188(section_basis)
     if section!="Todas":sections=[r for r in sections if login_key(r["section"])==login_key(section)]
-    stores=_capacity_store_comparative_v45(frame,managed,section,catalog,selected)
-    locations=_capacity_locations_v45(work,selected)
+
+    # Comparativo de tiendas sólo necesita un basis de Compañía cuando el usuario
+    # está en Compañía. En una tienda concreta se evita construirlo por completo.
+    if store=="Compañía":
+        company_basis=basis if section=="Todas" else _capacity_model_basis_v188(_capacity_scope_v45(frame,"Compañía",section,catalog),selected)
+        stores=_capacity_store_comparative_from_basis_v188(company_basis,managed)
+        available_keys={login_key(str(x)) for x in company_basis["store"].astype(str).unique().tolist()} if not company_basis.empty else set()
+        available=[s for s in managed if login_key(s) in available_keys]
+    else:
+        stores=[]
+        available=managed
+
+    locations=_capacity_locations_from_basis_v188(basis)
     entry=_capacity_source_entry(selected) or {}
-    present_keys={login_key(x) for x in frame["Tienda"].dropna().astype(str).unique().tolist()}
-    available=[s for s in managed if login_key(s) in present_keys]
-    return {"week":selected,"weeks":periods,"stores_available":available,"processed_pdfs":1,"expected_pdfs":1,
-      "data_source":"Excel de capacidades","source_file":entry.get("name","") ,"kpis":k,"stores":stores,"sections":sections,"locations":locations,
+    payload={"week":selected,"weeks":periods,"stores_available":available,"processed_pdfs":1,"expected_pdfs":1,
+      "data_source":"Excel de capacidades","source_file":entry.get("name",""),"kpis":k,"stores":stores,"sections":sections,"locations":locations,
       "champions":[],"slow":[],"user":u,"selected_store":store,"selected_section":section,"selected_catalog":catalog}
+    del basis
+    if section!="Todas":
+        try:del section_basis
+        except Exception:pass
+    _release_process_memory()
+    return payload
 
 
 @app.get("/api/model-ranking")
