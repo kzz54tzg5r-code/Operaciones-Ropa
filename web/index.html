@@ -857,7 +857,8 @@ async function enter(u){
   if(u.can_preview_roles)await loadPreviewRoleStores(u);
 
   const adminView=['superadmin','admin'].includes(u.role);
-  $$('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
+  $('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
+  if(adminView)$('[data-opview="Carga de datos"]')?.classList.remove('hidden');
   if(!adminView){
     const mn=$('#mobileMainNav');
     if(mn)mn.style.gridTemplateColumns='repeat(2,1fr)';
@@ -1913,8 +1914,9 @@ async function renderOperativoView(name,force=false){
     $('#operativoDynamicTitle').textContent='Carga de datos';
     $('#operativoDynamicSub').textContent='Base de datos Muertos y Cambios · Administrador y Super Administrador';
     $('#operativoPeriodBar').classList.add('hidden');
-    let cur={available:false};
-    try{cur=await api('/api/upload/operations/current')}catch(e){}
+    let cur={available:false},curError='';
+    try{cur=await api('/api/upload/operations/current',{timeoutMs:30000})}
+    catch(e){curError=e.message||String(e);console.error('[OPS-UPLOAD] current:',e)}
     const currentHtml=cur.available?`<div class="preview-grid">
       <div class="preview-item">Archivo actual<b>${cur.file}</b></div>
       <div class="preview-item">Fecha de carga<b>${cur.uploaded_at||'Información no disponible'}</b></div>
@@ -1930,7 +1932,7 @@ async function renderOperativoView(name,force=false){
       <div id="opsDropzone" class="dropzone"><b>Arrastra aquí el Excel .xlsx</b><br><small>o haz clic para seleccionarlo</small><input id="opsModuleFile" type="file" accept=".xlsx" class="hidden"></div>
       <div class="progress-shell"><div class="progress-bar" id="opsProgress"></div></div>
       <div class="upload-actions"><button class="primary" id="opsModuleUploadBtn">Cargar archivo</button><button class="primary hidden" id="publishOpsFile" disabled>Procesar y publicar</button><button class="primary" id="replaceOpsFile" ${cur.available?'':'disabled'}>Reemplazar archivo actual</button></div>
-      <div class="log" id="opsModuleUploadMsg">Carga en segundo plano. El archivo actual sólo se reemplaza cuando el procesamiento termina correctamente.</div>
+      <div class="log" id="opsModuleUploadMsg">${curError?'No fue posible consultar el archivo actual: '+curError+' · Puedes intentar cargar un Excel nuevo.':'Carga en segundo plano. El archivo actual sólo se reemplaza cuando el procesamiento termina correctamente.'}</div>
       <div id="opsPreview" class="hidden" style="margin-top:12px"></div>
       <div class="title">Versiones resguardadas</div><div class="panel" id="opsHistoryList">Cargando historial…</div>
     </div>`;
@@ -2557,22 +2559,31 @@ function bindOperationalUpload(hasCurrent=false){
     if(text&&msg)msg.textContent=text;
   };
 
-  const selectFile=f=>{
+  let droppedFile=null;
+  const selectFile=(f,fromDrop=false)=>{
     if(!f)return;
-    const dt=new DataTransfer();dt.items.add(f);input.files=dt.files;
-    if(drop)drop.innerHTML=`<b>${f.name}</b><br><small>${Math.round(f.size/1024).toLocaleString()} KB · listo para cargar</small>`;
+    if(fromDrop)droppedFile=f;
+    if(drop){
+      const label=drop.querySelector('.ops-drop-label')||drop;
+      if(label===drop){
+        // No destruir el input file: sólo añadir/actualizar una etiqueta visual.
+        let info=drop.querySelector('.ops-selected-file');
+        if(!info){info=document.createElement('div');info.className='ops-selected-file';info.style.marginTop='6px';drop.appendChild(info)}
+        info.innerHTML=`<b>${f.name}</b><br><small>${Math.round(f.size/1024).toLocaleString()} KB · listo para cargar</small>`;
+      }
+    }
   };
 
   if(drop){
     drop.onclick=()=>input.click();
     ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
     ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
-    drop.addEventListener('drop',e=>selectFile(e.dataTransfer.files?.[0]));
+    drop.addEventListener('drop',e=>selectFile(e.dataTransfer.files?.[0],true));
   }
-  input.onchange=()=>selectFile(input.files?.[0]);
+  input.onchange=()=>selectFile(input.files?.[0],false);
 
   async function upload(){
-    const f=input.files?.[0];
+    const f=input.files?.[0]||droppedFile;
     if(!f){setProgress(0,'Selecciona o arrastra el Excel de Cambios y Muertos.');return}
     if(!f.name.toLowerCase().endsWith('.xlsx')){setProgress(0,'Sólo se acepta Excel .xlsx.');return}
 
