@@ -283,6 +283,20 @@ body{max-width:100%;overflow-x:hidden}
   .kpis,.report-kpis,.cards{grid-template-columns:1fr!important}
 }
 
+
+.lingerie-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.lingerie-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr)}
+.lingerie-entry-table input{width:100%;min-width:110px;border:1px solid #d3dce7;border-radius:7px;padding:7px;color:var(--text);background:#fff}
+.lingerie-result-ok{background:#dcfce7!important;color:#14532d;font-weight:900}
+.lingerie-result-warn{background:#fff1bf!important;color:#8a5c00;font-weight:900}
+.lingerie-result-bad{background:#fee2e2!important;color:#a31515;font-weight:900}
+.lingerie-family-link{cursor:pointer;font-weight:900;color:var(--blue)}
+@media(max-width:900px){
+  .lingerie-grid{grid-template-columns:1fr!important}
+  .lingerie-toolbar{display:grid;grid-template-columns:1fr}
+  .lingerie-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .lingerie-entry-table{min-width:520px!important}
+}
 </style></head>
 <body>
 
@@ -369,6 +383,7 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-sub="stores" data-tab-key="commercial.stores">Tiendas</button>
   <button class="switch" data-sub="sections" data-tab-key="commercial.sections">Sección / Rubro</button>
   <button class="switch" data-sub="areas" data-tab-key="commercial.areas">Ubicación / Área</button>
+  <button class="switch" data-sub="lingerie-checklist" data-tab-key="commercial.lingerie_checklist">Checklist lencería</button>
   <button class="switch" data-sub="more" data-tab-key="commercial.more">Más opciones</button>
   <button class="switch adminOnly" data-sub="analysis-upload">Carga de datos</button>
 </div>
@@ -497,6 +512,66 @@ body{max-width:100%;overflow-x:hidden}
 </div>
 <div class="tablewrap model-scroll-30 model-sticky-table"><table class="table"><thead><tr><th>Ranking</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Exist. CEDIS</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th><th>% Acum.</th></tr></thead><tbody id="champTable"></tbody></table></div><div class="title" id="slowTitle">Modelos lentos · Compañía · Todas</div><div class="panel compact-filter"><div class="filter"><label>Sección · Modelos lentos</label><select id="slowSection"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter hidden" id="checklistStoreWrap"><label>Tienda a evaluar · solo checklist</label><select id="checklistStoreSelect"></select></div><div id="slowTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap model-sticky-table"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. entrada</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="slowTable"></tbody></table></div><div class="title" id="zeroTitle">Modelos con sugerido 0 a 1 · entrada reciente</div><div class="panel compact-filter"><div id="zeroTotals" class="note" style="margin-top:6px"></div></div><div class="tablewrap model-sticky-table"><table class="table"><thead><tr><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Sección</th><th>Rubro</th><th>Ubicación</th><th>Exhibición</th><th>Últ. entrada</th><th>Venta pzas 30</th><th>Sugerido 7</th><th>Existencia</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody id="zeroTable"></tbody></table></div><div id="checklistSummaryWrap" class="hidden"><div class="title" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Resumen checklist de modelos lentos por tienda</span><button class="primary" id="downloadChecklistPdf" style="width:auto;padding:8px 14px">Descargar PDF</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th><th>% checklist</th><th>% evidencias</th><th>Score</th></tr></thead><tbody id="checklistSummary"></tbody></table></div><div id="checklistMissing" class="panel hidden"></div></div></section>
 
+
+<section class="page" id="page-lingerie-checklist">
+  <div class="title">Checklist lencería</div>
+  <div class="subtitle">Captura manual de los 10 modelos campeones por familia y comparación automática contra la venta real del Reporte de Capacidades.</div>
+
+  <div class="kpis lingerie-kpis" style="margin-bottom:10px">
+    <div class="kpi" style="--a:var(--blue)"><div class="lab">Tienda</div><div class="val" id="lingerieStoreKpi" style="font-size:17px">—</div><div class="note">Tienda seleccionada / asignada</div></div>
+    <div class="kpi" style="--a:var(--purple)"><div class="lab">Familias</div><div class="val" id="lingerieFamiliesKpi">—</div><div class="note">Familias disponibles en Lencería</div></div>
+    <div class="kpi" style="--a:var(--green)"><div class="lab">Coincidencia Top 10</div><div class="val" id="lingerieTop10Kpi">—</div><div class="note">Modelos capturados que sí están en el Top 10 real</div></div>
+    <div class="kpi" style="--a:var(--yellow)"><div class="lab">Coincidencia posición</div><div class="val" id="lingerieExactKpi">—</div><div class="note">Modelos en la misma posición del ranking real</div></div>
+  </div>
+
+  <div class="panel lingerie-toolbar" style="margin-bottom:10px">
+    <div class="filter" style="min-width:280px"><label>Familia</label><select id="lingerieFamily" style="width:100%"><option value="">Selecciona familia</option></select></div>
+    <div class="note" id="lingerieSourceNote" style="align-self:center">La comparación se realiza con Venta pzas del periodo seleccionado.</div>
+  </div>
+
+  <div class="grid lingerie-grid">
+    <div class="panel">
+      <div class="panel-head"><b>Captura manual · Top 10 de la tienda</b><span class="status" id="lingerieSaveStatus">Pendiente</span></div>
+      <div class="subtitle" style="margin-top:5px">Captura del mayor al menor. Usa ID_ART para que la comparación sea exacta.</div>
+      <div class="tablewrap model-sticky-table" style="max-height:64vh">
+        <table class="table lingerie-entry-table">
+          <thead><tr><th>Pos.</th><th>ID_ART</th><th>Modelo</th></tr></thead>
+          <tbody id="lingerieEntryRows"></tbody>
+        </table>
+      </div>
+      <button class="primary" id="saveLingerieChecklist" style="margin-top:10px;width:100%">Guardar Top 10 de esta familia</button>
+      <div class="msg" id="lingerieMsg"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><b>Comparativo vs dato real</b><span class="status ok" id="lingerieCompareStatus">—</span></div>
+      <div class="subtitle" style="margin-top:5px">El ranking real se ordena por Venta pzas del periodo; desempata por Venta $, Sugerido y Existencia.</div>
+      <div class="tablewrap model-sticky-table" style="max-height:64vh">
+        <table class="table">
+          <thead><tr><th>Pos. tienda</th><th>ID_ART</th><th>Modelo</th><th>Pos. real</th><th>Vta pzas</th><th>Sugerido 7</th><th>Existencia</th><th>Resultado</th></tr></thead>
+          <tbody id="lingerieCompareRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="title">Resumen por familia</div>
+  <div class="tablewrap">
+    <table class="table">
+      <thead><tr><th>Familia</th><th>Capturados</th><th>Coinciden Top 10</th><th>% Top 10</th><th>Posición exacta</th><th>% Exacto</th></tr></thead>
+      <tbody id="lingerieSummaryRows"></tbody>
+    </table>
+  </div>
+
+  <div class="title">Top 10 real de la familia seleccionada</div>
+  <div class="tablewrap model-sticky-table" style="max-height:55vh">
+    <table class="table">
+      <thead><tr><th>Pos.</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Venta pzas</th><th>Venta $</th><th>Sugerido 7</th><th>Existencia</th></tr></thead>
+      <tbody id="lingerieActualRows"></tbody>
+    </table>
+  </div>
+</section>
+
 <section class="page" id="page-accordion"><div class="title">Acordeón comercial</div><div class="subtitle">Resumen comercial moderno por periodo y tienda</div><div class="accordion" id="accordion"></div></section>
 <section class="page" id="page-stores"><div class="title">Tiendas</div><div class="kpis"><div class="kpi" style="--a:var(--purple)"><div class="lab">Existencia</div><div class="val" id="tExist">—</div></div><div class="kpi" style="--a:#08a9d6"><div class="lab">Sugerido</div><div class="val" id="tSug">—</div></div><div class="kpi" style="--a:var(--blue)"><div class="lab">Piso</div><div class="val" id="tFloor">—</div></div><div class="kpi" style="--a:var(--pink)"><div class="lab">Bodega</div><div class="val" id="tWh">—</div></div></div><div class="title">Ranking de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Sugerido</th><th>Capacidad (Curva)</th><th>Existencia total</th><th>% Ocupación</th><th>Piso</th><th>Bodega</th><th>DDI</th><th>Bodega %</th><th>Estatus</th></tr></thead><tbody id="storeTable"></tbody></table></div></section>
 <section class="page" id="page-sections">
@@ -559,7 +634,7 @@ body{max-width:100%;overflow-x:hidden}
     <div class="uploadgrid">
       <div class="field"><label>Usuario</label><input id="newUser"></div>
       <div class="field"><label>Contraseña temporal</label><input id="newPass" type="password" autocomplete="new-password"></div>
-      <div class="field"><label>Rol</label><select id="newRole"><option value="tienda">Tienda</option><option value="director">Director / Consulta</option><option value="admin">Administrador</option></select></div>
+      <div class="field"><label>Rol</label><select id="newRole"><option value="tienda">Tienda</option><option value="colaborador_lenceria">Colaborador de Lencería</option><option value="colaborador_operativo">Colaborador Operativo</option><option value="director">Director / Consulta</option><option value="admin">Administrador</option></select></div>
       <div class="field"><label>Tienda asignada</label><select id="newStore"><option value="">Seleccionar</option></select></div>
     </div>
     <button class="primary" id="createUser">Crear usuario</button>
@@ -601,7 +676,7 @@ const rememberAnalysisStore=value=>{
   try{localStorage.setItem(ANALYSIS_STORE_KEY,store)}catch(_){}
   return store;
 };
-const roleLabel={superadmin:'Super Administrador · Propietario',admin:'Administrador',director:'Director / Consulta',tienda:'Tienda'};
+const roleLabel={superadmin:'Super Administrador · Propietario',admin:'Administrador',director:'Director / Consulta',tienda:'Tienda',colaborador_lenceria:'Colaborador de Lencería',colaborador_operativo:'Colaborador Operativo'};
 function state(ddi){return ddi>=121?['Exceso','bad']:ddi>=91?['Atención','warn']:['Óptimo','ok']}
 async function api(url,opt={}){
   const controller=new AbortController();
@@ -788,8 +863,26 @@ async function enter(u){
 
   await loadTabVisibility();
 
+  // Accesos de colaboradores: vistas enfocadas a captura.
+  if(u.role==='colaborador_lenceria'){
+    $('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='analysis'));
+    $('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('hidden',x.dataset.sub!=='lingerie-checklist'));
+    const mn=$('#mobileMainNav');if(mn)mn.style.gridTemplateColumns='1fr';
+    await goMain('analysis');
+    await goSub('lingerie-checklist');
+    return;
+  }
+  if(u.role==='colaborador_operativo'){
+    $('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='operativo'));
+    $('#operativoNav [data-opview]').forEach(x=>x.classList.toggle('hidden',x.dataset.opview!=='Productividad por Colaborador'));
+    const mn=$('#mobileMainNav');if(mn)mn.style.gridTemplateColumns='1fr';
+    await goMain('operativo');
+    OP_VIEW='Productividad por Colaborador';
+    await renderOperativoView(OP_VIEW,false);
+    return;
+  }
+
   // Carga diferida: al iniciar sesión sólo se abre Cambios y Muertos.
-  // Análisis Comercial se consulta únicamente cuando el usuario entra a ese módulo.
   await goMain('operativo');
   if(['superadmin','admin'].includes(u.role))loadUsers();
 }
@@ -830,12 +923,12 @@ $('#saveTabVisibility')?.addEventListener('click',async()=>{
   }catch(e){$('#tabVisibilityMsg').textContent='Error: '+e.message}
 });
 
-const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
+const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],'lingerie-checklist':['Checklist lencería','Top 10 manual por familia vs datos reales'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
 let MAIN='operativo', SUB='macro';
 function showPage(p){
   $$('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));
   const tt=titles[p]||titles[MAIN]||['Operaciones Ropa','']; $('#heroTitle').textContent=tt[0]; $('#heroSub').textContent=tt[1];
-  $('.commercialFilter').style.display=['macro','accordion','stores','sections','areas','more'].includes(p)?'block':'none';
+  $('.commercialFilter').style.display=['macro','accordion','stores','sections','areas','more','lingerie-checklist'].includes(p)?'block':'none';
   $$('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
   if(p==='users') loadUsers();
 }
@@ -864,7 +957,7 @@ async function loadCommercialBootstrap(force=false){
     const target=[wanted,old].find(v=>[...el.options].some(o=>o.value===v));
     if(target)el.value=target;
   });
-  if(USER?.role==='tienda'){
+  if(['tienda','colaborador_lenceria','colaborador_operativo'].includes(USER?.role)){
     const el=$('#store');if(el){el.innerHTML='<option>'+USER.store+'</option>';el.value=USER.store;el.disabled=true}
   }
   return d;
@@ -872,6 +965,7 @@ async function loadCommercialBootstrap(force=false){
 
 async function refreshActiveCommercialTab(){
   if(MAIN!=='analysis')return;
+  if(SUB==='lingerie-checklist')return await loadLingerieChecklist();
   if(SUB==='sections')return await loadCommercialDetail('rubro');
   if(SUB==='areas')return await loadCommercialDetail('area');
   if(SUB==='accordion')return await renderAccordion();
@@ -899,7 +993,8 @@ async function goMain(m){
     SUB=firstVisible?.dataset.sub||'macro';
     showPage(SUB);
     await loadCommercialBootstrap();
-    if(SUB==='sections')await loadCommercialDetail('rubro');
+    if(SUB==='lingerie-checklist')await loadLingerieChecklist();
+    else if(SUB==='sections')await loadCommercialDetail('rubro');
     else if(SUB==='areas')await loadCommercialDetail('area');
     else if(SUB==='accordion')await renderAccordion();
     else{
@@ -930,6 +1025,10 @@ async function goSub(p){
 
   // Cada pestaña consulta sólo lo que necesita. Antes Sección/Rubro hacía
   // primero /api/dashboard y luego /api/commercial-detail, duplicando memoria.
+  if(p==='lingerie-checklist'){
+    await loadLingerieChecklist();
+    return;
+  }
   if(p==='sections'){
     await loadCommercialDetail('rubro');
     return;
@@ -1135,7 +1234,7 @@ function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',sco
   const zeroIds=new Set((zeros||[]).map(x=>String(x.id_art)));
   slows=(slows||[]).filter(x=>!zeroIds.has(String(x.id_art)));
   const allChecklistModels=[...slows,...(zeros||[])];
-  $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec} · ${fmt((champs||[]).length)} modelos 80%`;
+  $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec} · ${fmt((champs||[]).length)} modelos`;
   $('#slowTitle').textContent=`Modelos lentos · ${modelScope} · ${slowSec}`;
   $('#zeroTitle').textContent=`Modelos con sugerido 0 a 1 · última entrada menor o igual a 30 días · ${modelScope} · ${slowSec}`;
   const slowPanel=$('#slowTotals')?.parentElement;if(slowPanel){let help=slowPanel.querySelector('.check-help');if(!help){help=document.createElement('div');help.className='note check-help';slowPanel.appendChild(help)}const capture=(scope==='Compañía'&&['admin','superadmin'].includes(USER?.role))?'Selecciona la tienda a evaluar para capturar el checklist y las evidencias. ':'';help.textContent=capture+'Amarillo: reincide una semana sin subir de sugerido 1. Rojo: reincide dos semanas consecutivas.';}
@@ -2359,7 +2458,7 @@ async function loadUsers(){
     }
     $('#userTable').innerHTML=(users||[]).map(u=>{const owner=u.role==='superadmin';return `<tr>
       <td><input class="userEditName" value="${String(u.username).replaceAll('"','&quot;')}" ${owner?'disabled':''}></td>
-      <td><select class="userEditRole" ${owner?'disabled':''}>${owner?'<option value="superadmin">Super Administrador</option>':'<option value="admin">Administrador</option><option value="director">Director / Consulta</option><option value="tienda">Tienda</option>'}</select></td>
+      <td><select class="userEditRole" ${owner?'disabled':''}>${owner?'<option value="superadmin">Super Administrador</option>':'<option value="admin">Administrador</option><option value="director">Director / Consulta</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Colaborador de Lencería</option><option value="colaborador_operativo">Colaborador Operativo</option>'}</select></td>
       <td><select class="userEditStore" ${owner?'disabled':''}><option value="">Sin tienda</option>${stores.stores.map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}</select></td>
       <td>${u.active?'<span class="status ok">Activo</span>':'<span class="status r">Inactivo</span>'}</td>
       <td>${owner?'<span class="note">Cuenta propietaria protegida</span>':`<div class="action-row"><button class="action-sm userSave" data-id="${u.id}">Guardar</button><button class="action-sm userReset" data-id="${u.id}">Reiniciar contraseña</button><button class="action-sm userToggle" data-id="${u.id}" data-active="${u.active?0:1}">${u.active?'Desactivar':'Activar'}</button><button class="action-sm danger userDelete" data-id="${u.id}">Eliminar</button></div>`}</td>
@@ -2545,7 +2644,7 @@ $('#analysisSalesUploadBtn').onclick=async()=>{
   catch(e){analysisUploadMessage('Error: '+e.message)}
 };
 
-$('#newRole').onchange=()=>{$('#newStore').disabled=$('#newRole').value!=='tienda'}
+$('#newRole').onchange=()=>{$('#newStore').disabled=!['tienda','colaborador_lenceria','colaborador_operativo'].includes($('#newRole').value)}
 $('#createUser').onclick=async()=>{
   const username=$('#newUser').value.trim();
   try{
@@ -2581,6 +2680,121 @@ async function ownerSystemAction(action){
 $('#suspendSystem').onclick=()=>ownerSystemAction('suspend');
 $('#activateSystem').onclick=()=>ownerSystemAction('activate');
 $('#deleteSystem').onclick=()=>ownerSystemAction('delete');
+
+
+let LINGERIE_DATA=null;
+
+function lingerieEsc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function lingerieCurrentFamily(){return $('#lingerieFamily')?.value||''}
+
+function renderLingerieEntry(){
+  const family=lingerieCurrentFamily();
+  const rows=(LINGERIE_DATA?.captured||{})[family]||[];
+  const byRank=Object.fromEntries(rows.map(r=>[Number(r.rank),r]));
+  const editable=!!LINGERIE_DATA?.editable;
+  $('#lingerieEntryRows').innerHTML=Array.from({length:10},(_,i)=>{
+    const rank=i+1,r=byRank[rank]||{};
+    return `<tr>
+      <td><b>#${rank}</b></td>
+      <td><input data-ling-id="${rank}" value="${lingerieEsc(r.id_art||'')}" placeholder="ID_ART" ${editable?'':'disabled'}></td>
+      <td><input data-ling-model="${rank}" value="${lingerieEsc(r.model||'')}" placeholder="Modelo" ${editable?'':'disabled'}></td>
+    </tr>`;
+  }).join('');
+  $('#saveLingerieChecklist').classList.toggle('hidden',!editable);
+}
+
+function renderLingerieFamily(){
+  if(!LINGERIE_DATA)return;
+  const family=lingerieCurrentFamily();
+  const summary=(LINGERIE_DATA.summary||[]).find(x=>x.family===family);
+  const actual=(LINGERIE_DATA.actual||{})[family]||[];
+  const actualById=Object.fromEntries(actual.map(x=>[String(x.id_art),x]));
+
+  renderLingerieEntry();
+
+  $('#lingerieActualRows').innerHTML=actual.slice(0,10).map(x=>`<tr>
+    <td><b>#${x.actual_rank}</b></td><td>${lingerieEsc(x.id_art)}</td><td>${lingerieEsc(x.model)}</td><td>${lingerieEsc(x.brand)}</td>
+    <td>${fmt(x.sales_pzas)}</td><td>${money(x.sales_value)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td>
+  </tr>`).join('')||'<tr><td colspan="8">No hay modelos reales para esta familia.</td></tr>';
+
+  const comparison=summary?.comparison||Array.from({length:10},(_,i)=>({manual_rank:i+1,status:'Pendiente'}));
+  $('#lingerieCompareRows').innerHTML=comparison.map(r=>{
+    const real=actualById[String(r.id_art||'')]||{};
+    const cls=r.status==='Coincide posición'?'lingerie-result-ok':(r.status==='Está en Top 10'?'lingerie-result-warn':(r.status==='Pendiente'?'':'lingerie-result-bad'));
+    return `<tr><td>#${r.manual_rank}</td><td>${lingerieEsc(r.id_art||'—')}</td><td>${lingerieEsc(r.model||real.model||'—')}</td>
+      <td>${r.actual_rank?('#'+r.actual_rank):'—'}</td><td>${real.id_art?fmt(real.sales_pzas):'—'}</td><td>${real.id_art?dec2(real.suggested):'—'}</td>
+      <td>${real.id_art?fmt(real.existence):'—'}</td><td class="${cls}">${lingerieEsc(r.status||'Pendiente')}</td></tr>`;
+  }).join('');
+
+  $('#lingerieTop10Kpi').textContent=summary?summary.top10_score.toFixed(0)+'%':'—';
+  $('#lingerieExactKpi').textContent=summary?summary.exact_score.toFixed(0)+'%':'—';
+  $('#lingerieCompareStatus').textContent=summary?(summary.top10_matches+'/10 en Top 10'):'—';
+  $('#lingerieSaveStatus').textContent=summary?.captured===10?'Completo':((summary?.captured||0)+'/10');
+  $('#lingerieSaveStatus').className='status '+(summary?.captured===10?'ok':'warn');
+}
+
+function renderLingerieSummary(){
+  const rows=LINGERIE_DATA?.summary||[];
+  $('#lingerieSummaryRows').innerHTML=rows.map(r=>`<tr>
+    <td class="lingerie-family-link" data-ling-family="${lingerieEsc(r.family)}">${lingerieEsc(r.family)}</td>
+    <td>${r.captured}/10</td><td>${r.top10_matches}/10</td><td>${r.top10_score.toFixed(0)}%</td>
+    <td>${r.exact_matches}/10</td><td>${r.exact_score.toFixed(0)}%</td>
+  </tr>`).join('')||'<tr><td colspan="6">No hay familias de Lencería disponibles.</td></tr>';
+  $$('[data-ling-family]').forEach(el=>el.onclick=()=>{
+    $('#lingerieFamily').value=el.dataset.lingFamily;renderLingerieFamily();el.scrollIntoView({block:'nearest'});
+  });
+}
+
+async function loadLingerieChecklist(){
+  try{
+    await loadCommercialBootstrap();
+    let store=$('#store')?.value||ANALYSIS_STORE||'Compañía';
+    if(USER?.role==='colaborador_lenceria')store=USER.store||store;
+    if(store==='Compañía'&&USER?.role!=='director'&&USER?.role!=='superadmin'&&USER?.role!=='admin'){
+      throw new Error('Selecciona una tienda.');
+    }
+    const week=$('#week')?.value||'';
+    $('#lingerieMsg').textContent='Cargando información...';
+    const d=await api('/api/lingerie-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:120000});
+    LINGERIE_DATA=d;
+    if(d.week&&$('#week'))$('#week').value=d.week;
+    $('#lingerieStoreKpi').textContent=d.store||'—';
+    $('#lingerieFamiliesKpi').textContent=fmt((d.families||[]).length);
+    $('#lingerieSourceNote').textContent=(d.metric||'Venta pzas del periodo')+' · Fuente: '+(d.source||'Reporte de capacidades');
+
+    const sel=$('#lingerieFamily'),before=sel.value;
+    sel.innerHTML='<option value="">Selecciona familia</option>';
+    (d.families||[]).forEach(x=>sel.add(new Option(x,x)));
+    if((d.families||[]).includes(before))sel.value=before;
+    else if((d.families||[]).length)sel.value=d.families[0];
+
+    renderLingerieSummary();
+    renderLingerieFamily();
+    $('#lingerieMsg').textContent='';
+  }catch(e){
+    $('#lingerieMsg').textContent='Error: '+e.message;
+    $('#lingerieEntryRows').innerHTML='<tr><td colspan="3">No fue posible cargar el checklist.</td></tr>';
+  }
+}
+
+$('#lingerieFamily')?.addEventListener('change',renderLingerieFamily);
+$('#saveLingerieChecklist')?.addEventListener('click',async()=>{
+  const family=lingerieCurrentFamily();
+  if(!family){$('#lingerieMsg').textContent='Selecciona una familia.';return}
+  const items=Array.from({length:10},(_,i)=>{
+    const rank=i+1;
+    return {rank,id_art:$('[data-ling-id="'+rank+'"]')?.value?.trim()||'',model:$('[data-ling-model="'+rank+'"]')?.value?.trim()||''};
+  });
+  const btn=$('#saveLingerieChecklist');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const body={week:LINGERIE_DATA?.week||$('#week')?.value||'',store:LINGERIE_DATA?.store||$('#store')?.value||'',family,items};
+    const r=await api('/api/lingerie-checklist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),timeoutMs:120000});
+    $('#lingerieMsg').textContent=r.message+' · '+r.saved+'/10 modelos';
+    await loadLingerieChecklist();
+    $('#lingerieFamily').value=family;renderLingerieFamily();
+  }catch(e){$('#lingerieMsg').textContent='Error: '+e.message}
+  finally{btn.disabled=false;btn.textContent='Guardar Top 10 de esta familia'}
+});
 
 start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg').textContent=e.message});
 </script></body></html>
