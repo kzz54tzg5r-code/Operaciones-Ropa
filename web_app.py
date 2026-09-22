@@ -4367,25 +4367,36 @@ def lingerie_checklist_get(request: Request, week: str="", store: str=""):
     for family in families:
         manual=captured.get(family,[])
         real=actual.get(family,[])
-        real_rank={str(x["id_art"]):int(x["actual_rank"]) for x in real}
+        real_by_id={login_key(x["id_art"]):x for x in real}
+        real_by_model={}
+        for x in real:
+            mk=login_key(x.get("model") or "")
+            if mk:
+                real_by_model.setdefault(mk,[]).append(x)
         exact=0;top10=0;completed=0
         comparison=[]
         for rank in range(1,11):
             row=next((x for x in manual if int(x.get("rank") or 0)==rank),None)
             ident=str((row or {}).get("id_art") or "").strip()
-            if ident:
+            model=str((row or {}).get("model") or "").strip()
+            resolved=real_by_id.get(login_key(ident)) if ident else None
+            if resolved is None and model:
+                matches=real_by_model.get(login_key(model),[])
+                if len(matches)==1:
+                    resolved=matches[0]
+            if ident or model:
                 completed+=1
-            ar=real_rank.get(ident)
+            ar=int(resolved["actual_rank"]) if resolved else None
             if ar is not None and ar<=10:
                 top10+=1
             if ar==rank:
                 exact+=1
             comparison.append({
                 "manual_rank":rank,
-                "id_art":ident,
-                "model":str((row or {}).get("model") or ""),
+                "id_art":ident or (str(resolved.get("id_art") or "") if resolved else ""),
+                "model":model or (str(resolved.get("model") or "") if resolved else ""),
                 "actual_rank":ar,
-                "status":"Coincide posición" if ar==rank else ("Está en Top 10" if ar is not None and ar<=10 else ("Fuera Top 10" if ar is not None else ("Pendiente" if not ident else "No encontrado"))),
+                "status":"Coincide posición" if ar==rank else ("Está en Top 10" if ar is not None and ar<=10 else ("Fuera Top 10" if ar is not None else ("Pendiente" if not (ident or model) else "No encontrado"))),
             })
         summary.append({
             "family":family,"captured":completed,"top10_matches":top10,"exact_matches":exact,
@@ -4416,16 +4427,37 @@ async def lingerie_checklist_save(request: Request):
 
     clean=[]
     seen=set()
+    real_rows=actual.get(family,[])
+    by_id={login_key(x.get("id_art") or ""):x for x in real_rows}
+    by_model={}
+    for x in real_rows:
+        mk=login_key(x.get("model") or "")
+        if mk:
+            by_model.setdefault(mk,[]).append(x)
+
     for pos,item in enumerate(items[:10],start=1):
         rank=int((item or {}).get("rank") or pos)
         if rank<1 or rank>10:
             continue
         ident=str((item or {}).get("id_art") or "").strip()
         model=str((item or {}).get("model") or "").strip()
-        if ident and ident in seen:
-            raise HTTPException(400,f"El modelo {ident} está repetido en la familia")
-        if ident:
-            seen.add(ident)
+
+        # Se puede capturar ID_ART o solamente Modelo. Cuando el modelo es único
+        # dentro de la familia se resuelve automáticamente contra Capacidades.
+        resolved=by_id.get(login_key(ident)) if ident else None
+        if resolved is None and model:
+            matches=by_model.get(login_key(model),[])
+            if len(matches)==1:
+                resolved=matches[0]
+        if resolved:
+            ident=str(resolved.get("id_art") or ident).strip()
+            model=str(resolved.get("model") or model).strip()
+
+        dedupe=login_key(ident) if ident else ("model:"+login_key(model) if model else "")
+        if dedupe and dedupe in seen:
+            raise HTTPException(400,f"El modelo {ident or model} está repetido en la familia")
+        if dedupe:
+            seen.add(dedupe)
         clean.append((rank,ident,model))
 
     by_rank={rank:(ident,model) for rank,ident,model in clean}
