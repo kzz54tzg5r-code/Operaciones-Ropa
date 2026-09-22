@@ -140,34 +140,55 @@ def install(m):
     def commercial_models_v176(
         request: Request, week: str = "", store: str = "Compañía",
         section: str = "Todas", catalog: str = "Todos", group_by: str = "section",
+        mode: str = "all",
     ):
         actor = m.require_user(request)
         selected = str(m.effective_store(actor, store) or "Compañía")
         gb = group_by if group_by in ("section", "area", "catalog", "general") else "section"
-        key = (week, norm(selected), norm(section), norm(catalog), gb)
+        mode_key = str(mode or "all").strip().lower()
+        if mode_key not in ("all", "80_20", "slow", "suggested_zero", "pareto"):
+            mode_key = "all"
+        key = (week, norm(selected), norm(section), norm(catalog), gb, mode_key)
         now = time.monotonic()
         with model_lock:
             cached = model_cache.get(key)
             if cached and now - cached[0] < 600:
                 return cached[1]
-            champs = list(m._capacity_model_rows(selected, section, "80_20", week, catalog) or [])
-            slow = list(m._capacity_model_rows(selected, section, "slow", week, catalog) or [])
-            zero = list(m._capacity_model_rows(selected, section, "suggested_zero", week, catalog) or [])
-            pareto = dict(m._capacity_8020_summary(selected, section, catalog, week, gb) or {})
-            payload = {
-                "week": week, "store": selected, "section": section, "catalog": catalog,
-                "champions": champs, "slow": slow, "zero": zero, "pareto": pareto,
-                "checklist_enabled": not is_company(selected),
-            }
-            if len(model_cache) >= 24:
+
+        # Un solo cálculo pesado por solicitud. Antes la ruta calculaba 80/20,
+        # lentos, sugerido 0 y Pareto en el mismo request; en Compañía eso podía
+        # provocar un pico de memoria y reiniciar Render.
+        champs, slow, zero, pareto = [], [], [], {}
+        with m._RESOURCE_HEAVY_LOCK:
+            if mode_key in ("all", "80_20"):
+                champs = list(m._capacity_model_rows(selected, section, "80_20", week, catalog) or [])
+                m._release_process_memory()
+            if mode_key in ("all", "slow"):
+                slow = list(m._capacity_model_rows(selected, section, "slow", week, catalog) or [])
+                m._release_process_memory()
+            if mode_key in ("all", "suggested_zero"):
+                zero = list(m._capacity_model_rows(selected, section, "suggested_zero", week, catalog) or [])
+                m._release_process_memory()
+            if mode_key in ("all", "pareto"):
+                pareto = dict(m._capacity_8020_summary(selected, section, catalog, week, gb) or {})
+                m._release_process_memory()
+
+        payload = {
+            "week": week, "store": selected, "section": section, "catalog": catalog,
+            "mode": mode_key,
+            "champions": champs, "slow": slow, "zero": zero, "pareto": pareto,
+            "checklist_enabled": not is_company(selected),
+        }
+        with model_lock:
+            if len(model_cache) >= 40:
                 model_cache.pop(next(iter(model_cache)))
             model_cache[key] = (now, payload)
-            print(
-                f"[V176-MODELS] {week} {selected} {section} "
-                f"80/20={len(champs)} lentos={len(slow)} cero={len(zero)}",
-                flush=True,
-            )
-            return payload
+        print(
+            f"[V181-MODELS] {mode_key} {week} {selected} {section} "
+            f"80/20={len(champs)} lentos={len(slow)} cero={len(zero)}",
+            flush=True,
+        )
+        return payload
 
     # --------------------- Ventas V176 ----------------------------
     sales_base = route_endpoint("/api/commercial-sales-v174")
@@ -1143,11 +1164,17 @@ async function fixStores(){
         ([...sel.options].some(o=>o.value===before)?before:(sel.options[0]?.value||''));
       sel.value=wanted;
     });
-    if(facade&&!facade.dataset.v176store){
+    if(facade&&facade!==native&&!facade.dataset.v176store){
       facade.dataset.v176store='1';
-      facade.addEventListener('change',()=>{
-        if(native){native.value=facade.value;native.dispatchEvent(new Event('change',{bubbles:true}))}
-        setTimeout(()=>window.loadDash?.(),20);
+      facade.addEventListener('change',async()=>{
+        const wanted=facade.value||'Compañía';
+        if(native)native.value=wanted;
+        modelClientCache.clear();
+        try{
+          await window.loadDash?.(wanted,q('#section')?.value||'Todas');
+        }catch(e){console.warn('[V181] cambio de tienda',e)}
+        if(native)native.value=wanted;
+        if([...facade.options].some(o=>o.value===wanted))facade.value=wanted;
       });
     }
     if(native&&facade&&native.value!==facade.value)native.value=facade.value;
@@ -1469,32 +1496,49 @@ async function renderModels(force){
   const store=visibleStoreControl()?.value||q('#store')?.value||((typeof DASH!=='undefined'&&DASH?.selected_store)?DASH.selected_store:'Compañía');
   const week=q('#week')?.value||((typeof DASH!=='undefined'&&DASH?.week)?DASH.week:'');
   const section=q('#section')?.value||'Todas',catalog=q('#catalog')?.value||'Todos',gb=paretoGroup();
-  // Nunca lanzar el análisis pesado antes de que el periodo esté listo.
   if(!week)return;
   const cacheKey=[week,store,section,catalog,gb].join('|');
   const cached=modelClientCache.get(cacheKey);
   modelsBusy=true;
+
+  const syncTitles=(slowSection)=>{
+    const ct=q('#champTitle');if(ct)ct.textContent='Modelos 80/20 · '+store+' · '+section+' · todos';
+    const st=q('#slowTitle');if(st)st.textContent='Modelos lentos · '+store+' · '+slowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
+    const zt=q('#zeroTitle');if(zt)zt.textContent='Modelos con sugerido 0 a 1 · última entrada menor o igual a 30 días · '+store+' · '+slowSection;
+  };
+
   try{
     if(!cached){
-      if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">Cargando 80/20…</td></tr>';
-      if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">Cargando modelos lentos…</td></tr>';
-      if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">Cargando sugerido 0 a 1…</td></tr>';
+      if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">Cargando 80/20 de '+esc(store)+'…</td></tr>';
+      if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">Cargando modelos lentos de '+esc(store)+'…</td></tr>';
+      if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">Cargando sugerido 0 a 1 de '+esc(store)+'…</td></tr>';
     }
+
     let d=cached&&!force?cached:null;
     if(!d){
-      const url='/api/commercial-models-v176?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent(catalog)+'&group_by='+encodeURIComponent(gb);
-      try{
-        d=await A(url,{timeoutMs:240000});
-      }catch(first){
-        // Un reinicio de Render es transitorio. Reintentar una vez y, si ya
-        // existe una respuesta válida en memoria del navegador, conservarla.
-        if(cached)d=cached;
-        else{
-          await new Promise(resolve=>setTimeout(resolve,4500));
-          d=await A(url,{timeoutMs:240000});
+      const root='/api/commercial-models-v176?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent(catalog)+'&group_by='+encodeURIComponent(gb);
+      const fetchMode=async mode=>{
+        const url=root+'&mode='+encodeURIComponent(mode);
+        try{return await A(url,{timeoutMs:180000})}
+        catch(first){
+          await new Promise(resolve=>setTimeout(resolve,2500));
+          return await A(url,{timeoutMs:180000});
         }
-      }
-      if(d)modelClientCache.set(cacheKey,d);
+      };
+
+      // Secuencial para que Render libere temporales entre cálculos.
+      const champData=await fetchMode('80_20');
+      const slowData=await fetchMode('slow');
+      const zeroData=await fetchMode('suggested_zero');
+      const paretoData=await fetchMode('pareto');
+      d={
+        week,store,section,catalog,
+        champions:champData.champions||[],
+        slow:slowData.slow||[],
+        zero:zeroData.zero||[],
+        pareto:paretoData.pareto||{},
+      };
+      modelClientCache.set(cacheKey,d);
     }
     if(!d)throw new Error('Sin respuesta de modelos');
 
@@ -1513,30 +1557,21 @@ async function renderModels(force){
     }
     const map={};(ck.rows||[]).forEach(r=>map[String(r.id_art)]=r);
     if(typeof window.renderModelRows==='function'){
-      try{
-        window.renderModelRows((d.champions||[]).slice(0,150),slowRows,d.zero||[],section,slowSection,store,map,!!ck.editable,store==='Compañía'?'':store,store);
-        if(q('#slowTitle'))q('#slowTitle').textContent='Modelos lentos · '+store+' · '+slowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
-      }catch(renderErr){
-        console.warn('[V176] renderModelRows retry',renderErr);
-        await new Promise(resolve=>setTimeout(resolve,0));
-        window.renderModelRows((d.champions||[]).slice(0,150),slowRows,d.zero||[],section,slowSection,store,map,!!ck.editable,store==='Compañía'?'':store,store);
-        if(q('#slowTitle'))q('#slowTitle').textContent='Modelos lentos · '+store+' · '+slowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
-      }
+      window.renderModelRows(d.champions||[],slowRows,d.zero||[],section,slowSection,store,map,!!ck.editable,store==='Compañía'?'':store,store);
     }
+    syncTitles(slowSection);
     fixModelHead();renderPareto(d.pareto?.rows||[]);
   }catch(e){
     if(cached){
       try{
-        if(typeof window.renderModelRows==='function'){
-          const cachedSlowSection=q('#slowSection')?.value||'Todas';
-          const nf=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
-          const cachedSlow=(cached.slow||[]).filter(row=>{
-            const sec=nf(row.section),area=nf(row.location||row.area||row.location_type||row.type_location);
-            return (cachedSlowSection==='Todas'||sec.startsWith(nf(cachedSlowSection)))&&(slowAreaFilter==='Todas'||area.includes(nf(slowAreaFilter)));
-          });
-          window.renderModelRows((cached.champions||[]).slice(0,150),cachedSlow,cached.zero||[],section,cachedSlowSection,store,{},false,'',store);
-          if(q('#slowTitle'))q('#slowTitle').textContent='Modelos lentos · '+store+' · '+cachedSlowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
-        }
+        const cachedSlowSection=q('#slowSection')?.value||'Todas';
+        const nf=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+        const cachedSlow=(cached.slow||[]).filter(row=>{
+          const sec=nf(row.section),area=nf(row.location||row.area||row.location_type||row.type_location);
+          return (cachedSlowSection==='Todas'||sec.startsWith(nf(cachedSlowSection)))&&(slowAreaFilter==='Todas'||area.includes(nf(slowAreaFilter)));
+        });
+        if(typeof window.renderModelRows==='function')window.renderModelRows(cached.champions||[],cachedSlow,cached.zero||[],section,cachedSlowSection,store,{},false,'',store);
+        syncTitles(cachedSlowSection);
         fixModelHead();renderPareto(cached.pareto?.rows||[]);
       }catch(_){}
     }else{
@@ -1544,7 +1579,7 @@ async function renderModels(force){
       if(q('#champTable'))q('#champTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
       if(q('#slowTable'))q('#slowTable').innerHTML='<tr><td colspan="15">'+msg+'</td></tr>';
       if(q('#zeroTable'))q('#zeroTable').innerHTML='<tr><td colspan="16">'+msg+'</td></tr>';
-      console.warn('[V176] modelos',e);
+      console.warn('[V181] modelos',e);
     }
   }finally{modelsBusy=false}
 }
@@ -1894,13 +1929,26 @@ document.addEventListener('click',e=>{
   if(e.target.closest?.('[data-pareto-group]'))setTimeout(()=>renderModels(true),80);
 },true);
 document.addEventListener('change',e=>{
-  if(e.target.matches?.('#store,#week,#section,#catalog,#v166StatusSelect'))schedule();
+  // #store/#week/#section/#catalog ya tienen manejadores nativos que llaman
+  // loadDash. Duplicarlos aquí lanzaba varias consultas pesadas simultáneas.
+  if(e.target.matches?.('#v166StatusSelect'))schedule();
 },true);
 if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
-  const old=window.loadDash;const wrapped=async function(){const r=await old.apply(this,arguments);setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);return r};wrapped.__v176=true;window.loadDash=wrapped;
+  const old=window.loadDash;
+  const wrapped=async function(storeOverride=null,sectionOverride=null){
+    const visible=visibleStoreControl()?.value||q('#store')?.value||'Compañía';
+    const wanted=storeOverride||visible;
+    const r=await old.call(this,wanted,sectionOverride);
+    const native=q('#store'),facade=visibleStoreControl(),scope=r?.selected_store||wanted;
+    if(native&&[...native.options].some(o=>o.value===scope))native.value=scope;
+    if(facade&&[...facade.options].some(o=>o.value===scope))facade.value=scope;
+    setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);
+    return r;
+  };
+  wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V176] Comercial integral activo.');
+console.info('[V181] Comercial por tienda y modelos 80/20 completos activo.');
 })();
 </script>'''
 
@@ -1921,7 +1969,7 @@ console.info('[V176] Comercial integral activo.');
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V176",
+                "X-Operations-UI-Version": "V181",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
