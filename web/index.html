@@ -1019,13 +1019,13 @@ async function goMain(m){
   
   if(operativo){
     if(!['colaborador_lenceria'].includes(USER?.role))$('#operativoNav')?.classList.remove('hidden');
-    const firstVisible=$('#operativoNav [data-opview]:not(.hidden)')[0];
+    const firstVisible=$$('#operativoNav [data-opview]:not(.hidden)')[0];
     OP_VIEW=firstVisible?.dataset.opview||'Centro Ejecutivo';
     showPage('operativo');
     if(!OPSDATA) await refreshOperativoMeta();
     await renderOperativoView(OP_VIEW,false);
   }else if(analysis){
-    const firstVisible=$('#analysisNav [data-sub]:not(.hidden)')[0];
+    const firstVisible=$$('#analysisNav [data-sub]:not(.hidden)')[0];
     SUB=firstVisible?.dataset.sub||'macro';
     showPage(SUB);
     await loadCommercialBootstrap();
