@@ -801,6 +801,10 @@ def current_user(request: Request):
     if real_role!="superadmin" or view_role not in ("admin","director"):
         view_role=""
     effective_role=view_role or real_role
+    # Colaborador Operativo es el nombre/rol persistente nuevo. Internamente
+    # reutiliza los permisos maduros del perfil "colaborador" de Operación.
+    if not view_role and effective_role=="colaborador_operativo":
+        effective_role="colaborador"
     return {
         "id":row["id"],"username":row["username"],"role":effective_role,"store":row["store"],
         "real_role":real_role,"view_role":view_role,
@@ -826,7 +830,7 @@ def require_real_superadmin(request: Request):
     return row
 
 def effective_store(user, requested="Compañía"):
-    if user["role"] in ("tienda","colaborador_lenceria","colaborador_operativo"):
+    if user["role"] in ("tienda","colaborador","colaborador_lenceria","colaborador_operativo"):
         return user.get("store") or ""
     return requested or "Compañía"
 
