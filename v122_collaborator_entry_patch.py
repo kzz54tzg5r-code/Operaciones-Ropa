@@ -17,7 +17,7 @@ def install(m):
 (function(){
   const roleSel=$('#newRole');
   if(roleSel){
-    const syncStore=()=>{const s=$('#newStore');if(s)s.disabled=!['tienda','colaborador'].includes(roleSel.value)};
+    const syncStore=()=>{const s=$('#newStore');if(s)s.disabled=!['tienda','colaborador_operativo','colaborador_lenceria'].includes(roleSel.value)};
     roleSel.onchange=syncStore;syncStore();
   }
   const previousEnter=window.enter;
@@ -27,8 +27,8 @@ def install(m):
     USER=u;
     $('#loginView')?.classList.add('hidden');
     $('#appView')?.classList.remove('hidden');
-    if($('#profileName'))$('#profileName').textContent=u.username||'Colaborador';
-    if($('#profileRole'))$('#profileRole').textContent='Colaborador';
+    if($('#profileName'))$('#profileName').textContent=u.username||'Colaborador operativo';
+    if($('#profileRole'))$('#profileRole').textContent='Colaborador operativo';
     if($('#profileMeta'))$('#profileMeta').textContent='V122 · captura de productividad';
     if($('#viewRoleBox'))$('#viewRoleBox').classList.add('hidden');
     document.querySelectorAll('.superOnly,.adminOnly').forEach(x=>x.classList.add('hidden'));
