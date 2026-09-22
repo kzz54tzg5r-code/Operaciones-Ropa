@@ -225,24 +225,23 @@ def install(m):
                             sort=False,observed=True
                         )["sale"].sum().reset_index()
 
+                        # Esta matriz corresponde exclusivamente a las 17 tiendas físicas
+                        # configuradas. Fuentes/canales adicionales como AMAZON, DARKSTORE,
+                        # MERCADO y TIJUANA no forman parte de la Regla de Venta ni de los
+                        # porcentajes CIA de este reporte.
+                        allowed_cfg={norm(st):(st,short,cluster,float(rule)) for st,short,cluster,rule in subcat_store_cfg}
+                        agg=agg[agg["Tienda"].map(norm).isin(set(allowed_cfg))].copy()
+
                         detected=[str(x) for x in agg["Tienda"].dropna().unique().tolist()]
                         detected_map={norm(x):x for x in detected}
                         stores=[]
-                        used=set()
                         for st,short,cluster,rule in subcat_store_cfg:
                             actual=detected_map.get(norm(st))
                             if actual is None:
                                 continue
                             stores.append({"name":actual,"short":short,"cluster":cluster,"rule":float(rule)})
-                            used.add(norm(actual))
-                        for actual in detected:
-                            if norm(actual) in used:
-                                continue
-                            cfg=_subcat_config_for(actual)
-                            stores.append(cfg)
-                            used.add(norm(actual))
 
-                        # Totales de compañía para el alcance Ropa (Dama/Caballero/Infantil).
+                        # Totales de compañía sólo con las 17 tiendas físicas.
                         store_total=agg.groupby("Tienda",sort=False,observed=True)["sale"].sum()
                         section_store=agg.groupby(["Tienda","Sección"],sort=False,observed=True)["sale"].sum()
                         section_total=agg.groupby("Sección",sort=False,observed=True)["sale"].sum()
@@ -2478,7 +2477,7 @@ if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
   wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V187] Carga comercial progresiva, Rubro separado y móvil estabilizado.');
+console.info('[V189] Participación SubCat limitada a las 17 tiendas físicas.');
 })();
 </script>'''
 
