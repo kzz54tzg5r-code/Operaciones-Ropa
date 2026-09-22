@@ -798,20 +798,25 @@ def current_user(request: Request):
         return None
     real_role=str(row["role"] or "")
     view_role=str(request.session.get("view_role") or "")
-    if real_role!="superadmin" or view_role not in ("admin","director"):
+    preview_roles=("admin","director","tienda","colaborador_lenceria","colaborador_operativo")
+    if real_role!="superadmin" or view_role not in preview_roles:
         view_role=""
     effective_role=view_role or real_role
-    # Colaborador Operativo es el nombre/rol persistente nuevo. Internamente
-    # reutiliza los permisos maduros del perfil "colaborador" de Operación.
-    if not view_role and effective_role=="colaborador_operativo":
-        effective_role="colaborador"
+    effective_store=str(row["store"] or "")
+    if real_role=="superadmin" and view_role in ("tienda","colaborador_lenceria","colaborador_operativo"):
+        requested=str(request.session.get("view_store") or "").strip()
+        active={login_key(x):x for x in store_names(True)}
+        effective_store=active.get(login_key(requested),"")
+        if not effective_store:
+            effective_store=(store_names(True) or list(PROJECT_STORES) or [""])[0]
+            request.session["view_store"]=effective_store
     return {
-        "id":row["id"],"username":row["username"],"role":effective_role,"store":row["store"],
+        "id":row["id"],"username":row["username"],"role":effective_role,"store":effective_store,
         "real_role":real_role,"view_role":view_role,
+        "view_store":str(request.session.get("view_store") or "") if real_role=="superadmin" else "",
         "can_preview_roles":real_role=="superadmin",
         "must_change_password":bool(row["must_change_password"]) if "must_change_password" in row.keys() else False,
     }
-
 def require_user(request: Request, roles=None):
     u = current_user(request)
     if not u: raise HTTPException(401, "Sesión requerida")
@@ -2531,16 +2536,27 @@ def logout(request: Request): request.session.clear(); return {"ok":True}
 
 @app.post("/api/me/view-role")
 async def set_view_role(request: Request):
-    """Permite al propietario previsualizar permisos sin alterar su cuenta."""
+    """Permite al propietario previsualizar roles y tienda sin alterar cuentas."""
     require_real_superadmin(request)
     body=await request.json()
     role=str(body.get("role") or "superadmin").strip().lower()
-    if role not in ("superadmin","admin","director"):
+    allowed=("superadmin","admin","director","tienda","colaborador_lenceria","colaborador_operativo")
+    if role not in allowed:
         raise HTTPException(400,"Vista de rol inválida")
     if role=="superadmin":
         request.session.pop("view_role",None)
+        request.session.pop("view_store",None)
     else:
         request.session["view_role"]=role
+        if role in ("tienda","colaborador_lenceria","colaborador_operativo"):
+            requested=str(body.get("store") or request.session.get("view_store") or "").strip()
+            active={login_key(x):x for x in store_names(True)}
+            chosen=active.get(login_key(requested),"")
+            if not chosen:
+                chosen=(store_names(True) or list(PROJECT_STORES) or [""])[0]
+            request.session["view_store"]=chosen
+        else:
+            request.session.pop("view_store",None)
     return {"ok":True,"user":current_user(request)}
 
 @app.get("/api/settings/report-tabs")
@@ -4275,6 +4291,16 @@ def _lingerie_actor_store(user: dict, requested: str="") -> str:
     raise HTTPException(403,"No autorizado")
 
 
+LINGERIE_CHECKLIST_SUBCATEGORIES = (
+    "BOXER/TRUSA",
+    "BRASIERE",
+    "BUSTIER",
+    "FAJA",
+    "PANTALETA/BOXER/BIKINI",
+    "TOP",
+)
+LINGERIE_CHECKLIST_SUBCATEGORY_KEYS = {login_key(x) for x in LINGERIE_CHECKLIST_SUBCATEGORIES}
+
 def _lingerie_actual_payload(period: str, store: str):
     periods=_capacity_period_options(period or "")
     selected=period if period and period in periods else (periods[0] if periods else "")
@@ -4315,6 +4341,8 @@ def _lingerie_actual_payload(period: str, store: str):
         ~slim["family"].isin(["","nan","None"])
         & ~slim["id_art"].isin(["","nan","None"])
     ]
+    # Sólo las subcategorías palomeadas para el Checklist de Lencería.
+    slim=slim[slim["family"].map(login_key).isin(LINGERIE_CHECKLIST_SUBCATEGORY_KEYS)]
     if slim.empty:
         return selected,[],{}
 
@@ -4326,7 +4354,8 @@ def _lingerie_actual_payload(period: str, store: str):
         suggested=("suggested","max"),existence=("existence","max"),
     ).reset_index()
 
-    families=sorted(per_model["family"].dropna().astype(str).unique().tolist(),key=login_key)
+    detected={login_key(x):str(x) for x in per_model["family"].dropna().astype(str).unique().tolist()}
+    families=[detected[login_key(x)] for x in LINGERIE_CHECKLIST_SUBCATEGORIES if login_key(x) in detected]
     actual={}
     for family,g in per_model.groupby("family",sort=False,observed=True):
         ranked=g.sort_values(["sales_pzas","sales_value","suggested","existence"],ascending=[False,False,False,False]).reset_index(drop=True)
