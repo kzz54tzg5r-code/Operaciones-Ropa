@@ -93,6 +93,7 @@ REPORT_TABS = {
     "commercial.sections": "Sección / Rubro",
     "commercial.areas": "Ubicación / Área",
     "commercial.more": "Más opciones",
+    "commercial.lingerie_checklist": "Checklist lencería",
 }
 
 
@@ -213,7 +214,7 @@ app.add_middleware(
     https_only=os.environ.get("OPERACIONES_ROPA_HTTPS_ONLY", "0") == "1",
 )
 
-ROLES = ("superadmin", "admin", "director", "tienda")
+ROLES = ("superadmin", "admin", "director", "tienda", "colaborador_lenceria", "colaborador_operativo")
 
 DEFAULT_GOALS = {
     "productividad_diaria": 784.0,
@@ -252,6 +253,8 @@ ROLE_LABELS = {
     "admin":"Administrador",
     "director":"Director / Consulta",
     "tienda":"Tienda",
+    "colaborador_lenceria":"Colaborador de Lencería",
+    "colaborador_operativo":"Colaborador Operativo",
 }
 
 class UploadAdapter(BytesIO):
@@ -394,6 +397,21 @@ def init_db():
             uploaded_by TEXT NOT NULL,
             UNIQUE(week,store,id_art)
         )""")
+
+        con.execute("""CREATE TABLE IF NOT EXISTS lingerie_checklist(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            week TEXT NOT NULL,
+            store TEXT NOT NULL,
+            family TEXT NOT NULL,
+            rank INTEGER NOT NULL,
+            id_art TEXT NOT NULL,
+            model TEXT DEFAULT '',
+            updated_at TEXT NOT NULL,
+            updated_by TEXT NOT NULL,
+            UNIQUE(week,store,family,rank)
+        )""")
+        con.execute("""CREATE INDEX IF NOT EXISTS idx_lingerie_checklist_scope
+            ON lingerie_checklist(week,store,family)""")
 
         con.execute("""CREATE TABLE IF NOT EXISTS upload_history(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -808,7 +826,7 @@ def require_real_superadmin(request: Request):
     return row
 
 def effective_store(user, requested="Compañía"):
-    if user["role"] == "tienda":
+    if user["role"] in ("tienda","colaborador_lenceria","colaborador_operativo"):
         return user.get("store") or ""
     return requested or "Compañía"
 
@@ -2578,7 +2596,7 @@ async def create_user(request: Request):
         raise HTTPException(400,"Rol inválido")
     if role=="superadmin":
         raise HTTPException(403,"No se puede crear otro Super Administrador")
-    if role in ("tienda","colaborador","colaborador_lenceria") and not store:
+    if role in ("tienda","colaborador_lenceria","colaborador_operativo") and not store:
         raise HTTPException(400,"Selecciona la tienda")
     if len(username)<3 or len(password)<8:
         raise HTTPException(400,"Usuario mínimo 3 caracteres y contraseña mínimo 8")
@@ -2617,7 +2635,7 @@ async def update_user(user_id: int, request: Request):
         raise HTTPException(403,"El Super Administrador no se edita desde esta pantalla")
     if role=="superadmin":
         raise HTTPException(403,"No se puede asignar el rol Super Administrador")
-    if role in ("tienda","colaborador","colaborador_lenceria") and not store:
+    if role in ("tienda","colaborador_lenceria","colaborador_operativo") and not store:
         raise HTTPException(400,"Selecciona la tienda")
     if len(username)<3:
         raise HTTPException(400,"Usuario mínimo 3 caracteres")
@@ -4230,6 +4248,197 @@ def model_ranking(request: Request, week: str|None=None, store: str="Compañía"
         "rows":_model_rows(scoped,slow)
     }
 
+
+
+def _lingerie_actor_store(user: dict, requested: str="") -> str:
+    role=str(user.get("role") or "")
+    requested=str(requested or "").strip()
+    if role=="colaborador_lenceria":
+        assigned=str(user.get("store") or "").strip()
+        if requested and login_key(requested)!=login_key(assigned):
+            raise HTTPException(403,"Sólo puedes capturar Checklist Lencería de tu tienda")
+        return assigned
+    if role=="tienda":
+        return str(user.get("store") or "").strip()
+    if role in ("superadmin","admin","director"):
+        if requested and requested!="Compañía":
+            active={login_key(x):x for x in store_names(True)}
+            store=active.get(login_key(requested),"")
+            if not store:
+                raise HTTPException(400,"Selecciona una tienda activa")
+            return store
+        return requested or "Compañía"
+    raise HTTPException(403,"No autorizado")
+
+
+def _lingerie_actual_payload(period: str, store: str):
+    periods=_capacity_period_options(period or "")
+    selected=period if period and period in periods else (periods[0] if periods else "")
+    if not selected:
+        return selected,[],{}
+
+    frame=_capacity_frame_for_period(selected)
+    if frame is None or frame.empty:
+        return selected,[],{}
+
+    work=_capacity_scope_v45(frame,store,"Todas","Todos")
+    if work is None or work.empty:
+        return selected,[],{}
+
+    if "Área reporte" in work.columns:
+        area=work["Área reporte"].fillna("").astype(str).map(login_key)
+        work=work[area==login_key("Lencería")]
+    else:
+        return selected,[],{}
+    if work.empty:
+        return selected,[],{}
+
+    family_col="Subcategoría" if "Subcategoría" in work.columns else ("Categoría" if "Categoría" in work.columns else "")
+    if not family_col or "ID_ART" not in work.columns:
+        return selected,[],{}
+
+    pcol,vcol=_capacity_period_columns(selected)
+    slim=pd.DataFrame(index=work.index)
+    slim["family"]=work[family_col].fillna("").astype(str).str.strip()
+    slim["id_art"]=work["ID_ART"].fillna("").astype(str).str.strip()
+    slim["model"]=work.get("Modelo",pd.Series("",index=work.index)).fillna("").astype(str).str.strip()
+    slim["brand"]=work.get("Marca",pd.Series("",index=work.index)).fillna("").astype(str).str.strip()
+    slim["sales_pzas"]=pd.to_numeric(work[pcol],errors="coerce").fillna(0.0) if pcol in work.columns else 0.0
+    slim["sales_value"]=pd.to_numeric(work[vcol],errors="coerce").fillna(0.0) if vcol in work.columns else 0.0
+    slim["suggested"]=pd.to_numeric(work["VPD"],errors="coerce").fillna(0.0) if "VPD" in work.columns else 0.0
+    slim["existence"]=pd.to_numeric(work["Existencia"],errors="coerce").fillna(0.0) if "Existencia" in work.columns else 0.0
+    slim=slim[
+        ~slim["family"].isin(["","nan","None"])
+        & ~slim["id_art"].isin(["","nan","None"])
+    ]
+    if slim.empty:
+        return selected,[],{}
+
+    # Un modelo puede repetirse por ubicación/exhibición. Para ranking real cada
+    # ID_ART sólo participa una vez dentro de su familia.
+    per_model=slim.groupby(["family","id_art"],sort=False,observed=True).agg(
+        model=("model","first"),brand=("brand","first"),
+        sales_pzas=("sales_pzas","max"),sales_value=("sales_value","max"),
+        suggested=("suggested","max"),existence=("existence","max"),
+    ).reset_index()
+
+    families=sorted(per_model["family"].dropna().astype(str).unique().tolist(),key=login_key)
+    actual={}
+    for family,g in per_model.groupby("family",sort=False,observed=True):
+        ranked=g.sort_values(["sales_pzas","sales_value","suggested","existence"],ascending=[False,False,False,False]).reset_index(drop=True)
+        ranked["actual_rank"]=np.arange(1,len(ranked)+1)
+        actual[str(family)]=[
+            {
+                "actual_rank":int(r.actual_rank),"id_art":str(r.id_art),
+                "model":str(r.model or r.id_art),"brand":str(r.brand or ""),
+                "sales_pzas":float(r.sales_pzas or 0),"sales_value":float(r.sales_value or 0),
+                "suggested":float(r.suggested or 0),"existence":float(r.existence or 0),
+            }
+            for r in ranked.itertuples(index=False)
+        ]
+    return selected,families,actual
+
+
+@app.get("/api/lingerie-checklist")
+@_serialized_capacity
+def lingerie_checklist_get(request: Request, week: str="", store: str=""):
+    u=require_user(request,("superadmin","admin","director","tienda","colaborador_lenceria"))
+    scope=_lingerie_actor_store(u,store)
+    if scope=="Compañía":
+        return {"week":week,"store":"Compañía","families":[],"captured":{},"actual":{},"summary":[],"editable":False}
+
+    selected,families,actual=_lingerie_actual_payload(week,scope)
+    with db() as con:
+        rows=con.execute(
+            "SELECT week,store,family,rank,id_art,model,updated_at,updated_by "
+            "FROM lingerie_checklist WHERE week=? AND store=? ORDER BY family,rank",
+            (selected,scope)
+        ).fetchall()
+
+    captured={}
+    for row in rows:
+        captured.setdefault(str(row["family"]),[]).append(dict(row))
+
+    summary=[]
+    for family in families:
+        manual=captured.get(family,[])
+        real=actual.get(family,[])
+        real_rank={str(x["id_art"]):int(x["actual_rank"]) for x in real}
+        exact=0;top10=0;completed=0
+        comparison=[]
+        for rank in range(1,11):
+            row=next((x for x in manual if int(x.get("rank") or 0)==rank),None)
+            ident=str((row or {}).get("id_art") or "").strip()
+            if ident:
+                completed+=1
+            ar=real_rank.get(ident)
+            if ar is not None and ar<=10:
+                top10+=1
+            if ar==rank:
+                exact+=1
+            comparison.append({
+                "manual_rank":rank,
+                "id_art":ident,
+                "model":str((row or {}).get("model") or ""),
+                "actual_rank":ar,
+                "status":"Coincide posición" if ar==rank else ("Está en Top 10" if ar is not None and ar<=10 else ("Fuera Top 10" if ar is not None else ("Pendiente" if not ident else "No encontrado"))),
+            })
+        summary.append({
+            "family":family,"captured":completed,"top10_matches":top10,"exact_matches":exact,
+            "top10_score":top10/10*100,"exact_score":exact/10*100,"comparison":comparison,
+        })
+
+    editable=u["role"] in ("superadmin","admin","colaborador_lenceria")
+    return {
+        "week":selected,"store":scope,"families":families,"captured":captured,
+        "actual":actual,"summary":summary,"editable":editable,
+        "metric":"Venta pzas del periodo","source":"Reporte de capacidades",
+    }
+
+
+@app.post("/api/lingerie-checklist")
+async def lingerie_checklist_save(request: Request):
+    u=require_user(request,("superadmin","admin","colaborador_lenceria"))
+    body=await request.json()
+    week=str(body.get("week") or "").strip()
+    store=_lingerie_actor_store(u,str(body.get("store") or ""))
+    family=str(body.get("family") or "").strip()
+    items=list(body.get("items") or [])
+    selected,families,actual=_lingerie_actual_payload(week,store)
+    if not selected or not store or not family:
+        raise HTTPException(400,"Selecciona periodo, tienda y familia")
+    if family not in families:
+        raise HTTPException(400,"La familia no existe en Lencería para el periodo seleccionado")
+
+    clean=[]
+    seen=set()
+    for pos,item in enumerate(items[:10],start=1):
+        rank=int((item or {}).get("rank") or pos)
+        if rank<1 or rank>10:
+            continue
+        ident=str((item or {}).get("id_art") or "").strip()
+        model=str((item or {}).get("model") or "").strip()
+        if ident and ident in seen:
+            raise HTTPException(400,f"El modelo {ident} está repetido en la familia")
+        if ident:
+            seen.add(ident)
+        clean.append((rank,ident,model))
+
+    by_rank={rank:(ident,model) for rank,ident,model in clean}
+    now=datetime.now().isoformat(timespec="seconds")
+    with db() as con:
+        con.execute("DELETE FROM lingerie_checklist WHERE week=? AND store=? AND family=?",(selected,store,family))
+        rows=[]
+        for rank in range(1,11):
+            ident,model=by_rank.get(rank,("",""))
+            if not ident:
+                continue
+            rows.append((selected,store,family,rank,ident,model,now,u["username"]))
+        con.executemany(
+            "INSERT INTO lingerie_checklist(week,store,family,rank,id_art,model,updated_at,updated_by) VALUES(?,?,?,?,?,?,?,?)",
+            rows
+        )
+    return {"ok":True,"message":"Top 10 de Lencería guardado","week":selected,"store":store,"family":family,"saved":len(rows)}
 
 CHECKLIST_FIELDS=("en_ubicacion","cenefa_correcta","todas_tallas","exhibido")
 CHECKLIST_LABELS={
