@@ -10,6 +10,8 @@ import mimetypes
 import os
 from pathlib import Path
 import re
+import tempfile
+import threading
 from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -26,6 +28,8 @@ from .config import (
     SNAPSHOTS_FILE,
     ensure_directories,
 )
+
+_manifest_lock = threading.RLock()
 
 
 def _now() -> str:
@@ -48,9 +52,20 @@ def _file_hash(path: Path) -> str:
 
 def _atomic_json(path: Path, payload) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    # Cada escritor necesita su propio temporal: varias cargas pueden publicar
+    # el manifiesto a la vez y un .tmp compartido desaparecía en os.replace.
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     prefix=path.name + ".", suffix=".tmp", delete=False) as handle:
+        temporary = Path(handle.name)
+        try:
+            json.dump(payload, handle, ensure_ascii=False, indent=2)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _setting(name: str, default: str = "") -> str:
@@ -344,12 +359,13 @@ def save_pdf_upload(uploaded, week_key: str) -> dict:
 
 
 def update_entry(category: str, entry_id: str, **changes) -> None:
-    manifest = load_manifest()
-    for item in manifest.get(category, []):
-        if item.get("id") == entry_id:
-            item.update(changes)
-            break
-    save_manifest(manifest)
+    with _manifest_lock:
+        manifest = load_manifest()
+        for item in manifest.get(category, []):
+            if item.get("id") == entry_id:
+                item.update(changes)
+                break
+        save_manifest(manifest)
 
 
 def latest_entry(category: str) -> dict | None:
