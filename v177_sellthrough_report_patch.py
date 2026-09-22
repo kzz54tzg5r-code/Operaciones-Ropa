@@ -234,15 +234,8 @@ def install(m):
             sales_cache_state["error"]=f"{type(exc).__name__}: {exc}"
             return None, [], "error"
 
-    # Inicia la reconstrucción en segundo plano poco después del arranque para
-    # que la primera visita a Sell Through normalmente encuentre el cache listo.
-    def _warm_sales_cache():
-        try:
-            time.sleep(4)
-            _start_sales_cache_build()
-        except Exception:
-            pass
-    threading.Thread(target=_warm_sales_cache,name="sellthrough-sales-warm",daemon=True).start()
+    # El cache se construye al abrir Sell Through, evitando competir con
+    # reparaciones y cargas al arrancar el servicio de 512 MB.
 
     @m.app.get("/api/commercial-sellthrough-v177")
     def commercial_sellthrough_v177(
