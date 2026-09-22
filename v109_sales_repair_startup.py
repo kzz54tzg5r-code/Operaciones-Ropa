@@ -17,6 +17,10 @@ def install(m):
 
     @m.app.on_event("startup")
     def _schedule_sales_repair():
+        # Reparaciones masivas sólo bajo ejecución explícita; en Render el
+        # arranque debe permanecer disponible para las cargas de Excel.
+        if not m.os.environ.get("OPERACIONES_ROPA_REPAIR_SALES_ON_STARTUP"):
+            return
         def worker():
             time.sleep(7)
             try:
