@@ -850,14 +850,14 @@ async function enter(u){
   $('#viewRoleBox')?.classList.toggle('hidden',!u.can_preview_roles);
   if($('#viewRoleSelect'))$('#viewRoleSelect').value=u.view_role||'superadmin';
   // Restablecer elementos ocultos por una vista temporal anterior.
-  $('[data-main]').forEach(x=>x.classList.remove('hidden'));
-  $('#analysisNav [data-sub]').forEach(x=>x.classList.remove('hidden'));
-  $('#operativoNav [data-opview]').forEach(x=>x.classList.remove('hidden'));
-  $('.superOnly').forEach(x=>x.classList.toggle('hidden',u.role!=='superadmin'));
+  $$('[data-main]').forEach(x=>x.classList.remove('hidden'));
+  $$('#analysisNav [data-sub]').forEach(x=>x.classList.remove('hidden'));
+  $$('#operativoNav [data-opview]').forEach(x=>x.classList.remove('hidden'));
+  $$('.superOnly').forEach(x=>x.classList.toggle('hidden',u.role!=='superadmin'));
   if(u.can_preview_roles)await loadPreviewRoleStores(u);
 
   const adminView=['superadmin','admin'].includes(u.role);
-  $('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
+  $$('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
   if(adminView)$('[data-opview="Carga de datos"]')?.classList.remove('hidden');
   if(!adminView){
     const mn=$('#mobileMainNav');
@@ -871,16 +871,16 @@ async function enter(u){
 
   // Accesos de colaboradores: vistas enfocadas a captura.
   if(u.role==='colaborador_lenceria'){
-    $('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='analysis'));
-    $('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('hidden',x.dataset.sub!=='lingerie-checklist'));
+    $$('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='analysis'));
+    $$('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('hidden',x.dataset.sub!=='lingerie-checklist'));
     const mn=$('#mobileMainNav');if(mn)mn.style.gridTemplateColumns='1fr';
     await goMain('analysis');
     await goSub('lingerie-checklist');
     return;
   }
   if(u.role==='colaborador_operativo'){
-    $('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='operativo'));
-    $('#operativoNav [data-opview]').forEach(x=>x.classList.toggle('hidden',x.dataset.opview!=='Productividad por Colaborador'));
+    $$('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='operativo'));
+    $$('#operativoNav [data-opview]').forEach(x=>x.classList.toggle('hidden',x.dataset.opview!=='Productividad por Colaborador'));
     const mn=$('#mobileMainNav');if(mn)mn.style.gridTemplateColumns='1fr';
     await goMain('operativo');
     OP_VIEW='Productividad por Colaborador';
@@ -964,7 +964,7 @@ function showPage(p){
   $('.commercialFilter').style.display=['macro','accordion','stores','sections','areas','more'].includes(p)?'block':'none';
   if($('#globalSectionFilter'))$('#globalSectionFilter').style.display=p==='lingerie-checklist'?'none':'';
   if($('#globalCatalogFilter'))$('#globalCatalogFilter').style.display=p==='lingerie-checklist'?'none':'';
-  $('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
+  $$('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
   if(p==='users') loadUsers();
 }
 let COMMERCIAL_BOOTSTRAP_CACHE=null;
@@ -1322,8 +1322,8 @@ async function loadParetoSummary(){
     $('#paretoSummaryTable').innerHTML=(d.rows||[]).map(r=>`<tr class="${PARETO_GROUP==='general'?'pareto-total':''}"><td><b>${r.label}</b></td><td>${pct(r.participation)}</td><td><b>${fmt(r.models_80)}</b></td><td>${fmt(r.models_20)}</td><td>${fmt(r.models)}</td><td>${fmt(r.sales_pzas)}</td><td>${money(r.sales_value)}</td><td>${dec2(r.suggested)}</td><td>${fmt(r.ddi)}</td><td>${fmt(r.capacity)}</td><td>${r.occupancy==null?'N/D':pct(r.occupancy)}</td></tr>`).join('')||'<tr><td colspan="11">Información no disponible</td></tr>';
   }catch(e){$('#paretoSummaryTable').innerHTML=`<tr><td colspan="11">No fue posible calcular el 80/20: ${e.message||e}</td></tr>`}
 }
-$('[data-pareto-group]').forEach(btn=>btn.onclick=()=>{PARETO_GROUP=btn.dataset.paretoGroup||'section';$('[data-pareto-group]').forEach(x=>x.classList.toggle('active',x===btn));if(window.__V176_COMMERCIAL)(window.loadModelTables||loadModelTables)(true);else loadParetoSummary()});
-$('[data-champ-section]').forEach(btn=>btn.onclick=()=>{const v=btn.dataset.champSection||'Todas';if($('#champSection'))$('#champSection').value=v;$('[data-champ-section]').forEach(x=>x.classList.toggle('active',x===btn));(window.loadModelTables||loadModelTables)()});
+$$('[data-pareto-group]').forEach(btn=>btn.onclick=()=>{PARETO_GROUP=btn.dataset.paretoGroup||'section';$$('[data-pareto-group]').forEach(x=>x.classList.toggle('active',x===btn));if(window.__V176_COMMERCIAL)(window.loadModelTables||loadModelTables)(true);else loadParetoSummary()});
+$$('[data-champ-section]').forEach(btn=>btn.onclick=()=>{const v=btn.dataset.champSection||'Todas';if($('#champSection'))$('#champSection').value=v;$$('[data-champ-section]').forEach(x=>x.classList.toggle('active',x===btn));(window.loadModelTables||loadModelTables)()});
 
 async function saveModelChecklist(sel,slows,scope){
   const id=sel.dataset.id,row=(slows||[]).find(x=>String(x.id_art)===String(id));
