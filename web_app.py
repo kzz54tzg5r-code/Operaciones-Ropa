@@ -3610,10 +3610,20 @@ def _capacity_location_detail(store: str="Compañía", section: str="Todas", cat
         for dst,src in (("capacity","Capacidad"),("floor","Existencia piso"),("warehouse","Existencia bodega"),("existence","Existencia"),("suggested","VPD"),("sales_pzas",pcol),("sales_value",vcol)):
             tmp[dst]=pd.to_numeric(work.get(src,0),errors="coerce").fillna(0.0)
         ddi=pd.to_numeric(work.get("DDI",0),errors="coerce").fillna(0.0)
-        tmp["ddi_weighted"]=ddi*tmp["suggested"]
-        sums=tmp.groupby(group_cols,dropna=False,sort=False)[["capacity","floor","warehouse","existence","suggested","sales_pzas","sales_value","ddi_weighted"]].sum()
-        ids=tmp[tmp["ID_ART"].ne("")].groupby(group_cols,dropna=False,sort=False)["ID_ART"].nunique().rename("ids")
-        agg=sums.join(ids,how="left").fillna({"ids":0}).reset_index()
+        tmp["ddi"]=ddi
+        dedupe_keys=group_cols+["ID_ART"]
+        tmp_valid=tmp[tmp["ID_ART"].ne("")].copy()
+        if not tmp_valid.empty:
+            per_model=tmp_valid.groupby(dedupe_keys,dropna=False,sort=False,observed=True).agg({
+                "capacity":"max","floor":"max","warehouse":"max","existence":"max","suggested":"max",
+                "sales_pzas":"max","sales_value":"max","ddi":"max",
+            }).reset_index()
+            per_model["ddi_weighted"]=per_model["ddi"]*per_model["suggested"]
+            sums=per_model.groupby(group_cols,dropna=False,sort=False)[["capacity","floor","warehouse","existence","suggested","sales_pzas","sales_value","ddi_weighted"]].sum()
+            ids=per_model.groupby(group_cols,dropna=False,sort=False)["ID_ART"].nunique().rename("ids")
+            agg=sums.join(ids,how="left").fillna({"ids":0}).reset_index()
+        else:
+            agg=pd.DataFrame(columns=group_cols+["capacity","floor","warehouse","existence","suggested","sales_pzas","sales_value","ddi_weighted","ids"])
         agg["ddi"]=np.where(agg["suggested"]>0,agg["ddi_weighted"]/agg["suggested"],0.0)
         agg["occupancy"]=np.where(agg["capacity"]>0,agg["existence"]/agg["capacity"]*100,np.nan)
         result=[]
@@ -3876,19 +3886,45 @@ def _ddi_weighted(g: pd.DataFrame) -> float:
 def _capacity_metrics(g: pd.DataFrame, period: str="") -> dict:
     if g is None or g.empty:
         return {"existence":0.0,"floor":0.0,"warehouse":0.0,"suggested":0.0,"capacity":0.0,"ddi":0.0,"occupancy":0.0,"sales_pzas":0.0,"sales_value":0.0,"utility_value":0.0}
-    pcol,vcol=_capacity_period_columns(period)
-    ex=float(pd.to_numeric(g.get("Existencia",0),errors="coerce").fillna(0).sum())
-    floor=float(pd.to_numeric(g.get("Existencia piso",0),errors="coerce").fillna(0).sum())
-    wh=float(pd.to_numeric(g.get("Existencia bodega",0),errors="coerce").fillna(0).sum())
-    sug=float(pd.to_numeric(g.get("VPD",0),errors="coerce").fillna(0).sum())
-    cap=float(pd.to_numeric(g.get("Capacidad",0),errors="coerce").fillna(0).sum())
-    sp=float(pd.to_numeric(g.get(pcol,0),errors="coerce").fillna(0).sum())
-    sv=float(pd.to_numeric(g.get(vcol,0),errors="coerce").fillna(0).sum())
-    util_pct=pd.to_numeric(g.get("Utilidad %",0),errors="coerce").fillna(0)
-    sale_row=pd.to_numeric(g.get(vcol,0),errors="coerce").fillna(0)
-    uv=float((sale_row*util_pct/100).sum())
-    return {"existence":ex,"floor":floor,"warehouse":wh,"suggested":sug,"capacity":cap,"ddi":_ddi_weighted(g),"occupancy":ex/cap*100 if cap else 0.0,"sales_pzas":sp,"sales_value":sv,"utility_value":uv}
 
+    pcol,vcol=_capacity_period_columns(period)
+    tmp=pd.DataFrame(index=g.index)
+    tmp["store"]=g.get("Tienda",pd.Series("",index=g.index)).fillna("").astype(str).map(_canonical_capacity_store_key)
+    tmp["id_art"]=g.get("ID_ART",pd.Series("",index=g.index)).fillna("").astype(str).str.strip()
+    empty=tmp["id_art"].isin(["","nan","None"])
+    if empty.any():
+        tmp.loc[empty,"id_art"]="__row_"+tmp.index[empty].astype(str)
+
+    numeric_map={
+        "existence":"Existencia","floor":"Existencia piso","warehouse":"Existencia bodega",
+        "suggested":"VPD","capacity":"Capacidad","sales_pzas":pcol,"sales_value":vcol,
+        "ddi":"DDI","utility_pct":"Utilidad %",
+    }
+    for dst,src in numeric_map.items():
+        if src in g.columns:
+            tmp[dst]=pd.to_numeric(g[src],errors="coerce").replace([np.inf,-np.inf],np.nan).fillna(0.0)
+        else:
+            tmp[dst]=0.0
+
+    basis=tmp.groupby(["store","id_art"],sort=False,observed=True).agg({
+        "existence":"max","floor":"max","warehouse":"max","suggested":"max",
+        "capacity":"max","sales_pzas":"max","sales_value":"max","ddi":"max","utility_pct":"max",
+    }).reset_index()
+
+    ex=float(basis["existence"].sum());floor=float(basis["floor"].sum());wh=float(basis["warehouse"].sum())
+    sug=float(basis["suggested"].sum());cap=float(basis["capacity"].sum())
+    sp=float(basis["sales_pzas"].sum());sv=float(basis["sales_value"].sum())
+    if float(basis["suggested"].sum())>0:
+        ddi=float((basis["ddi"]*basis["suggested"]).sum()/basis["suggested"].sum())
+    else:
+        positive=basis.loc[basis["ddi"]>0,"ddi"]
+        ddi=float(positive.mean()) if len(positive) else 0.0
+    uv=float((basis["sales_value"]*basis["utility_pct"]/100.0).sum())
+    return {
+        "existence":ex,"floor":floor,"warehouse":wh,"suggested":sug,"capacity":cap,
+        "ddi":ddi,"occupancy":ex/cap*100 if cap else 0.0,
+        "sales_pzas":sp,"sales_value":sv,"utility_value":uv,
+    }
 
 def _capacity_sections_v45(work: pd.DataFrame, period: str=""):
     if work.empty:return []
@@ -3919,34 +3955,16 @@ def _capacity_store_comparative_v45(frame: pd.DataFrame, managed: list[str], sec
     base=_capacity_scope_v45(frame,"Compañía",section,catalog)
     if base.empty:
         return [{"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None} for name in managed]
-    pcol,vcol=_capacity_period_columns(period)
-    tmp=pd.DataFrame({"store":base["Tienda"].astype(str)})
-    for dst,src in (("existence","Existencia"),("floor","Existencia piso"),("warehouse","Existencia bodega"),("suggested","VPD"),("capacity","Capacidad"),("sales_pzas",pcol),("sales_value",vcol)):
-        tmp[dst]=pd.to_numeric(base.get(src,0),errors="coerce").fillna(0.0)
-    ddi=pd.to_numeric(base.get("DDI",0),errors="coerce").fillna(0.0)
-    tmp["ddi_weighted"]=ddi*tmp["suggested"]
-    util_pct=pd.to_numeric(base.get("Utilidad %",0),errors="coerce").fillna(0.0)
-    tmp["utility_value"]=tmp["sales_value"]*util_pct/100
-    agg=tmp.groupby("store",sort=False).sum(numeric_only=True)
-    out=[]
-    lookup={login_key(x):x for x in agg.index.astype(str)}
+    rows=[]
     for name in managed:
-        actual=lookup.get(login_key(name))
-        if actual is None:
-            out.append({"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None})
+        scoped=_capacity_scope_v45(base,name,"Todas","Todos")
+        if scoped.empty:
+            rows.append({"store":name,"available":False,"suggested":None,"existence":None,"floor":None,"warehouse":None,"capacity":None,"ddi":None,"occupancy":None})
             continue
-        r=agg.loc[actual];sug=float(r["suggested"]);ex=float(r["existence"]);cap=float(r["capacity"])
-        out.append({"store":name,"available":True,"existence":ex,"floor":float(r["floor"]),"warehouse":float(r["warehouse"]),"suggested":sug,"capacity":cap,
-            "ddi":float(r["ddi_weighted"])/sug if sug else 0.0,"occupancy":ex/cap*100 if cap else 0.0,"sales_pzas":float(r["sales_pzas"]),"sales_value":float(r["sales_value"]),"utility_value":float(r["utility_value"])})
-    return out
-
+        rows.append({"store":name,"available":True,**_capacity_metrics(scoped,period)})
+    return rows
 
 def _capacity_rubros_v45(work: pd.DataFrame, section: str="Todas", period: str=""):
-    """Detalle por rubro vectorizado desde capacidades.
-
-    Evita ejecutar _capacity_metrics grupo por grupo sobre ~196 mil filas.
-    Esto reduce de forma importante el tiempo de Sección/Rubro en móvil y PC.
-    """
     if work is None or work.empty or "Subcategoría" not in work.columns:
         return []
 
@@ -3958,45 +3976,31 @@ def _capacity_rubros_v45(work: pd.DataFrame, section: str="Todas", period: str="
 
     idx=base.index[valid]
     tmp=pd.DataFrame(index=idx)
-    if "Sección" in base.columns:
-        tmp["section"]=base.loc[idx,"Sección"].fillna("Sin sección").astype(str).str.strip().replace({"":"Sin sección","nan":"Sin sección","None":"Sin sección"})
-    else:
-        tmp["section"]=section if section!="Todas" else "Compañía"
+    tmp["store"]=base.loc[idx,"Tienda"].fillna("").astype(str).map(_canonical_capacity_store_key) if "Tienda" in base.columns else ""
+    tmp["section"]=base.loc[idx,"Sección"].fillna("Sin sección").astype(str).str.strip().replace({"":"Sin sección","nan":"Sin sección","None":"Sin sección"}) if "Sección" in base.columns else (section if section!="Todas" else "Compañía")
     tmp["rubro"]=rub.loc[idx]
     tmp["id_art"]=base.loc[idx,"ID_ART"].fillna("").astype(str).str.strip() if "ID_ART" in base.columns else ""
+    empty=tmp["id_art"].isin(["","nan","None"])
+    if empty.any():tmp.loc[empty,"id_art"]="__row_"+tmp.index[empty].astype(str)
 
     pcol,vcol=_capacity_period_columns(period)
-    numeric_map={
-        "capacity":"Capacidad","floor":"Existencia piso","warehouse":"Existencia bodega",
-        "existence":"Existencia","suggested":"VPD","sales_pzas":pcol,"sales_value":vcol,
-    }
+    numeric_map={"capacity":"Capacidad","floor":"Existencia piso","warehouse":"Existencia bodega","existence":"Existencia","suggested":"VPD","sales_pzas":pcol,"sales_value":vcol,"ddi":"DDI","utility_pct":"Utilidad %"}
     for dest,src in numeric_map.items():
-        if src in base.columns:
-            tmp[dest]=pd.to_numeric(base.loc[idx,src],errors="coerce").fillna(0.0)
-        else:
-            tmp[dest]=0.0
+        tmp[dest]=pd.to_numeric(base.loc[idx,src],errors="coerce").replace([np.inf,-np.inf],np.nan).fillna(0.0) if src in base.columns else 0.0
 
-    if "DDI" in base.columns:
-        ddi=pd.to_numeric(base.loc[idx,"DDI"],errors="coerce").fillna(0.0)
-    else:
-        ddi=pd.Series(0.0,index=idx)
-    tmp["ddi_weighted"]=ddi*tmp["suggested"]
+    per_model=tmp.groupby(["section","rubro","store","id_art"],sort=False,observed=True).agg({
+        "capacity":"max","floor":"max","warehouse":"max","existence":"max","suggested":"max",
+        "sales_pzas":"max","sales_value":"max","ddi":"max","utility_pct":"max",
+    }).reset_index()
+    per_model["ddi_weighted"]=per_model["ddi"]*per_model["suggested"]
+    per_model["utility_value"]=per_model["sales_value"]*per_model["utility_pct"]/100.0
 
-    if "Utilidad %" in base.columns:
-        util=pd.to_numeric(base.loc[idx,"Utilidad %"],errors="coerce").fillna(0.0)
-        tmp["utility_value"]=tmp["sales_value"]*util/100.0
-    else:
-        tmp["utility_value"]=0.0
-
-    keys=["section","rubro"]
-    agg=tmp.groupby(keys,sort=False,observed=True).agg(
-        models=("id_art",lambda s:s.replace({"":"__EMPTY__"}).loc[lambda x:x!="__EMPTY__"].nunique()),
-        capacity=("capacity","sum"),floor=("floor","sum"),warehouse=("warehouse","sum"),
-        existence=("existence","sum"),suggested=("suggested","sum"),
+    agg=per_model.groupby(["section","rubro"],sort=False,observed=True).agg(
+        models=("id_art","nunique"),capacity=("capacity","sum"),floor=("floor","sum"),
+        warehouse=("warehouse","sum"),existence=("existence","sum"),suggested=("suggested","sum"),
         sales_pzas=("sales_pzas","sum"),sales_value=("sales_value","sum"),
         utility_value=("utility_value","sum"),ddi_weighted=("ddi_weighted","sum"),
     ).reset_index()
-
     agg["ddi"]=np.where(agg["suggested"]>0,agg["ddi_weighted"]/agg["suggested"],0.0)
     agg["occupancy"]=np.where(agg["capacity"]>0,agg["existence"]/agg["capacity"]*100,np.nan)
 
@@ -4005,9 +4009,8 @@ def _capacity_rubros_v45(work: pd.DataFrame, section: str="Todas", period: str="
         rows.append({
             "store":"Compañía","section":str(r.section or "Sin sección"),
             "rubro":str(r.rubro or "Sin subcategoría"),"models":int(r.models or 0),
-            "capacity":float(r.capacity or 0),"floor":float(r.floor or 0),
-            "warehouse":float(r.warehouse or 0),"existence":float(r.existence or 0),
-            "suggested":float(r.suggested or 0),"ddi":float(r.ddi or 0),
+            "capacity":float(r.capacity or 0),"floor":float(r.floor or 0),"warehouse":float(r.warehouse or 0),
+            "existence":float(r.existence or 0),"suggested":float(r.suggested or 0),"ddi":float(r.ddi or 0),
             "sales_pzas":float(r.sales_pzas or 0),"sales_value":float(r.sales_value or 0),
             "utility_value":float(r.utility_value or 0),
             "occupancy":None if pd.isna(r.occupancy) else float(r.occupancy),
