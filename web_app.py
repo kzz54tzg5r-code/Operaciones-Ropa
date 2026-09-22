@@ -3271,9 +3271,11 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
 
     if selected.empty:
         return []
-    # El resumen 80/20 conserva los totales completos; el detalle visual se
-    # limita para evitar miles de nodos HTML y mantener fluido el desplazamiento.
-    selected=selected.head(150).copy()
+    # En 80/20 se devuelven TODOS los modelos que integran el 80% de la venta.
+    # Lentos y Sugerido 0 ya tienen sus propios límites operativos arriba.
+    # Antes se cortaba a 150 y la tienda veía un 80/20 incompleto.
+    if mode not in ("80_20","8020","top","champions"):
+        selected=selected.copy()
     selected=selected.reset_index(drop=True)
     selected["rank"]=np.arange(1,len(selected)+1)
     selected["occupancy"]=np.where(pd.to_numeric(selected.get("capacity",0),errors="coerce").fillna(0)>0,
