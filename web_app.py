@@ -2578,7 +2578,7 @@ async def create_user(request: Request):
         raise HTTPException(400,"Rol inválido")
     if role=="superadmin":
         raise HTTPException(403,"No se puede crear otro Super Administrador")
-    if role=="tienda" and not store:
+    if role in ("tienda","colaborador","colaborador_lenceria") and not store:
         raise HTTPException(400,"Selecciona la tienda")
     if len(username)<3 or len(password)<8:
         raise HTTPException(400,"Usuario mínimo 3 caracteres y contraseña mínimo 8")
@@ -2617,7 +2617,7 @@ async def update_user(user_id: int, request: Request):
         raise HTTPException(403,"El Super Administrador no se edita desde esta pantalla")
     if role=="superadmin":
         raise HTTPException(403,"No se puede asignar el rol Super Administrador")
-    if role=="tienda" and not store:
+    if role in ("tienda","colaborador","colaborador_lenceria") and not store:
         raise HTTPException(400,"Selecciona la tienda")
     if len(username)<3:
         raise HTTPException(400,"Usuario mínimo 3 caracteres")
@@ -3302,15 +3302,12 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
 
     mode=str(mode or "80_20").lower()
     if mode in ("80_20","8020","top","champions"):
+        # El detalle 80/20 debe contener TODO el catálogo de modelos del alcance,
+        # ordenado de mayor a menor venta. La columna % Acum. conserva el punto
+        # de corte Pareto (80%) sin ocultar el 20% restante.
         selected=models.sort_values([metric,"sales_pzas","existence"],ascending=[False,False,False]).reset_index(drop=True)
         total=float(selected[metric].sum())
         selected["cum_share"]=(selected[metric].cumsum()/total*100) if total>0 else 0.0
-        if total>0:
-            reached=np.flatnonzero(selected["cum_share"].to_numpy()>=80.0)
-            last=int(reached[0]) if len(reached) else len(selected)-1
-            selected=selected.iloc[:last+1].copy()
-        else:
-            selected=selected.head(50).copy()
     elif mode in ("slow","lentos"):
         selected=models[(pd.to_numeric(models["suggested"],errors="coerce").fillna(0)<=1) | (pd.to_numeric(models["sales_pzas_30"],errors="coerce").fillna(0)<=0)]
         selected=selected[~zero_eligible.reindex(selected.index,fill_value=False)]
