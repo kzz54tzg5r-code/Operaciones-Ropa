@@ -4140,6 +4140,21 @@ def commercial_accordion(request: Request, week: str|None=None, store: str="Comp
     store=effective_store(u,store)
     return {"week":week or "","store":store,"section":section,"catalog":catalog,**_capacity_accordion_payload(store,section,catalog,week or "")}
 
+@app.get("/api/commercial-bootstrap-v188")
+def commercial_bootstrap_v188(request: Request, week: str|None=None):
+    u=require_user(request)
+    periods=_capacity_period_options(week or "")
+    selected=week if week and week in periods else (periods[0] if periods else "")
+    stores=store_names(True) or list(PROJECT_STORES)
+    if u.get("role")=="tienda":
+        stores=[str(u.get("store") or "").strip()]
+    entry=_capacity_source_entry(selected) or {}
+    return {
+        "week":selected,"weeks":periods,"stores_available":[x for x in stores if x],
+        "source_file":str(entry.get("name") or ""),"user":u,
+    }
+
+
 @app.get("/api/dashboard")
 @_serialized_capacity
 def dashboard(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos"):
@@ -4606,34 +4621,36 @@ _COMMERCIAL_DETAIL_RESULT_LOCK=threading.RLock()
 def commercial_detail(request: Request, week: str|None=None, store: str="Compañía", section: str="Todas", catalog: str="Todos", mode: str="both"):
     u=require_user(request)
     store=effective_store(u,store)
+    periods=_capacity_period_options(week or "")
+    selected=week if week and week in periods else (periods[0] if periods else "")
     mode_key=str(mode or "both").strip().lower()
     if mode_key not in ("rubro","area","both"):
         mode_key="both"
 
-    entry=_capacity_source_entry(week or "") or {}
-    stamp=str(entry.get("id") or entry.get("uploaded_at") or entry.get("name") or week or "")
+    entry=_capacity_source_entry(selected) or {}
+    stamp=str(entry.get("id") or entry.get("uploaded_at") or entry.get("name") or selected)
     cache_key=(stamp,store,section,catalog,mode_key)
     with _COMMERCIAL_DETAIL_RESULT_LOCK:
         cached=_COMMERCIAL_DETAIL_RESULT_CACHE.get(cache_key)
         if cached is not None:
             return cached
 
-    frame=_capacity_frame_for_period(week or "")
+    frame=_capacity_frame_for_period(selected)
     if frame.empty:
-        return {"week":week or "","store":store,"section":section,"rubros":[],"locations":[],"warnings":["Carga y procesa el Excel de capacidades para habilitar este reporte."]}
+        return {"week":selected,"store":store,"section":section,"rubros":[],"locations":[],"warnings":["Carga y procesa el Excel de capacidades para habilitar este reporte."]}
 
     rubros=[]
     locations=[]
     if mode_key in ("rubro","both"):
         work=_capacity_scope_v45(frame,store,section,catalog)
-        rubros=_capacity_rubros_v45(work,section,week or "")
+        rubros=_capacity_rubros_v45(work,section,selected)
         del work
         _release_process_memory()
     if mode_key in ("area","both"):
-        locations=_capacity_location_detail(store,section,catalog,week or "")
+        locations=_capacity_location_detail(store,section,catalog,selected)
         _release_process_memory()
 
-    payload={"week":week or "","store":store,"section":section,"catalog":catalog,"rubros":rubros,"locations":locations,"warnings":[]}
+    payload={"week":selected,"store":store,"section":section,"catalog":catalog,"rubros":rubros,"locations":locations,"warnings":[]}
     with _COMMERCIAL_DETAIL_RESULT_LOCK:
         if len(_COMMERCIAL_DETAIL_RESULT_CACHE)>=32:
             _COMMERCIAL_DETAIL_RESULT_CACHE.pop(next(iter(_COMMERCIAL_DETAIL_RESULT_CACHE)))
