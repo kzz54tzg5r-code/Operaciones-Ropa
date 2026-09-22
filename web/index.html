@@ -359,7 +359,7 @@ body{max-width:100%;overflow-x:hidden}
 <button class="nav" data-main="analysis">Análisis Comercial<small>Venta, sugerido y utilidad</small></button>
 <button class="nav adminOnly" data-main="users">Usuarios<small>Administración de accesos</small></button>
 <button class="nav adminOnly" data-main="share">Compartir sistema<small>Liga para móvil y usuarios</small></button>
-<div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><div id="viewRoleBox" class="hidden" style="margin-top:6px"><small>Ver sistema como</small><select id="viewRoleSelect" style="width:100%;font-size:9px;padding:5px"><option value="superadmin">Super Administrador</option><option value="admin">Administrador</option><option value="director">Director</option></select></div><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
+<div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><div id="viewRoleBox" class="hidden" style="margin-top:6px"><small>Ver sistema como</small><select id="viewRoleSelect" style="width:100%;font-size:9px;padding:5px"><option value="superadmin">Super Administrador</option><option value="admin">Administrador</option><option value="director">Director</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Colaborador de Lencería</option><option value="colaborador_operativo">Colaborador Operativo · Productividad</option></select><div id="viewRoleStoreWrap" class="hidden" style="margin-top:5px"><small>Tienda demo</small><select id="viewRoleStore" style="width:100%;font-size:9px;padding:5px"></select></div></div><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
 <main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div></div><div class="filters hidden" id="globalFilters"><div class="filter"><label id="globalPeriodLabel">Periodo</label><select id="week"></select></div><div class="filter" id="globalStoreFilter"><label>Tienda</label><select id="store"><option>Compañía</option></select></div><div class="filter commercialFilter" id="globalSectionFilter"><label>Sección</label><select id="section"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter commercialFilter" id="globalCatalogFilter"><label>Tipo catálogo</label><select id="catalog"><option>Todos</option><option>VIGENTE</option><option>DESCONTINUADO</option><option>PROXIMO A SALIR</option><option>IMPULSO</option></select></div><button class="primary" id="refresh">Actualizar</button></div>
 <div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
   <button class="switch active" data-opview="Centro Ejecutivo" data-tab-key="operations.center">Centro Ejecutivo</button>
@@ -515,18 +515,18 @@ body{max-width:100%;overflow-x:hidden}
 
 <section class="page" id="page-lingerie-checklist">
   <div class="title">Checklist lencería</div>
-  <div class="subtitle">Captura manual de los 10 modelos campeones por familia y comparación automática contra la venta real del Reporte de Capacidades.</div>
+  <div class="subtitle">Captura manual de los 10 modelos campeones por subcategoría y comparación automática contra la venta real del Reporte de Capacidades.</div>
 
   <div class="kpis lingerie-kpis" style="margin-bottom:10px">
     <div class="kpi" style="--a:var(--blue)"><div class="lab">Tienda</div><div class="val" id="lingerieStoreKpi" style="font-size:17px">—</div><div class="note">Tienda seleccionada / asignada</div></div>
-    <div class="kpi" style="--a:var(--purple)"><div class="lab">Familias</div><div class="val" id="lingerieFamiliesKpi">—</div><div class="note">Familias disponibles en Lencería</div></div>
+    <div class="kpi" style="--a:var(--purple)"><div class="lab">Subcategorías</div><div class="val" id="lingerieFamiliesKpi">—</div><div class="note">Subcategorías habilitadas para el checklist</div></div>
     <div class="kpi" style="--a:var(--green)"><div class="lab">Coincidencia Top 10</div><div class="val" id="lingerieTop10Kpi">—</div><div class="note">Modelos capturados que sí están en el Top 10 real</div></div>
     <div class="kpi" style="--a:var(--yellow)"><div class="lab">Coincidencia posición</div><div class="val" id="lingerieExactKpi">—</div><div class="note">Modelos en la misma posición del ranking real</div></div>
   </div>
 
   <div class="panel lingerie-toolbar" style="margin-bottom:10px">
-    <div class="filter" style="min-width:280px"><label>Familia</label><select id="lingerieFamily" style="width:100%"><option value="">Selecciona familia</option></select></div>
-    <div class="note" id="lingerieSourceNote" style="align-self:center">La comparación se realiza con Venta pzas del periodo seleccionado.</div>
+    <div class="filter" style="min-width:280px"><label>Subcategoría</label><select id="lingerieFamily" style="width:100%"><option value="">Selecciona subcategoría</option></select></div>
+    <div class="note" id="lingerieSourceNote" style="align-self:center">La comparación se realiza con Venta pzas del periodo seleccionado.</div><div class="note" style="width:100%;margin-top:4px"><b>Subcategorías:</b> BOXER/TRUSA · BRASIERE · BUSTIER · FAJA · PANTALETA/BOXER/BIKINI · TOP</div>
   </div>
 
   <div class="grid lingerie-grid">
@@ -539,13 +539,13 @@ body{max-width:100%;overflow-x:hidden}
           <tbody id="lingerieEntryRows"></tbody>
         </table>
       </div>
-      <button class="primary" id="saveLingerieChecklist" style="margin-top:10px;width:100%">Guardar Top 10 de esta familia</button>
+      <button class="primary" id="saveLingerieChecklist" style="margin-top:10px;width:100%">Guardar Top 10 de esta subcategoría</button>
       <div class="msg" id="lingerieMsg"></div>
     </div>
 
     <div class="panel">
       <div class="panel-head"><b>Comparativo vs dato real</b><span class="status ok" id="lingerieCompareStatus">—</span></div>
-      <div class="subtitle" style="margin-top:5px">El ranking real se ordena por Venta pzas del periodo; desempata por Venta $, Sugerido y Existencia.</div>
+      <div class="subtitle" style="margin-top:5px">El ranking real de la subcategoría se ordena por Venta pzas del periodo; desempata por Venta $, Sugerido y Existencia.</div>
       <div class="tablewrap model-sticky-table" style="max-height:64vh">
         <table class="table">
           <thead><tr><th>Pos. tienda</th><th>ID_ART</th><th>Modelo</th><th>Pos. real</th><th>Vta pzas</th><th>Sugerido 7</th><th>Existencia</th><th>Resultado</th></tr></thead>
@@ -555,15 +555,15 @@ body{max-width:100%;overflow-x:hidden}
     </div>
   </div>
 
-  <div class="title">Resumen por familia</div>
+  <div class="title">Resumen por subcategoría</div>
   <div class="tablewrap">
     <table class="table">
-      <thead><tr><th>Familia</th><th>Capturados</th><th>Coinciden Top 10</th><th>% Top 10</th><th>Posición exacta</th><th>% Exacto</th></tr></thead>
+      <thead><tr><th>Subcategoría</th><th>Capturados</th><th>Coinciden Top 10</th><th>% Top 10</th><th>Posición exacta</th><th>% Exacto</th></tr></thead>
       <tbody id="lingerieSummaryRows"></tbody>
     </table>
   </div>
 
-  <div class="title">Top 10 real de la familia seleccionada</div>
+  <div class="title">Top 10 real de la subcategoría seleccionada</div>
   <div class="tablewrap model-sticky-table" style="max-height:55vh">
     <table class="table">
       <thead><tr><th>Pos.</th><th>ID_ART</th><th>Modelo</th><th>Marca</th><th>Venta pzas</th><th>Venta $</th><th>Sugerido 7</th><th>Existencia</th></tr></thead>
@@ -849,7 +849,12 @@ async function enter(u){
   $('#profileRole').textContent=(roleLabel[u.role]||u.role)+(u.view_role?' · vista temporal':''); $('#profileMeta').textContent='V47 · versión móvil'; refreshHeaderClock();
   $('#viewRoleBox')?.classList.toggle('hidden',!u.can_preview_roles);
   if($('#viewRoleSelect'))$('#viewRoleSelect').value=u.view_role||'superadmin';
-  $$('.superOnly').forEach(x=>x.classList.toggle('hidden',u.role!=='superadmin'));
+  // Restablecer elementos ocultos por una vista temporal anterior.
+  $('[data-main]').forEach(x=>x.classList.remove('hidden'));
+  $('#analysisNav [data-sub]').forEach(x=>x.classList.remove('hidden'));
+  $('#operativoNav [data-opview]').forEach(x=>x.classList.remove('hidden'));
+  $('.superOnly').forEach(x=>x.classList.toggle('hidden',u.role!=='superadmin'));
+  if(u.can_preview_roles)await loadPreviewRoleStores(u);
 
   const adminView=['superadmin','admin'].includes(u.role);
   $$('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
@@ -905,13 +910,40 @@ async function loadTabVisibility(){
   }catch(e){console.warn('No fue posible cargar la visibilidad de pestañas',e)}
 }
 
+async function loadPreviewRoleStores(u=USER){
+  const wrap=$('#viewRoleStoreWrap'),sel=$('#viewRoleStore'),role=$('#viewRoleSelect')?.value||u?.view_role||'superadmin';
+  const storeBound=['tienda','colaborador_lenceria','colaborador_operativo'].includes(role);
+  wrap?.classList.toggle('hidden',!storeBound);
+  if(!sel)return;
+  try{
+    const r=await api('/api/stores');
+    const before=u?.view_store||u?.store||sel.value||'';
+    sel.innerHTML='';
+    (r.stores||[]).filter(x=>x.active!==false).forEach(x=>sel.add(new Option(x.name,x.name)));
+    if([...sel.options].some(o=>o.value===before))sel.value=before;
+  }catch(e){console.warn('No fue posible cargar tiendas para demo',e)}
+}
+async function applyPreviewRole(role,store=''){
+  const r=await api('/api/me/view-role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,store})});
+  await enter(r.user);
+}
+
 $('#viewRoleSelect')?.addEventListener('change',async e=>{
   const select=e.target;select.disabled=true;
   try{
-    const r=await api('/api/me/view-role',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:select.value})});
-    await enter(r.user);
+    const role=select.value;
+    const store=$('#viewRoleStore')?.value||'';
+    await applyPreviewRole(role,store);
   }catch(err){alert('No fue posible cambiar la vista: '+err.message)}
   finally{select.disabled=false}
+});
+$('#viewRoleStore')?.addEventListener('change',async e=>{
+  const role=$('#viewRoleSelect')?.value||'superadmin';
+  if(!['tienda','colaborador_lenceria','colaborador_operativo'].includes(role))return;
+  e.target.disabled=true;
+  try{await applyPreviewRole(role,e.target.value)}
+  catch(err){alert('No fue posible cambiar la tienda demo: '+err.message)}
+  finally{e.target.disabled=false}
 });
 
 $('#saveTabVisibility')?.addEventListener('click',async()=>{
@@ -923,13 +955,15 @@ $('#saveTabVisibility')?.addEventListener('click',async()=>{
   }catch(e){$('#tabVisibilityMsg').textContent='Error: '+e.message}
 });
 
-const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],'lingerie-checklist':['Checklist lencería','Top 10 manual por familia vs datos reales'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
+const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],'lingerie-checklist':['Checklist lencería','Top 10 manual por subcategoría vs datos reales'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
 let MAIN='operativo', SUB='macro';
 function showPage(p){
   $$('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));
   const tt=titles[p]||titles[MAIN]||['Operaciones Ropa','']; $('#heroTitle').textContent=tt[0]; $('#heroSub').textContent=tt[1];
-  $('.commercialFilter').style.display=['macro','accordion','stores','sections','areas','more','lingerie-checklist'].includes(p)?'block':'none';
-  $$('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
+  $('.commercialFilter').style.display=['macro','accordion','stores','sections','areas','more'].includes(p)?'block':'none';
+  if($('#globalSectionFilter'))$('#globalSectionFilter').style.display=p==='lingerie-checklist'?'none':'';
+  if($('#globalCatalogFilter'))$('#globalCatalogFilter').style.display=p==='lingerie-checklist'?'none':'';
+  $('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
   if(p==='users') loadUsers();
 }
 let COMMERCIAL_BOOTSTRAP_CACHE=null;
@@ -2763,7 +2797,7 @@ async function loadLingerieChecklist(){
     $('#lingerieSourceNote').textContent=(d.metric||'Venta pzas del periodo')+' · Fuente: '+(d.source||'Reporte de capacidades');
 
     const sel=$('#lingerieFamily'),before=sel.value;
-    sel.innerHTML='<option value="">Selecciona familia</option>';
+    sel.innerHTML='<option value="">Selecciona subcategoría</option>';
     (d.families||[]).forEach(x=>sel.add(new Option(x,x)));
     if((d.families||[]).includes(before))sel.value=before;
     else if((d.families||[]).length)sel.value=d.families[0];
@@ -2793,7 +2827,7 @@ $('#saveLingerieChecklist')?.addEventListener('click',async()=>{
     await loadLingerieChecklist();
     $('#lingerieFamily').value=family;renderLingerieFamily();
   }catch(e){$('#lingerieMsg').textContent='Error: '+e.message}
-  finally{btn.disabled=false;btn.textContent='Guardar Top 10 de esta familia'}
+  finally{btn.disabled=false;btn.textContent='Guardar Top 10 de esta subcategoría'}
 });
 
 start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg').textContent=e.message});
