@@ -1843,7 +1843,7 @@ async function renderModels(force){
   modelsBusy=true;modelBusyKey=cacheKey;
 
   const syncTitles=(slowSection,count80=0)=>{
-    const ct=q('#champTitle');if(ct)ct.textContent='Modelos 80/20 · '+store+' · '+section+' · '+nf(count80)+' modelos 80%';
+    const ct=q('#champTitle');if(ct)ct.textContent='Modelos 80/20 · '+store+' · '+section+' · '+nf(count80)+' modelos';
     const st=q('#slowTitle');if(st)st.textContent='Modelos lentos · '+store+' · '+slowSection+(slowAreaFilter!=='Todas'?' · '+slowAreaFilter:'');
     const zt=q('#zeroTitle');if(zt)zt.textContent='Modelos con sugerido 0 a 1 · última entrada menor o igual a 30 días · '+store+' · '+slowSection;
   };
