@@ -3695,28 +3695,71 @@ def _capacity_period_options(requested: str=""):
     return values
 
 
+_CAPACITY_COMPACT_CACHE_VERSION=3
+
+def _capacity_compact_cache_path(entry: dict) -> Path:
+    entry_id=str(entry.get("id") or "latest").strip() or "latest"
+    base=_capacity_cache_path(entry_id)
+    return base.with_name(base.stem+f".commercial-v{_CAPACITY_COMPACT_CACHE_VERSION}.pkl")
+
+def _commercial_capacity_columns(frame: pd.DataFrame) -> list[str]:
+    wanted=[
+        "Tienda","ID_ART","Modelo","Marca","Sección","Subcategoría","Categoría",
+        "Tipo catálogo","Estatus catálogo","Área reporte","Pasillo operativo",
+        "Ubicación detalle","Pasillo","Exhibición","Última entrada CEDIS a tienda",
+        "Pzas última entrada","Existencia CEDIS","Tránsito",
+        "Existencia piso","Existencia bodega","Existencia","VPD","DDI","Capacidad",
+        "Venta pzas 7","Venta pzas 30","Venta pzas","Venta pzas año",
+        "Venta $ 7","Venta $ mes","Venta $","Utilidad %",
+        "_TiendaKey","_SeccionKey","_CatalogKey",
+    ]
+    return [x for x in wanted if x in frame.columns]
+
+def _load_capacity_compact_cache(entry: dict) -> pd.DataFrame:
+    target=_capacity_compact_cache_path(entry)
+    try:
+        if target.exists() and target.is_file():
+            frame=pd.read_pickle(target)
+            if isinstance(frame,pd.DataFrame) and int(frame.attrs.get("commercial_cache_version") or 0)==_CAPACITY_COMPACT_CACHE_VERSION:
+                return frame
+    except Exception as exc:
+        print(f"[V188] Cache comercial compacto no disponible: {type(exc).__name__}: {exc}",flush=True)
+
+    # Construcción única: cargar el pickle normalizado, eliminar columnas no
+    # utilizadas EN EL MISMO frame y persistir una versión mucho más pequeña.
+    # Así no conviven una copia completa y otra compacta durante los groupby.
+    frame=_load_capacity_cache(entry)
+    if frame is None or frame.empty:
+        return pd.DataFrame()
+    keep=set(_commercial_capacity_columns(frame))
+    drop=[x for x in frame.columns if x not in keep]
+    if drop:
+        frame.drop(columns=drop,inplace=True,errors="ignore")
+    frame.attrs["commercial_cache_version"]=_CAPACITY_COMPACT_CACHE_VERSION
+    try:
+        frame.to_pickle(target)
+    except Exception as exc:
+        print(f"[V188] No se pudo persistir cache comercial compacto: {type(exc).__name__}: {exc}",flush=True)
+    _release_process_memory()
+    return frame
+
 def _capacity_frame_for_period(period: str="") -> pd.DataFrame:
     entry=_capacity_source_entry(period)
     if not entry:return pd.DataFrame()
     try:
         path=resolve_entry_path(entry);mtime=path.stat().st_mtime if path.exists() else None
+        cache_identity=str(_capacity_compact_cache_path(entry))
         cached=_CAPACITY_FRAME_CACHE.get("frame")
-        if cached is not None and _CAPACITY_FRAME_CACHE.get("path")==str(path) and _CAPACITY_FRAME_CACHE.get("mtime")==mtime:return cached
-        frame=_load_capacity_cache(entry)
-        if frame.empty:
-            frame=read_capacity_file(path)
-            if isinstance(frame,pd.DataFrame) and not frame.empty:
-                frame=_prepare_capacity_frame(frame)
-                cache_path=_capacity_cache_path(str(entry.get("id") or ""))
-                try:
-                    frame.to_pickle(cache_path);update_entry("capacities",str(entry.get("id") or ""),cache_file=str(cache_path.relative_to(DATA_ROOT)))
-                except Exception:pass
-        if isinstance(frame,pd.DataFrame):
-            frame=_prepare_capacity_frame(frame)
-            _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":frame});return frame
-    except Exception as exc:print(f"[V45] Error leyendo capacidad por periodo: {type(exc).__name__}: {exc}")
-    return pd.DataFrame()
+        if cached is not None and _CAPACITY_FRAME_CACHE.get("path")==cache_identity and _CAPACITY_FRAME_CACHE.get("mtime")==mtime:
+            return cached
 
+        frame=_load_capacity_compact_cache(entry)
+        if isinstance(frame,pd.DataFrame) and not frame.empty:
+            _CAPACITY_FRAME_CACHE.update({"path":cache_identity,"mtime":mtime,"frame":frame})
+            return frame
+    except Exception as exc:
+        print(f"[V188] Error leyendo capacidad comercial por periodo: {type(exc).__name__}: {exc}",flush=True)
+    return pd.DataFrame()
 
 def _normalize_capacity_store_aliases(frame: pd.DataFrame) -> pd.DataFrame:
     """Corrige alias del Excel aun cuando el catálogo cacheado provenga de V45."""
