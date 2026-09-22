@@ -203,20 +203,33 @@ def install(m):
                         if not metric:
                             metric="Venta $ mes"
 
-                        cols=[x for x in ("Tienda","Sección","Subcategoría",metric) if x in work.columns]
+                        cols=[x for x in ("Tienda","Sección","Subcategoría","ID_ART",metric) if x in work.columns]
                         slim=work.loc[:,cols].copy()
                         if metric not in slim.columns:
                             slim[metric]=0.0
+                        if "ID_ART" not in slim.columns:
+                            slim["ID_ART"]=slim.index.astype(str)
                         slim["sale"]=pd.to_numeric(slim[metric],errors="coerce").fillna(0.0)
                         slim["Tienda"]=slim.get("Tienda","").astype(str).str.strip()
                         slim["Sección"]=slim.get("Sección","").astype(str).str.strip()
                         slim["Subcategoría"]=slim.get("Subcategoría","").astype(str).str.strip()
+                        slim["ID_ART"]=slim["ID_ART"].fillna("").astype(str).str.strip()
                         slim=slim[
                             slim["Sección"].isin(sections_order)
                             & ~slim["Subcategoría"].isin(["","nan","None"])
                             & (slim["sale"]>=0)
                         ]
-                        agg=slim.groupby(["Tienda","Sección","Subcategoría"],sort=False,observed=True)["sale"].sum().reset_index()
+                        # La venta del modelo se repite si tiene varias ubicaciones
+                        # o exhibiciones. Para participación SubCat, cada tienda+ID
+                        # aporta una sola vez antes de agregar la subcategoría.
+                        per_model=slim.groupby(
+                            ["Tienda","Sección","Subcategoría","ID_ART"],
+                            sort=False,observed=True
+                        )["sale"].max().reset_index()
+                        agg=per_model.groupby(
+                            ["Tienda","Sección","Subcategoría"],
+                            sort=False,observed=True
+                        )["sale"].sum().reset_index()
 
                         detected=[str(x) for x in agg["Tienda"].dropna().unique().tolist()]
                         detected_map={norm(x):x for x in detected}
@@ -2445,7 +2458,7 @@ if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
   wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V185] Filtro tienda autoritativo, alias Atemajac y tablas sin respuestas obsoletas.');
+console.info('[V186] Tienda autoritativa + métricas sin duplicados + ubicaciones Jeans corregidas.');
 })();
 </script>'''
 
@@ -2466,7 +2479,7 @@ console.info('[V185] Filtro tienda autoritativo, alias Atemajac y tablas sin res
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V185",
+                "X-Operations-UI-Version": "V186",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
