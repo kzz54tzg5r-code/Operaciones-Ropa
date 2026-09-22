@@ -484,9 +484,23 @@ def ensure_upload_history_columns():
             if name not in cols:
                 con.execute(f"ALTER TABLE upload_history ADD COLUMN {name} {definition}")
 
+def ensure_upload_job_columns():
+    """Evita ciclos infinitos si una carga pesada reinicia Render repetidamente."""
+    with db() as con:
+        cols={str(r["name"]) for r in con.execute("PRAGMA table_info(upload_jobs)").fetchall()}
+        if "resume_count" not in cols:
+            con.execute("ALTER TABLE upload_jobs ADD COLUMN resume_count INTEGER NOT NULL DEFAULT 0")
+        # init_db convierte processing/publishing a queued con este mensaje. Contar
+        # ese evento permite un reintento automático y después detiene el ciclo.
+        con.execute(
+            "UPDATE upload_jobs SET resume_count=COALESCE(resume_count,0)+1 "
+            "WHERE status='queued' AND message='El servicio se reinició; la carga se retomará automáticamente.'"
+        )
+
 init_db()
 ensure_user_security_columns()
 ensure_upload_history_columns()
+ensure_upload_job_columns()
 
 def _create_upload_job(module: str, filename: str, source_path: Path, username: str) -> dict:
     job_id=secrets.token_hex(12)
@@ -501,7 +515,7 @@ def _create_upload_job(module: str, filename: str, source_path: Path, username: 
 def _get_upload_job(job_id: str) -> dict:
     with db() as con:
         row=con.execute(
-            "SELECT id,module,filename,status,progress,message,error,result_json,created_at,started_at,finished_at,created_by FROM upload_jobs WHERE id=?",
+            "SELECT id,module,filename,status,progress,message,error,result_json,created_at,started_at,finished_at,created_by,resume_count FROM upload_jobs WHERE id=?",
             (job_id,)
         ).fetchone()
     if not row:
@@ -2974,17 +2988,31 @@ def _latest_capacity_frame() -> pd.DataFrame:
 
 
 def _scope_capacity(frame: pd.DataFrame, store: str="Compañía", section: str="Todas", catalog: str="Todos") -> pd.DataFrame:
+    """Aplica filtros sin duplicar el catálogo completo en memoria."""
     if frame is None or frame.empty:
         return pd.DataFrame()
-    work=frame.copy()
-    if store and store!="Compañía" and "Tienda" in work.columns:
-        work=work[work["Tienda"].map(login_key)==login_key(store)]
-    if section and section!="Todas" and "Sección" in work.columns:
-        work=work[work["Sección"].map(login_key)==login_key(section)]
-    if catalog and catalog not in ("Todos","Todas","") and "Tipo catálogo" in work.columns:
-        work=work[work["Tipo catálogo"].map(login_key)==login_key(catalog)]
-    return work.reset_index(drop=True)
-
+    mask=None
+    if store and store!="Compañía" and "Tienda" in frame.columns:
+        if "_TiendaKey" in frame.columns:
+            current=frame["_TiendaKey"].astype(str).eq(login_key(store))
+        else:
+            current=frame["Tienda"].astype(str).map(login_key).eq(login_key(store))
+        mask=current if mask is None else (mask & current)
+    if section and section!="Todas" and "Sección" in frame.columns:
+        if "_SeccionKey" in frame.columns:
+            current=frame["_SeccionKey"].astype(str).eq(login_key(section))
+        else:
+            current=frame["Sección"].astype(str).map(login_key).eq(login_key(section))
+        mask=current if mask is None else (mask & current)
+    if catalog and catalog not in ("Todos","Todas","") and "Tipo catálogo" in frame.columns:
+        if "_CatalogKey" in frame.columns:
+            current=frame["_CatalogKey"].astype(str).eq(login_key(catalog))
+        else:
+            current=frame["Tipo catálogo"].astype(str).map(login_key).eq(login_key(catalog))
+        mask=current if mask is None else (mask & current)
+    # En Compañía/Todas devuelve la referencia original: los consumidores sólo
+    # agrupan/leen este frame, por lo que una copia de 196 mil filas era innecesaria.
+    return frame if mask is None else frame.loc[mask]
 
 def _first_non_empty(series: pd.Series, fallback: str="") -> str:
     for value in series.fillna("").astype(str):
@@ -5199,16 +5227,24 @@ def _process_capacity_entry(entry: dict, filename: str) -> dict:
             if df.empty:
                 raise ValueError("El Excel se abrió pero no se identificaron filas de capacidades/existencias")
 
+            rows_count=int(len(df))
+            stores=sorted(df["Tienda"].dropna().astype(str).unique().tolist()) if "Tienda" in df.columns else []
+            store_count=len(stores)
             cache_path=_capacity_cache_path(entry["id"])
             df.to_pickle(cache_path)
             cache_rel=str(cache_path.relative_to(DATA_ROOT))
             mtime=path.stat().st_mtime if path.exists() else None
-            _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":df})
-            stores=sorted(df["Tienda"].dropna().unique().tolist()) if "Tienda" in df.columns else []
             report_date=_capacity_report_date({**entry,"name":filename})
             iso=report_date.isocalendar(); report_week=f"{iso.year}-W{iso.week:02d}"; report_month=f"{report_date.year:04d}-{report_date.month:02d}"
-            update_entry("capacities",entry["id"],status="Procesado",rows=int(len(df)),stores=stores,cache_file=cache_rel,error="",report_date=report_date.isoformat(),week=report_week,month=report_month,data_source="Excel capacidades")
-            return {"ok":True,"file":filename,"rows":int(len(df)),"stores":int(df["Tienda"].nunique()) if "Tienda" in df.columns else 0,"message":"Excel procesado correctamente y catálogo optimizado para consultas rápidas","cached":False}
+            update_entry("capacities",entry["id"],status="Procesado",rows=rows_count,stores=stores,cache_file=cache_rel,error="",report_date=report_date.isoformat(),week=report_week,month=report_month,data_source="Excel capacidades")
+            # El pickle ya es la fuente rápida. No mantener otras ~196 mil filas
+            # residentes justo al terminar la carga; se cargarán sólo si un reporte
+            # las solicita después de que el parser haya liberado sus temporales.
+            _CAPACITY_FRAME_CACHE.update({"path":str(path),"mtime":mtime,"frame":None})
+            del df
+            _release_process_memory()
+            print(f"[CAPACITY] procesado {filename}: filas={rows_count} tiendas={store_count}",flush=True)
+            return {"ok":True,"file":filename,"rows":rows_count,"stores":store_count,"message":"Excel procesado correctamente y catálogo optimizado para consultas rápidas","cached":False}
         except Exception as exc:
             update_entry("capacities",entry["id"],status="Error",error=str(exc))
             raise
@@ -5524,13 +5560,20 @@ def _resume_pending_upload_jobs() -> int:
     """Retoma cargas desde el disco persistente después de un reinicio."""
     with db() as con:
         pending=con.execute(
-            "SELECT id,module,filename,source_path,created_by FROM upload_jobs "
+            "SELECT id,module,filename,source_path,created_by,resume_count FROM upload_jobs "
             "WHERE status='queued' ORDER BY created_at"
         ).fetchall()
     resumed=0
     capacity_entries=load_manifest().get("capacities",[])
     for row in pending:
         job=dict(row); source=Path(str(job.get("source_path") or ""))
+        if int(job.get("resume_count") or 0)>=2:
+            _fail_upload_job(
+                job["id"],
+                RuntimeError("La carga se detuvo tras reinicios consecutivos para proteger el servicio. Presiona Procesar Excel para iniciar un intento limpio.")
+            )
+            print(f"[UPLOAD] ciclo de reinicios detenido para {job['module']} {job['id'][:8]}",flush=True)
+            continue
         if not source.exists():
             _fail_upload_job(job["id"],FileNotFoundError("El archivo temporal recuperable no existe"))
             continue
