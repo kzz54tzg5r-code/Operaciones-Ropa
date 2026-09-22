@@ -3344,10 +3344,9 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
         def compact_exhibitions(group):
             kinds={}
             order=[]
-            for row in group.itertuples(index=False):
-                raw_id=str(row[0])
-                raw_loc=str(row[1] or "").strip()
-                kind=str(row[2] or "").strip()
+            for row in group[[location_col,"Exhibición"]].itertuples(index=False,name=None):
+                raw_loc=str(row[0] or "").strip()
+                kind=str(row[1] or "").strip()
                 if not kind:
                     continue
                 if kind not in kinds:
@@ -3366,7 +3365,8 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             return " · ".join(parts)
 
         if not exp.empty:
-            exhibition_map=exp.groupby("__id",sort=False).apply(compact_exhibitions,include_groups=False).to_dict()
+            for rid,group in exp.groupby("__id",sort=False,observed=True):
+                exhibition_map[str(rid)]=compact_exhibitions(group)
 
     if not exhibition_map:
         exhibition_map=compact_labels("Exhibición")
