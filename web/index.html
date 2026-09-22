@@ -836,6 +836,47 @@ function showPage(p){
   $$('#analysisNav [data-sub]').forEach(x=>x.classList.toggle('active',x.dataset.sub===p));
   if(p==='users') loadUsers();
 }
+let COMMERCIAL_BOOTSTRAP_CACHE=null;
+async function loadCommercialBootstrap(force=false){
+  if(COMMERCIAL_BOOTSTRAP_CACHE&&!force)return COMMERCIAL_BOOTSTRAP_CACHE;
+  const current=$('#week')?.value||'';
+  const d=await api('/api/commercial-bootstrap-v188?week='+encodeURIComponent(current),{timeoutMs:30000});
+  COMMERCIAL_BOOTSTRAP_CACHE=d;
+
+  const period=$('#week');
+  if(period){
+    const old=period.value;
+    period.innerHTML='';
+    (d.weeks||[]).forEach(w=>period.add(new Option(w,w)));
+    period.value=(d.weeks||[]).includes(old)?old:(d.week||((d.weeks||[])[0]||''));
+  }
+
+  const wanted=ANALYSIS_STORE||$('#store')?.value||'Compañía';
+  ['store','newStore'].forEach(id=>{
+    const el=$('#'+id);if(!el)return;
+    const old=el.value;
+    const first=id==='newStore'?'<option value="">Seleccionar</option>':'<option value="Compañía">Compañía / Todas las tiendas</option>';
+    el.innerHTML=first;
+    (d.stores_available||[]).forEach(s=>el.add(new Option(s,s)));
+    const target=[wanted,old].find(v=>[...el.options].some(o=>o.value===v));
+    if(target)el.value=target;
+  });
+  if(USER?.role==='tienda'){
+    const el=$('#store');if(el){el.innerHTML='<option>'+USER.store+'</option>';el.value=USER.store;el.disabled=true}
+  }
+  return d;
+}
+
+async function refreshActiveCommercialTab(){
+  if(MAIN!=='analysis')return;
+  if(SUB==='sections')return await loadCommercialDetail('rubro');
+  if(SUB==='areas')return await loadCommercialDetail('area');
+  if(SUB==='accordion')return await renderAccordion();
+  if(SUB==='analysis-upload')return;
+  if(SUB==='stores')return await loadDash('Compañía',$('#section')?.value||'Todas');
+  return await loadDash($('#store')?.value||ANALYSIS_STORE||'Compañía',$('#section')?.value||'Todas');
+}
+
 async function goMain(m){
   MAIN=m;
   $$('[data-main]').forEach(x=>x.classList.toggle('active',x.dataset.main===m));
@@ -854,8 +895,14 @@ async function goMain(m){
     const firstVisible=$('#analysisNav [data-sub]:not(.hidden)')[0];
     SUB=firstVisible?.dataset.sub||'macro';
     showPage(SUB);
-    const wanted=ANALYSIS_STORE||$('#store')?.value||'Compañía';
-    await loadDash(wanted,$('#section')?.value||'Todas');
+    await loadCommercialBootstrap();
+    if(SUB==='sections')await loadCommercialDetail('rubro');
+    else if(SUB==='areas')await loadCommercialDetail('area');
+    else if(SUB==='accordion')await renderAccordion();
+    else{
+      const wanted=ANALYSIS_STORE||$('#store')?.value||'Compañía';
+      await loadDash(wanted,$('#section')?.value||'Todas');
+    }
   }else if(m==='share'){
     showPage('share');
     renderShareInfo();
@@ -873,18 +920,29 @@ async function goSub(p){
   if(storeFilter)storeFilter.style.display=p==='stores'?'none':'';
   showPage(p);
 
+  await loadCommercialBootstrap();
   const wanted=ANALYSIS_STORE||$('#store')?.value||'Compañía';
+  const native=$('#store');
+  if(native&&[...native.options].some(o=>o.value===wanted))native.value=wanted;
+
+  // Cada pestaña consulta sólo lo que necesita. Antes Sección/Rubro hacía
+  // primero /api/dashboard y luego /api/commercial-detail, duplicando memoria.
+  if(p==='sections'){
+    await loadCommercialDetail('rubro');
+    return;
+  }
+  if(p==='areas'){
+    await loadCommercialDetail('area');
+    return;
+  }
+  if(p==='accordion'){
+    await renderAccordion();
+    return;
+  }
   if(p==='stores'){
     await loadDash('Compañía',$('#section')?.value||'Todas');
-  }else if(p!=='analysis-upload'){
-    const native=$('#store');
-    if(native&&[...native.options].some(o=>o.value===wanted))native.value=wanted;
-    await loadDash(wanted,$('#section')?.value||'Todas');
+    return;
   }
-
-  if(p==='sections')await loadCommercialDetail('rubro');
-  if(p==='areas')await loadCommercialDetail('area');
-  if(p==='accordion')await renderAccordion();
   if(p==='analysis-upload'){
     loadUploadHistories();
     resumePendingUploadJob(
@@ -892,11 +950,13 @@ async function goSub(p){
       job=>analysisUploadMessage('Carga recuperada después de actualizar la página.\n'+uploadStatusText(job)),
       async result=>{
         analysisUploadMessage(`Capacidades procesadas correctamente.\n\nRegistros: ${fmt(result.rows)}\nTiendas: ${fmt(result.stores)}`);
-        COMMERCIAL_DETAIL_CACHE.clear();
+        COMMERCIAL_DETAIL_CACHE.clear();COMMERCIAL_BOOTSTRAP_CACHE=null;
         await safeRefreshDash();await loadUploadHistories();
       }
     );
+    return;
   }
+  await loadDash(wanted,$('#section')?.value||'Todas');
 }
 $$('[data-main]').forEach(b=>b.onclick=()=>goMain(b.dataset.main));
 $$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));
@@ -1336,6 +1396,7 @@ async function loadCommercialDetail(mode){
   try{
     if(!d){
       d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(section)}&catalog=${encodeURIComponent(catalog)}&mode=${encodeURIComponent(mode)}`,{timeoutMs:120000});
+      if(d?.week&&$('#week')&&[...$('#week').options].some(o=>o.value===d.week))$('#week').value=d.week;
       if(COMMERCIAL_DETAIL_CACHE.size>=24)COMMERCIAL_DETAIL_CACHE.delete(COMMERCIAL_DETAIL_CACHE.keys().next().value);
       COMMERCIAL_DETAIL_CACHE.set(key,d);
     }
@@ -2148,29 +2209,24 @@ $('#refresh').onclick=async()=>{
 };
 $('#store').onchange=async()=>{
   if(MAIN==='analysis')rememberAnalysisStore($('#store')?.value||'Compañía');
-  if(MAIN==='operativo'){
-    await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
-  }else{
-    await loadDash();
-    if(SUB==='sections')await loadCommercialDetail('rubro');
-    if(SUB==='areas')await loadCommercialDetail('area');
-  }
+  if(MAIN==='operativo')await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+  else await refreshActiveCommercialTab();
 };
 $('#section').onchange=async()=>{
   if(MAIN!=='analysis')return;
-  if(SUB==='stores')await loadDash('Compañía',$('#section').value||'Todas');
-  else await loadDash($('#store')?.value||'Compañía',$('#section').value||'Todas');
-  if(SUB==='sections')await loadCommercialDetail('rubro');
-  if(SUB==='areas')await loadCommercialDetail('area');
+  await refreshActiveCommercialTab();
 };
 $('#catalog').onchange=async()=>{
   if(MAIN!=='analysis')return;
-  if(SUB==='stores')await loadDash('Compañía',$('#section')?.value||'Todas');
-  else await loadDash($('#store')?.value||'Compañía',$('#section')?.value||'Todas');
-  if(SUB==='sections')await loadCommercialDetail('rubro');
-  if(SUB==='areas')await loadCommercialDetail('area');
+  COMMERCIAL_DETAIL_CACHE.clear();
+  await refreshActiveCommercialTab();
 };
-$('#week').onchange=async()=>{if(MAIN==='analysis'){await loadDash();if(SUB==='sections')await loadCommercialDetail('rubro');if(SUB==='areas')await loadCommercialDetail('area')}else{await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true)}};
+$('#week').onchange=async()=>{
+  if(MAIN==='analysis'){
+    COMMERCIAL_DETAIL_CACHE.clear();
+    await refreshActiveCommercialTab();
+  }else await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true);
+};
 function log(x){$('#log').textContent=typeof x==='string'?x:JSON.stringify(x,null,2)}
 async function safeRefreshDash(){
   try{await loadDash();return true}
