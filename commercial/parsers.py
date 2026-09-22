@@ -344,23 +344,43 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
                 buffer=parts.pop()
                 for row in parts:
                     row_no += 1
-                    if row_no == 1:
+                    if selected_cell_re is None:
+                        candidate_by_col={}
+                        candidate_headers=[]
                         for match in _XLSX_GENERIC_CELL_RE.finditer(row):
                             attrs,col,body=match.groups()
                             header=str(_xlsx_decode_cell(attrs,body,shared) or "").strip()
                             if header and norm_text(header) in _CAPACITY_RAW_HEADERS_NORM:
                                 col_text=col.decode("ascii","ignore")
-                                selected_by_col[col_text]=header
-                                selected_headers.append(header)
-                        if not selected_by_col:
-                            return
-                        column_data={header:[] for header in selected_headers}
-                        alt="|".join(sorted((re.escape(col) for col in selected_by_col),key=len,reverse=True))
-                        selected_cell_re=re.compile(
-                            rb'<c\\s+([^>]*?\\br="(' + alt.encode("ascii") + rb')\\d+"[^>]*)>(.*?)</c>',
-                            re.S,
-                        )
-                        continue
+                                candidate_by_col[col_text]=header
+                                candidate_headers.append(header)
+
+                        normalized_headers={norm_text(h) for h in candidate_headers}
+                        has_store=bool(normalized_headers & {
+                            norm_text("TIENDA"),norm_text("SUCURSAL"),norm_text("TIENDA/SUCURSAL")
+                        })
+                        has_model=bool(normalized_headers & {
+                            norm_text("MODELO"),norm_text("ID_ART"),norm_text("ID ART"),
+                            norm_text("ID"),norm_text("CODIGO")
+                        })
+
+                        # El reporte semanal puede traer títulos o filas vacías antes
+                        # del encabezado. Detecta el encabezado real dentro de las
+                        # primeras 60 filas en lugar de asumir que siempre es la 1.
+                        if len(candidate_headers)>=4 and has_store and has_model:
+                            selected_by_col=candidate_by_col
+                            selected_headers=candidate_headers
+                            column_data={header:[] for header in selected_headers}
+                            alt="|".join(sorted((re.escape(col) for col in selected_by_col),key=len,reverse=True))
+                            selected_cell_re=re.compile(
+                                rb'<c\s+([^>]*?\br="(' + alt.encode("ascii") + rb')\d+"[^>]*)>(.*?)</c>',
+                                re.S,
+                            )
+                            continue
+
+                        if row_no < 60:
+                            continue
+                        return
 
                     rec={}
                     for match in selected_cell_re.finditer(row):
@@ -579,7 +599,11 @@ def read_capacity_file(path: str | Path) -> pd.DataFrame:
             # Conserva el lector tolerante como respaldo para XLSX no estándar.
             source=_read_sheet(path,0)
             return _compress_capacity_chunk(_normalize_capacity_source(source,path))
-        return pd.DataFrame()
+
+        # Si el streaming no encontró encabezados/datos, intenta el lector
+        # tolerante antes de concluir que el archivo está vacío.
+        source=_read_sheet(path,0)
+        return _compress_capacity_chunk(_normalize_capacity_source(source,path))
 
     source=_read_sheet(path,0)
     return _compress_capacity_chunk(_normalize_capacity_source(source,path))
