@@ -672,12 +672,15 @@ def install(m):
             async for chunk in response.body_iterator:
                 body += chunk
             html = body.decode("utf-8", errors="replace")
-            if 'v190-lingerie-css' not in html:
-                html = html.replace("</head>", css + "</head>", 1)
+            # La versión base actual ya incluye la pestaña y su JS nativo.
+            # Sólo inyectar la interfaz V190 como respaldo en versiones antiguas;
+            # mezclar ambos frontends genera IDs duplicados y listeners cruzados.
             if 'page-lingerie-checklist' not in html:
+                if 'v190-lingerie-css' not in html:
+                    html = html.replace("</head>", css + "</head>", 1)
                 html = html.replace("</main>", page + "</main>", 1)
-            if 'v190-lingerie-js' not in html:
-                html = html.replace("</body>", js + "</body>", 1)
+                if 'v190-lingerie-js' not in html:
+                    html = html.replace("</body>", js + "</body>", 1)
             return HTMLResponse(html, status_code=response.status_code, headers={
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
