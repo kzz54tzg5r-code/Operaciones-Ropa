@@ -1029,7 +1029,7 @@ function renderModelRows(champs,slows,zeros,champSec='Todas',slowSec='Todas',sco
   const zeroIds=new Set((zeros||[]).map(x=>String(x.id_art)));
   slows=(slows||[]).filter(x=>!zeroIds.has(String(x.id_art)));
   const allChecklistModels=[...slows,...(zeros||[])];
-  $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec} · primeros 150`;
+  $('#champTitle').textContent=`Modelos 80/20 · ${scope} · ${champSec} · todos`;
   $('#slowTitle').textContent=`Modelos lentos · ${modelScope} · ${slowSec}`;
   $('#zeroTitle').textContent=`Modelos con sugerido 0 a 1 · última entrada menor o igual a 30 días · ${modelScope} · ${slowSec}`;
   const slowPanel=$('#slowTotals')?.parentElement;if(slowPanel){let help=slowPanel.querySelector('.check-help');if(!help){help=document.createElement('div');help.className='note check-help';slowPanel.appendChild(help)}const capture=(scope==='Compañía'&&['admin','superadmin'].includes(USER?.role))?'Selecciona la tienda a evaluar para capturar el checklist y las evidencias. ':'';help.textContent=capture+'Amarillo: reincide una semana sin subir de sugerido 1. Rojo: reincide dos semanas consecutivas.';}
