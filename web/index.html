@@ -962,6 +962,19 @@ function renderDash(d){
   $('#macroRankingTitle').textContent=`Comparativo Compañía`;
   if($('#macroSectionTableTitle'))$('#macroSectionTableTitle').textContent=`Macro sección · ${scope}`;
 
+  // Las tarjetas deben identificar claramente el alcance real. Si se filtra
+  // una tienda, tanto el título como los valores/etiquetas pertenecen a ella.
+  const storeScoped=scope!=='Compañía';
+  const setKpiLabel=(id,label)=>{
+    const el=$(id)?.closest('.kpi')?.querySelector('.lab');
+    if(el)el.textContent=label;
+  };
+  setKpiLabel('#kExist',storeScoped?`Existencia · ${scope}`:'Existencia total');
+  setKpiLabel('#kSug',storeScoped?`Sugerido · ${scope}`:'Sugerido compañía');
+  setKpiLabel('#kDdi',storeScoped?`DDI · ${scope}`:'DDI compañía');
+  setKpiLabel('#kCap',storeScoped?`Capacidad · ${scope}`:'Capacidad · Curva');
+  setKpiLabel('#kOcc',storeScoped?`Ocupación · ${scope}`:'Ocupación');
+
   $('#kExist').textContent=fmt(k.existence);
   $('#kExistNote').textContent='Piso '+fmt(k.floor)+' pzas · Bodega '+fmt(k.warehouse)+' pzas';
   $('#kSug').textContent=fmt(k.suggested);
