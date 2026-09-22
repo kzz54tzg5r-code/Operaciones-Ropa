@@ -22,6 +22,8 @@ import threading
 import time
 import unicodedata
 
+import pandas as pd
+
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 
@@ -131,6 +133,209 @@ def install(m):
         except Exception as exc:
             print(f"[V176-AREA] {type(exc).__name__}: {exc}", flush=True)
             return {"store": "Compañía", "mode": "grouped", "rows": [], "error": str(exc)}
+
+    # ---------------- Participación SubCat vs CIA / Regla ----------------
+    # Regla de Venta mostrada en el reporte de referencia entregado por el usuario.
+    # Se conserva como benchmark comercial por tienda; la participación real se
+    # recalcula con la venta acumulada mensual del Excel de capacidades.
+    subcat_store_cfg = [
+        ("Iztapalapa","IZTAP","A",11.7), ("Vallejo","VALLE","A",9.8),
+        ("Ecatepec","ECATE","A",10.0), ("Puebla","PUEBL","A",10.8),
+        ("Arco Norte","ARCO","B",6.3), ("Atemajac","ATEMA","B",4.3),
+        ("León","LEON","C",4.0), ("Toluca","TOLUC","A",8.8),
+        ("Centro","CENTR","B",4.9), ("Ixtapaluca","IXTAP","B",6.5),
+        ("Naucalpan","NAUCA","B",4.4), ("Miravalle","MIRAV","C",2.9),
+        ("Olivar","OLIVA","C",3.3), ("Aguascalientes","AGUAS","D",1.9),
+        ("Querétaro","QUERE","C",3.4), ("Puebla Sur","PLESU","C",3.6),
+        ("Veracruz","VERAC","D",2.3),
+    ]
+    subcat_cache = {}
+    subcat_lock = threading.RLock()
+
+    def _subcat_config_for(name):
+        wanted=norm(name)
+        for st,short,cluster,rule in subcat_store_cfg:
+            if norm(st)==wanted:
+                return {"name":st,"short":short,"cluster":cluster,"rule":rule}
+        return {"name":str(name or ""),"short":str(name or "")[:6].upper(),"cluster":"","rule":None}
+
+    @m.app.get("/api/subcat-participation-v184")
+    def subcat_participation_v184(
+        request: Request, week: str = "", catalog: str = "Todos",
+    ):
+        actor=m.require_user(request)
+        entry=m._capacity_source_entry(week) or {}
+        stamp=str(entry.get("id") or entry.get("uploaded_at") or entry.get("name") or week)
+        key=(stamp,norm(catalog))
+        now=time.monotonic()
+        with subcat_lock:
+            cached=subcat_cache.get(key)
+            if cached and now-cached[0] < 900:
+                payload=dict(cached[1])
+            else:
+                payload=None
+
+        if payload is None:
+            with m._RESOURCE_HEAVY_LOCK:
+                frame=m._capacity_frame_for_period(week)
+                if frame is None or frame.empty:
+                    payload={"week":week,"stores":[],"cia_summary":[],"rule_summary":[],
+                             "cia_sections":{},"rule_sections":{},"section_totals":{},
+                             "rule_total":100.0,"source_file":"","metric_label":"Venta $ mes"}
+                else:
+                    work=m._capacity_scope_v45(frame,"Compañía","Todas",catalog)
+                    sections_order=("Dama","Caballero","Infantil")
+                    if work is None or work.empty:
+                        payload={"week":week,"stores":[],"cia_summary":[],"rule_summary":[],
+                                 "cia_sections":{},"rule_sections":{},"section_totals":{},
+                                 "rule_total":100.0,"source_file":str(entry.get("name") or ""),"metric_label":"Venta $ mes"}
+                    else:
+                        # El PDF de referencia es acumulado del mes (01 al corte).
+                        # Priorizar VTA ACUM MES EN $; usar semanal sólo si la fuente
+                        # actual no trae acumulado mensual.
+                        metric=""
+                        for candidate in ("Venta $ mes","Venta $ 7","Venta $"):
+                            if candidate in work.columns:
+                                values=pd.to_numeric(work[candidate],errors="coerce").fillna(0.0)
+                                if float(values.sum())>0:
+                                    metric=candidate
+                                    break
+                        if not metric:
+                            metric="Venta $ mes"
+
+                        cols=[x for x in ("Tienda","Sección","Subcategoría",metric) if x in work.columns]
+                        slim=work.loc[:,cols].copy()
+                        if metric not in slim.columns:
+                            slim[metric]=0.0
+                        slim["sale"]=pd.to_numeric(slim[metric],errors="coerce").fillna(0.0)
+                        slim["Tienda"]=slim.get("Tienda","").astype(str).str.strip()
+                        slim["Sección"]=slim.get("Sección","").astype(str).str.strip()
+                        slim["Subcategoría"]=slim.get("Subcategoría","").astype(str).str.strip()
+                        slim=slim[
+                            slim["Sección"].isin(sections_order)
+                            & ~slim["Subcategoría"].isin(["","nan","None"])
+                            & (slim["sale"]>=0)
+                        ]
+                        agg=slim.groupby(["Tienda","Sección","Subcategoría"],sort=False,observed=True)["sale"].sum().reset_index()
+
+                        detected=[str(x) for x in agg["Tienda"].dropna().unique().tolist()]
+                        detected_map={norm(x):x for x in detected}
+                        stores=[]
+                        used=set()
+                        for st,short,cluster,rule in subcat_store_cfg:
+                            actual=detected_map.get(norm(st))
+                            if actual is None:
+                                continue
+                            stores.append({"name":actual,"short":short,"cluster":cluster,"rule":float(rule)})
+                            used.add(norm(actual))
+                        for actual in detected:
+                            if norm(actual) in used:
+                                continue
+                            cfg=_subcat_config_for(actual)
+                            stores.append(cfg)
+                            used.add(norm(actual))
+
+                        # Totales de compañía para el alcance Ropa (Dama/Caballero/Infantil).
+                        store_total=agg.groupby("Tienda",sort=False,observed=True)["sale"].sum()
+                        section_store=agg.groupby(["Tienda","Sección"],sort=False,observed=True)["sale"].sum()
+                        section_total=agg.groupby("Sección",sort=False,observed=True)["sale"].sum()
+                        subcat_total=agg.groupby(["Sección","Subcategoría"],sort=False,observed=True)["sale"].sum()
+                        company_total=float(store_total.sum())
+
+                        share_total={st:(float(store_total.get(st,0.0))/company_total*100 if company_total else 0.0) for st in [s["name"] for s in stores]}
+                        ranked=sorted(stores,key=lambda s:(-share_total.get(s["name"],0.0),norm(s["name"])))
+                        rank_map={s["name"]:i+1 for i,s in enumerate(ranked)}
+                        for s in stores:
+                            s["rank"]=int(rank_map.get(s["name"],0))
+                            s["total_share"]=float(share_total.get(s["name"],0.0))
+
+                        cia_summary=[]
+                        rule_summary=[]
+                        section_totals_payload={}
+                        cia_sections={}
+                        rule_sections={}
+
+                        for sec in sections_order:
+                            sec_total=float(section_total.get(sec,0.0))
+                            company_sec_share=sec_total/company_total*100 if company_total else 0.0
+                            cia_values={}
+                            rule_values={}
+                            total_values={}
+                            for s in stores:
+                                st=s["name"]
+                                st_total=float(store_total.get(st,0.0))
+                                st_sec=float(section_store.get((st,sec),0.0))
+                                cia_values[st]=st_sec/st_total*100 if st_total else 0.0
+                                rule_values[st]=st_sec/sec_total*100 if sec_total else 0.0
+                                total_values[st]=st_sec/sec_total*100 if sec_total else 0.0
+                            cia_summary.append({"section":sec,"company_share":company_sec_share,"values":cia_values})
+                            rule_summary.append({"section":sec,"company_share":company_sec_share,"values":rule_values})
+                            section_totals_payload[sec]={"values":total_values,"company_share":100.0}
+
+                            subcats=[]
+                            if sec_total>0:
+                                sec_sub=subcat_total.loc[sec] if sec in subcat_total.index.get_level_values(0) else pd.Series(dtype=float)
+                                if isinstance(sec_sub,pd.Series):
+                                    subcats=[(str(k),float(v)) for k,v in sec_sub.items()]
+                            subcats.sort(key=lambda x:(-x[1],norm(x[0])))
+                            cia_rows=[]
+                            rule_rows=[]
+                            sec_agg=agg[agg["Sección"]==sec]
+                            if not sec_agg.empty:
+                                lookup={(str(r.Tienda),str(r.Subcategoría)):float(r.sale) for r in sec_agg.itertuples(index=False)}
+                            else:
+                                lookup={}
+                            for sub,sub_total in subcats:
+                                company_sub_share=sub_total/sec_total*100 if sec_total else 0.0
+                                cia_vals={}
+                                rule_vals={}
+                                for s in stores:
+                                    st=s["name"]
+                                    sale=float(lookup.get((st,sub),0.0))
+                                    st_sec=float(section_store.get((st,sec),0.0))
+                                    cia_vals[st]=sale/st_sec*100 if st_sec else 0.0
+                                    rule_vals[st]=sale/sub_total*100 if sub_total else 0.0
+                                cia_rows.append({"subcategory":sub,"company_share":company_sub_share,"values":cia_vals})
+                                rule_rows.append({"subcategory":sub,"company_share":company_sub_share,"values":rule_vals})
+                            cia_sections[sec]=cia_rows
+                            rule_sections[sec]=rule_rows
+
+                        payload={
+                            "week":week,"catalog":catalog,"stores":stores,
+                            "cia_summary":cia_summary,"rule_summary":rule_summary,
+                            "cia_sections":cia_sections,"rule_sections":rule_sections,
+                            "section_totals":section_totals_payload,
+                            "total_general":{"values":share_total,"company_share":100.0},
+                            "rule_total":100.0,
+                            "metric_label":"Venta acumulada mes $" if metric=="Venta $ mes" else ("Venta 7 días $" if metric=="Venta $ 7" else "Venta $"),
+                            "source_file":str(entry.get("name") or ""),
+                        }
+                        del slim,agg
+                        m._release_process_memory()
+
+            with subcat_lock:
+                if len(subcat_cache)>=16:
+                    subcat_cache.pop(next(iter(subcat_cache)))
+                subcat_cache[key]=(now,payload)
+
+        # Tienda respeta el acceso del rol: conserva benchmark CIA/Regla pero sólo
+        # expone la columna de su tienda asignada.
+        if actor.get("role")=="tienda":
+            assigned=str(actor.get("store") or "")
+            visible=[s for s in payload.get("stores",[]) if norm(s.get("name"))==norm(assigned)]
+            trimmed=dict(payload)
+            trimmed["stores"]=visible
+            allowed={s["name"] for s in visible}
+            def trim_rows(rows):
+                return [{**r,"values":{k:v for k,v in (r.get("values") or {}).items() if k in allowed}} for r in rows]
+            trimmed["cia_summary"]=trim_rows(payload.get("cia_summary",[]))
+            trimmed["rule_summary"]=trim_rows(payload.get("rule_summary",[]))
+            trimmed["cia_sections"]={k:trim_rows(v) for k,v in (payload.get("cia_sections") or {}).items()}
+            trimmed["rule_sections"]={k:trim_rows(v) for k,v in (payload.get("rule_sections") or {}).items()}
+            trimmed["section_totals"]={k:{**v,"values":{x:y for x,y in (v.get("values") or {}).items() if x in allowed}} for k,v in (payload.get("section_totals") or {}).items()}
+            trimmed["total_general"]={**(payload.get("total_general") or {}),"values":{x:y for x,y in ((payload.get("total_general") or {}).get("values") or {}).items() if x in allowed}}
+            return trimmed
+        return payload
 
     # --------------------- Modelos / 80-20 ------------------------
     model_cache = {}
@@ -1167,6 +1372,46 @@ body[data-v163-module="analysis"] #v161FilterGrid .v161-apply{display:none!impor
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body[data-v163-module="analysis"] .tablewrap{-webkit-overflow-scrolling:touch;overscroll-behavior-inline:contain}
 body[data-v163-module="analysis"] select,body[data-v163-module="analysis"] button{touch-action:manipulation}
+
+/* V184 · Participación SubCat vs CIA / Regla */
+.subcat-participation-reports{display:grid;gap:10px;margin-top:14px}
+.subcat-report-card{background:#fff;border:1px solid #d5e1ee;border-radius:13px;overflow:hidden}
+.subcat-report-card>summary{list-style:none;cursor:pointer;padding:12px 14px;font-size:16px;font-weight:950;color:#123f78;background:#f8fbff;display:flex;align-items:center;justify-content:space-between}
+.subcat-report-card>summary::-webkit-details-marker{display:none}
+.subcat-report-card>summary:after{content:"+";font-size:18px;font-weight:950;color:#176fe8}
+.subcat-report-card[open]>summary:after{content:"−"}
+.subcat-report-note{padding:8px 14px 0;color:#667085;font-size:10px;line-height:1.35}
+.subcat-report-body{padding:8px 12px 14px}
+.subcat-block-title{font-size:13px;font-weight:950;color:#123f78;margin:11px 2px 6px}
+.subcat-matrix-wrap{overflow:auto;max-height:620px;border:1px solid #d8e2ee;border-radius:10px;background:#fff;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.subcat-matrix{border-collapse:separate;border-spacing:0;min-width:1500px;width:100%;font-size:9px;color:#173f78}
+.subcat-matrix th,.subcat-matrix td{border-right:1px solid #d6dee8;border-bottom:1px solid #d6dee8;padding:5px 6px;text-align:center;white-space:nowrap}
+.subcat-matrix thead th{position:sticky;top:0;z-index:4;background:#eef4fb;font-weight:950;color:#173f78}
+.subcat-matrix thead tr:nth-child(2) th{top:27px}
+.subcat-matrix thead tr:nth-child(3) th{top:54px}
+.subcat-matrix th:first-child,.subcat-matrix td:first-child{position:sticky;left:0;z-index:3;text-align:left;min-width:140px;max-width:180px;background:#fff;font-weight:900}
+.subcat-matrix thead th:first-child{z-index:6;background:#eef4fb}
+.subcat-matrix .subcat-good{background:#9bd48f!important;color:#123f35}
+.subcat-matrix .subcat-warn{background:#ffe083!important;color:#5b4700}
+.subcat-matrix .subcat-bad{background:#ff8d8d!important;color:#6e1919}
+.subcat-matrix .subcat-total td,.subcat-matrix .subcat-total th{font-weight:950;background:#f4f7fb}
+.subcat-matrix .subcat-rule-row td,.subcat-matrix .subcat-rule-row th{font-weight:950;background:#fff}
+.subcat-matrix .subcat-selected{box-shadow:inset 2px 0 #176fe8,inset -2px 0 #176fe8}
+.subcat-matrix .subcat-company{font-weight:950;background:#f5f8fc}
+.subcat-legend{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 2px 8px;font-size:9px;color:#667085}
+.subcat-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-2px;margin-right:3px}
+.subcat-legend .g{background:#9bd48f}.subcat-legend .y{background:#ffe083}.subcat-legend .r{background:#ff8d8d}
+@media(max-width:900px){
+  .subcat-report-card>summary{padding:10px 11px;font-size:12px}
+  .subcat-report-note{padding:6px 10px 0;font-size:8px}
+  .subcat-report-body{padding:6px 8px 10px}
+  .subcat-block-title{font-size:10px;margin:8px 1px 5px}
+  .subcat-matrix-wrap{max-height:520px;border-radius:8px}
+  .subcat-matrix{min-width:1250px;font-size:7.5px}
+  .subcat-matrix th,.subcat-matrix td{padding:4px 5px}
+  .subcat-matrix th:first-child,.subcat-matrix td:first-child{min-width:118px}
+  .subcat-legend{font-size:7.5px}
+}
 </style>'''
 
     js = r'''<script id="v176-commercial-js">
@@ -1180,7 +1425,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const months=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const monthLong=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 let salesMetric='money',salesMonth=0,salesSort={key:'',dir:-1},salesBusy=false,modelsBusy=false,salesTableStore='Compañía',salesTableBusy=false,salesTableData=null,salesStoreTableMonth=0,salesStoreTableBusy=false,salesStoreTableData=null,slowAreaFilter='Todas';
-const modelClientCache=new Map(),areaClientCache=new Map(),salesClientCache=new Map();
+const modelClientCache=new Map(),areaClientCache=new Map(),salesClientCache=new Map(),subcatClientCache=new Map();
 const ANALYSIS_STORE_KEY_V183='operacionesRopa.analysisStore';
 const rememberStoreV183=value=>{const v=String(value||'Compañía').trim()||'Compañía';try{localStorage.setItem(ANALYSIS_STORE_KEY_V183,v)}catch(_){}return v};
 const rememberedStoreV183=()=>{try{return localStorage.getItem(ANALYSIS_STORE_KEY_V183)||''}catch(_){return ''}};
@@ -1986,11 +2231,108 @@ async function renderSales176(existing,force){
 }
 window.loadSalesExecutive=function(){return renderSales176(null,true)};
 
+
+function sectionsActive(){return activeAnalysis()&&q('#page-sections')?.classList.contains('active')}
+function p1(v){return (Number(v)||0).toFixed(1)+'%'}
+function subcatSelected(store){return normStoreV184(store)===normStoreV184(rememberedStoreV183()||q('#store')?.value||'Compañía')}
+function normStoreV184(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
+function ciaTone(v,bench){
+  const x=Number(v)||0,b=Number(bench)||0;if(b<=0)return '';
+  if(x>=b)return 'subcat-good';
+  if(x>=b*.90)return 'subcat-warn';
+  return 'subcat-bad';
+}
+function ruleTone(v,rule){
+  const x=Number(v)||0,r=Number(rule);if(!Number.isFinite(r)||r<=0)return '';
+  return x>=r?'subcat-good':'subcat-bad';
+}
+function subcatHeader(stores,mode){
+  const cluster='<tr><th>CLUSTER</th>'+stores.map(s=>'<th class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+esc(s.cluster||'')+'</th>').join('')+'<th class="subcat-company">% PART CIA</th></tr>';
+  const rank=mode==='rule'?'<tr><th>RANK PARTICIPACION</th>'+stores.map(s=>'<th class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+(s.rank||'')+'</th>').join('')+'<th class="subcat-company"></th></tr>':'';
+  const names='<tr><th>'+(mode==='rule'?'SUBCATEGORIA':'SUBCATEGORIA')+'</th>'+stores.map(s=>'<th class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+esc(s.short||s.name)+'</th>').join('')+'<th class="subcat-company">% PART CIA</th></tr>';
+  return cluster+rank+names;
+}
+function summaryHeader(stores,mode){
+  const cluster='<tr><th>CLUSTER</th>'+stores.map(s=>'<th class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+esc(s.cluster||'')+'</th>').join('')+'<th class="subcat-company">% PART CIA</th></tr>';
+  const rank=mode==='rule'?'<tr><th>RANK PARTICIPACION</th>'+stores.map(s=>'<th class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+(s.rank||'')+'</th>').join('')+'<th class="subcat-company"></th></tr>':'';
+  const names='<tr><th>SECCION</th>'+stores.map(s=>'<th class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+esc(s.short||s.name)+'</th>').join('')+'<th class="subcat-company">% PART CIA</th></tr>';
+  return cluster+rank+names;
+}
+function renderSubcatMatrix(d,mode,section){
+  const stores=d.stores||[],rows=((mode==='cia'?d.cia_sections:d.rule_sections)||{})[section]||[];
+  const totals=(d.section_totals||{})[section]||{values:{},company_share:100};
+  const body=rows.map(r=>{
+    const cells=stores.map(s=>{
+      const v=(r.values||{})[s.name]||0;
+      const cls=(mode==='cia'?ciaTone(v,r.company_share):ruleTone(v,s.rule))+(subcatSelected(s.name)?' subcat-selected':'');
+      return '<td class="'+cls.trim()+'">'+p1(v)+'</td>';
+    }).join('');
+    return '<tr><th>'+esc(r.subcategory)+'</th>'+cells+'<td class="subcat-company">'+p1(r.company_share)+'</td></tr>';
+  }).join('');
+  const totalCells=stores.map(s=>'<td class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+p1((totals.values||{})[s.name]||0)+'</td>').join('');
+  return '<div class="subcat-block-title">PARTICIPACION POR TIENDA "POR SECCION '+esc(section.toUpperCase())+'"</div>'+
+    '<div class="subcat-matrix-wrap"><table class="subcat-matrix"><thead>'+subcatHeader(stores,mode)+'</thead><tbody>'+
+    (body||'<tr><th>Sin información</th><td colspan="'+(stores.length+1)+'">No hay venta para esta sección.</td></tr>')+
+    '<tr class="subcat-total"><th>Total general '+esc(section.toUpperCase())+'</th>'+totalCells+'<td class="subcat-company">100.0%</td></tr>'+
+    '</tbody></table></div>';
+}
+function renderSubcatReport(d,mode){
+  const stores=d.stores||[],summary=mode==='cia'?(d.cia_summary||[]):(d.rule_summary||[]);
+  const summaryRows=summary.map(r=>{
+    const cells=stores.map(s=>{
+      const v=(r.values||{})[s.name]||0;
+      const cls=(mode==='cia'?ciaTone(v,r.company_share):ruleTone(v,s.rule))+(subcatSelected(s.name)?' subcat-selected':'');
+      return '<td class="'+cls.trim()+'">'+p1(v)+'</td>';
+    }).join('');
+    return '<tr><th>'+esc(r.section.toUpperCase())+'</th>'+cells+'<td class="subcat-company">'+p1(r.company_share)+'</td></tr>';
+  }).join('');
+  const general=d.total_general||{values:{}};
+  const generalCells=stores.map(s=>'<td class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+p1((general.values||{})[s.name]||0)+'</td>').join('');
+  const ruleRow=mode==='rule'
+    ?'<tr class="subcat-rule-row"><th>REGLA DE VENTA</th>'+stores.map(s=>'<td class="'+(subcatSelected(s.name)?'subcat-selected':'')+'">'+(s.rule==null?'—':p1(s.rule))+'</td>').join('')+'<td class="subcat-company">100.0%</td></tr>'
+    :'';
+  const legend=mode==='cia'
+    ?'<div class="subcat-legend"><span><i class="g"></i>Igual o arriba de CIA</span><span><i class="y"></i>90%-99% de CIA</span><span><i class="r"></i>Debajo de 90% de CIA</span></div>'
+    :'<div class="subcat-legend"><span><i class="g"></i>Igual o arriba de la Regla de Venta</span><span><i class="r"></i>Debajo de la Regla de Venta</span></div>';
+  const top='<div class="subcat-block-title">'+(mode==='cia'?'PARTICIPACION POR SECCION - SUBCATEGORIA EN LA VENTA DE TIENDA VS COMPAÑIA':'PARTICIPACION POR SECCION - SUBCATEGORIA EN LA VENTA DE LA COMPAÑIA')+'</div>'+
+    legend+'<div class="subcat-matrix-wrap"><table class="subcat-matrix"><thead>'+summaryHeader(stores,mode)+'</thead><tbody>'+
+    summaryRows+'<tr class="subcat-total"><th>Total general ROPA</th>'+generalCells+'<td class="subcat-company">100.0%</td></tr>'+ruleRow+
+    '</tbody></table></div>';
+  const wanted=q('#section')?.value||'Todas';
+  const sections=['Dama','Caballero','Infantil'].filter(s=>wanted==='Todas'||normStoreV184(s)===normStoreV184(wanted));
+  return '<div class="subcat-report-body">'+top+sections.map(sec=>renderSubcatMatrix(d,mode,sec)).join('')+'</div>';
+}
+async function loadSubcatParticipation(force=false){
+  if(!sectionsActive()||!q('#subcatCiaReport')||!q('#subcatRuleReport'))return;
+  const week=q('#week')?.value||'',catalog=q('#catalog')?.value||'Todos';
+  const key=[week,catalog].join('|');
+  let d=!force?subcatClientCache.get(key):null;
+  try{
+    if(!d){
+      q('#subcatCiaReport').innerHTML='<div class="infoempty">Cargando Participacion SubCat vs CIA...</div>';
+      if(q('#subcatRuleCard')?.open)q('#subcatRuleReport').innerHTML='<div class="infoempty">Cargando Participacion SubCat vs Regla...</div>';
+      d=await A('/api/subcat-participation-v184?week='+encodeURIComponent(week)+'&catalog='+encodeURIComponent(catalog),{timeoutMs:120000});
+      if(subcatClientCache.size>=12)subcatClientCache.delete(subcatClientCache.keys().next().value);
+      subcatClientCache.set(key,d);
+    }
+    const source=q('#subcatParticipationSource');
+    if(source)source.textContent=(d.metric_label||'Venta acumulada mes $')+(d.source_file?' · Fuente: '+d.source_file:'')+' · las columnas muestran todas las tiendas y la tienda seleccionada queda resaltada.';
+    q('#subcatCiaReport').innerHTML=renderSubcatReport(d,'cia');
+    q('#subcatRuleReport').innerHTML=renderSubcatReport(d,'rule');
+  }catch(e){
+    q('#subcatCiaReport').innerHTML='<div class="infoempty">No fue posible cargar Participacion SubCat vs CIA: '+esc(e.message||e)+'</div>';
+    q('#subcatRuleReport').innerHTML='<div class="infoempty">No fue posible cargar Participacion SubCat vs Regla: '+esc(e.message||e)+'</div>';
+  }
+}
+window.loadSubcatParticipation=loadSubcatParticipation;
+q('#subcatRuleCard')?.addEventListener('toggle',()=>{if(q('#subcatRuleCard')?.open)loadSubcatParticipation(false)});
+
 async function refreshAll(){
   fixSidebar();fixAnalysisNav();
   if(!activeAnalysis())return;
   installCompactTableFilters();
   await fixStores();
+  if(sectionsActive())await loadSubcatParticipation();
   if(macroActive()){
     renderExcess();
     detachOldSalesListeners();
@@ -2005,7 +2347,7 @@ function schedule(){
   v176RefreshTimer=setTimeout(()=>{refreshAll().catch(e=>console.warn('[V176] refresh',e))},140);
 }
 document.addEventListener('click',e=>{
-  if(e.target.closest?.('#analysisNav,[data-main="analysis"],[data-area-section],[data-area-group],[data-pareto-group],#refresh,#sidebarToggle'))schedule();
+  if(e.target.closest?.('#analysisNav,[data-main="analysis"],[data-area-section],[data-area-group],[data-pareto-group],#refresh,#sidebarToggle,#subcatCiaCard,#subcatRuleCard'))schedule();
   if(e.target.closest?.('[data-area-section],[data-area-group]'))setTimeout(renderArea,80);
   if(e.target.closest?.('[data-pareto-group]'))setTimeout(()=>renderModels(true),80);
 },true);
@@ -2047,13 +2389,13 @@ if(typeof window.loadDash==='function'&&!window.loadDash.__v176){
     const native=q('#store'),facade=visibleStoreControl(),scope=r?.selected_store||wanted;
     if(native&&[...native.options].some(o=>o.value===scope))native.value=scope;
     if(facade&&[...facade.options].some(o=>o.value===scope))facade.value=scope;
-    setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176()},60);
+    setTimeout(()=>{fixSidebar();fixAnalysisNav();installCompactTableFilters();fixStores();renderExcess();detachOldSalesListeners();renderSales176();if(sectionsActive())loadSubcatParticipation(false)},60);
     return r;
   };
   wrapped.__v176=true;window.loadDash=wrapped;
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
-console.info('[V183] Comercial persistente, CEDIS, exhibiciones y rendimiento optimizados.');
+console.info('[V184] Participacion SubCat vs CIA/Regla + Comercial optimizado.');
 })();
 </script>'''
 
@@ -2074,7 +2416,7 @@ console.info('[V183] Comercial persistente, CEDIS, exhibiciones y rendimiento op
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V183",
+                "X-Operations-UI-Version": "V184",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         return response
