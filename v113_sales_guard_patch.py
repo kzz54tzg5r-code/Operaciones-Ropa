@@ -148,23 +148,25 @@ def install(m):
         def worker():
             time.sleep(10)
             try:
-                manifest=m.load_manifest() or {};entries=list(manifest.get('sales') or []);fixed=0
-                for item0 in entries:
-                    item=dict(item0);y=int(item.get('year') or 0);mo=int(item.get('month') or 0)
-                    if not y or mo not in range(1,13): continue
-                    path=m.resolve_entry_path(item)
-                    if not path.exists() or path.suffix.lower()!='.pdf': continue
-                    parsed=parse_sales_pdf_v113(path,y,mo)
-                    changes={k:parsed.get(k) for k in ('status','store','rows','stores','pages','total_pieces','total_sales','parser_version','source_line','source_method','detected_stores','diagnostic','rejected_pdf_value') if k in parsed}
-                    m.update_entry('sales',str(item.get('id') or ''),**changes)
-                    if float(parsed.get('total_sales') or 0)>=MIN_MONTHLY_SALE: fixed+=1
-                # Diagnóstico exacto del Excel capacidades disponible por mes.
-                from v112_sales_pdf_repair import _capacity_month_fallback
-                for mo in range(1,13):
-                    sale,pzs,src=_capacity_month_fallback(m,2026,mo,'Compañía')
-                    if sale>0:
-                        print(f'[V113-CAP] 2026-{mo:02d} venta={sale:.2f} pzas={pzs:.0f} fuente={src}',flush=True)
-                print(f'[V113-REPAIR] PDF revisados={len(entries)} · con venta válida={fixed}',flush=True)
+                # La reparación histórica sólo debe ocurrir si hay PDF pendientes.
+                # Ejecutarla en cada arranque consumía memoria y CPU mientras se
+                # procesaban los Excel de capacidades en el plan de 512 MB.
+                with m._RESOURCE_HEAVY_LOCK:
+                    manifest=m.load_manifest() or {}
+                    entries=[dict(item) for item in (manifest.get('sales') or [])
+                             if int(item.get('parser_version') or 0)<PARSER_VERSION]
+                    fixed=0
+                    for item in entries:
+                        y=int(item.get('year') or 0);mo=int(item.get('month') or 0)
+                        if not y or mo not in range(1,13): continue
+                        path=m.resolve_entry_path(item)
+                        if not path.exists() or path.suffix.lower()!='.pdf': continue
+                        parsed=parse_sales_pdf_v113(path,y,mo)
+                        changes={k:parsed.get(k) for k in ('status','store','rows','stores','pages','total_pieces','total_sales','parser_version','source_line','source_method','detected_stores','diagnostic','rejected_pdf_value') if k in parsed}
+                        m.update_entry('sales',str(item.get('id') or ''),**changes)
+                        if float(parsed.get('total_sales') or 0)>=MIN_MONTHLY_SALE: fixed+=1
+                    print(f'[V113-REPAIR] PDF pendientes={len(entries)} · con venta válida={fixed}',flush=True)
+                    m._release_process_memory()
             except Exception as exc:
                 print(f'[V113-REPAIR] ERROR {type(exc).__name__}: {exc}',flush=True)
         threading.Thread(target=worker,daemon=True,name='v113-sales-repair').start()
