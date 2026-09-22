@@ -508,10 +508,10 @@ body{max-width:100%;overflow-x:hidden}
   </tr></thead><tbody id="rubroTable"></tbody></table></div>
 
   <div id="subcatParticipationReports" class="subcat-participation-reports">
-    <details class="subcat-report-card" id="subcatCiaCard" open>
+    <details class="subcat-report-card" id="subcatCiaCard">
       <summary>Participacion SubCat vs CIA</summary>
-      <div class="subcat-report-note" id="subcatParticipationSource">Calculando participación de venta...</div>
-      <div id="subcatCiaReport"><div class="infoempty">Cargando información...</div></div>
+      <div class="subcat-report-note" id="subcatParticipationSource">Abre esta tabla para calcular la participación de venta.</div>
+      <div id="subcatCiaReport"><div class="infoempty">Abre esta tabla para visualizar la información.</div></div>
     </details>
     <details class="subcat-report-card" id="subcatRuleCard">
       <summary>Participacion SubCat vs Regla</summary>
@@ -976,10 +976,8 @@ async function loadDash(storeOverride=null,sectionOverride=null){
   }
 
   renderDash(d);
-  if(SUB==='macro'){
-    await (window.loadMacroAreaDetail||loadMacroAreaDetail)();
-    await (window.loadModelTables||loadModelTables)();
-  }
+  // Las tablas pesadas de Ubicación y Modelos se cargan al entrar en pantalla.
+  // Así KPIs/periodo aparecen primero y móvil no dispara varias copias del Excel.
   $('#profileMeta').textContent=`V47 · Móvil · Excel capacidades · ${d.week||'sin periodo'}`;
   refreshHeaderClock();
   return d;
@@ -1328,7 +1326,7 @@ async function loadCommercialDetail(mode){
   const section=$('#section')?.value||'Todas';
   const week=$('#week').value||'';
   const catalog=$('#catalog')?.value||'Todos';
-  const key=[week,store,section,catalog].join('|');
+  const key=[mode,week,store,section,catalog].join('|');
   let d=COMMERCIAL_DETAIL_CACHE.get(key);
 
   if(mode==='rubro'){
@@ -1337,7 +1335,7 @@ async function loadCommercialDetail(mode){
   }
   try{
     if(!d){
-      d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(section)}&catalog=${encodeURIComponent(catalog)}`,{timeoutMs:120000});
+      d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(section)}&catalog=${encodeURIComponent(catalog)}&mode=${encodeURIComponent(mode)}`,{timeoutMs:120000});
       if(COMMERCIAL_DETAIL_CACHE.size>=24)COMMERCIAL_DETAIL_CACHE.delete(COMMERCIAL_DETAIL_CACHE.keys().next().value);
       COMMERCIAL_DETAIL_CACHE.set(key,d);
     }
@@ -1375,7 +1373,7 @@ async function loadMacroAreaDetail(){
   if($('#macroAreaTitle')) $('#macroAreaTitle').textContent=`Ubicación · ${titleScope}${MACRO_AREA_SECTION!=='Todas'?' · '+MACRO_AREA_SECTION:''}${MACRO_AREA_GROUP!=='Todas'?' · '+MACRO_AREA_GROUP:''}`;
   if($('#macroAreaTable')) $('#macroAreaTable').innerHTML='<tr><td colspan="12">Cargando detalle por ubicación...</td></tr>';
   try{
-    const d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(MACRO_AREA_SECTION)}&catalog=${encodeURIComponent($('#catalog')?.value||'Todos')}`,{timeoutMs:120000});
+    const d=await api(`/api/commercial-detail?week=${encodeURIComponent(week)}&store=${encodeURIComponent(store)}&section=${encodeURIComponent(MACRO_AREA_SECTION)}&catalog=${encodeURIComponent($('#catalog')?.value||'Todos')}&mode=area`,{timeoutMs:120000});
     const groups=['Colgado','Doblado','Jeans','Lencería'];
     const order={Colgado:1,Doblado:2,Jeans:3,Lencería:4};
     const src=(d.locations||[]).filter(x=>groups.includes(x.group)&&(MACRO_AREA_GROUP==='Todas'||x.group===MACRO_AREA_GROUP));
