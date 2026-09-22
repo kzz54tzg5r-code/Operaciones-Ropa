@@ -3180,6 +3180,17 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             num_frame[dest]=0.0
     numeric=num_frame.groupby("__id",sort=False).sum(numeric_only=True)
 
+    # Existencia CEDIS es inventario central por modelo y suele repetirse en
+    # varias filas/ubicaciones. Se conserva el máximo por ID_ART para evitar
+    # duplicarlo al agregar una tienda o toda la compañía.
+    if "Existencia CEDIS" in work.columns:
+        cedis_src=pd.to_numeric(work["Existencia CEDIS"],errors="coerce").fillna(0.0)
+        cedis=cedis_src.groupby(work["__id"]).max().rename("cedis")
+        numeric=numeric.join(cedis,how="left")
+    else:
+        numeric["cedis"]=0.0
+    numeric["cedis"]=pd.to_numeric(numeric["cedis"],errors="coerce").fillna(0.0)
+
     # DDI del archivo = Días de inventario SUG 7. No se suma; se conserva el
     # promedio de los registros que forman el modelo en el alcance seleccionado.
     if "DDI" in work.columns:
@@ -3302,23 +3313,61 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
         return tmp.groupby("__id",sort=False)[src_col].agg(lambda s:_combine_labels(s,3)).to_dict()
 
     location_col="Ubicación detalle" if "Ubicación detalle" in labels.columns else ("Pasillo" if "Pasillo" in labels.columns else "")
-    location_map=compact_labels(location_col) if location_col else {}
-    # En exhibiciones se necesita el número/ubicación concretos (p. ej.
-    # "Cabecera 30A / Isla 02"), no sólo la clasificación "Cabecera / Isla".
-    # Un modelo puede aparecer en varias exhibiciones y se conservan hasta 5.
+
+    # Ubicación operativa y exhibición se separan. Antes una fila como
+    # "Botadero Ropa 23" aparecía también dentro de Ubicación. Ahora, si la fila
+    # está clasificada como exhibición, sólo se muestra en Exhibición.
+    location_map={}
     exhibition_map={}
+    if location_col:
+        if "Exhibición" in labels.columns:
+            exp_kind=labels["Exhibición"].fillna("").astype(str).str.strip()
+            operational=labels[exp_kind.isin(["","nan","None","—"])].copy()
+        else:
+            operational=labels.copy()
+        if not operational.empty:
+            tmp=operational[["__id",location_col]].copy()
+            tmp[location_col]=tmp[location_col].fillna("").astype(str).str.strip()
+            tmp=tmp[~tmp[location_col].isin(["","nan","None","—"])].drop_duplicates()
+            if not tmp.empty:
+                location_map=tmp.groupby("__id",sort=False)[location_col].agg(lambda s:_combine_labels(s,3)).to_dict()
+
     if location_col and "Exhibición" in labels.columns:
-        exhibition_labels=labels[["__id",location_col,"Exhibición"]].copy()
-        exhibition_labels["Exhibición"]=exhibition_labels["Exhibición"].fillna("").astype(str).str.strip()
-        exhibition_labels[location_col]=exhibition_labels[location_col].fillna("").astype(str).str.strip()
-        exhibition_labels=exhibition_labels[
-            ~exhibition_labels["Exhibición"].isin(["","nan","None","—"])
-            & ~exhibition_labels[location_col].isin(["","nan","None","—"])
-        ].drop_duplicates(["__id",location_col])
-        if not exhibition_labels.empty:
-            exhibition_map=exhibition_labels.groupby("__id",sort=False)[location_col].agg(
-                lambda s:_combine_labels(s,5)
-            ).to_dict()
+        exp=labels[["__id",location_col,"Exhibición"]].copy()
+        exp["Exhibición"]=exp["Exhibición"].fillna("").astype(str).str.strip()
+        exp[location_col]=exp[location_col].fillna("").astype(str).str.strip()
+        exp=exp[
+            ~exp["Exhibición"].isin(["","nan","None","—"])
+            & ~exp[location_col].isin(["","nan","None","—"])
+        ].drop_duplicates(["__id","Exhibición",location_col])
+
+        def compact_exhibitions(group):
+            kinds={}
+            order=[]
+            for row in group.itertuples(index=False):
+                raw_id=str(row[0])
+                raw_loc=str(row[1] or "").strip()
+                kind=str(row[2] or "").strip()
+                if not kind:
+                    continue
+                if kind not in kinds:
+                    kinds[kind]=[]
+                    order.append(kind)
+                # Ej.: Botadero Ropa 23 + Botadero Ropa 24 => Botadero 23, 24.
+                nums=re.findall(r"(?<!\\d)(\\d+[A-Za-z]?)(?!\\d)",raw_loc)
+                for number in nums:
+                    number=number.upper()
+                    if number not in kinds[kind]:
+                        kinds[kind].append(number)
+            parts=[]
+            for kind in order[:5]:
+                nums=kinds.get(kind,[])[:10]
+                parts.append(kind+(" "+", ".join(nums) if nums else ""))
+            return " · ".join(parts)
+
+        if not exp.empty:
+            exhibition_map=exp.groupby("__id",sort=False).apply(compact_exhibitions,include_groups=False).to_dict()
+
     if not exhibition_map:
         exhibition_map=compact_labels("Exhibición")
     store_map=compact_labels("Tienda")
@@ -3338,6 +3387,7 @@ def _capacity_model_rows(store: str="Compañía", section: str="Todas", mode: st
             "rank":int(getattr(r,"rank",0) or 0),
             "suggested":float(getattr(r,"suggested",0) or 0),
             "existence":float(getattr(r,"existence",0) or 0),
+            "cedis":float(getattr(r,"cedis",0) or 0),
             "capacity":float(getattr(r,"capacity",0) or 0),
             "occupancy":None if pd.isna(getattr(r,"occupancy",np.nan)) else float(getattr(r,"occupancy",0) or 0),
             "sales_pzas_30":float(getattr(r,"sales_pzas_30",0) or 0),
@@ -3792,31 +3842,77 @@ def _capacity_store_comparative_v45(frame: pd.DataFrame, managed: list[str], sec
 
 
 def _capacity_rubros_v45(work: pd.DataFrame, section: str="Todas", period: str=""):
-    """Detalle por rubro/subcategoría directamente desde capacidades."""
-    if work is None or work.empty:
-        return []
-    base=work.copy()
-    if "Subcategoría" not in base.columns:
-        return []
-    base["Subcategoría"]=base["Subcategoría"].fillna("").astype(str).str.strip()
-    base=base[base["Subcategoría"].ne("")]
-    if base.empty:
-        return []
-    # Aun en Compañía/Todas se conserva la sección real para que el detalle sea
-    # legible y pueda ordenarse macro -> sección -> rubro.
-    group_cols=["Sección","Subcategoría"] if "Sección" in base.columns else ["Subcategoría"]
-    rows=[]
-    for keys,g in base.groupby(group_cols,dropna=False,sort=False):
-        if not isinstance(keys,tuple):
-            keys=(keys,)
-        if len(keys)>=2:
-            sec=str(keys[0] or "Sin sección"); rub=str(keys[1] or "Sin subcategoría")
-        else:
-            sec=section if section!="Todas" else "Compañía"; rub=str(keys[0] or "Sin subcategoría")
-        m=_capacity_metrics(g,period)
-        rows.append({"store":"Compañía","section":sec,"rubro":rub,"models":int(g["ID_ART"].fillna("").astype(str).str.strip().replace({"nan":"","None":""}).nunique()),**m})
-    return sorted(rows,key=lambda r:(-float(r.get("sales_value") or 0),-float(r.get("suggested") or 0),str(r.get("section") or ""),r["rubro"]))
+    """Detalle por rubro vectorizado desde capacidades.
 
+    Evita ejecutar _capacity_metrics grupo por grupo sobre ~196 mil filas.
+    Esto reduce de forma importante el tiempo de Sección/Rubro en móvil y PC.
+    """
+    if work is None or work.empty or "Subcategoría" not in work.columns:
+        return []
+
+    base=work
+    rub=base["Subcategoría"].fillna("").astype(str).str.strip()
+    valid=~rub.isin(["","nan","None"])
+    if not valid.any():
+        return []
+
+    idx=base.index[valid]
+    tmp=pd.DataFrame(index=idx)
+    if "Sección" in base.columns:
+        tmp["section"]=base.loc[idx,"Sección"].fillna("Sin sección").astype(str).str.strip().replace({"":"Sin sección","nan":"Sin sección","None":"Sin sección"})
+    else:
+        tmp["section"]=section if section!="Todas" else "Compañía"
+    tmp["rubro"]=rub.loc[idx]
+    tmp["id_art"]=base.loc[idx,"ID_ART"].fillna("").astype(str).str.strip() if "ID_ART" in base.columns else ""
+
+    pcol,vcol=_capacity_period_columns(period)
+    numeric_map={
+        "capacity":"Capacidad","floor":"Existencia piso","warehouse":"Existencia bodega",
+        "existence":"Existencia","suggested":"VPD","sales_pzas":pcol,"sales_value":vcol,
+    }
+    for dest,src in numeric_map.items():
+        if src in base.columns:
+            tmp[dest]=pd.to_numeric(base.loc[idx,src],errors="coerce").fillna(0.0)
+        else:
+            tmp[dest]=0.0
+
+    if "DDI" in base.columns:
+        ddi=pd.to_numeric(base.loc[idx,"DDI"],errors="coerce").fillna(0.0)
+    else:
+        ddi=pd.Series(0.0,index=idx)
+    tmp["ddi_weighted"]=ddi*tmp["suggested"]
+
+    if "Utilidad %" in base.columns:
+        util=pd.to_numeric(base.loc[idx,"Utilidad %"],errors="coerce").fillna(0.0)
+        tmp["utility_value"]=tmp["sales_value"]*util/100.0
+    else:
+        tmp["utility_value"]=0.0
+
+    keys=["section","rubro"]
+    agg=tmp.groupby(keys,sort=False,observed=True).agg(
+        models=("id_art",lambda s:s.replace({"":"__EMPTY__"}).loc[lambda x:x!="__EMPTY__"].nunique()),
+        capacity=("capacity","sum"),floor=("floor","sum"),warehouse=("warehouse","sum"),
+        existence=("existence","sum"),suggested=("suggested","sum"),
+        sales_pzas=("sales_pzas","sum"),sales_value=("sales_value","sum"),
+        utility_value=("utility_value","sum"),ddi_weighted=("ddi_weighted","sum"),
+    ).reset_index()
+
+    agg["ddi"]=np.where(agg["suggested"]>0,agg["ddi_weighted"]/agg["suggested"],0.0)
+    agg["occupancy"]=np.where(agg["capacity"]>0,agg["existence"]/agg["capacity"]*100,np.nan)
+
+    rows=[]
+    for r in agg.itertuples(index=False):
+        rows.append({
+            "store":"Compañía","section":str(r.section or "Sin sección"),
+            "rubro":str(r.rubro or "Sin subcategoría"),"models":int(r.models or 0),
+            "capacity":float(r.capacity or 0),"floor":float(r.floor or 0),
+            "warehouse":float(r.warehouse or 0),"existence":float(r.existence or 0),
+            "suggested":float(r.suggested or 0),"ddi":float(r.ddi or 0),
+            "sales_pzas":float(r.sales_pzas or 0),"sales_value":float(r.sales_value or 0),
+            "utility_value":float(r.utility_value or 0),
+            "occupancy":None if pd.isna(r.occupancy) else float(r.occupancy),
+        })
+    return sorted(rows,key=lambda r:(-float(r.get("sales_value") or 0),-float(r.get("suggested") or 0),str(r.get("section") or ""),str(r.get("rubro") or "")))
 
 def _capacity_accordion_payload(store: str="Compañía", section: str="Todas", catalog: str="Todos", period: str="") -> dict:
     frame=_capacity_frame_for_period(period)
