@@ -78,6 +78,7 @@ from v174_mobile_sales_repair_patch import install as _install_v174_mobile_sales
 from v175_compact_filter_tabs_patch import install as _install_v175_compact_filter_tabs_patch
 from v176_commercial_integral_patch import install as _install_v176_commercial_integral_patch
 from v177_sellthrough_report_patch import install as _install_v177_sellthrough_report_patch
+from v190_lingerie_checklist_patch import install as _install_v190_lingerie_checklist_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -152,4 +153,5 @@ _install_v174_mobile_sales_repair_patch(web_app)
 _install_v175_compact_filter_tabs_patch(web_app)
 _install_v176_commercial_integral_patch(web_app)
 _install_v177_sellthrough_report_patch(web_app)
+_install_v190_lingerie_checklist_patch(web_app)
 app = web_app.app
