@@ -1895,6 +1895,8 @@ async function renderSales176(existing,force){
       kpi('Crecimiento',pct(t.growth),d.year+' vs '+d.previous_year,'#f59e0b',tone(t.growth,false));
     const empty=q('#salesExecEmpty');if(empty)empty.classList.toggle('hidden',n(t.current)>0||n(t.previous)>0||n(t.target)>0);
     const src=q('#salesExecSource');if(src)src.textContent=d.source_label+' · '+d.store;
+    const salesMainTitle=q('#v109-sales-exec .sales-exec-title');
+    if(salesMainTitle)salesMainTitle.textContent='Ventas · '+d.store+' · Año vs año pasado';
     const title=q('#salesChartTitle');if(title)title.textContent=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta mensual '+d.year+' vs '+d.previous_year+' · '+d.store;
     const coverage=q('#salesCoverage');if(coverage)coverage.textContent=(d.available_months||[]).length+' PDF/mes disponibles'+(d.cut_date?' · último corte '+d.cut_date:'');
     salesChart176(d);renderSalesTables(d);
