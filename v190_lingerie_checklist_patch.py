@@ -22,13 +22,15 @@ def install(m):
     from fastapi.responses import HTMLResponse
 
     ROLE_LINGERIE = "colaborador_lenceria"
+    ROLE_OPERATION = "colaborador_operativo"
     EDIT_ROLES = ("superadmin", "admin", ROLE_LINGERIE)
     VIEW_ROLES = ("superadmin", "admin", "director", "tienda", ROLE_LINGERIE)
 
-    m.ROLES = tuple(dict.fromkeys(tuple(m.ROLES) + (ROLE_LINGERIE,)))
+    m.ROLES = tuple(dict.fromkeys(tuple(m.ROLES) + (ROLE_LINGERIE, ROLE_OPERATION, "colaborador")))
     m.ROLE_LABELS["colaborador"] = "Colaborador operativo"
+    m.ROLE_LABELS[ROLE_OPERATION] = "Colaborador operativo"
     m.ROLE_LABELS[ROLE_LINGERIE] = "Colaborador de lencería"
-    m.REPORT_TABS.setdefault("commercial.lingerie", "Checklist lencería")
+    m.REPORT_TABS.setdefault("commercial.lingerie_checklist", "Checklist lencería")
 
     with m.db() as con:
         con.execute("""CREATE TABLE IF NOT EXISTS lingerie_champion_checklist(
@@ -42,6 +44,9 @@ def install(m):
             PRIMARY KEY(period,store,family,rank)
         )""")
         con.execute("CREATE INDEX IF NOT EXISTS ix_lingerie_checklist_store_period ON lingerie_champion_checklist(store,period)")
+        # Unificar el nombre del perfil operativo nuevo sin perder cuentas creadas
+        # con el rol histórico "colaborador".
+        con.execute("UPDATE users SET role=? WHERE role='colaborador'", (ROLE_OPERATION,))
 
     old_require_user = m.require_user
 
@@ -163,8 +168,8 @@ def install(m):
         slim["brand"] = work.get("Marca", pd.Series("", index=work.index)).fillna("").astype(str).str.strip()
         slim["sales_value"] = pd.to_numeric(work[value_col], errors="coerce").fillna(0.0) if value_col else 0.0
         slim["sales_pzas"] = pd.to_numeric(work[pieces_col], errors="coerce").fillna(0.0) if pieces_col else 0.0
-        slim["suggested"] = pd.to_numeric(work.get("VPD", 0), errors="coerce").fillna(0.0)
-        slim["existence"] = pd.to_numeric(work.get("Existencia", 0), errors="coerce").fillna(0.0)
+        slim["suggested"] = pd.to_numeric(work["VPD"], errors="coerce").fillna(0.0) if "VPD" in work.columns else 0.0
+        slim["existence"] = pd.to_numeric(work["Existencia"], errors="coerce").fillna(0.0) if "Existencia" in work.columns else 0.0
         slim = slim[~slim["id_art"].isin(["", "nan", "None"])]
 
         if slim.empty:
@@ -484,22 +489,25 @@ def install(m):
 
   if(typeof roleLabel==='object'){
     roleLabel.colaborador='Colaborador operativo';
+    roleLabel.colaborador_operativo='Colaborador operativo';
     roleLabel.colaborador_lenceria='Colaborador de lencería';
   }
 
   function ensureRoleOptions(){
     const nr=q('#newRole');
     if(nr){
-      const op=[...nr.options].find(o=>o.value==='colaborador');
+      [...nr.options].filter(o=>o.value==='colaborador').forEach(o=>o.remove());
+      let op=[...nr.options].find(o=>o.value==='colaborador_operativo');
       if(op)op.textContent='Colaborador operativo';
-      else nr.insertBefore(new Option('Colaborador operativo','colaborador'),nr.firstChild);
+      else nr.insertBefore(new Option('Colaborador operativo','colaborador_operativo'),nr.firstChild);
       if(![...nr.options].some(o=>o.value==='colaborador_lenceria'))nr.insertBefore(new Option('Colaborador de lencería','colaborador_lenceria'),nr.firstChild);
-      const sync=()=>{const s=q('#newStore');if(s)s.disabled=!['tienda','colaborador','colaborador_lenceria'].includes(nr.value)};
+      const sync=()=>{const s=q('#newStore');if(s)s.disabled=!['tienda','colaborador_operativo','colaborador_lenceria'].includes(nr.value)};
       nr.onchange=sync;sync();
     }
     qa('.userEditRole').forEach(sel=>{
-      let op=[...sel.options].find(o=>o.value==='colaborador');
-      if(op)op.textContent='Colaborador operativo';else sel.add(new Option('Colaborador operativo','colaborador'));
+      [...sel.options].filter(o=>o.value==='colaborador').forEach(o=>o.remove());
+      let op=[...sel.options].find(o=>o.value==='colaborador_operativo');
+      if(op)op.textContent='Colaborador operativo';else sel.add(new Option('Colaborador operativo','colaborador_operativo'));
       if(![...sel.options].some(o=>o.value==='colaborador_lenceria'))sel.add(new Option('Colaborador de lencería','colaborador_lenceria'));
     });
   }
@@ -512,7 +520,7 @@ def install(m):
     let btn=nav.querySelector('[data-sub="lingerie-checklist"]');
     if(!btn){
       btn=document.createElement('button');
-      btn.className='switch';btn.dataset.sub='lingerie-checklist';btn.dataset.tabKey='commercial.lingerie';btn.textContent='Checklist lencería';
+      btn.className='switch';btn.dataset.sub='lingerie-checklist';btn.dataset.tabKey='commercial.lingerie_checklist';btn.textContent='Checklist lencería';
       const upload=nav.querySelector('[data-sub="analysis-upload"]');nav.insertBefore(btn,upload||null);
     }
     if(!btn.dataset.bound190){
