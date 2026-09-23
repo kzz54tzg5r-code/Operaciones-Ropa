@@ -83,6 +83,7 @@ REPORT_TABS = {
     "operations.month": "Mensual",
     "operations.conversion": "Conversión",
     "operations.recovery": "Recuperación $",
+    "operations.recovery_store": "Recuperación por Tienda",
     "operations.productivity": "Productividad",
     "operations.routes": "Recorridos",
     "operations.score": "Score",
@@ -5430,11 +5431,17 @@ def _report_export_payload(data: dict, report: str):
     stores,recovery=_operations_export_sections(data)
     productivity=data.get("productivity",[])
 
+    avg_ticket=(float(metrics.get("return_value") or 0)/float(metrics.get("dev_pzs") or 0)) if float(metrics.get("dev_pzs") or 0) else 0.0
     summary=[
         ("Reporte", report),
         ("Periodo", data.get("period_value") or "Histórico"),
         ("Piezas ingresadas", metrics.get("ingresos",0)),
+        ("Dev Pzs", metrics.get("dev_pzs",0)),
+        ("Piezas recuperadas", metrics.get("converted_pieces",0)),
         ("Conversión %", metrics.get("conversion_pct",0)),
+        ("Ticket promedio", avg_ticket),
+        ("Valor devolución", metrics.get("return_value",0)),
+        ("Venta recuperada estimada", metrics.get("recovered_value",0)),
         ("Recuperación %", metrics.get("recovery_pct",0)),
         ("Productividad %", metrics.get("productivity_pct",0)),
         ("Recorridos %", metrics.get("pct_recorridos",0)),

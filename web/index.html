@@ -368,6 +368,7 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-opview="Reporte Mensual" data-tab-key="operations.month">Mensual</button>
   <button class="switch" data-opview="Conversión" data-tab-key="operations.conversion">Conversión</button>
   <button class="switch" data-opview="Recuperación Económica" data-tab-key="operations.recovery">Recuperación $</button>
+  <button class="switch" data-opview="Recuperación por Tienda" data-tab-key="operations.recovery_store">Recuperación por Tienda</button>
   <button class="switch" data-opview="Productividad por Colaborador" data-tab-key="operations.productivity">Productividad</button>
   <button class="switch" data-opview="Cumplimiento de Recorridos" data-tab-key="operations.routes">Recorridos</button>
   <button class="switch" data-opview="Índice Integral" data-tab-key="operations.score">Score</button>
@@ -1627,6 +1628,7 @@ const OPER_TITLES={
   'Reporte Mensual':'Mes seleccionado · operación y desempeño consolidado',
   'Conversión':'Devoluciones convertidas a venta dentro de la misma semana ISO',
   'Recuperación Económica':'Valor de devolución, valor recuperado y pendiente',
+  'Recuperación por Tienda':'Impacto económico por tienda con devoluciones, piezas recuperadas y venta recuperada estimada',
   'Productividad por Colaborador':'Ranking por piezas procesadas, días trabajados y meta',
   'Productividad por Actividad':'Volumen procesado por tipo de actividad',
   'Eficiencia Operativa':'Acondicionado, ubicado y pendientes por tienda',
@@ -1764,6 +1766,35 @@ function recoveryTable(rows){
   return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>Conversión</th><th>Valor devolución</th><th>Recuperación $</th><th>Recup. %</th><th>Pend. Pzs</th><th>Pend. $</th></tr></thead><tbody>
   ${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(r.return_value)}</td><td>${fmtMoney(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoney(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
 }
+function recoveryStoreImpactTable(rows){
+  const ordered=[...(rows||[])].filter(r=>Number(r.dev_pzs||0)>0||Number(r.converted_pieces||0)>0)
+    .sort((a,b)=>Number(b.recovered_value||0)-Number(a.recovered_value||0)||Number(b.conversion_pct||0)-Number(a.conversion_pct||0));
+  if(!ordered.length)return '<div class="infoempty">No hay devoluciones o recuperación para el periodo seleccionado.</div>';
+  return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>% Recuperación</th><th>Ticket prom.</th><th>Valor devolución</th><th>Venta recuperada est.</th><th>Pendiente $</th></tr></thead><tbody>
+  ${ordered.map((r,i)=>{
+    const dev=Number(r.dev_pzs||0), ticket=dev?Number(r.return_value||0)/dev:0;
+    return `<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(dev)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(ticket)}</td><td>${fmtMoney(r.return_value)}</td><td><b>${fmtMoney(r.recovered_value)}</b></td><td>${fmtMoney(r.pending_value)}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function recoveryMoneyTopChart(rows){
+  const data=[...(rows||[])].filter(r=>Number(r.recovered_value||0)>0)
+    .sort((a,b)=>Number(b.recovered_value||0)-Number(a.recovered_value||0)).slice(0,7);
+  if(!data.length)return '<div class="infoempty">No hay venta recuperada estimada para graficar.</div>';
+  const max=Math.max(1,...data.map(r=>Number(r.recovered_value||0)));
+  return `<div class="bars">${data.map((r,i)=>`<div class="bar"><span>#${i+1} · ${r.store}</span><div class="track"><div class="fill" style="width:${Math.max(2,Number(r.recovered_value||0)/max*100)}%"></div></div><b>${fmtMoney(r.recovered_value)}</b></div>`).join('')}</div>`;
+}
+function recoveryLogicPanel(){
+  return `<div class="panel"><div class="panel-head"><b>Lógica de cálculo</b><span class="status ok">Datos del proyecto</span></div>
+    <div class="preview-grid">
+      <div class="preview-item">1 · Pzas recuperadas<b>Ventas posteriores asignadas FIFO a Dev Pzs del mismo ID / color / semana.</b></div>
+      <div class="preview-item">2 · % Recuperación<b>Pzas recuperadas ÷ Dev Pzs. Los totales se calculan sobre sumas.</b></div>
+      <div class="preview-item">3 · Ticket promedio<b>Valor devolución ÷ Dev Pzs; el valor usa el precio unitario derivado de Vta Imp / Vta Pzs cuando existe.</b></div>
+      <div class="preview-item">4 · Venta recuperada estimada<b>Pzas recuperadas × ticket promedio del lote FIFO.</b></div>
+    </div>
+    <div class="note" style="margin-top:8px">La base actual tiene fecha diaria, no hora exacta de reincorporación; por eso este reporte no etiqueta recuperación “≤24 h” hasta contar con una marca horaria confiable.</div>
+  </div>`;
+}
+
 function activityRows(rows){
   const map={};
   rows.forEach(r=>{const k=r.activity||r.reason||'Sin actividad';map[k]=(map[k]||0)+Number(r.pieces||0)});
@@ -2054,6 +2085,17 @@ async function renderOperativoView(name,force=false){
       kpiCard('% Recuperación',pct(mt.recovery_pct),'Recuperado / valor devolución','#10B981',metricClass(mt.recovery_pct,80,60)),
       kpiCard('Pendiente $',fmtMoney(mt.pending_recovery_value),'Valor aún no recuperado','#EF4444')
     ])+recoveryTable(rec);
+  }else if(name==='Recuperación por Tienda'){
+    const companyTicket=Number(mt.dev_pzs||0)?Number(mt.return_value||0)/Number(mt.dev_pzs||0):0;
+    out=reportKpis([
+      kpiCard('Dev Pzs',fmt(mt.dev_pzs),'Piezas devueltas detectadas','#3366CC'),
+      kpiCard('% Recuperación',pct(mt.conversion_pct),`${fmt(mt.converted_pieces)} pzas recuperadas`,'#10B981',metricClass(mt.conversion_pct,80,60)),
+      kpiCard('Ticket promedio',fmtMoney(companyTicket),'Valor devolución / Dev Pzs','#F59E0B'),
+      kpiCard('Venta recuperada estimada',fmtMoney(mt.recovered_value),'Conversión FIFO valorizada','#7C3AED')
+    ]);
+    out+=`<div class="grid"><div class="panel"><div class="panel-head"><b>Top tiendas por venta recuperada estimada</b><span class="status">Mayor a menor</span></div>${recoveryMoneyTopChart(rec)}</div>${recoveryLogicPanel()}</div>`;
+    out+=`<div class="title">Recuperación por tienda</div>${recoveryStoreImpactTable(rec)}`;
+    out+=`<div class="note" style="margin-top:8px">Las tiendas marcadas como Proyecto se resaltan. El reporte conserva todas las tiendas disponibles en el alcance seleccionado.</div>`;
   }else if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores'){
     const top=prod.slice(0,3), bottom=[...prod].sort((a,b)=>a.pct-b.pct).slice(0,3);
     out=reportKpis([
