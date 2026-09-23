@@ -3765,6 +3765,30 @@ def _load_capacity_compact_cache(entry: dict) -> pd.DataFrame:
     # Así no conviven una copia completa y otra compacta durante los groupby.
     frame=_load_capacity_cache(entry)
     if frame is None or frame.empty:
+        # El schema puede cambiar después de corregir el parser. En ese caso el
+        # pickle normalizado viejo se invalida y debemos reconstruirlo desde el
+        # Excel ya cargado; antes se devolvía vacío y Comercial/Sell Through
+        # quedaban en 0 hasta volver a subir manualmente el archivo.
+        try:
+            source_path=resolve_entry_path(entry)
+            frame=read_capacity_file(source_path)
+            if isinstance(frame,pd.DataFrame) and not frame.empty:
+                frame=_prepare_capacity_frame(frame)
+                normalized=_capacity_cache_path(str(entry.get("id") or ""))
+                frame.to_pickle(normalized)
+                update_entry(
+                    "capacities",
+                    str(entry.get("id") or ""),
+                    cache_file=str(normalized.relative_to(DATA_ROOT))
+                )
+                print(
+                    f"[V190] Cache capacidades reconstruido desde fuente: {source_path.name} filas={len(frame)}",
+                    flush=True,
+                )
+        except Exception as exc:
+            print(f"[V190] No se pudo reconstruir capacidades desde fuente: {type(exc).__name__}: {exc}",flush=True)
+            frame=pd.DataFrame()
+    if frame is None or frame.empty:
         return pd.DataFrame()
     keep=set(_commercial_capacity_columns(frame))
     drop=[x for x in frame.columns if x not in keep]
