@@ -251,7 +251,7 @@ def install(m):
         # Sell Through es un reporte especial: usa únicamente los registros cuyo
         # campo TIPO CATALOGO MAX VIG esté marcado como VIGENTE.
         sales_stamp=_ops_sales_source_stamp(_ops_sales_source())
-        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v181", sales_stamp)
+        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v182", sales_stamp)
         now = time.monotonic()
         cached = cache.get(key)
         if cached and now - cached[0] < 300:
@@ -268,7 +268,7 @@ def install(m):
         frame = m._capacity_frame_for_period(week)
         empty_payload = {
             "week": week, "store": selected_store, "section": section,
-            "catalog": "Tipo catálogo vigente", "status": "Vigente",
+            "catalog": "TIPO CATALOGO MAX VIG", "status": "Estatus catálogo: Vigente",
             "rows": [], "totals": {},
             "formula": "Vta acum pzs / (Vta acum pzs + Stock disponible), donde Stock disponible = Existencia + Tránsito" + (" + Existencia CEDIS" if company_scope else ""),
             "source": "Base de muertos y cambios + Excel de capacidades",
@@ -292,25 +292,38 @@ def install(m):
         status_filter_applied = False
         source_status_col = ""
         active = None
-        if "Tipo catálogo" in work.columns:
-            source_status_col = "Tipo catálogo"
+
+        # Regla correcta acordada:
+        # - TIPO CATALOGO MAX VIG describe el tipo de catálogo del modelo.
+        # - ESTATUS DE CATALOGO determina si el registro está VIGENTE.
+        # La versión anterior intentaba encontrar la palabra "vigente" dentro de
+        # Tipo catálogo y podía conservar únicamente filas distintas a las que
+        # traían la existencia real del ID.
+        if "Estatus catálogo" in work.columns:
+            estatus_key = work["Estatus catálogo"].fillna("").astype(str).map(norm)
+            candidate = estatus_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
+            candidate = candidate & ~estatus_key.str.contains(
+                r"no\s+vig|descontinu|inactiv|baja|cancel|suspend",
+                regex=True, na=False,
+            )
+            # Sólo usar este filtro si realmente hay registros VIGENTES detectados.
+            if bool(candidate.any()):
+                source_status_col = "Estatus catálogo"
+                active = candidate
+                status_filter_applied = True
+
+        # Respaldo para archivos históricos sin ESTATUS DE CATALOGO usable.
+        if active is None and "Tipo catálogo" in work.columns:
             catalog_key = work["Tipo catálogo"].fillna("").astype(str).map(norm)
-            active = catalog_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
-            active = active & ~catalog_key.str.contains(
+            candidate = catalog_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
+            candidate = candidate & ~catalog_key.str.contains(
                 r"no\s+vig|descontinu|inactiv|baja|cancel|suspend",
                 regex=True, na=False,
             )
-            status_filter_applied = True
-        elif "Estatus catálogo" in work.columns:
-            # Respaldo para fuentes históricas que sí traigan un campo explícito.
-            source_status_col = "Estatus catálogo"
-            catalog_key = work["Estatus catálogo"].fillna("").astype(str).map(norm)
-            active = catalog_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
-            active = active & ~catalog_key.str.contains(
-                r"no\s+vig|descontinu|inactiv|baja|cancel|suspend",
-                regex=True, na=False,
-            )
-            status_filter_applied = True
+            if bool(candidate.any()):
+                source_status_col = "Tipo catálogo (respaldo)"
+                active = candidate
+                status_filter_applied = True
 
         if active is not None:
             before_rows = int(len(work))
@@ -382,6 +395,12 @@ def install(m):
             numeric[col] = numeric[col].fillna(default).astype(str)
 
         models = numeric.reset_index().rename(columns={"__id":"id_art"})
+        model_row_counts = work.groupby("__id", sort=False).size().to_dict()
+        model_store_counts = (
+            work.assign(__store_key=work.get("Tienda", pd.Series("", index=work.index)).fillna("").astype(str).map(norm))
+                .groupby("__id", sort=False)["__store_key"].nunique()
+                .to_dict()
+        )
         # Tránsito sí entra al Sell Through tanto en Compañía como por tienda.
         # CEDIS entra sólo en Compañía, como se definió previamente.
         models["inventory_for_sell"] = models["existence"] + models["transit"] + (models["cedis_existence"] if company_scope else 0.0)
@@ -429,14 +448,16 @@ def install(m):
                 "available_base": num(row.get("available_base")),
                 "suggested": num(row.get("suggested")),
                 "sell_through": num(row.get("sell_through")),
+                "capacity_rows": int(model_row_counts.get(str(row.get("id_art") or ""),0) or 0),
+                "capacity_stores": int(model_store_counts.get(str(row.get("id_art") or ""),0) or 0),
             })
 
         payload = {
             "week": week,
             "store": selected_store,
             "section": section,
-            "catalog": "Tipo catálogo vigente",
-            "status": "Vigente",
+            "catalog": "TIPO CATALOGO MAX VIG",
+            "status": "Estatus catálogo: Vigente",
             "rows": rows,
             "totals": {
                 "sell_through": overall,
@@ -464,7 +485,7 @@ def install(m):
             cache.pop(next(iter(cache)))
         cache[key] = (now, payload)
         print(
-            f"[V181-SELLTHROUGH] {week} {selected_store} {section} "
+            f"[V182-SELLTHROUGH] {week} {selected_store} {section} "
             f"modelos={total_models} ST={overall:.1f}% VTA_ACUM={total_sales:.0f} "
             f"CEDIS={total_cedis:.0f} TRANSITO={total_transit:.0f} include_cedis={company_scope} meses={sales_months}",
             flush=True,
@@ -554,7 +575,7 @@ def install(m):
       page.className='page';page.id='page-sellthrough';
       page.innerHTML=
         '<div class="title">Sell Through</div>'+
-        '<div class="subtitle">Rotación por modelo con venta acumulada por ID desde Base de muertos y cambios · Tipo catálogo vigente.</div>'+
+        '<div class="subtitle">Rotación por modelo con venta acumulada por ID desde Base de muertos y cambios · Estatus de catálogo VIGENTE · usando TIPO CATALOGO MAX VIG del archivo.</div>'+
         '<div class="v177-st-kpis" id="v177StKpis"></div>'+
         '<div class="v177-st-head"><div><div class="title" style="margin:0">Ranking de modelos</div><div class="v177-st-note" id="v177StContext"></div></div>'+
           '<div class="v177-st-tabs" id="v177StTabs">'+
@@ -637,7 +658,7 @@ def install(m):
       '<div class="v177-st-kpi"><div class="lab">Stock disponible</div><div class="val">'+nf(t.stock_available)+'</div><div class="note">Existencia + Tránsito'+(d.cedis_in_sellthrough?' + CEDIS':'')+'</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Modelos ≥ 80%</div><div class="val">'+nf(t.over80)+'</div><div class="note">de '+nf(t.models)+' modelos</div></div>';
     const ctx=q('#v177StContext');
-    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Tipo catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades');
+    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Estatus catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades');
     const formula=q('#v177StFormula');
     if(formula)formula.textContent='Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Stock disponible)')+'. Stock disponible es inventario actual, mientras que Base ST = Vta acum pzs + Stock disponible. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
     renderRows(d);
@@ -749,7 +770,7 @@ def install(m):
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureUI,{once:true});
   else ensureUI();
   setTimeout(ensureUI,300);setTimeout(ensureUI,1200);
-  console.info('[V181] Sell Through corrige duplicados de inventario y separa Stock disponible de Base ST.');
+  console.info('[V182] Sell Through filtra VIGENTE por Estatus de catálogo y conserva TIPO CATALOGO MAX VIG como clasificación.');
 })();
 </script>'''
 
