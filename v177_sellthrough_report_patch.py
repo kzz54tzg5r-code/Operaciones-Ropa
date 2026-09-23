@@ -688,7 +688,7 @@ def install(m):
     const ctx=q('#v177StContext');
     if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Estatus catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades fuente (RAW-V2)');
     const formula=q('#v177StFormula');
-    if(formula)formula.textContent='Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Stock disponible)')+'. Stock disponible es inventario actual, mientras que Base ST = Vta acum pzs + Stock disponible. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
+    if(formula)formula.textContent='Archivo fuente: '+(d.source_file||'sin identificar')+' · Motor: '+(d.engine||'legacy')+' · Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Stock disponible)')+'. Stock disponible es inventario actual, mientras que Base ST = Vta acum pzs + Stock disponible. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
     renderRows(d);
   }
 
