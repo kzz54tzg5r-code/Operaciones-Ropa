@@ -260,11 +260,30 @@ def install(m):
             tmp.replace(raw_db)
             print(f"[V192-RAW] Cache directo creado desde {path.name} filas={total_rows}",flush=True)
 
+    def latest_readable_capacity_source():
+        # Sell Through RAW-V2 usa la última carga física disponible, aunque el
+        # procesamiento comercial general haya fallado. Esto permite consultar
+        # inventario real del archivo 21.09.26 mientras se corrige su publicación.
+        manifest=m.load_manifest()
+        entries=sorted(
+            manifest.get("capacities",[]) or [],
+            key=lambda x:str(x.get("uploaded_at") or x.get("created_at") or ""),
+            reverse=True,
+        )
+        for entry in entries:
+            try:
+                path=m.resolve_entry_path(entry)
+            except Exception:
+                continue
+            if not path.exists() or path.suffix.lower() not in (".xlsx",".xlsm"):
+                continue
+            return entry,path
+        return None,None
+
     def ensure_raw(week):
-        entry=m._capacity_source_entry(week)
-        if not entry:raise HTTPException(503,"No hay Excel de capacidades procesado")
-        path=m.resolve_entry_path(entry)
-        if not path.exists():raise HTTPException(503,"No se encontró el Excel fuente de capacidades")
+        entry,path=latest_readable_capacity_source()
+        if not entry or path is None:
+            raise HTTPException(503,"No hay Excel de capacidades disponible para Sell Through")
         if not raw_ready(entry,path):build_raw_cache(entry,path)
         return entry,path
 
@@ -430,12 +449,14 @@ def install(m):
                 {"name":x.get("name"),"status":x.get("status"),"uploaded_at":x.get("uploaded_at"),"rows":x.get("rows")}
                 for x in recent
             ],ensure_ascii=False),flush=True)
-            entry=m._capacity_source_entry("")
-            if entry:
-                path=m.resolve_entry_path(entry)
-                if path.exists():
-                    build_raw_cache(entry,path)
-                    diagnose_formula(path)
+            entry,path=latest_readable_capacity_source()
+            if entry and path is not None and path.exists():
+                print(
+                    f"[V192-SOURCE-ACTIVE] {path.name} status={entry.get('status')} uploaded_at={entry.get('uploaded_at')}",
+                    flush=True,
+                )
+                build_raw_cache(entry,path)
+                diagnose_formula(path)
         except Exception as exc:
             print(f"[V192-RAW] Error precalentando: {type(exc).__name__}: {exc}",flush=True)
     threading.Thread(target=warm,name="sellthrough-raw-v2-warm",daemon=True).start()
