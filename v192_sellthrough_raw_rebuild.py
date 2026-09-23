@@ -96,7 +96,7 @@ def install(m):
             "rubro":pick_index(headers,["SUBCATEGORIA","SUBCATEGORÍA","RUBRO"]),
             "existence":(exact_exist[-1] if exact_exist else pick_index(headers,["EXISTENCIA TOTAL"],last=True)),
             "cedis":pick_index(headers,["EXISTENCIA CEDIS","EXISTENCIA EN CEDIS","EXISTENCIA CEDIS PZAS","EXIST CEDIS","INVENTARIO CEDIS"]),
-            "transit":pick_index(headers,["TRANSITO","TRÁNSITO","EN TRANSITO","EN TRÁNSITO","MERCANCIA EN TRANSITO","MERCANCÍA EN TRÁNSITO"]),
+            "transit":pick_index(headers,["TRANSITO","TRÁNSITO","TRANSITOS","TRÁNSITOS","EN TRANSITO","EN TRÁNSITO","MERCANCIA EN TRANSITO","MERCANCÍA EN TRÁNSITO"]),
             "suggested":pick_index(headers,["SUG 7","SUGERIDO 7","VPD"]),
             "catalog":pick_index(headers,["TIPO CATALOGO MAX VIG","TIPO CATÁLOGO MAX VIG","TIPO CATALOGO","TIPO CATÁLOGO"]),
             "status":pick_index(headers,["ESTATUS DE CATALOGO","ESTATUS DE CATÁLOGO","ESTATUS CATALOGO","ESTATUS CATÁLOGO","ESTATUS CATALOGO MAX VIG","ESTATUS CATÁLOGO MAX VIG"]),
@@ -420,6 +420,16 @@ def install(m):
     def warm():
         try:
             time.sleep(8)
+            manifest=m.load_manifest()
+            recent=sorted(
+                manifest.get("capacities",[]) or [],
+                key=lambda x:str(x.get("uploaded_at") or x.get("created_at") or ""),
+                reverse=True,
+            )[:5]
+            print("[V192-SOURCES] "+json.dumps([
+                {"name":x.get("name"),"status":x.get("status"),"uploaded_at":x.get("uploaded_at"),"rows":x.get("rows")}
+                for x in recent
+            ],ensure_ascii=False),flush=True)
             entry=m._capacity_source_entry("")
             if entry:
                 path=m.resolve_entry_path(entry)
