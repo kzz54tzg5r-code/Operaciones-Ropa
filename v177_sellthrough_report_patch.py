@@ -271,7 +271,7 @@ def install(m):
             "catalog": "TIPO CATALOGO MAX VIG", "status": "Estatus catálogo: Vigente",
             "rows": [], "totals": {},
             "formula": "Vta acum pzs / (Vta acum pzs + Stock disponible), donde Stock disponible = Existencia + Tránsito" + (" + Existencia CEDIS" if company_scope else ""),
-            "source": "Base de muertos y cambios + Excel de capacidades",
+            "source": "Base de muertos y cambios + Excel de capacidades fuente (RAW-V2)",
             "sales_scope": "Acumulado meses disponibles en Base de muertos y cambios",
             "cedis_in_sellthrough": company_scope,
         }
@@ -502,7 +502,7 @@ def install(m):
                 "under50": low,
             },
             "formula": "Vta acum pzs / (Vta acum pzs + Stock disponible), donde Stock disponible = Existencia + Tránsito" + (" + Existencia CEDIS" if company_scope else ""),
-            "source": "Base de muertos y cambios + Excel de capacidades",
+            "source": "Base de muertos y cambios + Excel de capacidades fuente (RAW-V2)",
             "sales_scope": "Acumulado " + (" + ".join(sales_months) if sales_months else "meses disponibles"),
             "sales_months": sales_months,
             "cedis_in_sellthrough": company_scope,
@@ -603,7 +603,7 @@ def install(m):
       page.className='page';page.id='page-sellthrough';
       page.innerHTML=
         '<div class="title">Sell Through</div>'+
-        '<div class="subtitle">Rotación por modelo con venta acumulada por ID desde Base de muertos y cambios · Estatus de catálogo VIGENTE · usando TIPO CATALOGO MAX VIG del archivo.</div>'+
+        '<div class="subtitle">Rotación por modelo con inventario leído directamente del Excel fuente y venta acumulada por ID · Estatus de catálogo VIGENTE · usando TIPO CATALOGO MAX VIG del archivo.</div>'+
         '<div class="v177-st-kpis" id="v177StKpis"></div>'+
         '<div class="v177-st-head"><div><div class="title" style="margin:0">Ranking de modelos</div><div class="v177-st-note" id="v177StContext"></div></div>'+
           '<div class="v177-st-tabs" id="v177StTabs">'+
@@ -686,7 +686,7 @@ def install(m):
       '<div class="v177-st-kpi"><div class="lab">Stock disponible</div><div class="val">'+nf(t.stock_available)+'</div><div class="note">Existencia + Tránsito'+(d.cedis_in_sellthrough?' + CEDIS':'')+'</div></div>'+
       '<div class="v177-st-kpi"><div class="lab">Modelos ≥ 80%</div><div class="val">'+nf(t.over80)+'</div><div class="note">de '+nf(t.models)+' modelos</div></div>';
     const ctx=q('#v177StContext');
-    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Estatus catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades');
+    if(ctx)ctx.textContent=(d.store||'Compañía')+' · '+(d.section||'Todas')+' · Estatus catálogo vigente · '+(d.sales_scope||'Acumulado anual')+' · '+(d.source||'Base de muertos y cambios + Excel de capacidades fuente (RAW-V2)');
     const formula=q('#v177StFormula');
     if(formula)formula.textContent='Sell Through = '+(d.formula||'Vta acum pzs / (Vta acum pzs + Stock disponible)')+'. Stock disponible es inventario actual, mientras que Base ST = Vta acum pzs + Stock disponible. Existencia CEDIS '+(d.cedis_in_sellthrough?'sí se considera en Compañía.':'se muestra, pero no se considera al filtrar una tienda.');
     renderRows(d);
@@ -700,7 +700,7 @@ def install(m):
       const week=q('#week')?.value||'';
       const store=q('#store')?.value||'Compañía';
       const section=q('#section')?.value||'Todas';
-      const d=await A('/api/commercial-sellthrough-v177?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent('Todos'));
+      const d=await A('/api/commercial-sellthrough-v2?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store)+'&section='+encodeURIComponent(section)+'&catalog='+encodeURIComponent('Todos'));
       render(d);
     }catch(e){
       if(body)body.innerHTML='<tr><td colspan="14">No fue posible cargar Sell Through: '+esc(e.message||e)+'. Reintentando al estabilizar el servicio…</td></tr>';
