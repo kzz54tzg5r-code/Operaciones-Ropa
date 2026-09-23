@@ -79,6 +79,7 @@ from v175_compact_filter_tabs_patch import install as _install_v175_compact_filt
 from v176_commercial_integral_patch import install as _install_v176_commercial_integral_patch
 from v177_sellthrough_report_patch import install as _install_v177_sellthrough_report_patch
 from v190_lingerie_checklist_patch import install as _install_v190_lingerie_checklist_patch
+from v192_sellthrough_raw_rebuild import install as _install_v192_sellthrough_raw_rebuild
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -154,4 +155,5 @@ _install_v175_compact_filter_tabs_patch(web_app)
 _install_v176_commercial_integral_patch(web_app)
 _install_v177_sellthrough_report_patch(web_app)
 _install_v190_lingerie_checklist_patch(web_app)
+_install_v192_sellthrough_raw_rebuild(web_app)
 app = web_app.app
