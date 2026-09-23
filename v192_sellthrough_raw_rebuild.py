@@ -368,6 +368,53 @@ def install(m):
             "cedis_in_sellthrough":company_scope,"engine":"RAW-V2",
         }
 
+    def diagnose_formula(path):
+        """Inspecciona la fórmula/columnas crudas del ID de control sin usar caches."""
+        try:
+            wb=load_workbook(path,read_only=True,data_only=False)
+            try:
+                for ws in wb.worksheets:
+                    rows=ws.iter_rows(values_only=False)
+                    header_cells=None;idx=None
+                    for n,row in enumerate(rows,start=1):
+                        headers=[str(cell.value or "").strip() for cell in row]
+                        keys={norm(x) for x in headers if x}
+                        if ({"id_art","id art"} & keys) and ("existencia" in keys or "existencia total" in keys):
+                            header_cells=row;idx=header_map(headers);break
+                        if n>=80:break
+                    if not header_cells or idx.get("id") is None or idx.get("existence") is None:
+                        continue
+                    headers=[str(cell.value or "").strip() for cell in header_cells]
+                    ex_idx=idx["existence"];id_idx=idx["id"]
+                    lo=max(0,ex_idx-4);hi=min(len(headers),ex_idx+3)
+                    print(
+                        "[V192-FORMULA-HEADERS] "+
+                        json.dumps([
+                            {"col":get_column_letter(i+1),"header":headers[i]} for i in range(lo,hi)
+                        ],ensure_ascii=False),
+                        flush=True,
+                    )
+                    found=0
+                    for row in rows:
+                        vals=[cell.value for cell in row]
+                        ident=clean_id(vals[id_idx] if id_idx<len(vals) else "")
+                        if ident!="1322682":continue
+                        payload=[]
+                        for i in range(lo,hi):
+                            cell=row[i] if i<len(row) else None
+                            payload.append({
+                                "col":get_column_letter(i+1),"header":headers[i],
+                                "value":(cell.value if cell is not None else None),
+                                "type":(cell.data_type if cell is not None else None),
+                            })
+                        print("[V192-FORMULA-ID] "+json.dumps(payload,ensure_ascii=False,default=str),flush=True)
+                        found+=1
+                        if found>=5:break
+                    return
+            finally:wb.close()
+        except Exception as exc:
+            print(f"[V192-FORMULA] Error diagnóstico: {type(exc).__name__}: {exc}",flush=True)
+
     # Precalentar el cache directo al iniciar para validar el archivo antes de que
     # el usuario abra la pestaña.
     def warm():
@@ -376,7 +423,9 @@ def install(m):
             entry=m._capacity_source_entry("")
             if entry:
                 path=m.resolve_entry_path(entry)
-                if path.exists():build_raw_cache(entry,path)
+                if path.exists():
+                    build_raw_cache(entry,path)
+                    diagnose_formula(path)
         except Exception as exc:
             print(f"[V192-RAW] Error precalentando: {type(exc).__name__}: {exc}",flush=True)
     threading.Thread(target=warm,name="sellthrough-raw-v2-warm",daemon=True).start()
