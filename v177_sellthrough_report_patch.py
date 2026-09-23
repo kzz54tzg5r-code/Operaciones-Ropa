@@ -251,7 +251,7 @@ def install(m):
         # Sell Through es un reporte especial: usa únicamente los registros cuyo
         # campo TIPO CATALOGO MAX VIG esté marcado como VIGENTE.
         sales_stamp=_ops_sales_source_stamp(_ops_sales_source())
-        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v184", sales_stamp)
+        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v185", sales_stamp)
         now = time.monotonic()
         cached = cache.get(key)
         if cached and now - cached[0] < 300:
@@ -338,7 +338,7 @@ def install(m):
             eligible_ids = set(work.loc[active, "__id"].astype(str))
             work = work[work["__id"].isin(eligible_ids)]
             print(
-                f"[V184-SELLTHROUGH-FILTER] {week or 'vigente'} {selected_store} {section} "
+                f"[V185-SELLTHROUGH-FILTER] {week or 'vigente'} {selected_store} {section} "
                 f"fuente={source_status_col} filas={before_rows} filas_marcadas={active_rows} "
                 f"ids_vigentes={len(eligible_ids)} filas_conservadas={len(work)}",
                 flush=True,
@@ -359,7 +359,7 @@ def install(m):
             _dbg_trans=float(pd.to_numeric(_dbg.get("Tránsito",0),errors="coerce").fillna(0).sum())
             _dbg_stores=int(_dbg.get("Tienda",pd.Series("",index=_dbg.index)).fillna("").astype(str).nunique())
             print(
-                f"[V184-SELLTHROUGH-ID] id={_dbg_id} filas={len(_dbg)} tiendas={_dbg_stores} "
+                f"[V185-SELLTHROUGH-ID] id={_dbg_id} filas={len(_dbg)} tiendas={_dbg_stores} "
                 f"existencia_raw={_dbg_exist:.0f} transito_raw={_dbg_trans:.0f}",
                 flush=True,
             )
@@ -375,17 +375,16 @@ def install(m):
         agg["transit"] = pd.to_numeric(work.get("Tránsito", 0), errors="coerce").fillna(0.0)
         agg["suggested"] = pd.to_numeric(work.get("VPD", 0), errors="coerce").fillna(0.0)
 
-        # El Excel de capacidades puede repetir tienda+ID por ubicación/exhibición.
-        # Existencia, Tránsito y Sugerido son métricas del modelo en esa tienda;
-        # sumarlas por cada ubicación inflaba el denominador del Sell Through.
-        # Primero conservamos un único valor por tienda+ID y sólo después sumamos
-        # entre tiendas cuando el alcance es Compañía.
-        per_store = (
-            agg.groupby(["__store","__id"], sort=False, observed=True)
+        # Para Sell Through la conciliación debe cuadrar exactamente
+        # con el Excel: al filtrar un ID_ART y sumar la columna EXISTENCIA,
+        # el reporte debe devolver esa misma suma. Por ello Existencia y Tránsito
+        # se suman sobre TODAS las filas fuente del alcance, sin deduplicar por
+        # tienda/ubicación. Sugerido se mantiene como suma del alcance.
+        sums = (
+            agg.groupby("__id", sort=False, observed=True)
                [["existence","transit","suggested"]]
-               .max()
+               .sum(numeric_only=True)
         )
-        sums = per_store.groupby(level="__id", sort=False).sum(numeric_only=True)
 
         # CEDIS es inventario central por modelo y se repite entre tiendas/filas:
         # se toma una sola vez por ID.
@@ -399,7 +398,7 @@ def install(m):
         if "1322682" in numeric.index.astype(str):
             _r=numeric.loc["1322682"]
             print(
-                f"[V184-SELLTHROUGH-ID-FINAL] id=1322682 existencia={float(_r.get('existence',0) or 0):.0f} "
+                f"[V185-SELLTHROUGH-ID-FINAL] id=1322682 existencia={float(_r.get('existence',0) or 0):.0f} "
                 f"cedis={float(_r.get('cedis_existence',0) or 0):.0f} "
                 f"transito={float(_r.get('transit',0) or 0):.0f} "
                 f"venta={float(_r.get('sales_pzas',0) or 0):.0f}",
@@ -514,7 +513,7 @@ def install(m):
             cache.pop(next(iter(cache)))
         cache[key] = (now, payload)
         print(
-            f"[V184-SELLTHROUGH] {week} {selected_store} {section} "
+            f"[V185-SELLTHROUGH] {week} {selected_store} {section} "
             f"modelos={total_models} ST={overall:.1f}% VTA_ACUM={total_sales:.0f} "
             f"CEDIS={total_cedis:.0f} TRANSITO={total_transit:.0f} include_cedis={company_scope} meses={sales_months}",
             flush=True,
