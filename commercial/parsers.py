@@ -457,7 +457,12 @@ def _normalize_capacity_source(source: pd.DataFrame, path: str | Path) -> pd.Dat
     out["Exhibición"] = [item[2] for item in visual]
     out["Existencia piso"] = to_number(_series(source, ["EXISTENCIA PISO", "PISO"], 0))
     out["Existencia bodega"] = to_number(_series(source, ["EXISTENCIA BODEGA", "BODEGA"], 0))
-    existence = to_number(_series(source, ["EXISTENCIA TOTAL", "EXISTENCIA"], 0))
+    # Fuente oficial de existencia para el Reporte de Capacidades:
+    # priorizar la columna EXACTA "EXISTENCIA" (actualmente AO en el archivo).
+    # "EXISTENCIA TOTAL" queda sólo como respaldo histórico. El orden anterior
+    # podía tomar una columna derivada/antigua en cero aun cuando EXISTENCIA
+    # contenía el inventario real del ID_ART.
+    existence = to_number(_series(source, ["EXISTENCIA", "EXISTENCIA TOTAL"], 0))
     calculated_existence = out["Existencia piso"] + out["Existencia bodega"]
     out["Existencia"] = existence.where(existence > 0, calculated_existence)
     out["Existencia CEDIS"] = to_number(_series(source, [
