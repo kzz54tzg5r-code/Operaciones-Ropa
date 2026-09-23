@@ -2885,7 +2885,7 @@ def _capacity_unique_model_sets():
 
 CAPACITY_NORMALIZED_DIR = DATA_ROOT / "capacity_normalized"
 CAPACITY_NORMALIZED_DIR.mkdir(parents=True, exist_ok=True)
-CAPACITY_CACHE_SCHEMA = 52
+CAPACITY_CACHE_SCHEMA = 53
 
 _CAPACITY_STORE_ALIAS_BY_KEY={
     login_key("Guadalajara"):"Atemajac",
@@ -3730,7 +3730,7 @@ def _capacity_period_options(requested: str=""):
     return values
 
 
-_CAPACITY_COMPACT_CACHE_VERSION=4
+_CAPACITY_COMPACT_CACHE_VERSION=5
 
 def _capacity_compact_cache_path(entry: dict) -> Path:
     entry_id=str(entry.get("id") or "latest").strip() or "latest"
