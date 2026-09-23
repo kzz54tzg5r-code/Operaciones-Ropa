@@ -251,7 +251,7 @@ def install(m):
         # Sell Through es un reporte especial: usa únicamente los registros cuyo
         # campo TIPO CATALOGO MAX VIG esté marcado como VIGENTE.
         sales_stamp=_ops_sales_source_stamp(_ops_sales_source())
-        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v183", sales_stamp)
+        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v184", sales_stamp)
         now = time.monotonic()
         cached = cache.get(key)
         if cached and now - cached[0] < 300:
@@ -290,16 +290,18 @@ def install(m):
         # "TIPO CATALOGO MAX VIG" como el estatus vigente/descontinuado del modelo.
         # Antes se estaba filtrando por "Estatus comercial", lo que eliminaba todos
         # los registros y dejaba Sell Through en ceros.
+        # Normalizar ID antes de evaluar vigencia. La vigencia es atributo del
+        # MODELO, no de cada fila/tienda individual. Si un ID está vigente, se
+        # deben conservar TODAS sus filas para sumar la existencia real del Excel.
+        work["__id"] = work["ID_ART"].fillna("").astype(str).str.strip()
+        work = work[~work["__id"].isin(["", "nan", "None"])]
+        if work.empty:
+            return empty_payload
+
         status_filter_applied = False
         source_status_col = ""
         active = None
 
-        # Regla correcta acordada:
-        # - TIPO CATALOGO MAX VIG describe el tipo de catálogo del modelo.
-        # - ESTATUS DE CATALOGO determina si el registro está VIGENTE.
-        # La versión anterior intentaba encontrar la palabra "vigente" dentro de
-        # Tipo catálogo y podía conservar únicamente filas distintas a las que
-        # traían la existencia real del ID.
         if "Estatus catálogo" in work.columns:
             estatus_key = work["Estatus catálogo"].fillna("").astype(str).map(norm)
             candidate = estatus_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
@@ -307,13 +309,15 @@ def install(m):
                 r"no\s+vig|descontinu|inactiv|baja|cancel|suspend",
                 regex=True, na=False,
             )
-            # Sólo usar este filtro si realmente hay registros VIGENTES detectados.
             if bool(candidate.any()):
                 source_status_col = "Estatus catálogo"
                 active = candidate
                 status_filter_applied = True
 
-        # Respaldo para archivos históricos sin ESTATUS DE CATALOGO usable.
+        # En este archivo el campo disponible para vigencia es
+        # TIPO CATALOGO MAX VIG. Se usa sólo para decidir QUÉ IDs entran;
+        # después se recuperan todas las filas de esos IDs para no perder
+        # existencias de otras tiendas.
         if active is None and "Tipo catálogo" in work.columns:
             catalog_key = work["Tipo catálogo"].fillna("").astype(str).map(norm)
             candidate = catalog_key.str.contains(r"(^|\s)vig(ente)?(\s|$)", regex=True, na=False)
@@ -322,16 +326,21 @@ def install(m):
                 regex=True, na=False,
             )
             if bool(candidate.any()):
-                source_status_col = "Tipo catálogo (respaldo)"
+                source_status_col = "TIPO CATALOGO MAX VIG"
                 active = candidate
                 status_filter_applied = True
 
+        before_rows = int(len(work))
+        active_rows = 0
+        eligible_ids = None
         if active is not None:
-            before_rows = int(len(work))
-            work = work.loc[active]
+            active_rows = int(active.sum())
+            eligible_ids = set(work.loc[active, "__id"].astype(str))
+            work = work[work["__id"].isin(eligible_ids)]
             print(
-                f"[V178-SELLTHROUGH-FILTER] {week or 'vigente'} {selected_store} {section} "
-                f"fuente={source_status_col} antes={before_rows} vigentes={len(work)}",
+                f"[V184-SELLTHROUGH-FILTER] {week or 'vigente'} {selected_store} {section} "
+                f"fuente={source_status_col} filas={before_rows} filas_marcadas={active_rows} "
+                f"ids_vigentes={len(eligible_ids)} filas_conservadas={len(work)}",
                 flush=True,
             )
 
@@ -340,11 +349,20 @@ def install(m):
             empty_payload["status_source"] = source_status_col
             return empty_payload
 
-        work["__id"] = work["ID_ART"].fillna("").astype(str).str.strip()
-        work = work[~work["__id"].isin(["", "nan", "None"])]
-        if work.empty:
-            empty_payload["status_filter_applied"] = status_filter_applied
-            return empty_payload
+        # Diagnóstico controlado del ID usado para validar contra el Excel.
+        # No altera el cálculo y permite confirmar que las 24 filas/existencia
+        # fuente llegan completas hasta el endpoint.
+        _dbg_id="1322682"
+        if _dbg_id in set(work["__id"].astype(str)):
+            _dbg=work[work["__id"].astype(str)==_dbg_id]
+            _dbg_exist=float(pd.to_numeric(_dbg.get("Existencia",0),errors="coerce").fillna(0).sum())
+            _dbg_trans=float(pd.to_numeric(_dbg.get("Tránsito",0),errors="coerce").fillna(0).sum())
+            _dbg_stores=int(_dbg.get("Tienda",pd.Series("",index=_dbg.index)).fillna("").astype(str).nunique())
+            print(
+                f"[V184-SELLTHROUGH-ID] id={_dbg_id} filas={len(_dbg)} tiendas={_dbg_stores} "
+                f"existencia_raw={_dbg_exist:.0f} transito_raw={_dbg_trans:.0f}",
+                flush=True,
+            )
 
         # La venta acumulada viene de Base de muertos y cambios, donde cada
         # hoja mensual contiene venta por ID y tienda desde abril. La existencia
@@ -377,6 +395,16 @@ def install(m):
             float(sales_map.get(str(ident),0.0) or 0.0)
             for ident in numeric.index
         ]
+
+        if "1322682" in numeric.index.astype(str):
+            _r=numeric.loc["1322682"]
+            print(
+                f"[V184-SELLTHROUGH-ID-FINAL] id=1322682 existencia={float(_r.get('existence',0) or 0):.0f} "
+                f"cedis={float(_r.get('cedis_existence',0) or 0):.0f} "
+                f"transito={float(_r.get('transit',0) or 0):.0f} "
+                f"venta={float(_r.get('sales_pzas',0) or 0):.0f}",
+                flush=True,
+            )
 
         meta_cols = {
             "model": "Modelo",
@@ -486,7 +514,7 @@ def install(m):
             cache.pop(next(iter(cache)))
         cache[key] = (now, payload)
         print(
-            f"[V183-SELLTHROUGH] {week} {selected_store} {section} "
+            f"[V184-SELLTHROUGH] {week} {selected_store} {section} "
             f"modelos={total_models} ST={overall:.1f}% VTA_ACUM={total_sales:.0f} "
             f"CEDIS={total_cedis:.0f} TRANSITO={total_transit:.0f} include_cedis={company_scope} meses={sales_months}",
             flush=True,
