@@ -251,7 +251,7 @@ def install(m):
         # Sell Through es un reporte especial: usa únicamente los registros cuyo
         # campo TIPO CATALOGO MAX VIG esté marcado como VIGENTE.
         sales_stamp=_ops_sales_source_stamp(_ops_sales_source())
-        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v182", sales_stamp)
+        key = (week, norm(selected_store), norm(section), "tipo-catalogo-vigente-ops-sales-v183", sales_stamp)
         now = time.monotonic()
         cached = cache.get(key)
         if cached and now - cached[0] < 300:
@@ -273,6 +273,7 @@ def install(m):
             "formula": "Vta acum pzs / (Vta acum pzs + Stock disponible), donde Stock disponible = Existencia + Tránsito" + (" + Existencia CEDIS" if company_scope else ""),
             "source": "Base de muertos y cambios + Excel de capacidades",
             "sales_scope": "Acumulado meses disponibles en Base de muertos y cambios",
+            "cedis_in_sellthrough": company_scope,
         }
         if frame is None or frame.empty:
             return empty_payload
@@ -485,7 +486,7 @@ def install(m):
             cache.pop(next(iter(cache)))
         cache[key] = (now, payload)
         print(
-            f"[V182-SELLTHROUGH] {week} {selected_store} {section} "
+            f"[V183-SELLTHROUGH] {week} {selected_store} {section} "
             f"modelos={total_models} ST={overall:.1f}% VTA_ACUM={total_sales:.0f} "
             f"CEDIS={total_cedis:.0f} TRANSITO={total_transit:.0f} include_cedis={company_scope} meses={sales_months}",
             flush=True,
