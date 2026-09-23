@@ -329,6 +329,7 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
 
         selected_by_col={}
         selected_headers=[]
+        exact_alias_by_col={}
         selected_cell_re=None
         buffer=b""
         row_no=0
@@ -347,6 +348,7 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
                     if selected_cell_re is None:
                         candidate_by_col={}
                         candidate_headers=[]
+                        candidate_alias_by_col={}
                         for match in _XLSX_GENERIC_CELL_RE.finditer(row):
                             attrs,col,body=match.groups()
                             header=str(_xlsx_decode_cell(attrs,body,shared) or "").strip()
@@ -354,6 +356,13 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
                                 col_text=col.decode("ascii","ignore")
                                 candidate_by_col[col_text]=header
                                 candidate_headers.append(header)
+                                # Guardar la columna EXACTA de EXISTENCIA con un
+                                # nombre sintético único. Así, aunque el Excel
+                                # tenga encabezados repetidos o similares, la
+                                # columna que el usuario valida (EXISTENCIA) no
+                                # puede ser sobreescrita por otra columna.
+                                if norm_text(header)==norm_text("EXISTENCIA"):
+                                    candidate_alias_by_col[col_text]="__EXISTENCIA_EXACT__"
 
                         normalized_headers={norm_text(h) for h in candidate_headers}
                         has_store=bool(normalized_headers & {
@@ -369,7 +378,10 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
                         # primeras 60 filas en lugar de asumir que siempre es la 1.
                         if len(candidate_headers)>=4 and has_store and has_model:
                             selected_by_col=candidate_by_col
-                            selected_headers=candidate_headers
+                            selected_headers=list(dict.fromkeys(candidate_headers))
+                            exact_alias_by_col=candidate_alias_by_col
+                            if exact_alias_by_col and "__EXISTENCIA_EXACT__" not in selected_headers:
+                                selected_headers.append("__EXISTENCIA_EXACT__")
                             column_data={header:[] for header in selected_headers}
                             alt="|".join(sorted((re.escape(col) for col in selected_by_col),key=len,reverse=True))
                             selected_cell_re=re.compile(
@@ -385,9 +397,14 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
                     rec={}
                     for match in selected_cell_re.finditer(row):
                         attrs,col,body=match.groups()
-                        header=selected_by_col.get(col.decode("ascii","ignore"))
+                        col_text=col.decode("ascii","ignore")
+                        header=selected_by_col.get(col_text)
                         if header:
-                            rec[header]=_xlsx_decode_cell(attrs,body,shared)
+                            value=_xlsx_decode_cell(attrs,body,shared)
+                            rec[header]=value
+                            alias=exact_alias_by_col.get(col_text)
+                            if alias:
+                                rec[alias]=value
                     if not rec:
                         continue
                     for header in selected_headers:
@@ -462,9 +479,22 @@ def _normalize_capacity_source(source: pd.DataFrame, path: str | Path) -> pd.Dat
     # "EXISTENCIA TOTAL" queda sólo como respaldo histórico. El orden anterior
     # podía tomar una columna derivada/antigua en cero aun cuando EXISTENCIA
     # contenía el inventario real del ID_ART.
-    existence = to_number(_series(source, ["EXISTENCIA", "EXISTENCIA TOTAL"], 0))
+    existence = to_number(_series(source, ["__EXISTENCIA_EXACT__", "EXISTENCIA", "EXISTENCIA TOTAL"], 0))
     calculated_existence = out["Existencia piso"] + out["Existencia bodega"]
     out["Existencia"] = existence.where(existence > 0, calculated_existence)
+
+    try:
+        _dbg_mask=out["ID_ART"].astype(str).eq("1322682")
+        if bool(_dbg_mask.any()):
+            _dbg_vals=existence.loc[_dbg_mask]
+            print(
+                f"[V191-PARSER-ID] id=1322682 filas_chunk={int(_dbg_mask.sum())} "
+                f"existencia_chunk={float(_dbg_vals.sum()):.0f} "
+                f"exact_col={'__EXISTENCIA_EXACT__' in source.columns}",
+                flush=True,
+            )
+    except Exception:
+        pass
     out["Existencia CEDIS"] = to_number(_series(source, [
         "EXISTENCIA CEDIS", "EXISTENCIA EN CEDIS", "EXISTENCIA CEDIS PZAS",
         "EXIST CEDIS", "EXIST. CEDIS", "INVENTARIO CEDIS", "CEDIS"
