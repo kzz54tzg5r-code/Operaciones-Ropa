@@ -368,6 +368,7 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-opview="Reporte Mensual" data-tab-key="operations.month">Mensual</button>
   <button class="switch" data-opview="Conversión" data-tab-key="operations.conversion">Conversión</button>
   <button class="switch" data-opview="Recuperación Económica" data-tab-key="operations.recovery">Recuperación $</button>
+  <button class="switch" data-opview="Recuperación por Tienda" data-tab-key="operations.recovery_store">Recuperación por Tienda</button>
   <button class="switch" data-opview="Productividad por Colaborador" data-tab-key="operations.productivity">Productividad</button>
   <button class="switch" data-opview="Cumplimiento de Recorridos" data-tab-key="operations.routes">Recorridos</button>
   <button class="switch" data-opview="Índice Integral" data-tab-key="operations.score">Score</button>
@@ -1627,6 +1628,7 @@ const OPER_TITLES={
   'Reporte Mensual':'Mes seleccionado · operación y desempeño consolidado',
   'Conversión':'Devoluciones convertidas a venta dentro de la misma semana ISO',
   'Recuperación Económica':'Valor de devolución, valor recuperado y pendiente',
+  'Recuperación por Tienda':'Impacto económico por tienda con devoluciones, piezas recuperadas y venta recuperada estimada',
   'Productividad por Colaborador':'Ranking por piezas procesadas, días trabajados y meta',
   'Productividad por Actividad':'Volumen procesado por tipo de actividad',
   'Eficiencia Operativa':'Acondicionado, ubicado y pendientes por tienda',
@@ -1764,6 +1766,35 @@ function recoveryTable(rows){
   return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>Conversión</th><th>Valor devolución</th><th>Recuperación $</th><th>Recup. %</th><th>Pend. Pzs</th><th>Pend. $</th></tr></thead><tbody>
   ${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(r.return_value)}</td><td>${fmtMoney(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoney(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
 }
+function recoveryStoreImpactTable(rows){
+  const ordered=[...(rows||[])].filter(r=>Number(r.dev_pzs||0)>0||Number(r.converted_pieces||0)>0)
+    .sort((a,b)=>Number(b.recovered_value||0)-Number(a.recovered_value||0)||Number(b.conversion_pct||0)-Number(a.conversion_pct||0));
+  if(!ordered.length)return '<div class="infoempty">No hay devoluciones o recuperación para el periodo seleccionado.</div>';
+  return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>% Recuperación</th><th>Ticket prom.</th><th>Valor devolución</th><th>Venta recuperada est.</th><th>Pendiente $</th></tr></thead><tbody>
+  ${ordered.map((r,i)=>{
+    const dev=Number(r.dev_pzs||0), ticket=dev?Number(r.return_value||0)/dev:0;
+    return `<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(dev)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(ticket)}</td><td>${fmtMoney(r.return_value)}</td><td><b>${fmtMoney(r.recovered_value)}</b></td><td>${fmtMoney(r.pending_value)}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function recoveryMoneyTopChart(rows){
+  const data=[...(rows||[])].filter(r=>Number(r.recovered_value||0)>0)
+    .sort((a,b)=>Number(b.recovered_value||0)-Number(a.recovered_value||0)).slice(0,7);
+  if(!data.length)return '<div class="infoempty">No hay venta recuperada estimada para graficar.</div>';
+  const max=Math.max(1,...data.map(r=>Number(r.recovered_value||0)));
+  return `<div class="bars">${data.map((r,i)=>`<div class="bar"><span>#${i+1} · ${r.store}</span><div class="track"><div class="fill" style="width:${Math.max(2,Number(r.recovered_value||0)/max*100)}%"></div></div><b>${fmtMoney(r.recovered_value)}</b></div>`).join('')}</div>`;
+}
+function recoveryLogicPanel(){
+  return `<div class="panel"><div class="panel-head"><b>Lógica de cálculo</b><span class="status ok">Datos del proyecto</span></div>
+    <div class="preview-grid">
+      <div class="preview-item">1 · Pzas recuperadas<b>Ventas posteriores asignadas FIFO a Dev Pzs del mismo ID / color / semana.</b></div>
+      <div class="preview-item">2 · % Recuperación<b>Pzas recuperadas ÷ Dev Pzs. Los totales se calculan sobre sumas.</b></div>
+      <div class="preview-item">3 · Ticket promedio<b>Valor devolución ÷ Dev Pzs; el valor usa el precio unitario derivado de Vta Imp / Vta Pzs cuando existe.</b></div>
+      <div class="preview-item">4 · Venta recuperada estimada<b>Pzas recuperadas × ticket promedio del lote FIFO.</b></div>
+    </div>
+    <div class="note" style="margin-top:8px">La base actual tiene fecha diaria, no hora exacta de reincorporación; por eso este reporte no etiqueta recuperación “≤24 h” hasta contar con una marca horaria confiable.</div>
+  </div>`;
+}
+
 function activityRows(rows){
   const map={};
   rows.forEach(r=>{const k=r.activity||r.reason||'Sin actividad';map[k]=(map[k]||0)+Number(r.pieces||0)});
@@ -2050,10 +2081,1601 @@ async function renderOperativoView(name,force=false){
   }else if(name==='Recuperación Económica'){
     out=reportKpis([
       kpiCard('Valor devolución',fmtMoney(mt.return_value),'Precio unitario neto × Dev Pzs','#3366CC'),
-      kpiCard('Recuperación $',fmtMoney(mt.recovered_value),'Venta recuperada','#10B981'),
+      kpiCard('Recuperación 
+    const top=prod.slice(0,3), bottom=[...prod].sort((a,b)=>a.pct-b.pct).slice(0,3);
+    out=reportKpis([
+      kpiCard('Piezas procesadas',fmt(prod.reduce((a,x)=>a+Number(x.pieces||0),0)),'Actividades productivas','#3366CC'),
+      kpiCard('Productividad',fmt(mt.productivity_daily),'Piezas / colaborador-día','#F59E0B'),
+      kpiCard('Cumplimiento',pct(mt.productivity_pct),'Meta diaria configurada','#10B981',metricClass(mt.productivity_pct,100,80))
+    ])+`<div class="grid"><div class="panel"><div class="panel-head"><b>Top 3</b></div>${simplePercentBars(top.map(x=>({name:x.name,pieces:x.pct})))}</div><div class="panel"><div class="panel-head"><b>Oportunidades</b></div>${simplePercentBars(bottom.map(x=>({name:x.name,pieces:x.pct})))}</div></div>
+    <div class="title">Ranking completo</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Días</th><th>Prod. diaria</th><th>Meta</th><th>Cumplimiento</th><th>Faltante</th></tr></thead><tbody>${prod.map((x,i)=>`<tr><td>${i+1}</td><td><b>${x.name}</b></td><td>${x.store}</td><td>${fmt(x.pieces)}</td><td>${fmt(x.days)}</td><td>${fmt(x.daily)}</td><td>${fmt(x.target)}</td><td>${pct(x.pct)}</td><td>${fmt(x.missing)}</td></tr>`).join('')}</tbody></table></div>`;
+  }else if(name==='Productividad por Actividad'){
+    const acts=activityRows(rows).slice(0,30);
+    out=reportKpis([kpiCard('Piezas registradas',fmt(acts.reduce((a,x)=>a+x.pieces,0)),'Por actividad','#3366CC')])+`<div class="chart-box"><div class="chart-title">Volumen por actividad</div>${simpleBars(acts)}</div>`;
+  }else if(name==='Eficiencia Operativa'){
+    out=reportKpis([
+      kpiCard('% Acondicionado',pct(mt.pct_acondicionado),`${fmt(mt.acondicionado)} piezas`,'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('% Ubicado / Ingresos',pct(mt.pct_ubicado),`${fmt(mt.ubicado)} piezas`,'#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('% Ubicado / Acond.',pct(mt.pct_ubicado_acondicionado),'Avance sobre acondicionado','#10B981'),
+      kpiCard('Pendiente ubicar',fmt(mt.pendiente_ubicar),'Por tienda, sin compensar','#EF4444')
+    ])+combinedStoreChart(stores)+opTable(stores);
+  }else if(name==='Cumplimiento de Recorridos'){
+    const daily=(d.daily_peaks||[]).map(x=>({...x,name:x.date,pieces:Number(x.recorridos||0)}));
+    const hourly=(d.hourly_peaks||[]).filter(x=>Number(x.recolectadas||0)>0);
+    out=reportKpis([
+      kpiCard('Meta consolidada',fmt(mt.meta_recorridos),'Meta proporcional al periodo','#3366CC'),
+      kpiCard('Realizados',fmt(mt.recorridos),'Columna RECORRIDOS del Excel','#7C3AED'),
+      kpiCard('Cumplimiento',pct(mt.pct_recorridos),'Realizados / meta','#10B981',metricClass(mt.pct_recorridos,100,80)),
+      kpiCard('Faltante',fmt(mt.faltante_recorridos),'Meta - realizados','#EF4444')
+    ]);
+    out+=`<div class="chart-box"><div class="chart-title">Recorridos por día</div>${simpleBars(daily)}</div>`;
+    out+=`<div class="chart-box"><div class="chart-title">Recolecciones por día · horas y días pico</div>${peakStackBars(d.daily_peaks||[],'date')}</div>`;
+    out+=`<div class="chart-box"><div class="chart-title">Recolecciones por hora · Muertos, Cajas y Probador</div>${peakStackBars(hourly,'hour')}</div>`;
+  }else if(name==='Indicadores Diarios'){
+    out=reportKpis([
+      kpiCard('Ingresos',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
+      kpiCard('Acondicionado / Ingresos',pct(mt.pct_acondicionado),'KPI diario','#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('Ubicado / Acondicionado',pct(mt.pct_ubicado_acondicionado),'KPI diario','#10B981'),
+      kpiCard('Ubicado / Ingresos',pct(mt.pct_ubicado),'KPI diario','#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('Recorridos',fmt(mt.recorridos),pct(mt.pct_recorridos),'#EF4444')
+    ])+opTable(stores);
+  }else if(name==='Ranking de Tiendas'){
+    const rr=[...(d.recovery_by_store||[])].sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0)||Number(b.recovery_pct||0)-Number(a.recovery_pct||0));
+    out=reportKpis([
+      kpiCard('Tiendas del proyecto',fmt(rr.length),'Comparativo por conversión + recuperación','#3366CC'),
+      kpiCard('Conversión compañía',pct(mt.conversion_pct),'Dev Pzs convertidas','#10B981'),
+      kpiCard('Recuperación compañía',pct(mt.recovery_pct),'Recuperación económica','#EC007C')
+    ])+recoveryTable(rr);
+  }else if(name==='Índice Integral'){
+    const scoreRows=(d.score_by_store||[]).filter(x=>x.is_project).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    out=`<div class="donut-row"><div class="donut" style="--p:${Math.min(100,mt.score_integral||0)};--dc:#1769e8" data-label="${Number(mt.score_integral||0).toFixed(1)}"></div>
+    <div style="flex:1;min-width:250px">${reportKpis([
+      kpiCard('Conversión',pct(mt.conversion_pct),'40% del índice','#10B981'),
+      kpiCard('Productividad',pct(mt.productivity_pct),'40% del índice','#F59E0B'),
+      kpiCard('Recorridos',pct(mt.pct_recorridos),'20% del índice','#EF4444'),
+      kpiCard('Score integral',Number(mt.score_integral||0).toFixed(1)+'/100',scoreStatus(mt.score_integral),'#1769e8')
+    ])}</div></div>
+    <div class="title">Score por tienda del proyecto</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Conversión 40%</th><th>Productividad 40%</th><th>Recorridos 20%</th><th>Score</th><th>Estatus</th></tr></thead><tbody>${scoreRows.map((r,i)=>`<tr class="project-row"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${pct(r.conversion_pct)}</td><td>${pct(r.productivity_pct)}</td><td>${pct(r.recorridos_pct)}</td><td><b>${Number(r.score||0).toFixed(1)}</b></td><td>${scoreStatus(r.score)}</td></tr>`).join('')||'<tr><td colspan="7">Información no disponible</td></tr>'}</tbody></table></div>`;
+  }else if(name==='Alertas Inteligentes'){
+    const alerts=[];
+    const g=d.goals||{};
+    if(mt.pct_acondicionado<Number(g.acondicionado_ingresos||85))alerts.push(['Acondicionado bajo',`${pct(mt.pct_acondicionado)} vs meta ${pct(g.acondicionado_ingresos||85)}`,'#fff3cd']);
+    if(mt.pct_ubicado<Number(g.ubicado_ingresos||80))alerts.push(['Ubicado bajo',`${pct(mt.pct_ubicado)} vs meta ${pct(g.ubicado_ingresos||80)}`,'#fde8e8']);
+    if(mt.conversion_pct<Number(g.conversion||80))alerts.push(['Conversión bajo meta',`${pct(mt.conversion_pct)} vs meta ${pct(g.conversion||80)}`,'#fff3cd']);
+    if(mt.pct_recorridos<100)alerts.push(['Recorridos pendientes',`${fmt(mt.faltante_recorridos)} recorridos faltantes`,'#fde8e8']);
+    stores.filter(s=>s.ingresos===0).slice(0,5).forEach(s=>alerts.push(['Tienda sin ingresos',s.store,'#f5f7fa']));
+    out=alerts.length?`<div class="cards">${alerts.map(a=>`<div class="card" style="background:${a[2]}"><h3>${a[0]}</h3><small>${a[1]}</small></div>`).join('')}</div>`:'<div class="infoempty">Sin alertas con el periodo consultado.</div>';
+  }else if(name==='Detalle por Tienda'){
+    out=reportKpis([
+      kpiCard('Muertos',fmt(mt.muertos),'Motivo Muertos','#EC007C'),
+      kpiCard('Probador',fmt(mt.probador),'Motivo Probador','#F59E0B'),
+      kpiCard('Cajas',fmt(mt.cajas),'Motivo Cajas','#7C3AED'),
+      kpiCard('Piezas recolectadas',fmt(mt.recolectadas),'Total Recolección de muertos','#3366CC'),
+      kpiCard('Recorridos realizados',fmt(mt.recorridos),`${pct(mt.pct_recorridos)} · meta ${fmt(mt.meta_recorridos)}`,'#10B981'),
+      kpiCard('Acondicionado',fmt(mt.acondicionado),'Acondicionado/Habilitado','#7C3AED'),
+      kpiCard('Ubicado',fmt(mt.ubicado),'Ubicado/Ubicar','#EC007C'),
+      kpiCard('Pendiente de acondicionar',fmt(mt.pendiente_acondicionar),'Recolectadas - Acondicionado','#F59E0B'),
+      kpiCard('Pendiente de ubicar',fmt(mt.pendiente_ubicar),'Acondicionado - Ubicado','#EF4444')
+    ]);
+    out+=operationalDetailTable(stores,rec)+`<div class="title">Detalle por actividad</div>`+activityDetailTable(activityDetail)+`<div class="title">Recuperación</div>`+recoveryTable(rec);
+  }else if(name==='Perfil de Usuario'){
+    out=`<div class="card"><h3>${USER?.username||'Usuario'}</h3><div class="big">${roleLabel[USER?.role]||USER?.role||''}</div><small>${USER?.store?'Tienda asignada: '+USER.store:'Alcance: Compañía'}</small></div>`;
+  }else if(name==='Inteligencia Operativa'){
+    const worst=[...stores].sort((a,b)=>b.pendiente_ubicar-a.pendiente_ubicar).slice(0,5);
+    const bestRec=[...rec].sort((a,b)=>b.recovery_pct-a.recovery_pct).slice(0,5);
+    out=reportKpis([
+      kpiCard('Volumen ingresado',fmt(mt.ingresos),'Periodo consultado','#3366CC'),
+      kpiCard('Pendiente ubicar',fmt(mt.pendiente_ubicar),'Prioridad operativa','#EF4444'),
+      kpiCard('Pendiente recuperación',fmtMoney(mt.pending_recovery_value),'Prioridad económica','#F59E0B'),
+      kpiCard('Score',Number(mt.score_integral||0).toFixed(1)+'/100','Lectura integral','#10B981')
+    ])+`<div class="grid"><div class="panel"><div class="panel-head"><b>Mayor pendiente operativo</b></div>${simpleBars(worst.map(x=>({name:x.store,pieces:x.pendiente_ubicar})))}</div><div class="panel"><div class="panel-head"><b>Mejor recuperación económica</b></div>${simpleBars(bestRec.map(x=>({name:x.store,pieces:x.recovery_pct})))}</div></div>`;
+  }else{
+    out='<div class="infoempty">Selecciona un reporte.</div>';
+  }
+
+  out+=reportDownloadBar(name);
+  $('#operativoDynamicContent').innerHTML=out;
+}
+
+const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=()=>{ setPeriodSelector(OP_VIEW||'Centro Ejecutivo',OPSDATA||{available_dates:[],available_weeks:[],available_months:[]}); }; }
+
+$('#operPeriodApply').onclick=async()=>{
+  OPER_PERIOD.value=$('#operPeriodSelect').value||'';
+  await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+};
+
+
+async function copyText(text,button){
+  if(!text||text==='No configurada en este equipo'||text==='—')return;
+  try{await navigator.clipboard.writeText(text);const old=button.textContent;button.textContent='Copiado ✓';setTimeout(()=>button.textContent=old,1200)}
+  catch(e){window.prompt('Copia esta liga:',text)}
+}
+async function renderShareInfo(){
+  try{
+    const s=await api('/api/share-info');
+    $('#publicShareUrl').textContent=s.public_url||'No configurada en este equipo';
+    $('#lanShareUrl').textContent=s.lan_url||'No se pudo detectar';
+    $('#shareSourceInfo').innerHTML=`<b>Archivo conectado:</b> ${s.source_file||'Sin archivo'}<br><b>Última actualización:</b> ${s.updated_at||'Sin actualización'}<br><b>Liga local:</b> ${s.local_url}<br><br>${s.note}`;
+    $('#copyPublicUrl').disabled=!s.public_url; $('#copyPublicUrl').textContent=s.public_url?'Copiar liga pública':'Liga pública no configurada';$('#copyPublicUrl').onclick=()=>copyText(s.public_url,$('#copyPublicUrl'));
+    $('#copyLanUrl').disabled=!s.lan_url;$('#copyLanUrl').onclick=()=>copyText(s.lan_url,$('#copyLanUrl'));
+    const best=s.best_url||s.public_url||s.lan_url||s.local_url;
+    $('#shareBestUrl').onclick=async()=>{if(navigator.share){await navigator.share({title:'Operaciones Ropa',text:'Acceso a Operaciones Ropa',url:best})}else{copyText(best,$('#shareBestUrl'))}};
+    $('#whatsappShare').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent('Operaciones Ropa: '+best),'_blank');
+  }catch(e){$('#shareSourceInfo').textContent=e.message}
+}
+
+async function renderGoalsConfig(){
+  $('#operativoCentro').classList.add('hidden');
+  $('#operativoDynamic').classList.remove('hidden');
+  $('#operativoDynamicTitle').textContent='Configuración de metas y tiendas';
+  $('#operativoDynamicSub').textContent='Persistencia, historial y tiendas activas del proyecto';
+  $('#operativoPeriodBar')?.classList.add('hidden');
+  try{
+    const [g,s]=await Promise.all([api('/api/goals'),api('/api/stores?include_inactive=true')]);
+    const goalOrder=[
+      'productividad_diaria','conversion','recuperacion','acondicionado_ingresos','ubicado_ingresos',
+      'recorridos_lunes','recorridos_martes','recorridos_miercoles','recorridos_jueves',
+      'recorridos_viernes','recorridos_sabado','recorridos_domingo','recorridos_semanales'
+    ];
+    const inputs=goalOrder.map(key=>{
+      const label=g.labels?.[key]||key,val=Number(g.values?.[key]??0);
+      const suffix=key.includes('conversion')||key.includes('recuperacion')||key.includes('ingresos')?'%':'';
+      return `<div class="field"><label>${label}</label><div style="display:flex;align-items:center;gap:6px"><input class="goalInput" data-goal="${key}" type="number" min="0" step="1" value="${val}" ${g.editable?'':'disabled'}><span class="note">${suffix}</span></div></div>`;
+    }).join('');
+    const goalHistory=(g.history||[]).map(r=>`<tr><td>${r.changed_at}</td><td>${r.changed_by}</td><td>${g.labels?.[r.key]||r.key}</td><td>${r.old_value}</td><td>${r.new_value}</td></tr>`).join('');
+    const storeRows=(s.stores||[]).map(r=>`<tr data-store-id="${r.id}"><td><input class="storeNameEdit" value="${String(r.name).replaceAll('"','&quot;')}" ${s.editable?'':'disabled'}></td><td><input class="storeActiveEdit" type="checkbox" ${r.active?'checked':''} ${s.editable?'':'disabled'}></td><td><input class="storeProjectEdit" type="checkbox" ${r.project?'checked':''} ${s.editable?'':'disabled'}></td><td>${r.updated_at||''}</td><td>${r.updated_by||''}</td><td>${s.editable?'<button class="action-sm saveStoreRow">Guardar</button>':''}</td></tr>`).join('');
+    const storeHistory=(s.history||[]).map(r=>`<tr><td>${r.changed_at}</td><td>${r.changed_by}</td><td>${r.action}</td><td>${r.old_name||''}</td><td>${r.new_name||''}</td><td>${r.old_active==null?'':r.old_active?'Activo':'Inactivo'}</td><td>${r.new_active==null?'':r.new_active?'Activo':'Inactivo'}</td><td>${r.old_project==null?'':r.old_project?'Sí':'No'}</td><td>${r.new_project==null?'':r.new_project?'Sí':'No'}</td></tr>`).join('');
+
+    $('#operativoDynamicContent').innerHTML=`
+      <div class="panel"><div class="title" style="margin-top:0">Metas vigentes</div><div class="usergrid">${inputs}</div>
+      ${g.editable?'<button class="primary" id="saveGoals" style="margin-top:12px">Guardar metas</button>':''}<div class="msg" id="goalMsg"></div></div>
+      <div class="title">Tiendas y selección de proyecto</div><div class="subtitle">Activa = tienda disponible en el sistema. Proyecto = resalta la tienda en comparativos y la incluye en los detalles operativos del proyecto.</div>
+      ${s.editable?'<div class="panel"><div class="filters-inline"><div class="field"><label>Nueva tienda</label><input id="newProjectStore" placeholder="Nombre de tienda"></div><button class="primary" id="addProjectStore">Agregar tienda</button><button class="primary" id="saveStoreSelection">Guardar selección</button></div><div class="msg" id="storeMsg"></div></div>':''}
+      <div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Activa</th><th>Proyecto</th><th>Actualizada</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>${storeRows}</tbody></table></div>
+      <div class="title">Historial de metas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Meta</th><th>Anterior</th><th>Nueva</th></tr></thead><tbody>${goalHistory||'<tr><td colspan="5">Sin cambios</td></tr>'}</tbody></table></div>
+      <div class="title">Historial de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Nombre anterior</th><th>Nombre nuevo</th><th>Estatus anterior</th><th>Estatus nuevo</th><th>Proyecto anterior</th><th>Proyecto nuevo</th></tr></thead><tbody>${storeHistory||'<tr><td colspan="9">Sin cambios</td></tr>'}</tbody></table></div>`;
+
+    if(g.editable){
+      $('#saveGoals').onclick=async()=>{
+        const values={};$$('.goalInput').forEach(i=>values[i.dataset.goal]=Number(i.value));
+        try{const r=await api('/api/goals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values})});$('#goalMsg').style.color='var(--green)';$('#goalMsg').textContent=`Guardado exitoso · ${r.changed?.length||0} cambios`;setTimeout(renderGoalsConfig,500)}
+        catch(e){$('#goalMsg').style.color='var(--red)';$('#goalMsg').textContent='Error: '+e.message}
+      };
+      $('#addProjectStore').onclick=async()=>{
+        try{const r=await api('/api/stores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#newProjectStore').value})});$('#storeMsg').style.color='var(--green)';$('#storeMsg').textContent=r.message;setTimeout(renderGoalsConfig,450)}
+        catch(e){$('#storeMsg').style.color='var(--red)';$('#storeMsg').textContent='Error: '+e.message}
+      };
+      $$('.storeProjectEdit').forEach(chk=>chk.addEventListener('change',()=>{
+        if(chk.checked){
+          const tr=chk.closest('tr');
+          const active=tr?.querySelector('.storeActiveEdit');
+          if(active) active.checked=true;
+        }
+      }));
+      $$('.storeActiveEdit').forEach(chk=>chk.addEventListener('change',()=>{
+        if(!chk.checked){
+          const tr=chk.closest('tr');
+          const project=tr?.querySelector('.storeProjectEdit');
+          if(project) project.checked=false;
+        }
+      }));
+      $('#saveStoreSelection').onclick=async()=>{
+        const items=Array.from($$('#operativoDynamicContent tr[data-store-id]')).map(tr=>({
+          id:Number(tr.dataset.storeId),
+          active:tr.querySelector('.storeActiveEdit')?.checked===true,
+          project:tr.querySelector('.storeProjectEdit')?.checked===true
+        }));
+        const b=$('#saveStoreSelection');
+        b.disabled=true;b.textContent='Guardando...'; if($('#storeMsg')) $('#storeMsg').textContent='Guardando selección de tiendas...';
+        try{
+          const r=await api('/api/stores/batch',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({items}),
+            timeoutMs:120000
+          });
+          $('#storeMsg').style.color='var(--green)';
+          const ps=(r.project_stores||[]);
+          $('#storeMsg').textContent=`✓ ${r.message} · ${r.changed||0} cambios · Tiendas Proyecto: ${ps.length?ps.join(', '):'ninguna'}`;
+          OPSDATA=null;
+          setTimeout(renderGoalsConfig,700);
+        }catch(e){
+          $('#storeMsg').style.color='var(--red)';
+          $('#storeMsg').textContent='Error: '+e.message;
+        }finally{
+          b.disabled=false;b.textContent='Guardar selección';
+        }
+      };
+      $$('.saveStoreRow').forEach(btn=>btn.onclick=async()=>{
+        const tr=btn.closest('tr'),id=tr.dataset.storeId,name=tr.querySelector('.storeNameEdit').value,active=tr.querySelector('.storeActiveEdit').checked,project=tr.querySelector('.storeProjectEdit').checked;
+        try{const r=await api('/api/stores/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,active,project})});$('#storeMsg').style.color='var(--green)';$('#storeMsg').textContent=r.message;setTimeout(renderGoalsConfig,450)}
+        catch(e){$('#storeMsg').style.color='var(--red)';$('#storeMsg').textContent='Error: '+e.message}
+      });
+    }
+  }catch(e){
+    $('#operativoDynamicContent').innerHTML='<div class="infoempty">Error: '+e.message+'</div>';
+  }
+}
+
+let OPSDATA=null, OPMETRIC='total';
+async function loadOps(){
+  const d=await refreshOperativoMeta();
+  OPSDATA=d;
+  return d;
+}
+function renderOpPanel(kind,d,available){
+  if(!available){
+    return '<div class="infoempty">Información no disponible. Carga el Excel operativo desde “Carga de información”.</div>';
+  }
+  const max=Math.max(1,...(d.stores||[]).map(x=>x.pieces));
+  return `<div class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="kpi" style="--a:${kind==='cambios'?'var(--blue)':'var(--pink)'}">
+      <div class="lab">Piezas</div><div class="val">${fmt(d.pieces)}</div><div class="note">Total identificado</div>
+    </div>
+    <div class="kpi" style="--a:var(--green)">
+      <div class="lab">Registros</div><div class="val">${fmt(d.records)}</div><div class="note">Fuente operativa cargada</div>
+    </div>
+  </div>
+  <div class="title">Por tienda</div>
+  <div class="bars">${(d.stores||[]).map(s=>`<div class="bar"><span>${s.store}</span><div class="track"><div class="fill" style="width:${s.pieces/max*100}%"></div></div><b>${fmt(s.pieces)}</b></div>`).join('')}</div>`;
+}
+function renderCombinedOps(d){
+  const mt=d.metrics||{}, rows=d.stores||[];
+  $('#cambiosPiecesTop').textContent=fmt(mt.dev_pzs||0);
+  $('#muertosPiecesTop').textContent=fmt(mt.muertos||0);
+  $('#operativoTotalTop').textContent=fmt(mt.productividad_piezas||0);
+  $('#opMuertos').textContent=fmt(mt.muertos||0);
+  $('#opProbador').textContent=fmt(mt.probador||0);
+  $('#opCajas').textContent=fmt(mt.cajas||0);
+  $('#opIngresos').textContent=fmt(mt.recolectadas||0);
+  $('#opPendAcond').textContent=fmt(mt.pendiente_acondicionar||0);
+  $('#opAcondicionado').textContent=fmt(mt.acondicionado||0);
+  $('#opAcondicionadoPct').textContent=pct(mt.pct_acondicionado||0);
+  $('#opUbicado').textContent=fmt(mt.ubicado||0);
+  $('#opUbicadoPct').textContent=pct(mt.pct_ubicado||0);
+  $('#opPendiente').textContent=fmt(mt.pendiente_ubicar||0);
+  $('#opRecorridos').textContent=fmt(mt.recorridos||0);
+  $('#opRecorridosPct').textContent=`${pct(mt.pct_recorridos||0)} · meta ${fmt(mt.meta_recorridos||0)}`;
+  $('#opConversion').textContent=pct(mt.conversion_pct||0);
+  $('#opConversionNote').textContent=`${fmt(mt.converted_pieces||0)} recuperadas / ${fmt(mt.dev_pzs||0)} Dev Pzs`;
+  $('#opRecovery').textContent=pct(mt.recovery_pct||0);
+  $('#opRecoveryNote').textContent=`${fmtMoney(mt.recovered_value||0)} recuperado · ${fmtMoney(mt.pending_recovery_value||0)} pendiente`;
+  $('#opScore').textContent=Number(mt.score_integral||0).toFixed(1)+'/100';
+
+  const sourceState=$('#opSourceState'),sourceDetail=$('#opSourceDetail');
+  sourceState.textContent=d.filtered_available?'Conectado':'Sin registros en periodo';
+  sourceState.className='status '+(d.filtered_available?'ok':'warn');
+  $('#profileMeta').textContent=`V40 · ${d.source_file||'fuente operativa sin cargar'}`; sourceDetail.textContent=`${d.source_file||'Base de datos Muertos y Cambios'} · hojas operativas: ${(d.operational_sheets||[d.operational_sheet]).filter(Boolean).join(', ')||'no identificadas'} · periodo: ${d.period_value||'histórico'} · duplicados exactos eliminados: ${fmt(d.duplicate_rows_removed||0)}`;
+
+  $('#cambiosContent').innerHTML=`<div class="report-kpis">${kpiCard('Dev Pzs',fmt(mt.dev_pzs||0),'Devoluciones','#3366CC')}${kpiCard('Convertidas',fmt(mt.converted_pieces||0),pct(mt.conversion_pct||0),'#10B981')}${kpiCard('Pendientes',fmt(mt.pending_recovery_pieces||0),'Por convertir','#EF4444')}</div>`;
+  $('#muertosContent').innerHTML=`<div class="report-kpis">${kpiCard('Muertos',fmt(mt.muertos||0),'Motivo Muertos','#EC007C')}${kpiCard('Probador',fmt(mt.probador||0),'Motivo Probador','#F59E0B')}${kpiCard('Cajas',fmt(mt.cajas||0),'Motivo Cajas','#7C3AED')}${kpiCard('Piezas recolectadas',fmt(mt.recolectadas||0),'Total Recolección de muertos','#3366CC')}</div>`;
+
+  const metricKey=OPMETRIC==='cambios'?'dev_pzs':OPMETRIC==='muertos'?'muertos':'ingresos';
+  const max=Math.max(1,...rows.map(x=>Number(x[metricKey]||0)));
+  $('#operativoBars').innerHTML=rows.map(r=>`<div class="bar"><span>${r.store}</span><div class="track"><div class="fill" style="width:${Math.max(1,Number(r[metricKey]||0)/max*100)}%"></div></div><b>${fmt(r[metricKey]||0)}</b></div>`).join('');
+
+  const staticRec=d.recovery_by_store||[];
+  const staticOrdered=orderByConversion(rows,staticRec);
+  $('#operativoTable').innerHTML=staticOrdered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+    <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.muertos)}</td><td>${fmt(r.probador)}</td><td>${fmt(r.cajas)}</td><td><b>${fmt(r.recolectadas)}</b></td>
+    <td>${fmt(r.recorridos)}</td><td>${fmt(r.acondicionado)}</td><td>${fmt(r.ubicado)}</td><td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td>
+  </tr>`).join('');
+}
+$('#refresh').onclick=async()=>{
+  try{
+    if(MAIN==='analysis'){
+      if(SUB==='stores')await loadDash('Compañía',$('#section')?.value||'Todas');
+      else await loadDash($('#store')?.value||'Compañía',$('#section')?.value||'Todas');
+      if(SUB==='sections')await loadCommercialDetail('rubro');
+      if(SUB==='areas')await loadCommercialDetail('area');
+    }else{
+      await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true);
+    }
+  }catch(e){console.error(e)}
+};
+$('#store').onchange=async()=>{
+  if(MAIN==='analysis')rememberAnalysisStore($('#store')?.value||'Compañía');
+  if(MAIN==='operativo')await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+  else await refreshActiveCommercialTab();
+};
+$('#section').onchange=async()=>{
+  if(MAIN!=='analysis')return;
+  await refreshActiveCommercialTab();
+};
+$('#catalog').onchange=async()=>{
+  if(MAIN!=='analysis')return;
+  COMMERCIAL_DETAIL_CACHE.clear();
+  await refreshActiveCommercialTab();
+};
+$('#week').onchange=async()=>{
+  if(MAIN==='analysis'){
+    COMMERCIAL_DETAIL_CACHE.clear();
+    await refreshActiveCommercialTab();
+  }else await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true);
+};
+function log(x){$('#log').textContent=typeof x==='string'?x:JSON.stringify(x,null,2)}
+async function safeRefreshDash(){
+  try{await loadDash();return true}
+  catch(e){console.warn('Carga terminada; refresco de dashboard no disponible:',e);return false}
+}
+async function postFile(url,file,extra={}){let fd=new FormData();fd.append('file',file);Object.entries(extra).forEach(([k,v])=>fd.append(k,v));return await api(url,{method:'POST',body:fd,timeoutMs:900000})}
+async function waitForUploadJob(jobId,onProgress=()=>{}){
+  for(;;){
+    const job=await api('/api/upload/jobs/'+encodeURIComponent(jobId),{timeoutMs:45000});
+    onProgress(job);
+    if(job.status==='complete')return job.result||{};
+    if(['error','interrupted'].includes(job.status)){
+      const error=new Error(job.error||job.message||'La carga no terminó. La versión anterior sigue activa.');
+      error.uploadTerminal=true;throw error;
+    }
+    await new Promise(resolve=>setTimeout(resolve,3000));
+  }
+}
+async function backgroundFileUpload(module,file,onProgress=()=>{}){
+  const fd=new FormData();fd.append('file',file,file.name);
+  onProgress({status:'uploading',progress:5,message:`Subiendo ${file.name} al almacenamiento seguro…`});
+  const job=await api('/api/upload/jobs/'+module,{method:'POST',body:fd,timeoutMs:0});
+  const storageKey='operacionesRopaUploadJob.'+module;
+  localStorage.setItem(storageKey,job.id);
+  try{
+    const result=await waitForUploadJob(job.id,onProgress);
+    localStorage.removeItem(storageKey);return result;
+  }catch(error){
+    // Si sólo se perdió la conexión, conservar el identificador permite
+    // recuperar el progreso al volver a abrir la pestaña.
+    if(error.uploadTerminal)localStorage.removeItem(storageKey);
+    throw error;
+  }
+}
+const ACTIVE_UPLOAD_WATCHES=new Set();
+async function resumePendingUploadJob(module,onProgress=()=>{},onComplete=async()=>{}){
+  const storageKey='operacionesRopaUploadJob.'+module;
+  const jobId=localStorage.getItem(storageKey);
+  if(!jobId||ACTIVE_UPLOAD_WATCHES.has(module))return false;
+  ACTIVE_UPLOAD_WATCHES.add(module);
+  try{
+    onProgress({status:'processing',progress:10,message:'Recuperando el progreso de la carga que ya estaba en curso…'});
+    const result=await waitForUploadJob(jobId,onProgress);
+    localStorage.removeItem(storageKey);await onComplete(result);return true;
+  }catch(error){
+    if(error.uploadTerminal)localStorage.removeItem(storageKey);
+    onProgress({status:'error',progress:0,message:`No fue posible recuperar la carga: ${error.message}`});
+    return false;
+  }finally{ACTIVE_UPLOAD_WATCHES.delete(module)}
+}
+function uploadStatusText(job){
+  return `${job.message||'Procesando…'}\nProgreso: ${fmt(job.progress||0)}%\nPuedes seguir usando el sistema; no vuelvas a seleccionar el archivo.`;
+}
+async function loadUploadHistories(){
+  if(!['superadmin','admin'].includes(USER?.role))return;
+  try{
+    const [operations,capacities]=await Promise.all([api('/api/upload/operations/history'),api('/api/upload/history/capacity')]);
+    const opBox=$('#opsHistoryList');
+    if(opBox)opBox.innerHTML=(operations||[]).length?`<div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Periodo</th><th>Registros</th><th>Respaldo</th></tr></thead><tbody>${operations.map(x=>`<tr><td>${x.uploaded_at||'—'}</td><td>${x.filename||'—'}</td><td>${x.period_detected||'—'}</td><td>${fmt(x.valid_records||0)}</td><td>${x.archive_path?`<a href="/api/upload/history/operations/${x.id}/download">Descargar datos</a>`:'Versión anterior'}</td></tr>`).join('')}</tbody></table></div>`:'No hay versiones anteriores.';
+    const capBox=$('#analysisCapacityHistory');
+    if(capBox)capBox.innerHTML=(capacities||[]).length?`<div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Periodo</th><th>Registros</th><th>Estado</th><th>Fuente</th></tr></thead><tbody>${capacities.map(x=>`<tr><td>${x.uploaded_at||'—'}</td><td>${x.name||'—'}</td><td>${x.week||x.month||x.report_date||'—'}</td><td>${fmt(x.rows||0)}</td><td>${x.status||'—'}</td><td><a href="/api/upload/history/capacity/${encodeURIComponent(x.id)}/download">Descargar Excel</a></td></tr>`).join('')}</tbody></table></div>`:'No hay versiones de Capacidades resguardadas.';
+  }catch(e){
+    if($('#opsHistoryList'))$('#opsHistoryList').textContent='No fue posible consultar el historial: '+e.message;
+    if($('#analysisCapacityHistory'))$('#analysisCapacityHistory').textContent='No fue posible consultar el historial: '+e.message;
+  }
+}
+document.getElementById('pdfFiles').addEventListener('change',e=>{document.getElementById('pdfSelection').textContent=e.target.files.length?`${e.target.files.length} PDF seleccionado(s)`:'Ningún PDF seleccionado'});
+document.getElementById('salesFiles').addEventListener('change',e=>{document.getElementById('salesSelection').textContent=e.target.files.length?`${e.target.files.length} PDF seleccionado(s)`:'Ningún PDF seleccionado'});
+document.getElementById('capFile').addEventListener('change',e=>{document.getElementById('capSelection').textContent=e.target.files.length?e.target.files[0].name:'Ningún Excel seleccionado'});
+document.getElementById('opsFile').addEventListener('change',e=>{document.getElementById('opsSelection').textContent=e.target.files.length?e.target.files[0].name:'Ningún Excel seleccionado'});
+$('#uploadPdf').onclick=async()=>{
+  const input=document.getElementById('pdfFiles');
+  const fs=Array.from(input?.files||[]);
+  if(!fs.length){log('Selecciona uno o más PDF de Análisis Comercial.');return}
+  const btn=$('#uploadPdf');btn.disabled=true;btn.textContent='Procesando...';
+  log(`V40 · Procesando ${fs.length} PDF de Análisis Comercial...`);
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('week',$('#pdfWeek').value.trim());
+  try{
+    const r=await api('/api/upload/pdfs',{method:'POST',body:fd});
+    const results=Array.isArray(r.results)?r.results:[];
+    const ok=results.filter(x=>x.ok).length,bad=results.length-ok;
+    input.value='';$('#pdfSelection').textContent='Ningún PDF seleccionado';
+    log(`V40 · Carga terminada
+Correctos: ${ok}
+Con revisión: ${bad}
+
+${JSON.stringify(results,null,2)}`);
+    await safeRefreshDash();
+  }catch(e){log('V40 · Error real de carga PDF: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar PDF'}
+}
+$('#uploadCap').onclick=async()=>{
+  const f=$('#capFile').files[0];
+  if(!f){log('Selecciona Excel de capacidades/existencias.');return}
+  const btn=$('#uploadCap');btn.disabled=true;btn.textContent='Procesando Excel…';
+  log(`V47 · Procesando ${f.name} (${(f.size/1024/1024).toFixed(1)} MB). La primera carga del archivo completo puede tardar entre 20 y 90 segundos, según el equipo. La aplicación seguirá disponible mientras se procesa.`);
+  try{
+    const r=await backgroundFileUpload('capacity',f,j=>log('V48 · '+uploadStatusText(j)));
+    log(`V47 · Capacidades/existencias procesadas correctamente\n\nRegistros: ${fmt(r.rows)}\nTiendas: ${fmt(r.stores)}\n${r.cached?'Catálogo reutilizado.':'Catálogo normalizado y optimizado guardado.'}`);
+    $('#capFile').value='';$('#capSelection').textContent='Ningún Excel seleccionado';
+    await safeRefreshDash();await loadUploadHistories();
+  }catch(e){log('V47 · Error real de Excel capacidades: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar Excel'}
+}
+$('#uploadOps').onclick=async()=>{
+  const input=document.getElementById('opsFile'), f=input?.files?.[0];
+  if(!f){log('Selecciona Excel operativo de Cambios y Muertos.');return}
+  const btn=$('#uploadOps');btn.disabled=true;btn.textContent='Procesando...';log(`V40 · Procesando ${f.name}... El servidor seguirá disponible mientras se analiza el Excel.`);
+  try{
+    const r=await backgroundFileUpload('operations',f,j=>log('V48 · '+uploadStatusText(j)));
+    log(`V40 · Excel de Cambios y Muertos conectado al módulo operativo
+Filas: ${r.rows}
+Hojas revisadas: ${r.sheets}
+
+${JSON.stringify(r,null,2)}`);
+    input.value='';$('#opsSelection').textContent='Ningún Excel seleccionado';await loadOps();await loadUploadHistories();
+  }catch(e){log('V40 · Error real del Excel operativo: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar operativo'}
+}
+async function loadUsers(){
+  if(!['superadmin','admin'].includes(USER?.role))return;
+  try{
+    const [users,stores]=await Promise.all([api('/api/users'),api('/api/stores')]);
+    const sel=$('#newStore'); if(sel){sel.innerHTML='<option value="">Seleccionar</option>';stores.stores.forEach(s=>sel.add(new Option(s.name,s.name)))}
+    if($('#newRole')){
+      const adminOpt=[...$('#newRole').options].find(o=>o.value==='admin'); if(adminOpt)adminOpt.hidden=false;
+    }
+    $('#userTable').innerHTML=(users||[]).map(u=>{const owner=u.role==='superadmin';return `<tr>
+      <td><input class="userEditName" value="${String(u.username).replaceAll('"','&quot;')}" ${owner?'disabled':''}></td>
+      <td><select class="userEditRole" ${owner?'disabled':''}>${owner?'<option value="superadmin">Super Administrador</option>':'<option value="admin">Administrador</option><option value="director">Director / Consulta</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Colaborador de Lencería</option><option value="colaborador_operativo">Colaborador Operativo</option>'}</select></td>
+      <td><select class="userEditStore" ${owner?'disabled':''}><option value="">Sin tienda</option>${stores.stores.map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}</select></td>
+      <td>${u.active?'<span class="status ok">Activo</span>':'<span class="status r">Inactivo</span>'}</td>
+      <td>${owner?'<span class="note">Cuenta propietaria protegida</span>':`<div class="action-row"><button class="action-sm userSave" data-id="${u.id}">Guardar</button><button class="action-sm userReset" data-id="${u.id}">Reiniciar contraseña</button><button class="action-sm userToggle" data-id="${u.id}" data-active="${u.active?0:1}">${u.active?'Desactivar':'Activar'}</button><button class="action-sm danger userDelete" data-id="${u.id}">Eliminar</button></div>`}</td>
+    </tr>`}).join('');
+    (users||[]).forEach((u,i)=>{
+      const tr=$('#userTable').children[i]; if(!tr)return;
+      tr.querySelector('.userEditRole').value=u.role;
+      tr.querySelector('.userEditStore').value=u.store||'';
+    });
+    bindUserActions();
+  }catch(e){if($('#userMsg'))$('#userMsg').textContent='Error: '+e.message}
+}
+function bindUserActions(){
+  $$('.userSave').forEach(b=>b.onclick=async()=>{
+    const tr=b.closest('tr'),id=b.dataset.id;
+    try{await api('/api/users/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:tr.querySelector('.userEditName').value,role:tr.querySelector('.userEditRole').value,store:tr.querySelector('.userEditStore').value,active:true})});$('#userMsg').textContent='Usuario actualizado';loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userReset').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Restablecer la contraseña de este usuario? Se invalidarán sus sesiones anteriores.'))return;
+    let p=prompt('Escribe una contraseña temporal de al menos 8 caracteres, o deja vacío para generarla automáticamente:','');
+    if(p===null)return;
+    try{
+      const r=await api('/api/users/'+b.dataset.id+'/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+      $('#userMsg').innerHTML=`<div class="temp-pass-box"><b>${r.message}</b><br>Contraseña temporal: <code id="tempPassOnce">${r.temporary_password}</code> <button class="action-sm" id="copyTempPass">Copiar</button><br><small>Se muestra una sola vez.</small></div>`;
+      $('#copyTempPass').onclick=()=>navigator.clipboard.writeText(r.temporary_password);
+    }catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userToggle').forEach(b=>b.onclick=async()=>{
+    try{const r=await api('/api/users/'+b.dataset.id+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:b.dataset.active==='1'})});$('#userMsg').textContent=r.message;loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userDelete').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.'))return;
+    try{await api('/api/users/'+b.dataset.id,{method:'DELETE'});$('#userMsg').textContent='Usuario eliminado';loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+}
+$('#openUsersFromUpload').onclick=()=>showPage('users');
+
+
+
+
+$('#changeMyPasswordBtn')?.addEventListener('click',async()=>{
+  const current=prompt('Contraseña actual:'); if(current===null)return;
+  const next=prompt('Nueva contraseña (mínimo 8 caracteres):'); if(next===null)return;
+  const confirmPass=prompt('Confirma la nueva contraseña:'); if(confirmPass===null)return;
+  try{
+    const r=await api('/api/me/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:current,new_password:next,confirm_password:confirmPass})});
+    $('#myPasswordMsg').style.color='var(--green)';$('#myPasswordMsg').textContent=r.message;
+  }catch(e){$('#myPasswordMsg').style.color='var(--red)';$('#myPasswordMsg').textContent='Error: '+e.message}
+});
+
+function bindOperationalUpload(hasCurrent=false){
+  const validateBtn=$('#opsModuleUploadBtn'),publishBtn=$('#publishOpsFile'),replaceBtn=$('#replaceOpsFile');
+  const input=$('#opsModuleFile'),drop=$('#opsDropzone'),msg=$('#opsModuleUploadMsg'),box=$('#opsPreview'),progress=$('#opsProgress');
+  if(!validateBtn||!input)return;
+
+  const setProgress=(n,text='')=>{
+    if(progress)progress.style.width=Math.max(0,Math.min(100,n))+'%';
+    if(text&&msg)msg.textContent=text;
+  };
+
+  let droppedFile=null;
+  const selectFile=(f,fromDrop=false)=>{
+    if(!f)return;
+    if(fromDrop)droppedFile=f;
+    if(drop){
+      const label=drop.querySelector('.ops-drop-label')||drop;
+      if(label===drop){
+        // No destruir el input file: sólo añadir/actualizar una etiqueta visual.
+        let info=drop.querySelector('.ops-selected-file');
+        if(!info){info=document.createElement('div');info.className='ops-selected-file';info.style.marginTop='6px';drop.appendChild(info)}
+        info.innerHTML=`<b>${f.name}</b><br><small>${Math.round(f.size/1024).toLocaleString()} KB · listo para cargar</small>`;
+      }
+    }
+  };
+
+  if(drop){
+    drop.onclick=()=>input.click();
+    ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+    ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+    drop.addEventListener('drop',e=>selectFile(e.dataTransfer.files?.[0],true));
+  }
+  input.onchange=()=>selectFile(input.files?.[0],false);
+
+  async function upload(){
+    const f=input.files?.[0]||droppedFile;
+    if(!f){setProgress(0,'Selecciona o arrastra el Excel de Cambios y Muertos.');return}
+    if(!f.name.toLowerCase().endsWith('.xlsx')){setProgress(0,'Sólo se acepta Excel .xlsx.');return}
+
+    validateBtn.disabled=true;
+    if(publishBtn)publishBtn.classList.add('hidden');
+    if(replaceBtn)replaceBtn.disabled=true;
+
+    try{
+      setProgress(15,`Cargando ${f.name}…`);
+      const fd=new FormData();
+      fd.append('file',f,f.name);
+
+      setProgress(20,'Archivo recibido; preparando procesamiento en segundo plano…');
+      const r=await backgroundFileUpload('operations',f,job=>setProgress(job.progress||10,job.message||'Procesando…'));
+
+      setProgress(100,`${r.message} · ${fmt(r.rows||0)} registros`);
+      if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros`;
+      if(box){
+        box.classList.remove('hidden');
+        box.innerHTML=`<div class="preview-grid">
+          <div class="preview-item">Archivo<b>${r.file||f.name}</b></div>
+          <div class="preview-item">Registros<b>${fmt(r.rows||0)}</b></div>
+          <div class="preview-item">Hojas operativas<b>${(r.operational_sheets||[r.operational_sheet]).filter(Boolean).join(', ')||'Información no disponible'}</b></div>
+          <div class="preview-item">Periodo<b>${(r.months||r.weeks||[]).join(', ')||'Información no disponible'}</b></div>
+          <div class="preview-item">Rechazados<b>${fmt(r.rejected_records||0)}</b></div>
+          <div class="preview-item">Duplicados exactos eliminados<b>${fmt(r.duplicate_rows_removed||0)}</b></div>
+        </div>
+        ${(r.errors||[]).length?`<div class="infoempty"><b>Errores de lectura:</b><br>${r.errors.join('<br>')}</div>`:''}
+        ${Object.entries(r.missing_columns_by_sheet||{}).some(([_,v])=>(v||[]).length)?`<div class="infoempty"><b>Columnas faltantes:</b><br>${Object.entries(r.missing_columns_by_sheet||{}).filter(([_,v])=>(v||[]).length).map(([s,v])=>`${s}: ${v.join(', ')}`).join('<br>')}</div>`:''}
+        ${(r.data_issues||[]).length?`<div class="infoempty"><b>Advertencias:</b><br>${(r.data_issues||[]).slice(0,20).map(x=>`${x.sheet||''} fila ${x.row||''}: ${x.warning||''}`).join('<br>')}</div>`:''}`;
+      }
+
+      input.value='';
+      OPSDATA=null;
+      OP_VIEW='Centro Ejecutivo';
+      $$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
+      if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros · listo`;
+      setTimeout(async()=>{
+        try{
+          await refreshOperativoMeta();
+          await renderOperativoView('Centro Ejecutivo',false);
+        }catch(e){
+          console.error('Error post-carga:',e);
+          if($('#operativoDynamicContent')) {
+            $('#operativoDynamicContent').innerHTML=`<div class="infoempty">El archivo se cargó, pero no fue posible abrir Centro Ejecutivo: ${e.message||e}</div>`;
+          }
+        }
+      },250);
+    }catch(e){
+      setProgress(0,'Error real de carga: '+e.message);
+      if(box)box.classList.add('hidden');
+    }finally{
+      validateBtn.disabled=false;
+      if(replaceBtn)replaceBtn.disabled=false;
+    }
+  }
+
+  validateBtn.textContent='Cargar archivo';
+  validateBtn.onclick=upload;
+  if(publishBtn)publishBtn.classList.add('hidden');
+  if(replaceBtn){
+    replaceBtn.textContent='Reemplazar archivo';
+    replaceBtn.onclick=upload;
+  }
+  if(localStorage.getItem('operacionesRopaUploadJob.operations')){
+    validateBtn.disabled=true;if(replaceBtn)replaceBtn.disabled=true;
+    resumePendingUploadJob(
+      'operations',
+      job=>setProgress(job.progress||10,'Carga recuperada después de actualizar la página. '+(job.message||'Procesando…')),
+      async result=>{
+        setProgress(100,`${result.message||'Carga terminada'} · ${fmt(result.rows||0)} registros`);
+        OPSDATA=null;await refreshOperativoMeta();await loadUploadHistories();
+      }
+    ).finally(()=>{validateBtn.disabled=false;if(replaceBtn)replaceBtn.disabled=false});
+  }
+}
+
+function analysisUploadMessage(text){
+  const log=$('#analysisUploadLog');log.classList.remove('hidden');log.textContent=text;
+}
+$('#analysisPdfUploadBtn').onclick=async()=>{
+  const fs=Array.from($('#analysisPdfFiles').files||[]);
+  if(!fs.length)return analysisUploadMessage('Selecciona los PDF de Análisis Comercial.');
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('week','');
+  try{const r=await api('/api/upload/pdfs',{method:'POST',body:fd});analysisUploadMessage('PDF procesados: '+JSON.stringify(r.results,null,2));await loadDash()}
+  catch(e){analysisUploadMessage('Error: '+e.message)}
+};
+$('#analysisCapUploadBtn').onclick=async()=>{
+  const f=$('#analysisCapFile').files[0];if(!f)return analysisUploadMessage('Selecciona Excel de capacidades.');
+  const btn=$('#analysisCapUploadBtn');
+  btn.disabled=true;btn.textContent='Procesando Excel…';
+  analysisUploadMessage(`Procesando ${f.name} (${(f.size/1024/1024).toFixed(1)} MB). Este archivo contiene cerca de 196 mil registros y la primera carga puede tardar entre 20 y 90 segundos, según el equipo. La aplicación seguirá respondiendo; no vuelvas a presionar el botón.`);
+  try{
+    const r=await backgroundFileUpload('capacity',f,j=>analysisUploadMessage(uploadStatusText(j)));
+    analysisUploadMessage(`Capacidades procesadas correctamente.\n\nRegistros: ${fmt(r.rows)}\nTiendas: ${fmt(r.stores)}\n${r.cached?'Se reutilizó el catálogo ya normalizado.':'Se creó catálogo optimizado para que las consultas posteriores sean rápidas.'}`);
+    await loadDash();await loadUploadHistories();
+  }catch(e){analysisUploadMessage('Error procesando capacidades: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar Excel'}
+};
+$('#analysisSalesUploadBtn').onclick=async()=>{
+  const fs=Array.from($('#analysisSalesFiles').files||[]);if(!fs.length)return analysisUploadMessage('Selecciona PDF de ventas.');
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('year',$('#analysisSalesYear').value);fd.append('month',$('#analysisSalesMonth').value);
+  try{const r=await api('/api/upload/sales-pdfs',{method:'POST',body:fd});analysisUploadMessage('Ventas procesadas: '+JSON.stringify(r.results,null,2));await loadDash()}
+  catch(e){analysisUploadMessage('Error: '+e.message)}
+};
+
+$('#newRole').onchange=()=>{$('#newStore').disabled=!['tienda','colaborador_lenceria','colaborador_operativo'].includes($('#newRole').value)}
+$('#createUser').onclick=async()=>{
+  const username=$('#newUser').value.trim();
+  try{
+    await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:$('#newPass').value,role:$('#newRole').value,store:$('#newStore').value})});
+    $('#userMsg').textContent='Usuario creado.';await loadUsers();
+  }catch(e){
+    // Si la respuesta se cortó después de guardar, verifica antes de mostrar fallo.
+    if([502,503,504].includes(Number(e.status||0))){
+      try{
+        const users=await api('/api/users');
+        if((users||[]).some(u=>String(u.username||'').trim().toLowerCase()===username.toLowerCase())){
+          $('#userMsg').textContent='Usuario creado correctamente. La respuesta se interrumpió, pero el registro sí quedó guardado.';await loadUsers();return;
+        }
+      }catch(_verificationError){}
+    }
+    $('#userMsg').textContent=e.message;
+  }
+};
+async function ownerSystemAction(action){
+  if(USER?.role!=='superadmin')return;
+  const password=prompt('Escribe tu contraseña de Super Administrador:'); if(password===null)return;
+  let confirmation='';
+  if(action==='delete'){
+    confirmation=prompt('Para confirmar escribe exactamente: ELIMINAR SISTEMA')||'';
+    if(confirmation!=='ELIMINAR SISTEMA'){ $('#systemMsg').textContent='Eliminación cancelada.'; return; }
+  }
+  try{
+    const r=await api('/api/system/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,password,confirmation})});
+    $('#systemMsg').textContent='Estado del sistema: '+r.status;
+    if(action==='delete') await loadUsers();
+  }catch(e){$('#systemMsg').textContent=e.message}
+}
+$('#suspendSystem').onclick=()=>ownerSystemAction('suspend');
+$('#activateSystem').onclick=()=>ownerSystemAction('activate');
+$('#deleteSystem').onclick=()=>ownerSystemAction('delete');
+
+
+let LINGERIE_DATA=null;
+
+function lingerieEsc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function lingerieCurrentFamily(){return $('#lingerieFamily')?.value||''}
+
+function renderLingerieEntry(){
+  const family=lingerieCurrentFamily();
+  const rows=(LINGERIE_DATA?.captured||{})[family]||[];
+  const byRank=Object.fromEntries(rows.map(r=>[Number(r.rank),r]));
+  const editable=!!LINGERIE_DATA?.editable;
+  $('#lingerieEntryRows').innerHTML=Array.from({length:10},(_,i)=>{
+    const rank=i+1,r=byRank[rank]||{};
+    return `<tr>
+      <td><b>#${rank}</b></td>
+      <td><input data-ling-id="${rank}" value="${lingerieEsc(r.id_art||'')}" placeholder="ID_ART" ${editable?'':'disabled'}></td>
+      <td><input data-ling-model="${rank}" value="${lingerieEsc(r.model||'')}" placeholder="Modelo" ${editable?'':'disabled'}></td>
+    </tr>`;
+  }).join('');
+  $('#saveLingerieChecklist').classList.toggle('hidden',!editable);
+}
+
+function renderLingerieFamily(){
+  if(!LINGERIE_DATA)return;
+  const family=lingerieCurrentFamily();
+  const summary=(LINGERIE_DATA.summary||[]).find(x=>x.family===family);
+  const actual=(LINGERIE_DATA.actual||{})[family]||[];
+  const actualById=Object.fromEntries(actual.map(x=>[String(x.id_art),x]));
+
+  renderLingerieEntry();
+
+  $('#lingerieActualRows').innerHTML=actual.slice(0,10).map(x=>`<tr>
+    <td><b>#${x.actual_rank}</b></td><td>${lingerieEsc(x.id_art)}</td><td>${lingerieEsc(x.model)}</td><td>${lingerieEsc(x.brand)}</td>
+    <td>${fmt(x.sales_pzas)}</td><td>${money(x.sales_value)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td>
+  </tr>`).join('')||'<tr><td colspan="8">No hay modelos reales para esta familia.</td></tr>';
+
+  const comparison=summary?.comparison||Array.from({length:10},(_,i)=>({manual_rank:i+1,status:'Pendiente'}));
+  $('#lingerieCompareRows').innerHTML=comparison.map(r=>{
+    const real=actualById[String(r.id_art||'')]||{};
+    const cls=r.status==='Coincide posición'?'lingerie-result-ok':(r.status==='Está en Top 10'?'lingerie-result-warn':(r.status==='Pendiente'?'':'lingerie-result-bad'));
+    return `<tr><td>#${r.manual_rank}</td><td>${lingerieEsc(r.id_art||'—')}</td><td>${lingerieEsc(r.model||real.model||'—')}</td>
+      <td>${r.actual_rank?('#'+r.actual_rank):'—'}</td><td>${real.id_art?fmt(real.sales_pzas):'—'}</td><td>${real.id_art?dec2(real.suggested):'—'}</td>
+      <td>${real.id_art?fmt(real.existence):'—'}</td><td class="${cls}">${lingerieEsc(r.status||'Pendiente')}</td></tr>`;
+  }).join('');
+
+  $('#lingerieTop10Kpi').textContent=summary?summary.top10_score.toFixed(0)+'%':'—';
+  $('#lingerieExactKpi').textContent=summary?summary.exact_score.toFixed(0)+'%':'—';
+  $('#lingerieCompareStatus').textContent=summary?(summary.top10_matches+'/10 en Top 10'):'—';
+  $('#lingerieSaveStatus').textContent=summary?.captured===10?'Completo':((summary?.captured||0)+'/10');
+  $('#lingerieSaveStatus').className='status '+(summary?.captured===10?'ok':'warn');
+}
+
+function renderLingerieSummary(){
+  const rows=LINGERIE_DATA?.summary||[];
+  $('#lingerieSummaryRows').innerHTML=rows.map(r=>`<tr>
+    <td class="lingerie-family-link" data-ling-family="${lingerieEsc(r.family)}">${lingerieEsc(r.family)}</td>
+    <td>${r.captured}/10</td><td>${r.top10_matches}/10</td><td>${r.top10_score.toFixed(0)}%</td>
+    <td>${r.exact_matches}/10</td><td>${r.exact_score.toFixed(0)}%</td>
+  </tr>`).join('')||'<tr><td colspan="6">No hay familias de Lencería disponibles.</td></tr>';
+  $$('[data-ling-family]').forEach(el=>el.onclick=()=>{
+    $('#lingerieFamily').value=el.dataset.lingFamily;renderLingerieFamily();el.scrollIntoView({block:'nearest'});
+  });
+}
+
+async function loadLingerieChecklist(){
+  try{
+    await loadCommercialBootstrap();
+    let store=$('#store')?.value||ANALYSIS_STORE||'Compañía';
+    if(USER?.role==='colaborador_lenceria')store=USER.store||store;
+    if(store==='Compañía'&&USER?.role!=='director'&&USER?.role!=='superadmin'&&USER?.role!=='admin'){
+      throw new Error('Selecciona una tienda.');
+    }
+    const week=$('#week')?.value||'';
+    $('#lingerieMsg').textContent='Cargando información...';
+    const d=await api('/api/lingerie-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:120000});
+    LINGERIE_DATA=d;
+    if(d.week&&$('#week'))$('#week').value=d.week;
+    $('#lingerieStoreKpi').textContent=d.store||'—';
+    $('#lingerieFamiliesKpi').textContent=fmt((d.families||[]).length);
+    $('#lingerieSourceNote').textContent=(d.metric||'Venta pzas del periodo')+' · Fuente: '+(d.source||'Reporte de capacidades');
+
+    const sel=$('#lingerieFamily'),before=sel.value;
+    sel.innerHTML='<option value="">Selecciona subcategoría</option>';
+    (d.families||[]).forEach(x=>sel.add(new Option(x,x)));
+    if((d.families||[]).includes(before))sel.value=before;
+    else if((d.families||[]).length)sel.value=d.families[0];
+
+    renderLingerieSummary();
+    renderLingerieFamily();
+    $('#lingerieMsg').textContent='';
+  }catch(e){
+    $('#lingerieMsg').textContent='Error: '+e.message;
+    $('#lingerieEntryRows').innerHTML='<tr><td colspan="3">No fue posible cargar el checklist.</td></tr>';
+  }
+}
+
+$('#lingerieFamily')?.addEventListener('change',renderLingerieFamily);
+$('#saveLingerieChecklist')?.addEventListener('click',async()=>{
+  const family=lingerieCurrentFamily();
+  if(!family){$('#lingerieMsg').textContent='Selecciona una familia.';return}
+  const items=Array.from({length:10},(_,i)=>{
+    const rank=i+1;
+    return {rank,id_art:$('[data-ling-id="'+rank+'"]')?.value?.trim()||'',model:$('[data-ling-model="'+rank+'"]')?.value?.trim()||''};
+  });
+  const btn=$('#saveLingerieChecklist');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const body={week:LINGERIE_DATA?.week||$('#week')?.value||'',store:LINGERIE_DATA?.store||$('#store')?.value||'',family,items};
+    const r=await api('/api/lingerie-checklist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),timeoutMs:120000});
+    $('#lingerieMsg').textContent=r.message+' · '+r.saved+'/10 modelos';
+    await loadLingerieChecklist();
+    $('#lingerieFamily').value=family;renderLingerieFamily();
+  }catch(e){$('#lingerieMsg').textContent='Error: '+e.message}
+  finally{btn.disabled=false;btn.textContent='Guardar Top 10 de esta subcategoría'}
+});
+
+start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg').textContent=e.message});
+</script></body></html>
+,fmtMoney(mt.recovered_value),'Venta recuperada','#10B981'),
       kpiCard('% Recuperación',pct(mt.recovery_pct),'Recuperado / valor devolución','#10B981',metricClass(mt.recovery_pct,80,60)),
-      kpiCard('Pendiente $',fmtMoney(mt.pending_recovery_value),'Valor aún no recuperado','#EF4444')
+      kpiCard('Pendiente 
+    const top=prod.slice(0,3), bottom=[...prod].sort((a,b)=>a.pct-b.pct).slice(0,3);
+    out=reportKpis([
+      kpiCard('Piezas procesadas',fmt(prod.reduce((a,x)=>a+Number(x.pieces||0),0)),'Actividades productivas','#3366CC'),
+      kpiCard('Productividad',fmt(mt.productivity_daily),'Piezas / colaborador-día','#F59E0B'),
+      kpiCard('Cumplimiento',pct(mt.productivity_pct),'Meta diaria configurada','#10B981',metricClass(mt.productivity_pct,100,80))
+    ])+`<div class="grid"><div class="panel"><div class="panel-head"><b>Top 3</b></div>${simplePercentBars(top.map(x=>({name:x.name,pieces:x.pct})))}</div><div class="panel"><div class="panel-head"><b>Oportunidades</b></div>${simplePercentBars(bottom.map(x=>({name:x.name,pieces:x.pct})))}</div></div>
+    <div class="title">Ranking completo</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Días</th><th>Prod. diaria</th><th>Meta</th><th>Cumplimiento</th><th>Faltante</th></tr></thead><tbody>${prod.map((x,i)=>`<tr><td>${i+1}</td><td><b>${x.name}</b></td><td>${x.store}</td><td>${fmt(x.pieces)}</td><td>${fmt(x.days)}</td><td>${fmt(x.daily)}</td><td>${fmt(x.target)}</td><td>${pct(x.pct)}</td><td>${fmt(x.missing)}</td></tr>`).join('')}</tbody></table></div>`;
+  }else if(name==='Productividad por Actividad'){
+    const acts=activityRows(rows).slice(0,30);
+    out=reportKpis([kpiCard('Piezas registradas',fmt(acts.reduce((a,x)=>a+x.pieces,0)),'Por actividad','#3366CC')])+`<div class="chart-box"><div class="chart-title">Volumen por actividad</div>${simpleBars(acts)}</div>`;
+  }else if(name==='Eficiencia Operativa'){
+    out=reportKpis([
+      kpiCard('% Acondicionado',pct(mt.pct_acondicionado),`${fmt(mt.acondicionado)} piezas`,'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('% Ubicado / Ingresos',pct(mt.pct_ubicado),`${fmt(mt.ubicado)} piezas`,'#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('% Ubicado / Acond.',pct(mt.pct_ubicado_acondicionado),'Avance sobre acondicionado','#10B981'),
+      kpiCard('Pendiente ubicar',fmt(mt.pendiente_ubicar),'Por tienda, sin compensar','#EF4444')
+    ])+combinedStoreChart(stores)+opTable(stores);
+  }else if(name==='Cumplimiento de Recorridos'){
+    const daily=(d.daily_peaks||[]).map(x=>({...x,name:x.date,pieces:Number(x.recorridos||0)}));
+    const hourly=(d.hourly_peaks||[]).filter(x=>Number(x.recolectadas||0)>0);
+    out=reportKpis([
+      kpiCard('Meta consolidada',fmt(mt.meta_recorridos),'Meta proporcional al periodo','#3366CC'),
+      kpiCard('Realizados',fmt(mt.recorridos),'Columna RECORRIDOS del Excel','#7C3AED'),
+      kpiCard('Cumplimiento',pct(mt.pct_recorridos),'Realizados / meta','#10B981',metricClass(mt.pct_recorridos,100,80)),
+      kpiCard('Faltante',fmt(mt.faltante_recorridos),'Meta - realizados','#EF4444')
+    ]);
+    out+=`<div class="chart-box"><div class="chart-title">Recorridos por día</div>${simpleBars(daily)}</div>`;
+    out+=`<div class="chart-box"><div class="chart-title">Recolecciones por día · horas y días pico</div>${peakStackBars(d.daily_peaks||[],'date')}</div>`;
+    out+=`<div class="chart-box"><div class="chart-title">Recolecciones por hora · Muertos, Cajas y Probador</div>${peakStackBars(hourly,'hour')}</div>`;
+  }else if(name==='Indicadores Diarios'){
+    out=reportKpis([
+      kpiCard('Ingresos',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
+      kpiCard('Acondicionado / Ingresos',pct(mt.pct_acondicionado),'KPI diario','#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
+      kpiCard('Ubicado / Acondicionado',pct(mt.pct_ubicado_acondicionado),'KPI diario','#10B981'),
+      kpiCard('Ubicado / Ingresos',pct(mt.pct_ubicado),'KPI diario','#EC007C',metricClass(mt.pct_ubicado,80,65)),
+      kpiCard('Recorridos',fmt(mt.recorridos),pct(mt.pct_recorridos),'#EF4444')
+    ])+opTable(stores);
+  }else if(name==='Ranking de Tiendas'){
+    const rr=[...(d.recovery_by_store||[])].sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0)||Number(b.recovery_pct||0)-Number(a.recovery_pct||0));
+    out=reportKpis([
+      kpiCard('Tiendas del proyecto',fmt(rr.length),'Comparativo por conversión + recuperación','#3366CC'),
+      kpiCard('Conversión compañía',pct(mt.conversion_pct),'Dev Pzs convertidas','#10B981'),
+      kpiCard('Recuperación compañía',pct(mt.recovery_pct),'Recuperación económica','#EC007C')
+    ])+recoveryTable(rr);
+  }else if(name==='Índice Integral'){
+    const scoreRows=(d.score_by_store||[]).filter(x=>x.is_project).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    out=`<div class="donut-row"><div class="donut" style="--p:${Math.min(100,mt.score_integral||0)};--dc:#1769e8" data-label="${Number(mt.score_integral||0).toFixed(1)}"></div>
+    <div style="flex:1;min-width:250px">${reportKpis([
+      kpiCard('Conversión',pct(mt.conversion_pct),'40% del índice','#10B981'),
+      kpiCard('Productividad',pct(mt.productivity_pct),'40% del índice','#F59E0B'),
+      kpiCard('Recorridos',pct(mt.pct_recorridos),'20% del índice','#EF4444'),
+      kpiCard('Score integral',Number(mt.score_integral||0).toFixed(1)+'/100',scoreStatus(mt.score_integral),'#1769e8')
+    ])}</div></div>
+    <div class="title">Score por tienda del proyecto</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Conversión 40%</th><th>Productividad 40%</th><th>Recorridos 20%</th><th>Score</th><th>Estatus</th></tr></thead><tbody>${scoreRows.map((r,i)=>`<tr class="project-row"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${pct(r.conversion_pct)}</td><td>${pct(r.productivity_pct)}</td><td>${pct(r.recorridos_pct)}</td><td><b>${Number(r.score||0).toFixed(1)}</b></td><td>${scoreStatus(r.score)}</td></tr>`).join('')||'<tr><td colspan="7">Información no disponible</td></tr>'}</tbody></table></div>`;
+  }else if(name==='Alertas Inteligentes'){
+    const alerts=[];
+    const g=d.goals||{};
+    if(mt.pct_acondicionado<Number(g.acondicionado_ingresos||85))alerts.push(['Acondicionado bajo',`${pct(mt.pct_acondicionado)} vs meta ${pct(g.acondicionado_ingresos||85)}`,'#fff3cd']);
+    if(mt.pct_ubicado<Number(g.ubicado_ingresos||80))alerts.push(['Ubicado bajo',`${pct(mt.pct_ubicado)} vs meta ${pct(g.ubicado_ingresos||80)}`,'#fde8e8']);
+    if(mt.conversion_pct<Number(g.conversion||80))alerts.push(['Conversión bajo meta',`${pct(mt.conversion_pct)} vs meta ${pct(g.conversion||80)}`,'#fff3cd']);
+    if(mt.pct_recorridos<100)alerts.push(['Recorridos pendientes',`${fmt(mt.faltante_recorridos)} recorridos faltantes`,'#fde8e8']);
+    stores.filter(s=>s.ingresos===0).slice(0,5).forEach(s=>alerts.push(['Tienda sin ingresos',s.store,'#f5f7fa']));
+    out=alerts.length?`<div class="cards">${alerts.map(a=>`<div class="card" style="background:${a[2]}"><h3>${a[0]}</h3><small>${a[1]}</small></div>`).join('')}</div>`:'<div class="infoempty">Sin alertas con el periodo consultado.</div>';
+  }else if(name==='Detalle por Tienda'){
+    out=reportKpis([
+      kpiCard('Muertos',fmt(mt.muertos),'Motivo Muertos','#EC007C'),
+      kpiCard('Probador',fmt(mt.probador),'Motivo Probador','#F59E0B'),
+      kpiCard('Cajas',fmt(mt.cajas),'Motivo Cajas','#7C3AED'),
+      kpiCard('Piezas recolectadas',fmt(mt.recolectadas),'Total Recolección de muertos','#3366CC'),
+      kpiCard('Recorridos realizados',fmt(mt.recorridos),`${pct(mt.pct_recorridos)} · meta ${fmt(mt.meta_recorridos)}`,'#10B981'),
+      kpiCard('Acondicionado',fmt(mt.acondicionado),'Acondicionado/Habilitado','#7C3AED'),
+      kpiCard('Ubicado',fmt(mt.ubicado),'Ubicado/Ubicar','#EC007C'),
+      kpiCard('Pendiente de acondicionar',fmt(mt.pendiente_acondicionar),'Recolectadas - Acondicionado','#F59E0B'),
+      kpiCard('Pendiente de ubicar',fmt(mt.pendiente_ubicar),'Acondicionado - Ubicado','#EF4444')
+    ]);
+    out+=operationalDetailTable(stores,rec)+`<div class="title">Detalle por actividad</div>`+activityDetailTable(activityDetail)+`<div class="title">Recuperación</div>`+recoveryTable(rec);
+  }else if(name==='Perfil de Usuario'){
+    out=`<div class="card"><h3>${USER?.username||'Usuario'}</h3><div class="big">${roleLabel[USER?.role]||USER?.role||''}</div><small>${USER?.store?'Tienda asignada: '+USER.store:'Alcance: Compañía'}</small></div>`;
+  }else if(name==='Inteligencia Operativa'){
+    const worst=[...stores].sort((a,b)=>b.pendiente_ubicar-a.pendiente_ubicar).slice(0,5);
+    const bestRec=[...rec].sort((a,b)=>b.recovery_pct-a.recovery_pct).slice(0,5);
+    out=reportKpis([
+      kpiCard('Volumen ingresado',fmt(mt.ingresos),'Periodo consultado','#3366CC'),
+      kpiCard('Pendiente ubicar',fmt(mt.pendiente_ubicar),'Prioridad operativa','#EF4444'),
+      kpiCard('Pendiente recuperación',fmtMoney(mt.pending_recovery_value),'Prioridad económica','#F59E0B'),
+      kpiCard('Score',Number(mt.score_integral||0).toFixed(1)+'/100','Lectura integral','#10B981')
+    ])+`<div class="grid"><div class="panel"><div class="panel-head"><b>Mayor pendiente operativo</b></div>${simpleBars(worst.map(x=>({name:x.store,pieces:x.pendiente_ubicar})))}</div><div class="panel"><div class="panel-head"><b>Mejor recuperación económica</b></div>${simpleBars(bestRec.map(x=>({name:x.store,pieces:x.recovery_pct})))}</div></div>`;
+  }else{
+    out='<div class="infoempty">Selecciona un reporte.</div>';
+  }
+
+  out+=reportDownloadBar(name);
+  $('#operativoDynamicContent').innerHTML=out;
+}
+
+const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=()=>{ setPeriodSelector(OP_VIEW||'Centro Ejecutivo',OPSDATA||{available_dates:[],available_weeks:[],available_months:[]}); }; }
+
+$('#operPeriodApply').onclick=async()=>{
+  OPER_PERIOD.value=$('#operPeriodSelect').value||'';
+  await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+};
+
+
+async function copyText(text,button){
+  if(!text||text==='No configurada en este equipo'||text==='—')return;
+  try{await navigator.clipboard.writeText(text);const old=button.textContent;button.textContent='Copiado ✓';setTimeout(()=>button.textContent=old,1200)}
+  catch(e){window.prompt('Copia esta liga:',text)}
+}
+async function renderShareInfo(){
+  try{
+    const s=await api('/api/share-info');
+    $('#publicShareUrl').textContent=s.public_url||'No configurada en este equipo';
+    $('#lanShareUrl').textContent=s.lan_url||'No se pudo detectar';
+    $('#shareSourceInfo').innerHTML=`<b>Archivo conectado:</b> ${s.source_file||'Sin archivo'}<br><b>Última actualización:</b> ${s.updated_at||'Sin actualización'}<br><b>Liga local:</b> ${s.local_url}<br><br>${s.note}`;
+    $('#copyPublicUrl').disabled=!s.public_url; $('#copyPublicUrl').textContent=s.public_url?'Copiar liga pública':'Liga pública no configurada';$('#copyPublicUrl').onclick=()=>copyText(s.public_url,$('#copyPublicUrl'));
+    $('#copyLanUrl').disabled=!s.lan_url;$('#copyLanUrl').onclick=()=>copyText(s.lan_url,$('#copyLanUrl'));
+    const best=s.best_url||s.public_url||s.lan_url||s.local_url;
+    $('#shareBestUrl').onclick=async()=>{if(navigator.share){await navigator.share({title:'Operaciones Ropa',text:'Acceso a Operaciones Ropa',url:best})}else{copyText(best,$('#shareBestUrl'))}};
+    $('#whatsappShare').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent('Operaciones Ropa: '+best),'_blank');
+  }catch(e){$('#shareSourceInfo').textContent=e.message}
+}
+
+async function renderGoalsConfig(){
+  $('#operativoCentro').classList.add('hidden');
+  $('#operativoDynamic').classList.remove('hidden');
+  $('#operativoDynamicTitle').textContent='Configuración de metas y tiendas';
+  $('#operativoDynamicSub').textContent='Persistencia, historial y tiendas activas del proyecto';
+  $('#operativoPeriodBar')?.classList.add('hidden');
+  try{
+    const [g,s]=await Promise.all([api('/api/goals'),api('/api/stores?include_inactive=true')]);
+    const goalOrder=[
+      'productividad_diaria','conversion','recuperacion','acondicionado_ingresos','ubicado_ingresos',
+      'recorridos_lunes','recorridos_martes','recorridos_miercoles','recorridos_jueves',
+      'recorridos_viernes','recorridos_sabado','recorridos_domingo','recorridos_semanales'
+    ];
+    const inputs=goalOrder.map(key=>{
+      const label=g.labels?.[key]||key,val=Number(g.values?.[key]??0);
+      const suffix=key.includes('conversion')||key.includes('recuperacion')||key.includes('ingresos')?'%':'';
+      return `<div class="field"><label>${label}</label><div style="display:flex;align-items:center;gap:6px"><input class="goalInput" data-goal="${key}" type="number" min="0" step="1" value="${val}" ${g.editable?'':'disabled'}><span class="note">${suffix}</span></div></div>`;
+    }).join('');
+    const goalHistory=(g.history||[]).map(r=>`<tr><td>${r.changed_at}</td><td>${r.changed_by}</td><td>${g.labels?.[r.key]||r.key}</td><td>${r.old_value}</td><td>${r.new_value}</td></tr>`).join('');
+    const storeRows=(s.stores||[]).map(r=>`<tr data-store-id="${r.id}"><td><input class="storeNameEdit" value="${String(r.name).replaceAll('"','&quot;')}" ${s.editable?'':'disabled'}></td><td><input class="storeActiveEdit" type="checkbox" ${r.active?'checked':''} ${s.editable?'':'disabled'}></td><td><input class="storeProjectEdit" type="checkbox" ${r.project?'checked':''} ${s.editable?'':'disabled'}></td><td>${r.updated_at||''}</td><td>${r.updated_by||''}</td><td>${s.editable?'<button class="action-sm saveStoreRow">Guardar</button>':''}</td></tr>`).join('');
+    const storeHistory=(s.history||[]).map(r=>`<tr><td>${r.changed_at}</td><td>${r.changed_by}</td><td>${r.action}</td><td>${r.old_name||''}</td><td>${r.new_name||''}</td><td>${r.old_active==null?'':r.old_active?'Activo':'Inactivo'}</td><td>${r.new_active==null?'':r.new_active?'Activo':'Inactivo'}</td><td>${r.old_project==null?'':r.old_project?'Sí':'No'}</td><td>${r.new_project==null?'':r.new_project?'Sí':'No'}</td></tr>`).join('');
+
+    $('#operativoDynamicContent').innerHTML=`
+      <div class="panel"><div class="title" style="margin-top:0">Metas vigentes</div><div class="usergrid">${inputs}</div>
+      ${g.editable?'<button class="primary" id="saveGoals" style="margin-top:12px">Guardar metas</button>':''}<div class="msg" id="goalMsg"></div></div>
+      <div class="title">Tiendas y selección de proyecto</div><div class="subtitle">Activa = tienda disponible en el sistema. Proyecto = resalta la tienda en comparativos y la incluye en los detalles operativos del proyecto.</div>
+      ${s.editable?'<div class="panel"><div class="filters-inline"><div class="field"><label>Nueva tienda</label><input id="newProjectStore" placeholder="Nombre de tienda"></div><button class="primary" id="addProjectStore">Agregar tienda</button><button class="primary" id="saveStoreSelection">Guardar selección</button></div><div class="msg" id="storeMsg"></div></div>':''}
+      <div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Activa</th><th>Proyecto</th><th>Actualizada</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>${storeRows}</tbody></table></div>
+      <div class="title">Historial de metas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Meta</th><th>Anterior</th><th>Nueva</th></tr></thead><tbody>${goalHistory||'<tr><td colspan="5">Sin cambios</td></tr>'}</tbody></table></div>
+      <div class="title">Historial de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Nombre anterior</th><th>Nombre nuevo</th><th>Estatus anterior</th><th>Estatus nuevo</th><th>Proyecto anterior</th><th>Proyecto nuevo</th></tr></thead><tbody>${storeHistory||'<tr><td colspan="9">Sin cambios</td></tr>'}</tbody></table></div>`;
+
+    if(g.editable){
+      $('#saveGoals').onclick=async()=>{
+        const values={};$$('.goalInput').forEach(i=>values[i.dataset.goal]=Number(i.value));
+        try{const r=await api('/api/goals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values})});$('#goalMsg').style.color='var(--green)';$('#goalMsg').textContent=`Guardado exitoso · ${r.changed?.length||0} cambios`;setTimeout(renderGoalsConfig,500)}
+        catch(e){$('#goalMsg').style.color='var(--red)';$('#goalMsg').textContent='Error: '+e.message}
+      };
+      $('#addProjectStore').onclick=async()=>{
+        try{const r=await api('/api/stores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('#newProjectStore').value})});$('#storeMsg').style.color='var(--green)';$('#storeMsg').textContent=r.message;setTimeout(renderGoalsConfig,450)}
+        catch(e){$('#storeMsg').style.color='var(--red)';$('#storeMsg').textContent='Error: '+e.message}
+      };
+      $$('.storeProjectEdit').forEach(chk=>chk.addEventListener('change',()=>{
+        if(chk.checked){
+          const tr=chk.closest('tr');
+          const active=tr?.querySelector('.storeActiveEdit');
+          if(active) active.checked=true;
+        }
+      }));
+      $$('.storeActiveEdit').forEach(chk=>chk.addEventListener('change',()=>{
+        if(!chk.checked){
+          const tr=chk.closest('tr');
+          const project=tr?.querySelector('.storeProjectEdit');
+          if(project) project.checked=false;
+        }
+      }));
+      $('#saveStoreSelection').onclick=async()=>{
+        const items=Array.from($$('#operativoDynamicContent tr[data-store-id]')).map(tr=>({
+          id:Number(tr.dataset.storeId),
+          active:tr.querySelector('.storeActiveEdit')?.checked===true,
+          project:tr.querySelector('.storeProjectEdit')?.checked===true
+        }));
+        const b=$('#saveStoreSelection');
+        b.disabled=true;b.textContent='Guardando...'; if($('#storeMsg')) $('#storeMsg').textContent='Guardando selección de tiendas...';
+        try{
+          const r=await api('/api/stores/batch',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({items}),
+            timeoutMs:120000
+          });
+          $('#storeMsg').style.color='var(--green)';
+          const ps=(r.project_stores||[]);
+          $('#storeMsg').textContent=`✓ ${r.message} · ${r.changed||0} cambios · Tiendas Proyecto: ${ps.length?ps.join(', '):'ninguna'}`;
+          OPSDATA=null;
+          setTimeout(renderGoalsConfig,700);
+        }catch(e){
+          $('#storeMsg').style.color='var(--red)';
+          $('#storeMsg').textContent='Error: '+e.message;
+        }finally{
+          b.disabled=false;b.textContent='Guardar selección';
+        }
+      };
+      $$('.saveStoreRow').forEach(btn=>btn.onclick=async()=>{
+        const tr=btn.closest('tr'),id=tr.dataset.storeId,name=tr.querySelector('.storeNameEdit').value,active=tr.querySelector('.storeActiveEdit').checked,project=tr.querySelector('.storeProjectEdit').checked;
+        try{const r=await api('/api/stores/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,active,project})});$('#storeMsg').style.color='var(--green)';$('#storeMsg').textContent=r.message;setTimeout(renderGoalsConfig,450)}
+        catch(e){$('#storeMsg').style.color='var(--red)';$('#storeMsg').textContent='Error: '+e.message}
+      });
+    }
+  }catch(e){
+    $('#operativoDynamicContent').innerHTML='<div class="infoempty">Error: '+e.message+'</div>';
+  }
+}
+
+let OPSDATA=null, OPMETRIC='total';
+async function loadOps(){
+  const d=await refreshOperativoMeta();
+  OPSDATA=d;
+  return d;
+}
+function renderOpPanel(kind,d,available){
+  if(!available){
+    return '<div class="infoempty">Información no disponible. Carga el Excel operativo desde “Carga de información”.</div>';
+  }
+  const max=Math.max(1,...(d.stores||[]).map(x=>x.pieces));
+  return `<div class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+    <div class="kpi" style="--a:${kind==='cambios'?'var(--blue)':'var(--pink)'}">
+      <div class="lab">Piezas</div><div class="val">${fmt(d.pieces)}</div><div class="note">Total identificado</div>
+    </div>
+    <div class="kpi" style="--a:var(--green)">
+      <div class="lab">Registros</div><div class="val">${fmt(d.records)}</div><div class="note">Fuente operativa cargada</div>
+    </div>
+  </div>
+  <div class="title">Por tienda</div>
+  <div class="bars">${(d.stores||[]).map(s=>`<div class="bar"><span>${s.store}</span><div class="track"><div class="fill" style="width:${s.pieces/max*100}%"></div></div><b>${fmt(s.pieces)}</b></div>`).join('')}</div>`;
+}
+function renderCombinedOps(d){
+  const mt=d.metrics||{}, rows=d.stores||[];
+  $('#cambiosPiecesTop').textContent=fmt(mt.dev_pzs||0);
+  $('#muertosPiecesTop').textContent=fmt(mt.muertos||0);
+  $('#operativoTotalTop').textContent=fmt(mt.productividad_piezas||0);
+  $('#opMuertos').textContent=fmt(mt.muertos||0);
+  $('#opProbador').textContent=fmt(mt.probador||0);
+  $('#opCajas').textContent=fmt(mt.cajas||0);
+  $('#opIngresos').textContent=fmt(mt.recolectadas||0);
+  $('#opPendAcond').textContent=fmt(mt.pendiente_acondicionar||0);
+  $('#opAcondicionado').textContent=fmt(mt.acondicionado||0);
+  $('#opAcondicionadoPct').textContent=pct(mt.pct_acondicionado||0);
+  $('#opUbicado').textContent=fmt(mt.ubicado||0);
+  $('#opUbicadoPct').textContent=pct(mt.pct_ubicado||0);
+  $('#opPendiente').textContent=fmt(mt.pendiente_ubicar||0);
+  $('#opRecorridos').textContent=fmt(mt.recorridos||0);
+  $('#opRecorridosPct').textContent=`${pct(mt.pct_recorridos||0)} · meta ${fmt(mt.meta_recorridos||0)}`;
+  $('#opConversion').textContent=pct(mt.conversion_pct||0);
+  $('#opConversionNote').textContent=`${fmt(mt.converted_pieces||0)} recuperadas / ${fmt(mt.dev_pzs||0)} Dev Pzs`;
+  $('#opRecovery').textContent=pct(mt.recovery_pct||0);
+  $('#opRecoveryNote').textContent=`${fmtMoney(mt.recovered_value||0)} recuperado · ${fmtMoney(mt.pending_recovery_value||0)} pendiente`;
+  $('#opScore').textContent=Number(mt.score_integral||0).toFixed(1)+'/100';
+
+  const sourceState=$('#opSourceState'),sourceDetail=$('#opSourceDetail');
+  sourceState.textContent=d.filtered_available?'Conectado':'Sin registros en periodo';
+  sourceState.className='status '+(d.filtered_available?'ok':'warn');
+  $('#profileMeta').textContent=`V40 · ${d.source_file||'fuente operativa sin cargar'}`; sourceDetail.textContent=`${d.source_file||'Base de datos Muertos y Cambios'} · hojas operativas: ${(d.operational_sheets||[d.operational_sheet]).filter(Boolean).join(', ')||'no identificadas'} · periodo: ${d.period_value||'histórico'} · duplicados exactos eliminados: ${fmt(d.duplicate_rows_removed||0)}`;
+
+  $('#cambiosContent').innerHTML=`<div class="report-kpis">${kpiCard('Dev Pzs',fmt(mt.dev_pzs||0),'Devoluciones','#3366CC')}${kpiCard('Convertidas',fmt(mt.converted_pieces||0),pct(mt.conversion_pct||0),'#10B981')}${kpiCard('Pendientes',fmt(mt.pending_recovery_pieces||0),'Por convertir','#EF4444')}</div>`;
+  $('#muertosContent').innerHTML=`<div class="report-kpis">${kpiCard('Muertos',fmt(mt.muertos||0),'Motivo Muertos','#EC007C')}${kpiCard('Probador',fmt(mt.probador||0),'Motivo Probador','#F59E0B')}${kpiCard('Cajas',fmt(mt.cajas||0),'Motivo Cajas','#7C3AED')}${kpiCard('Piezas recolectadas',fmt(mt.recolectadas||0),'Total Recolección de muertos','#3366CC')}</div>`;
+
+  const metricKey=OPMETRIC==='cambios'?'dev_pzs':OPMETRIC==='muertos'?'muertos':'ingresos';
+  const max=Math.max(1,...rows.map(x=>Number(x[metricKey]||0)));
+  $('#operativoBars').innerHTML=rows.map(r=>`<div class="bar"><span>${r.store}</span><div class="track"><div class="fill" style="width:${Math.max(1,Number(r[metricKey]||0)/max*100)}%"></div></div><b>${fmt(r[metricKey]||0)}</b></div>`).join('');
+
+  const staticRec=d.recovery_by_store||[];
+  const staticOrdered=orderByConversion(rows,staticRec);
+  $('#operativoTable').innerHTML=staticOrdered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+    <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.muertos)}</td><td>${fmt(r.probador)}</td><td>${fmt(r.cajas)}</td><td><b>${fmt(r.recolectadas)}</b></td>
+    <td>${fmt(r.recorridos)}</td><td>${fmt(r.acondicionado)}</td><td>${fmt(r.ubicado)}</td><td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td>
+  </tr>`).join('');
+}
+$('#refresh').onclick=async()=>{
+  try{
+    if(MAIN==='analysis'){
+      if(SUB==='stores')await loadDash('Compañía',$('#section')?.value||'Todas');
+      else await loadDash($('#store')?.value||'Compañía',$('#section')?.value||'Todas');
+      if(SUB==='sections')await loadCommercialDetail('rubro');
+      if(SUB==='areas')await loadCommercialDetail('area');
+    }else{
+      await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true);
+    }
+  }catch(e){console.error(e)}
+};
+$('#store').onchange=async()=>{
+  if(MAIN==='analysis')rememberAnalysisStore($('#store')?.value||'Compañía');
+  if(MAIN==='operativo')await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+  else await refreshActiveCommercialTab();
+};
+$('#section').onchange=async()=>{
+  if(MAIN!=='analysis')return;
+  await refreshActiveCommercialTab();
+};
+$('#catalog').onchange=async()=>{
+  if(MAIN!=='analysis')return;
+  COMMERCIAL_DETAIL_CACHE.clear();
+  await refreshActiveCommercialTab();
+};
+$('#week').onchange=async()=>{
+  if(MAIN==='analysis'){
+    COMMERCIAL_DETAIL_CACHE.clear();
+    await refreshActiveCommercialTab();
+  }else await renderOperativoView(OP_VIEW||'Centro Ejecutivo',true);
+};
+function log(x){$('#log').textContent=typeof x==='string'?x:JSON.stringify(x,null,2)}
+async function safeRefreshDash(){
+  try{await loadDash();return true}
+  catch(e){console.warn('Carga terminada; refresco de dashboard no disponible:',e);return false}
+}
+async function postFile(url,file,extra={}){let fd=new FormData();fd.append('file',file);Object.entries(extra).forEach(([k,v])=>fd.append(k,v));return await api(url,{method:'POST',body:fd,timeoutMs:900000})}
+async function waitForUploadJob(jobId,onProgress=()=>{}){
+  for(;;){
+    const job=await api('/api/upload/jobs/'+encodeURIComponent(jobId),{timeoutMs:45000});
+    onProgress(job);
+    if(job.status==='complete')return job.result||{};
+    if(['error','interrupted'].includes(job.status)){
+      const error=new Error(job.error||job.message||'La carga no terminó. La versión anterior sigue activa.');
+      error.uploadTerminal=true;throw error;
+    }
+    await new Promise(resolve=>setTimeout(resolve,3000));
+  }
+}
+async function backgroundFileUpload(module,file,onProgress=()=>{}){
+  const fd=new FormData();fd.append('file',file,file.name);
+  onProgress({status:'uploading',progress:5,message:`Subiendo ${file.name} al almacenamiento seguro…`});
+  const job=await api('/api/upload/jobs/'+module,{method:'POST',body:fd,timeoutMs:0});
+  const storageKey='operacionesRopaUploadJob.'+module;
+  localStorage.setItem(storageKey,job.id);
+  try{
+    const result=await waitForUploadJob(job.id,onProgress);
+    localStorage.removeItem(storageKey);return result;
+  }catch(error){
+    // Si sólo se perdió la conexión, conservar el identificador permite
+    // recuperar el progreso al volver a abrir la pestaña.
+    if(error.uploadTerminal)localStorage.removeItem(storageKey);
+    throw error;
+  }
+}
+const ACTIVE_UPLOAD_WATCHES=new Set();
+async function resumePendingUploadJob(module,onProgress=()=>{},onComplete=async()=>{}){
+  const storageKey='operacionesRopaUploadJob.'+module;
+  const jobId=localStorage.getItem(storageKey);
+  if(!jobId||ACTIVE_UPLOAD_WATCHES.has(module))return false;
+  ACTIVE_UPLOAD_WATCHES.add(module);
+  try{
+    onProgress({status:'processing',progress:10,message:'Recuperando el progreso de la carga que ya estaba en curso…'});
+    const result=await waitForUploadJob(jobId,onProgress);
+    localStorage.removeItem(storageKey);await onComplete(result);return true;
+  }catch(error){
+    if(error.uploadTerminal)localStorage.removeItem(storageKey);
+    onProgress({status:'error',progress:0,message:`No fue posible recuperar la carga: ${error.message}`});
+    return false;
+  }finally{ACTIVE_UPLOAD_WATCHES.delete(module)}
+}
+function uploadStatusText(job){
+  return `${job.message||'Procesando…'}\nProgreso: ${fmt(job.progress||0)}%\nPuedes seguir usando el sistema; no vuelvas a seleccionar el archivo.`;
+}
+async function loadUploadHistories(){
+  if(!['superadmin','admin'].includes(USER?.role))return;
+  try{
+    const [operations,capacities]=await Promise.all([api('/api/upload/operations/history'),api('/api/upload/history/capacity')]);
+    const opBox=$('#opsHistoryList');
+    if(opBox)opBox.innerHTML=(operations||[]).length?`<div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Periodo</th><th>Registros</th><th>Respaldo</th></tr></thead><tbody>${operations.map(x=>`<tr><td>${x.uploaded_at||'—'}</td><td>${x.filename||'—'}</td><td>${x.period_detected||'—'}</td><td>${fmt(x.valid_records||0)}</td><td>${x.archive_path?`<a href="/api/upload/history/operations/${x.id}/download">Descargar datos</a>`:'Versión anterior'}</td></tr>`).join('')}</tbody></table></div>`:'No hay versiones anteriores.';
+    const capBox=$('#analysisCapacityHistory');
+    if(capBox)capBox.innerHTML=(capacities||[]).length?`<div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Archivo</th><th>Periodo</th><th>Registros</th><th>Estado</th><th>Fuente</th></tr></thead><tbody>${capacities.map(x=>`<tr><td>${x.uploaded_at||'—'}</td><td>${x.name||'—'}</td><td>${x.week||x.month||x.report_date||'—'}</td><td>${fmt(x.rows||0)}</td><td>${x.status||'—'}</td><td><a href="/api/upload/history/capacity/${encodeURIComponent(x.id)}/download">Descargar Excel</a></td></tr>`).join('')}</tbody></table></div>`:'No hay versiones de Capacidades resguardadas.';
+  }catch(e){
+    if($('#opsHistoryList'))$('#opsHistoryList').textContent='No fue posible consultar el historial: '+e.message;
+    if($('#analysisCapacityHistory'))$('#analysisCapacityHistory').textContent='No fue posible consultar el historial: '+e.message;
+  }
+}
+document.getElementById('pdfFiles').addEventListener('change',e=>{document.getElementById('pdfSelection').textContent=e.target.files.length?`${e.target.files.length} PDF seleccionado(s)`:'Ningún PDF seleccionado'});
+document.getElementById('salesFiles').addEventListener('change',e=>{document.getElementById('salesSelection').textContent=e.target.files.length?`${e.target.files.length} PDF seleccionado(s)`:'Ningún PDF seleccionado'});
+document.getElementById('capFile').addEventListener('change',e=>{document.getElementById('capSelection').textContent=e.target.files.length?e.target.files[0].name:'Ningún Excel seleccionado'});
+document.getElementById('opsFile').addEventListener('change',e=>{document.getElementById('opsSelection').textContent=e.target.files.length?e.target.files[0].name:'Ningún Excel seleccionado'});
+$('#uploadPdf').onclick=async()=>{
+  const input=document.getElementById('pdfFiles');
+  const fs=Array.from(input?.files||[]);
+  if(!fs.length){log('Selecciona uno o más PDF de Análisis Comercial.');return}
+  const btn=$('#uploadPdf');btn.disabled=true;btn.textContent='Procesando...';
+  log(`V40 · Procesando ${fs.length} PDF de Análisis Comercial...`);
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('week',$('#pdfWeek').value.trim());
+  try{
+    const r=await api('/api/upload/pdfs',{method:'POST',body:fd});
+    const results=Array.isArray(r.results)?r.results:[];
+    const ok=results.filter(x=>x.ok).length,bad=results.length-ok;
+    input.value='';$('#pdfSelection').textContent='Ningún PDF seleccionado';
+    log(`V40 · Carga terminada
+Correctos: ${ok}
+Con revisión: ${bad}
+
+${JSON.stringify(results,null,2)}`);
+    await safeRefreshDash();
+  }catch(e){log('V40 · Error real de carga PDF: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar PDF'}
+}
+$('#uploadCap').onclick=async()=>{
+  const f=$('#capFile').files[0];
+  if(!f){log('Selecciona Excel de capacidades/existencias.');return}
+  const btn=$('#uploadCap');btn.disabled=true;btn.textContent='Procesando Excel…';
+  log(`V47 · Procesando ${f.name} (${(f.size/1024/1024).toFixed(1)} MB). La primera carga del archivo completo puede tardar entre 20 y 90 segundos, según el equipo. La aplicación seguirá disponible mientras se procesa.`);
+  try{
+    const r=await backgroundFileUpload('capacity',f,j=>log('V48 · '+uploadStatusText(j)));
+    log(`V47 · Capacidades/existencias procesadas correctamente\n\nRegistros: ${fmt(r.rows)}\nTiendas: ${fmt(r.stores)}\n${r.cached?'Catálogo reutilizado.':'Catálogo normalizado y optimizado guardado.'}`);
+    $('#capFile').value='';$('#capSelection').textContent='Ningún Excel seleccionado';
+    await safeRefreshDash();await loadUploadHistories();
+  }catch(e){log('V47 · Error real de Excel capacidades: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar Excel'}
+}
+$('#uploadOps').onclick=async()=>{
+  const input=document.getElementById('opsFile'), f=input?.files?.[0];
+  if(!f){log('Selecciona Excel operativo de Cambios y Muertos.');return}
+  const btn=$('#uploadOps');btn.disabled=true;btn.textContent='Procesando...';log(`V40 · Procesando ${f.name}... El servidor seguirá disponible mientras se analiza el Excel.`);
+  try{
+    const r=await backgroundFileUpload('operations',f,j=>log('V48 · '+uploadStatusText(j)));
+    log(`V40 · Excel de Cambios y Muertos conectado al módulo operativo
+Filas: ${r.rows}
+Hojas revisadas: ${r.sheets}
+
+${JSON.stringify(r,null,2)}`);
+    input.value='';$('#opsSelection').textContent='Ningún Excel seleccionado';await loadOps();await loadUploadHistories();
+  }catch(e){log('V40 · Error real del Excel operativo: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar operativo'}
+}
+async function loadUsers(){
+  if(!['superadmin','admin'].includes(USER?.role))return;
+  try{
+    const [users,stores]=await Promise.all([api('/api/users'),api('/api/stores')]);
+    const sel=$('#newStore'); if(sel){sel.innerHTML='<option value="">Seleccionar</option>';stores.stores.forEach(s=>sel.add(new Option(s.name,s.name)))}
+    if($('#newRole')){
+      const adminOpt=[...$('#newRole').options].find(o=>o.value==='admin'); if(adminOpt)adminOpt.hidden=false;
+    }
+    $('#userTable').innerHTML=(users||[]).map(u=>{const owner=u.role==='superadmin';return `<tr>
+      <td><input class="userEditName" value="${String(u.username).replaceAll('"','&quot;')}" ${owner?'disabled':''}></td>
+      <td><select class="userEditRole" ${owner?'disabled':''}>${owner?'<option value="superadmin">Super Administrador</option>':'<option value="admin">Administrador</option><option value="director">Director / Consulta</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Colaborador de Lencería</option><option value="colaborador_operativo">Colaborador Operativo</option>'}</select></td>
+      <td><select class="userEditStore" ${owner?'disabled':''}><option value="">Sin tienda</option>${stores.stores.map(s=>`<option value="${s.name}">${s.name}</option>`).join('')}</select></td>
+      <td>${u.active?'<span class="status ok">Activo</span>':'<span class="status r">Inactivo</span>'}</td>
+      <td>${owner?'<span class="note">Cuenta propietaria protegida</span>':`<div class="action-row"><button class="action-sm userSave" data-id="${u.id}">Guardar</button><button class="action-sm userReset" data-id="${u.id}">Reiniciar contraseña</button><button class="action-sm userToggle" data-id="${u.id}" data-active="${u.active?0:1}">${u.active?'Desactivar':'Activar'}</button><button class="action-sm danger userDelete" data-id="${u.id}">Eliminar</button></div>`}</td>
+    </tr>`}).join('');
+    (users||[]).forEach((u,i)=>{
+      const tr=$('#userTable').children[i]; if(!tr)return;
+      tr.querySelector('.userEditRole').value=u.role;
+      tr.querySelector('.userEditStore').value=u.store||'';
+    });
+    bindUserActions();
+  }catch(e){if($('#userMsg'))$('#userMsg').textContent='Error: '+e.message}
+}
+function bindUserActions(){
+  $$('.userSave').forEach(b=>b.onclick=async()=>{
+    const tr=b.closest('tr'),id=b.dataset.id;
+    try{await api('/api/users/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:tr.querySelector('.userEditName').value,role:tr.querySelector('.userEditRole').value,store:tr.querySelector('.userEditStore').value,active:true})});$('#userMsg').textContent='Usuario actualizado';loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userReset').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Restablecer la contraseña de este usuario? Se invalidarán sus sesiones anteriores.'))return;
+    let p=prompt('Escribe una contraseña temporal de al menos 8 caracteres, o deja vacío para generarla automáticamente:','');
+    if(p===null)return;
+    try{
+      const r=await api('/api/users/'+b.dataset.id+'/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});
+      $('#userMsg').innerHTML=`<div class="temp-pass-box"><b>${r.message}</b><br>Contraseña temporal: <code id="tempPassOnce">${r.temporary_password}</code> <button class="action-sm" id="copyTempPass">Copiar</button><br><small>Se muestra una sola vez.</small></div>`;
+      $('#copyTempPass').onclick=()=>navigator.clipboard.writeText(r.temporary_password);
+    }catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userToggle').forEach(b=>b.onclick=async()=>{
+    try{const r=await api('/api/users/'+b.dataset.id+'/status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:b.dataset.active==='1'})});$('#userMsg').textContent=r.message;loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+  $$('.userDelete').forEach(b=>b.onclick=async()=>{
+    if(!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.'))return;
+    try{await api('/api/users/'+b.dataset.id,{method:'DELETE'});$('#userMsg').textContent='Usuario eliminado';loadUsers()}
+    catch(e){$('#userMsg').textContent='Error: '+e.message}
+  });
+}
+$('#openUsersFromUpload').onclick=()=>showPage('users');
+
+
+
+
+$('#changeMyPasswordBtn')?.addEventListener('click',async()=>{
+  const current=prompt('Contraseña actual:'); if(current===null)return;
+  const next=prompt('Nueva contraseña (mínimo 8 caracteres):'); if(next===null)return;
+  const confirmPass=prompt('Confirma la nueva contraseña:'); if(confirmPass===null)return;
+  try{
+    const r=await api('/api/me/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({current_password:current,new_password:next,confirm_password:confirmPass})});
+    $('#myPasswordMsg').style.color='var(--green)';$('#myPasswordMsg').textContent=r.message;
+  }catch(e){$('#myPasswordMsg').style.color='var(--red)';$('#myPasswordMsg').textContent='Error: '+e.message}
+});
+
+function bindOperationalUpload(hasCurrent=false){
+  const validateBtn=$('#opsModuleUploadBtn'),publishBtn=$('#publishOpsFile'),replaceBtn=$('#replaceOpsFile');
+  const input=$('#opsModuleFile'),drop=$('#opsDropzone'),msg=$('#opsModuleUploadMsg'),box=$('#opsPreview'),progress=$('#opsProgress');
+  if(!validateBtn||!input)return;
+
+  const setProgress=(n,text='')=>{
+    if(progress)progress.style.width=Math.max(0,Math.min(100,n))+'%';
+    if(text&&msg)msg.textContent=text;
+  };
+
+  let droppedFile=null;
+  const selectFile=(f,fromDrop=false)=>{
+    if(!f)return;
+    if(fromDrop)droppedFile=f;
+    if(drop){
+      const label=drop.querySelector('.ops-drop-label')||drop;
+      if(label===drop){
+        // No destruir el input file: sólo añadir/actualizar una etiqueta visual.
+        let info=drop.querySelector('.ops-selected-file');
+        if(!info){info=document.createElement('div');info.className='ops-selected-file';info.style.marginTop='6px';drop.appendChild(info)}
+        info.innerHTML=`<b>${f.name}</b><br><small>${Math.round(f.size/1024).toLocaleString()} KB · listo para cargar</small>`;
+      }
+    }
+  };
+
+  if(drop){
+    drop.onclick=()=>input.click();
+    ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
+    ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
+    drop.addEventListener('drop',e=>selectFile(e.dataTransfer.files?.[0],true));
+  }
+  input.onchange=()=>selectFile(input.files?.[0],false);
+
+  async function upload(){
+    const f=input.files?.[0]||droppedFile;
+    if(!f){setProgress(0,'Selecciona o arrastra el Excel de Cambios y Muertos.');return}
+    if(!f.name.toLowerCase().endsWith('.xlsx')){setProgress(0,'Sólo se acepta Excel .xlsx.');return}
+
+    validateBtn.disabled=true;
+    if(publishBtn)publishBtn.classList.add('hidden');
+    if(replaceBtn)replaceBtn.disabled=true;
+
+    try{
+      setProgress(15,`Cargando ${f.name}…`);
+      const fd=new FormData();
+      fd.append('file',f,f.name);
+
+      setProgress(20,'Archivo recibido; preparando procesamiento en segundo plano…');
+      const r=await backgroundFileUpload('operations',f,job=>setProgress(job.progress||10,job.message||'Procesando…'));
+
+      setProgress(100,`${r.message} · ${fmt(r.rows||0)} registros`);
+      if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros`;
+      if(box){
+        box.classList.remove('hidden');
+        box.innerHTML=`<div class="preview-grid">
+          <div class="preview-item">Archivo<b>${r.file||f.name}</b></div>
+          <div class="preview-item">Registros<b>${fmt(r.rows||0)}</b></div>
+          <div class="preview-item">Hojas operativas<b>${(r.operational_sheets||[r.operational_sheet]).filter(Boolean).join(', ')||'Información no disponible'}</b></div>
+          <div class="preview-item">Periodo<b>${(r.months||r.weeks||[]).join(', ')||'Información no disponible'}</b></div>
+          <div class="preview-item">Rechazados<b>${fmt(r.rejected_records||0)}</b></div>
+          <div class="preview-item">Duplicados exactos eliminados<b>${fmt(r.duplicate_rows_removed||0)}</b></div>
+        </div>
+        ${(r.errors||[]).length?`<div class="infoempty"><b>Errores de lectura:</b><br>${r.errors.join('<br>')}</div>`:''}
+        ${Object.entries(r.missing_columns_by_sheet||{}).some(([_,v])=>(v||[]).length)?`<div class="infoempty"><b>Columnas faltantes:</b><br>${Object.entries(r.missing_columns_by_sheet||{}).filter(([_,v])=>(v||[]).length).map(([s,v])=>`${s}: ${v.join(', ')}`).join('<br>')}</div>`:''}
+        ${(r.data_issues||[]).length?`<div class="infoempty"><b>Advertencias:</b><br>${(r.data_issues||[]).slice(0,20).map(x=>`${x.sheet||''} fila ${x.row||''}: ${x.warning||''}`).join('<br>')}</div>`:''}`;
+      }
+
+      input.value='';
+      OPSDATA=null;
+      OP_VIEW='Centro Ejecutivo';
+      $$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
+      if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros · listo`;
+      setTimeout(async()=>{
+        try{
+          await refreshOperativoMeta();
+          await renderOperativoView('Centro Ejecutivo',false);
+        }catch(e){
+          console.error('Error post-carga:',e);
+          if($('#operativoDynamicContent')) {
+            $('#operativoDynamicContent').innerHTML=`<div class="infoempty">El archivo se cargó, pero no fue posible abrir Centro Ejecutivo: ${e.message||e}</div>`;
+          }
+        }
+      },250);
+    }catch(e){
+      setProgress(0,'Error real de carga: '+e.message);
+      if(box)box.classList.add('hidden');
+    }finally{
+      validateBtn.disabled=false;
+      if(replaceBtn)replaceBtn.disabled=false;
+    }
+  }
+
+  validateBtn.textContent='Cargar archivo';
+  validateBtn.onclick=upload;
+  if(publishBtn)publishBtn.classList.add('hidden');
+  if(replaceBtn){
+    replaceBtn.textContent='Reemplazar archivo';
+    replaceBtn.onclick=upload;
+  }
+  if(localStorage.getItem('operacionesRopaUploadJob.operations')){
+    validateBtn.disabled=true;if(replaceBtn)replaceBtn.disabled=true;
+    resumePendingUploadJob(
+      'operations',
+      job=>setProgress(job.progress||10,'Carga recuperada después de actualizar la página. '+(job.message||'Procesando…')),
+      async result=>{
+        setProgress(100,`${result.message||'Carga terminada'} · ${fmt(result.rows||0)} registros`);
+        OPSDATA=null;await refreshOperativoMeta();await loadUploadHistories();
+      }
+    ).finally(()=>{validateBtn.disabled=false;if(replaceBtn)replaceBtn.disabled=false});
+  }
+}
+
+function analysisUploadMessage(text){
+  const log=$('#analysisUploadLog');log.classList.remove('hidden');log.textContent=text;
+}
+$('#analysisPdfUploadBtn').onclick=async()=>{
+  const fs=Array.from($('#analysisPdfFiles').files||[]);
+  if(!fs.length)return analysisUploadMessage('Selecciona los PDF de Análisis Comercial.');
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('week','');
+  try{const r=await api('/api/upload/pdfs',{method:'POST',body:fd});analysisUploadMessage('PDF procesados: '+JSON.stringify(r.results,null,2));await loadDash()}
+  catch(e){analysisUploadMessage('Error: '+e.message)}
+};
+$('#analysisCapUploadBtn').onclick=async()=>{
+  const f=$('#analysisCapFile').files[0];if(!f)return analysisUploadMessage('Selecciona Excel de capacidades.');
+  const btn=$('#analysisCapUploadBtn');
+  btn.disabled=true;btn.textContent='Procesando Excel…';
+  analysisUploadMessage(`Procesando ${f.name} (${(f.size/1024/1024).toFixed(1)} MB). Este archivo contiene cerca de 196 mil registros y la primera carga puede tardar entre 20 y 90 segundos, según el equipo. La aplicación seguirá respondiendo; no vuelvas a presionar el botón.`);
+  try{
+    const r=await backgroundFileUpload('capacity',f,j=>analysisUploadMessage(uploadStatusText(j)));
+    analysisUploadMessage(`Capacidades procesadas correctamente.\n\nRegistros: ${fmt(r.rows)}\nTiendas: ${fmt(r.stores)}\n${r.cached?'Se reutilizó el catálogo ya normalizado.':'Se creó catálogo optimizado para que las consultas posteriores sean rápidas.'}`);
+    await loadDash();await loadUploadHistories();
+  }catch(e){analysisUploadMessage('Error procesando capacidades: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Procesar Excel'}
+};
+$('#analysisSalesUploadBtn').onclick=async()=>{
+  const fs=Array.from($('#analysisSalesFiles').files||[]);if(!fs.length)return analysisUploadMessage('Selecciona PDF de ventas.');
+  const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('year',$('#analysisSalesYear').value);fd.append('month',$('#analysisSalesMonth').value);
+  try{const r=await api('/api/upload/sales-pdfs',{method:'POST',body:fd});analysisUploadMessage('Ventas procesadas: '+JSON.stringify(r.results,null,2));await loadDash()}
+  catch(e){analysisUploadMessage('Error: '+e.message)}
+};
+
+$('#newRole').onchange=()=>{$('#newStore').disabled=!['tienda','colaborador_lenceria','colaborador_operativo'].includes($('#newRole').value)}
+$('#createUser').onclick=async()=>{
+  const username=$('#newUser').value.trim();
+  try{
+    await api('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:$('#newPass').value,role:$('#newRole').value,store:$('#newStore').value})});
+    $('#userMsg').textContent='Usuario creado.';await loadUsers();
+  }catch(e){
+    // Si la respuesta se cortó después de guardar, verifica antes de mostrar fallo.
+    if([502,503,504].includes(Number(e.status||0))){
+      try{
+        const users=await api('/api/users');
+        if((users||[]).some(u=>String(u.username||'').trim().toLowerCase()===username.toLowerCase())){
+          $('#userMsg').textContent='Usuario creado correctamente. La respuesta se interrumpió, pero el registro sí quedó guardado.';await loadUsers();return;
+        }
+      }catch(_verificationError){}
+    }
+    $('#userMsg').textContent=e.message;
+  }
+};
+async function ownerSystemAction(action){
+  if(USER?.role!=='superadmin')return;
+  const password=prompt('Escribe tu contraseña de Super Administrador:'); if(password===null)return;
+  let confirmation='';
+  if(action==='delete'){
+    confirmation=prompt('Para confirmar escribe exactamente: ELIMINAR SISTEMA')||'';
+    if(confirmation!=='ELIMINAR SISTEMA'){ $('#systemMsg').textContent='Eliminación cancelada.'; return; }
+  }
+  try{
+    const r=await api('/api/system/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,password,confirmation})});
+    $('#systemMsg').textContent='Estado del sistema: '+r.status;
+    if(action==='delete') await loadUsers();
+  }catch(e){$('#systemMsg').textContent=e.message}
+}
+$('#suspendSystem').onclick=()=>ownerSystemAction('suspend');
+$('#activateSystem').onclick=()=>ownerSystemAction('activate');
+$('#deleteSystem').onclick=()=>ownerSystemAction('delete');
+
+
+let LINGERIE_DATA=null;
+
+function lingerieEsc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function lingerieCurrentFamily(){return $('#lingerieFamily')?.value||''}
+
+function renderLingerieEntry(){
+  const family=lingerieCurrentFamily();
+  const rows=(LINGERIE_DATA?.captured||{})[family]||[];
+  const byRank=Object.fromEntries(rows.map(r=>[Number(r.rank),r]));
+  const editable=!!LINGERIE_DATA?.editable;
+  $('#lingerieEntryRows').innerHTML=Array.from({length:10},(_,i)=>{
+    const rank=i+1,r=byRank[rank]||{};
+    return `<tr>
+      <td><b>#${rank}</b></td>
+      <td><input data-ling-id="${rank}" value="${lingerieEsc(r.id_art||'')}" placeholder="ID_ART" ${editable?'':'disabled'}></td>
+      <td><input data-ling-model="${rank}" value="${lingerieEsc(r.model||'')}" placeholder="Modelo" ${editable?'':'disabled'}></td>
+    </tr>`;
+  }).join('');
+  $('#saveLingerieChecklist').classList.toggle('hidden',!editable);
+}
+
+function renderLingerieFamily(){
+  if(!LINGERIE_DATA)return;
+  const family=lingerieCurrentFamily();
+  const summary=(LINGERIE_DATA.summary||[]).find(x=>x.family===family);
+  const actual=(LINGERIE_DATA.actual||{})[family]||[];
+  const actualById=Object.fromEntries(actual.map(x=>[String(x.id_art),x]));
+
+  renderLingerieEntry();
+
+  $('#lingerieActualRows').innerHTML=actual.slice(0,10).map(x=>`<tr>
+    <td><b>#${x.actual_rank}</b></td><td>${lingerieEsc(x.id_art)}</td><td>${lingerieEsc(x.model)}</td><td>${lingerieEsc(x.brand)}</td>
+    <td>${fmt(x.sales_pzas)}</td><td>${money(x.sales_value)}</td><td>${dec2(x.suggested)}</td><td>${fmt(x.existence)}</td>
+  </tr>`).join('')||'<tr><td colspan="8">No hay modelos reales para esta familia.</td></tr>';
+
+  const comparison=summary?.comparison||Array.from({length:10},(_,i)=>({manual_rank:i+1,status:'Pendiente'}));
+  $('#lingerieCompareRows').innerHTML=comparison.map(r=>{
+    const real=actualById[String(r.id_art||'')]||{};
+    const cls=r.status==='Coincide posición'?'lingerie-result-ok':(r.status==='Está en Top 10'?'lingerie-result-warn':(r.status==='Pendiente'?'':'lingerie-result-bad'));
+    return `<tr><td>#${r.manual_rank}</td><td>${lingerieEsc(r.id_art||'—')}</td><td>${lingerieEsc(r.model||real.model||'—')}</td>
+      <td>${r.actual_rank?('#'+r.actual_rank):'—'}</td><td>${real.id_art?fmt(real.sales_pzas):'—'}</td><td>${real.id_art?dec2(real.suggested):'—'}</td>
+      <td>${real.id_art?fmt(real.existence):'—'}</td><td class="${cls}">${lingerieEsc(r.status||'Pendiente')}</td></tr>`;
+  }).join('');
+
+  $('#lingerieTop10Kpi').textContent=summary?summary.top10_score.toFixed(0)+'%':'—';
+  $('#lingerieExactKpi').textContent=summary?summary.exact_score.toFixed(0)+'%':'—';
+  $('#lingerieCompareStatus').textContent=summary?(summary.top10_matches+'/10 en Top 10'):'—';
+  $('#lingerieSaveStatus').textContent=summary?.captured===10?'Completo':((summary?.captured||0)+'/10');
+  $('#lingerieSaveStatus').className='status '+(summary?.captured===10?'ok':'warn');
+}
+
+function renderLingerieSummary(){
+  const rows=LINGERIE_DATA?.summary||[];
+  $('#lingerieSummaryRows').innerHTML=rows.map(r=>`<tr>
+    <td class="lingerie-family-link" data-ling-family="${lingerieEsc(r.family)}">${lingerieEsc(r.family)}</td>
+    <td>${r.captured}/10</td><td>${r.top10_matches}/10</td><td>${r.top10_score.toFixed(0)}%</td>
+    <td>${r.exact_matches}/10</td><td>${r.exact_score.toFixed(0)}%</td>
+  </tr>`).join('')||'<tr><td colspan="6">No hay familias de Lencería disponibles.</td></tr>';
+  $$('[data-ling-family]').forEach(el=>el.onclick=()=>{
+    $('#lingerieFamily').value=el.dataset.lingFamily;renderLingerieFamily();el.scrollIntoView({block:'nearest'});
+  });
+}
+
+async function loadLingerieChecklist(){
+  try{
+    await loadCommercialBootstrap();
+    let store=$('#store')?.value||ANALYSIS_STORE||'Compañía';
+    if(USER?.role==='colaborador_lenceria')store=USER.store||store;
+    if(store==='Compañía'&&USER?.role!=='director'&&USER?.role!=='superadmin'&&USER?.role!=='admin'){
+      throw new Error('Selecciona una tienda.');
+    }
+    const week=$('#week')?.value||'';
+    $('#lingerieMsg').textContent='Cargando información...';
+    const d=await api('/api/lingerie-checklist?week='+encodeURIComponent(week)+'&store='+encodeURIComponent(store),{timeoutMs:120000});
+    LINGERIE_DATA=d;
+    if(d.week&&$('#week'))$('#week').value=d.week;
+    $('#lingerieStoreKpi').textContent=d.store||'—';
+    $('#lingerieFamiliesKpi').textContent=fmt((d.families||[]).length);
+    $('#lingerieSourceNote').textContent=(d.metric||'Venta pzas del periodo')+' · Fuente: '+(d.source||'Reporte de capacidades');
+
+    const sel=$('#lingerieFamily'),before=sel.value;
+    sel.innerHTML='<option value="">Selecciona subcategoría</option>';
+    (d.families||[]).forEach(x=>sel.add(new Option(x,x)));
+    if((d.families||[]).includes(before))sel.value=before;
+    else if((d.families||[]).length)sel.value=d.families[0];
+
+    renderLingerieSummary();
+    renderLingerieFamily();
+    $('#lingerieMsg').textContent='';
+  }catch(e){
+    $('#lingerieMsg').textContent='Error: '+e.message;
+    $('#lingerieEntryRows').innerHTML='<tr><td colspan="3">No fue posible cargar el checklist.</td></tr>';
+  }
+}
+
+$('#lingerieFamily')?.addEventListener('change',renderLingerieFamily);
+$('#saveLingerieChecklist')?.addEventListener('click',async()=>{
+  const family=lingerieCurrentFamily();
+  if(!family){$('#lingerieMsg').textContent='Selecciona una familia.';return}
+  const items=Array.from({length:10},(_,i)=>{
+    const rank=i+1;
+    return {rank,id_art:$('[data-ling-id="'+rank+'"]')?.value?.trim()||'',model:$('[data-ling-model="'+rank+'"]')?.value?.trim()||''};
+  });
+  const btn=$('#saveLingerieChecklist');btn.disabled=true;btn.textContent='Guardando...';
+  try{
+    const body={week:LINGERIE_DATA?.week||$('#week')?.value||'',store:LINGERIE_DATA?.store||$('#store')?.value||'',family,items};
+    const r=await api('/api/lingerie-checklist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),timeoutMs:120000});
+    $('#lingerieMsg').textContent=r.message+' · '+r.saved+'/10 modelos';
+    await loadLingerieChecklist();
+    $('#lingerieFamily').value=family;renderLingerieFamily();
+  }catch(e){$('#lingerieMsg').textContent='Error: '+e.message}
+  finally{btn.disabled=false;btn.textContent='Guardar Top 10 de esta subcategoría'}
+});
+
+start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg').textContent=e.message});
+</script></body></html>
+,fmtMoney(mt.pending_recovery_value),'Valor aún no recuperado','#EF4444')
     ])+recoveryTable(rec);
+  }else if(name==='Recuperación por Tienda'){
+    const companyTicket=Number(mt.dev_pzs||0)?Number(mt.return_value||0)/Number(mt.dev_pzs||0):0;
+    out=reportKpis([
+      kpiCard('Dev Pzs',fmt(mt.dev_pzs),'Piezas devueltas detectadas','#3366CC'),
+      kpiCard('% Recuperación',pct(mt.conversion_pct),`${fmt(mt.converted_pieces)} pzas recuperadas`,'#10B981',metricClass(mt.conversion_pct,80,60)),
+      kpiCard('Ticket promedio',fmtMoney(companyTicket),'Valor devolución / Dev Pzs','#F59E0B'),
+      kpiCard('Venta recuperada estimada',fmtMoney(mt.recovered_value),'Conversión FIFO valorizada','#7C3AED')
+    ]);
+    out+=`<div class="grid"><div class="panel"><div class="panel-head"><b>Top tiendas por venta recuperada estimada</b><span class="status">Mayor a menor</span></div>${recoveryMoneyTopChart(rec)}</div>${recoveryLogicPanel()}</div>`;
+    out+=`<div class="title">Recuperación por tienda</div>${recoveryStoreImpactTable(rec)}`;
+    out+=`<div class="note" style="margin-top:8px">Las tiendas marcadas como Proyecto se resaltan. El reporte conserva todas las tiendas disponibles en el alcance seleccionado.</div>`;
   }else if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores'){
     const top=prod.slice(0,3), bottom=[...prod].sort((a,b)=>a.pct-b.pct).slice(0,3);
     out=reportKpis([
