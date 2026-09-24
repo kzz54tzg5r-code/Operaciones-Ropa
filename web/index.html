@@ -1663,7 +1663,7 @@ function kpiCard(label,value,sub='',tone='#1769e8',cls=''){
   return `<div class="report-kpi" style="--rk:${tone}"><div class="rk-label">${label}</div><div class="rk-value ${cls}">${value}</div><div class="rk-sub">${sub}</div></div>`;
 }
 function reportKpis(items){return `<div class="report-kpis">${items.join('')}</div>`}
-function monthlyCrossTable(mt){
+function monthlyCrossTable(mt,showOpening=false){
   const dev=Number(mt.dev_pzs||0);
   const muertos=Number(mt.muertos||0);
   const probador=Number(mt.probador||0);
@@ -1673,10 +1673,11 @@ function monthlyCrossTable(mt){
   const ubicado=Number(mt.ubicado||0);
   const recorridos=Number(mt.recorridos||0);
   const metaRecorridos=Number(mt.meta_recorridos||0);
+  const pendingPrev=Number(mt.pendiente_anterior||0);
 
   // Mismos campos y fórmulas visibles de las tarjetas operativas V117.
   const totalPzs=Number(mt.total_pzs ?? mt.ingresos ?? 0);
-  const totalOperacion=dev+muertos+probador+cajas;
+  const totalOperacion=dev+muertos+probador+cajas+(showOpening?pendingPrev:0);
   const pctAcond=mt.pct_acondicionado!=null
     ? Number(mt.pct_acondicionado)
     : (totalPzs ? acondicionado/totalPzs*100 : 0);
@@ -1757,12 +1758,13 @@ function monthlyCrossTable(mt){
       </thead>
       <tbody>
         <tr>
-          <td rowspan="5" class="monthly-cat" style="vertical-align:middle;background:#ECFDF5;color:#047857;text-align:center">OPERACIÓN<br><span>(RECOLECCIÓN)</span></td>
+          <td rowspan="${showOpening?6:5}" class="monthly-cat" style="vertical-align:middle;background:#ECFDF5;color:#047857;text-align:center">OPERACIÓN<br><span>(RECOLECCIÓN)</span></td>
           <td><b>DEV PZS</b></td><td><b>${fmt(dev)}</b></td><td>${fmt(dev)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(dev)}</b></td>
         </tr>
         ${row('MUERTOS',fmt(muertos),fmt(muertos),dash,dash,fmt(muertos))}
         ${row('PROBADOR',fmt(probador),fmt(probador),dash,dash,fmt(probador))}
         ${row('CAJAS',fmt(cajas),fmt(cajas),dash,dash,fmt(cajas))}
+        ${showOpening?row('PENDIENTE ANTERIOR',fmt(pendingPrev),fmt(pendingPrev),dash,dash,fmt(pendingPrev)) : ''}
         <tr style="background:#E8F8EF">
           <td><b>TOTAL OPERACIÓN</b></td><td><b>${fmt(totalOperacion)}</b></td><td><b>${fmt(totalOperacion)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalOperacion)}</b></td>
         </tr>
@@ -2148,7 +2150,7 @@ async function renderOperativoView(name,force=false){
   if(name==='Operación Diaria'){
     const dailyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
     const orderedDaily=orderByConversion(stores.filter(x=>x.is_project),rec);
-    out=monthlyCrossTable(mt);
+    out=monthlyCrossTable(mt,true);
     out+=`<div class="title">Detalle operativo · ${OPER_PERIOD.value||'Día consultado'}</div>${operationalDetailTable(orderedDaily,rec)}`;
     out+=opsComboSvg(orderedDaily,OPER_PERIOD.value||d.period_value||'Día consultado',dailyScope,rec);
   }else if(name==='Reporte Semanal'){
