@@ -1663,6 +1663,88 @@ function kpiCard(label,value,sub='',tone='#1769e8',cls=''){
   return `<div class="report-kpi" style="--rk:${tone}"><div class="rk-label">${label}</div><div class="rk-value ${cls}">${value}</div><div class="rk-sub">${sub}</div></div>`;
 }
 function reportKpis(items){return `<div class="report-kpis">${items.join('')}</div>`}
+function monthlyCrossTable(mt){
+  const dev=Number(mt.dev_pzs||0);
+  const muertos=Number(mt.muertos||0);
+  const probador=Number(mt.probador||0);
+  const cajas=Number(mt.cajas||0);
+  const ingresos=Number(mt.ingresos||0);
+  const acondicionado=Number(mt.acondicionado||0);
+  const ubicado=Number(mt.ubicado||0);
+  const recorridos=Number(mt.recorridos||0);
+  const metaRecorridos=Number(mt.meta_recorridos||0);
+
+  // En el mensual, Dev Pzs es un flujo adicional a los ingresos operativos.
+  // TOTAL PZS replica la lógica visual usada en las tarjetas: Dev Pzs + ingresos operativos.
+  const totalPzs=dev+ingresos;
+  const totalOperacion=dev+muertos+probador+cajas;
+  const pctAcond=totalPzs ? (acondicionado/totalPzs*100) : 0;
+  const pctUbicado=totalPzs ? (ubicado/totalPzs*100) : 0;
+  const pendAcond=Math.max(totalPzs-acondicionado,0);
+  const pendUbicar=Math.max(totalPzs-ubicado,0);
+  const totalPend=pendAcond+pendUbicar;
+  const pctRec=metaRecorridos ? (recorridos/metaRecorridos*100) : Number(mt.pct_recorridos||0);
+
+  const dash='—';
+  const row=(label,value,pieces=dash,pctValue=dash,meta=dash,total=dash,cls='')=>`
+    <tr class="${cls}">
+      <td><b>${label}</b></td>
+      <td><b>${value}</b></td>
+      <td>${pieces}</td>
+      <td>${pctValue}</td>
+      <td>${meta}</td>
+      <td><b>${total}</b></td>
+    </tr>`;
+
+  return `<div class="tablewrap" style="margin-bottom:12px">
+    <table class="table" style="min-width:980px">
+      <thead>
+        <tr>
+          <th style="min-width:155px">Categoría</th>
+          <th style="min-width:210px">Indicador</th>
+          <th>Valor</th>
+          <th>Piezas</th>
+          <th>%</th>
+          <th>Meta</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td rowspan="5" style="vertical-align:middle;font-weight:800;background:#ECFDF5;color:#047857;text-align:center">OPERACIÓN<br><span style="font-size:10px;font-weight:700">(RECOLECCIÓN)</span></td>
+          <td><b>DEV PZS</b></td><td><b>${fmt(dev)}</b></td><td>${fmt(dev)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(dev)}</b></td>
+        </tr>
+        ${row('MUERTOS',fmt(muertos),fmt(muertos),dash,dash,fmt(muertos))}
+        ${row('PROBADOR',fmt(probador),fmt(probador),dash,dash,fmt(probador))}
+        ${row('CAJAS',fmt(cajas),fmt(cajas),dash,dash,fmt(cajas))}
+        <tr style="background:#E8F8EF">
+          <td><b>TOTAL OPERACIÓN</b></td><td><b>${fmt(totalOperacion)}</b></td><td><b>${fmt(totalOperacion)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalOperacion)}</b></td>
+        </tr>
+
+        <tr>
+          <td rowspan="3" style="vertical-align:middle;font-weight:800;background:#F3EAFF;color:#6D28D9;text-align:center">AVANCE %</td>
+          <td><b>RECORRIDOS REALIZADOS</b></td><td><b>${fmt(recorridos)}</b></td><td>${dash}</td><td><b>${pct(pctRec)}</b></td><td>${fmt(metaRecorridos)}</td><td>${dash}</td>
+        </tr>
+        <tr><td><b>% ACONDICIONADO</b></td><td><b>${pct(pctAcond)}</b></td><td>${fmt(acondicionado)}</td><td><b>${pct(pctAcond)}</b></td><td>${dash}</td><td>${dash}</td></tr>
+        <tr><td><b>% UBICADO</b></td><td><b>${pct(pctUbicado)}</b></td><td>${fmt(ubicado)}</td><td><b>${pct(pctUbicado)}</b></td><td>${dash}</td><td>${dash}</td></tr>
+
+        <tr>
+          <td rowspan="3" style="vertical-align:middle;font-weight:800;background:#FFF2E8;color:#C2410C;text-align:center">PENDIENTES</td>
+          <td><b>PENDIENTE DE ACONDICIONAR</b></td><td><b>${fmt(pendAcond)}</b></td><td>${fmt(pendAcond)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendAcond)}</b></td>
+        </tr>
+        <tr><td><b>PENDIENTE DE UBICAR</b></td><td><b>${fmt(pendUbicar)}</b></td><td>${fmt(pendUbicar)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendUbicar)}</b></td></tr>
+        <tr style="background:#FFF0E6"><td><b>TOTAL PENDIENTES</b></td><td><b>${fmt(totalPend)}</b></td><td><b>${fmt(totalPend)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPend)}</b></td></tr>
+
+        <tr style="background:#EAF3FF;color:#173B73">
+          <td colspan="2"><b>TOTAL GENERAL · TOTAL PZS</b></td>
+          <td><b>${fmt(totalPzs)}</b></td>
+          <td><b>${fmt(totalPzs)}</b></td>
+          <td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPzs)}</b></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+}
 function opTable(rows,rec=[]){
   const ordered=orderByConversion(rows,rec), cm=conversionMap(rec);
   return `<div class="tablewrap"><table class="table"><thead><tr>
@@ -2057,15 +2139,7 @@ async function renderOperativoView(name,force=false){
     out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
     out+=weeklyProjects.length?opsComboSvg(weeklyProjects,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope,rec):'';
   }else if(name==='Reporte Mensual'){
-    out=reportKpis([
-      kpiCard('Ingresos mes',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
-      kpiCard('Acondicionado',pct(mt.pct_acondicionado),fmt(mt.acondicionado),'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
-      kpiCard('Ubicado',pct(mt.pct_ubicado),fmt(mt.ubicado),'#EC007C',metricClass(mt.pct_ubicado,80,65)),
-      kpiCard('Conversión mensual',pct(mt.conversion_pct),`${fmt(mt.converted_pieces)} piezas`,'#10B981',metricClass(mt.conversion_pct,80,60)),
-      kpiCard('Recuperación económica',pct(mt.recovery_pct),fmtMoney(mt.recovered_value),'#173B73',metricClass(mt.recovery_pct,80,60)),
-      kpiCard('Productividad',pct(mt.productivity_pct),`${fmt(mt.productivity_daily)} pzs/día`,'#F59E0B',metricClass(mt.productivity_pct,100,80)),
-      kpiCard('Recorridos',pct(mt.pct_recorridos),`${fmt(mt.recorridos)} realizados`,'#EF4444',metricClass(mt.pct_recorridos,100,80))
-    ]);
+    out=monthlyCrossTable(mt);
     const monthlyProjects=orderByConversion(stores.filter(x=>x.is_project),rec);
     out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'));
