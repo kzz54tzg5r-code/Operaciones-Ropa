@@ -1674,15 +1674,25 @@ function monthlyCrossTable(mt){
   const recorridos=Number(mt.recorridos||0);
   const metaRecorridos=Number(mt.meta_recorridos||0);
 
-  // Se conserva exactamente la lógica de cálculo ya publicada.
-  const totalPzs=dev+ingresos;
+  // Mismos campos y fórmulas visibles de las tarjetas operativas V117.
+  const totalPzs=Number(mt.total_pzs ?? mt.ingresos ?? 0);
   const totalOperacion=dev+muertos+probador+cajas;
-  const pctAcond=totalPzs ? (acondicionado/totalPzs*100) : 0;
-  const pctUbicado=totalPzs ? (ubicado/totalPzs*100) : 0;
-  const pendAcond=Math.max(totalPzs-acondicionado,0);
-  const pendUbicar=Math.max(totalPzs-ubicado,0);
+  const pctAcond=mt.pct_acondicionado!=null
+    ? Number(mt.pct_acondicionado)
+    : (totalPzs ? acondicionado/totalPzs*100 : 0);
+  const pctUbicado=mt.pct_ubicado!=null
+    ? Number(mt.pct_ubicado)
+    : (totalPzs ? ubicado/totalPzs*100 : 0);
+  const pendAcond=mt.pendiente_acondicionar!=null
+    ? Number(mt.pendiente_acondicionar)
+    : Math.max(totalPzs-acondicionado,0);
+  const pendUbicar=mt.pendiente_ubicar!=null
+    ? Number(mt.pendiente_ubicar)
+    : Math.max(totalPzs-ubicado,0);
   const totalPend=pendAcond+pendUbicar;
-  const pctRec=metaRecorridos ? (recorridos/metaRecorridos*100) : Number(mt.pct_recorridos||0);
+  const pctRec=mt.pct_recorridos!=null
+    ? Number(mt.pct_recorridos)
+    : (metaRecorridos ? recorridos/metaRecorridos*100 : 0);
 
   const dash='—';
   const row=(label,value,pieces=dash,pctValue=dash,meta=dash,total=dash,cls='')=>`
@@ -1757,19 +1767,19 @@ function monthlyCrossTable(mt){
           <td><b>TOTAL OPERACIÓN</b></td><td><b>${fmt(totalOperacion)}</b></td><td><b>${fmt(totalOperacion)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalOperacion)}</b></td>
         </tr>
 
-        <tr style="background:#EAF3FF;color:#173B73">
-          <td colspan="2"><b>TOTAL GENERAL · TOTAL PZS</b></td>
-          <td><b>${fmt(totalPzs)}</b></td>
-          <td><b>${fmt(totalPzs)}</b></td>
-          <td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPzs)}</b></td>
-        </tr>
-
         <tr>
           <td rowspan="3" class="monthly-cat" style="vertical-align:middle;background:#FFF2E8;color:#C2410C;text-align:center">PENDIENTES</td>
           <td><b>PENDIENTE DE ACONDICIONAR</b></td><td><b>${fmt(pendAcond)}</b></td><td>${fmt(pendAcond)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendAcond)}</b></td>
         </tr>
         <tr><td><b>PENDIENTE DE UBICAR</b></td><td><b>${fmt(pendUbicar)}</b></td><td>${fmt(pendUbicar)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendUbicar)}</b></td></tr>
         <tr style="background:#FFF0E6"><td><b>TOTAL PENDIENTES</b></td><td><b>${fmt(totalPend)}</b></td><td><b>${fmt(totalPend)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPend)}</b></td></tr>
+
+        <tr style="background:#EAF3FF;color:#173B73">
+          <td colspan="2"><b>TOTAL GENERAL · TOTAL PZS</b></td>
+          <td><b>${fmt(totalPzs)}</b></td>
+          <td><b>${fmt(totalPzs)}</b></td>
+          <td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPzs)}</b></td>
+        </tr>
 
         <tr>
           <td rowspan="3" class="monthly-cat" style="vertical-align:middle;background:#F3EAFF;color:#6D28D9;text-align:center">AVANCE %</td>
@@ -2110,14 +2120,7 @@ async function renderOperativoView(name,force=false){
       stores.filter(x=>x.is_project || projectNames.has(String(x.store))),
       rec
     );
-    let out=reportKpis([
-      kpiCard('Conversión',pct(mt.conversion_pct),'FIFO diario · misma semana ISO','#7C3AED',metricClass(mt.conversion_pct,80,60)),
-      kpiCard('Pzas recuperadas',fmt(mt.converted_pieces||0),'Sólo ventas posteriores a la devolución','#10B981'),
-      kpiCard('Recuperación económica',pct(mt.recovery_pct),'Recuperación $ / Valor devolución','#EC007C',metricClass(mt.recovery_pct,80,60)),
-      kpiCard('Valor de la devolución',fmtMoney(mt.return_value||0),'Devoluciones del periodo consultado','#3366CC'),
-      kpiCard('Recuperación $',fmtMoney(mt.recovered_value||0),'Misma semana ISO','#10B981'),
-      kpiCard('Pendiente $',fmtMoney(mt.pending_recovery_value||0),'Valor devolución − Recuperación $','#EF4444')
-    ]);
+    let out=monthlyCrossTable(mt);
     out+=`<div class="subtitle" style="margin-top:-4px;margin-bottom:14px">
       Regla de recuperación: una devolución sólo recupera venta del mismo ID/SKU y tienda desde la fecha de devolución hasta el domingo de esa misma semana ISO.
     </div>`;
@@ -2145,31 +2148,13 @@ async function renderOperativoView(name,force=false){
   if(name==='Operación Diaria'){
     const dailyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
     const orderedDaily=orderByConversion(stores.filter(x=>x.is_project),rec);
-    out=reportKpis([
-      kpiCard('Muertos',fmt(mt.muertos),'Recolección · motivo Muertos','#EC007C'),
-      kpiCard('Probador',fmt(mt.probador),'Motivo Probador','#F59E0B'),
-      kpiCard('Cajas',fmt(mt.cajas),'Recolección · Cajas','#7C3AED'),
-      kpiCard('Piezas recolectadas',fmt(mt.recolectadas),'Total Recolección de muertos','#3366CC'),
-      kpiCard('Recorridos realizados',fmt(mt.recorridos),`${pct(mt.pct_recorridos)} · meta ${fmt(mt.meta_recorridos)}`,'#10B981'),
-      kpiCard('Acondicionado',fmt(mt.acondicionado),pct(mt.pct_acondicionado),'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
-      kpiCard('Ubicado',fmt(mt.ubicado),pct(mt.pct_ubicado),'#EC007C',metricClass(mt.pct_ubicado,80,65)),
-      kpiCard('Pendiente de acondicionar',fmt(mt.pendiente_acondicionar),'Recolectadas - Acondicionado','#F59E0B'),
-      kpiCard('Pendiente de ubicar',fmt(mt.pendiente_ubicar),'Acondicionado - Ubicado','#EF4444')
-    ]);
+    out=monthlyCrossTable(mt);
     out+=`<div class="title">Detalle operativo · ${OPER_PERIOD.value||'Día consultado'}</div>${operationalDetailTable(orderedDaily,rec)}`;
     out+=opsComboSvg(orderedDaily,OPER_PERIOD.value||d.period_value||'Día consultado',dailyScope,rec);
   }else if(name==='Reporte Semanal'){
     const weeklyProjects=orderByConversion(stores.filter(x=>x.is_project),rec);
     const weeklyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
-    out=reportKpis([
-      kpiCard('Piezas ingresadas',fmt(mt.ingresos),OPER_PERIOD.value,'#3366CC'),
-      kpiCard('Acondicionado',pct(mt.pct_acondicionado),fmt(mt.acondicionado),'#7C3AED',metricClass(mt.pct_acondicionado,85,70)),
-      kpiCard('Ubicado',pct(mt.pct_ubicado),fmt(mt.ubicado),'#EC007C',metricClass(mt.pct_ubicado,80,65)),
-      kpiCard('Conversión',pct(mt.conversion_pct),`${fmt(mt.converted_pieces)} piezas`,'#10B981',metricClass(mt.conversion_pct,80,60)),
-      kpiCard('Recuperación económica',pct(mt.recovery_pct),fmtMoney(mt.recovered_value),'#173B73',metricClass(mt.recovery_pct,80,60)),
-      kpiCard('Productividad',pct(mt.productivity_pct),`${fmt(mt.productivity_daily)} pzs/día`,'#F59E0B',metricClass(mt.productivity_pct,100,80)),
-      kpiCard('Recorridos',pct(mt.pct_recorridos),`${fmt(mt.recorridos)} / ${fmt(mt.meta_recorridos)}`,'#EF4444',metricClass(mt.pct_recorridos,100,80))
-    ]);
+    out=monthlyCrossTable(mt);
     out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope);
     out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
