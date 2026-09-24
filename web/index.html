@@ -1674,8 +1674,7 @@ function monthlyCrossTable(mt){
   const recorridos=Number(mt.recorridos||0);
   const metaRecorridos=Number(mt.meta_recorridos||0);
 
-  // En el mensual, Dev Pzs es un flujo adicional a los ingresos operativos.
-  // TOTAL PZS replica la lógica visual usada en las tarjetas: Dev Pzs + ingresos operativos.
+  // Se conserva exactamente la lógica de cálculo ya publicada.
   const totalPzs=dev+ingresos;
   const totalOperacion=dev+muertos+probador+cajas;
   const pctAcond=totalPzs ? (acondicionado/totalPzs*100) : 0;
@@ -1696,8 +1695,45 @@ function monthlyCrossTable(mt){
       <td><b>${total}</b></td>
     </tr>`;
 
-  return `<div class="tablewrap" style="margin-bottom:12px">
-    <table class="table" style="min-width:980px">
+  return `
+    <style>
+      .monthly-cross-table{min-width:980px;font-size:17px}
+      .monthly-cross-table thead th{
+        font-size:17px!important;
+        font-weight:800!important;
+        padding:10px 14px!important;
+        line-height:1.05!important;
+      }
+      .monthly-cross-table tbody td{
+        font-size:17px!important;
+        padding:7px 14px!important;
+        line-height:1.05!important;
+        height:auto!important;
+      }
+      .monthly-cross-table tbody td b{
+        font-size:18px!important;
+        font-weight:800!important;
+      }
+      .monthly-cross-table .monthly-cat{
+        font-size:19px!important;
+        font-weight:900!important;
+        line-height:1.05!important;
+      }
+      .monthly-cross-table .monthly-cat span{
+        font-size:13px!important;
+        font-weight:800!important;
+      }
+      @media (max-width:700px){
+        .monthly-cross-table{font-size:14px}
+        .monthly-cross-table thead th{font-size:14px!important;padding:8px 9px!important}
+        .monthly-cross-table tbody td{font-size:14px!important;padding:6px 9px!important}
+        .monthly-cross-table tbody td b{font-size:15px!important}
+        .monthly-cross-table .monthly-cat{font-size:16px!important}
+        .monthly-cross-table .monthly-cat span{font-size:11px!important}
+      }
+    </style>
+    <div class="tablewrap" style="margin-bottom:12px">
+    <table class="table monthly-cross-table">
       <thead>
         <tr>
           <th style="min-width:155px">Categoría</th>
@@ -1711,7 +1747,7 @@ function monthlyCrossTable(mt){
       </thead>
       <tbody>
         <tr>
-          <td rowspan="5" style="vertical-align:middle;font-weight:800;background:#ECFDF5;color:#047857;text-align:center">OPERACIÓN<br><span style="font-size:10px;font-weight:700">(RECOLECCIÓN)</span></td>
+          <td rowspan="5" class="monthly-cat" style="vertical-align:middle;background:#ECFDF5;color:#047857;text-align:center">OPERACIÓN<br><span>(RECOLECCIÓN)</span></td>
           <td><b>DEV PZS</b></td><td><b>${fmt(dev)}</b></td><td>${fmt(dev)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(dev)}</b></td>
         </tr>
         ${row('MUERTOS',fmt(muertos),fmt(muertos),dash,dash,fmt(muertos))}
@@ -1721,26 +1757,26 @@ function monthlyCrossTable(mt){
           <td><b>TOTAL OPERACIÓN</b></td><td><b>${fmt(totalOperacion)}</b></td><td><b>${fmt(totalOperacion)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalOperacion)}</b></td>
         </tr>
 
-        <tr>
-          <td rowspan="3" style="vertical-align:middle;font-weight:800;background:#F3EAFF;color:#6D28D9;text-align:center">AVANCE %</td>
-          <td><b>RECORRIDOS REALIZADOS</b></td><td><b>${fmt(recorridos)}</b></td><td>${dash}</td><td><b>${pct(pctRec)}</b></td><td>${fmt(metaRecorridos)}</td><td>${dash}</td>
-        </tr>
-        <tr><td><b>% ACONDICIONADO</b></td><td><b>${pct(pctAcond)}</b></td><td>${fmt(acondicionado)}</td><td><b>${pct(pctAcond)}</b></td><td>${dash}</td><td>${dash}</td></tr>
-        <tr><td><b>% UBICADO</b></td><td><b>${pct(pctUbicado)}</b></td><td>${fmt(ubicado)}</td><td><b>${pct(pctUbicado)}</b></td><td>${dash}</td><td>${dash}</td></tr>
-
-        <tr>
-          <td rowspan="3" style="vertical-align:middle;font-weight:800;background:#FFF2E8;color:#C2410C;text-align:center">PENDIENTES</td>
-          <td><b>PENDIENTE DE ACONDICIONAR</b></td><td><b>${fmt(pendAcond)}</b></td><td>${fmt(pendAcond)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendAcond)}</b></td>
-        </tr>
-        <tr><td><b>PENDIENTE DE UBICAR</b></td><td><b>${fmt(pendUbicar)}</b></td><td>${fmt(pendUbicar)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendUbicar)}</b></td></tr>
-        <tr style="background:#FFF0E6"><td><b>TOTAL PENDIENTES</b></td><td><b>${fmt(totalPend)}</b></td><td><b>${fmt(totalPend)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPend)}</b></td></tr>
-
         <tr style="background:#EAF3FF;color:#173B73">
           <td colspan="2"><b>TOTAL GENERAL · TOTAL PZS</b></td>
           <td><b>${fmt(totalPzs)}</b></td>
           <td><b>${fmt(totalPzs)}</b></td>
           <td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPzs)}</b></td>
         </tr>
+
+        <tr>
+          <td rowspan="3" class="monthly-cat" style="vertical-align:middle;background:#FFF2E8;color:#C2410C;text-align:center">PENDIENTES</td>
+          <td><b>PENDIENTE DE ACONDICIONAR</b></td><td><b>${fmt(pendAcond)}</b></td><td>${fmt(pendAcond)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendAcond)}</b></td>
+        </tr>
+        <tr><td><b>PENDIENTE DE UBICAR</b></td><td><b>${fmt(pendUbicar)}</b></td><td>${fmt(pendUbicar)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendUbicar)}</b></td></tr>
+        <tr style="background:#FFF0E6"><td><b>TOTAL PENDIENTES</b></td><td><b>${fmt(totalPend)}</b></td><td><b>${fmt(totalPend)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPend)}</b></td></tr>
+
+        <tr>
+          <td rowspan="3" class="monthly-cat" style="vertical-align:middle;background:#F3EAFF;color:#6D28D9;text-align:center">AVANCE %</td>
+          <td><b>RECORRIDOS REALIZADOS</b></td><td><b>${fmt(recorridos)}</b></td><td>${dash}</td><td><b>${pct(pctRec)}</b></td><td>${fmt(metaRecorridos)}</td><td>${dash}</td>
+        </tr>
+        <tr><td><b>% ACONDICIONADO</b></td><td><b>${pct(pctAcond)}</b></td><td>${fmt(acondicionado)}</td><td><b>${pct(pctAcond)}</b></td><td>${dash}</td><td>${dash}</td></tr>
+        <tr><td><b>% UBICADO</b></td><td><b>${pct(pctUbicado)}</b></td><td>${fmt(ubicado)}</td><td><b>${pct(pctUbicado)}</b></td><td>${dash}</td><td>${dash}</td></tr>
       </tbody>
     </table>
   </div>`;
