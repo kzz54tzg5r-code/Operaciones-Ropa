@@ -101,6 +101,12 @@ def _install_pending_cut(module) -> None:
     signature = inspect.signature(original)
 
     def _previous_day_pending(params, result):
+        """Saldo de arrastre al inicio del día consultado.
+
+        Recorre todo el histórico anterior al día D por tienda. Así el cierre de
+        D-1 ya incluye cualquier pendiente heredado de D-2, D-3, etc. Si no hubo
+        movimiento en D-1, el saldo sigue vivo y pasa a D.
+        """
         if str(params.get("period_type") or "") != "day":
             return {}
         period_value = str(params.get("period_value") or "").strip()
@@ -108,7 +114,7 @@ def _install_pending_cut(module) -> None:
             return {}
         try:
             current = module.pd.Timestamp(period_value).normalize()
-            previous = (current - module.pd.Timedelta(days=1)).date().isoformat()
+            current_date = current.date().isoformat()
         except Exception:
             return {}
 
@@ -116,14 +122,23 @@ def _install_pending_cut(module) -> None:
         allowed = set(stores)
         if not allowed:
             return {}
+
         wanted_area = module.normalize_col(params.get("area") or "")
         wanted_activity = module.normalize_col(params.get("activity") or "")
-        daily = {s: {"dev": 0.0, "muertos": 0.0, "cajas": 0.0, "probador": 0.0, "ubicado": 0.0} for s in stores}
         data = module.load_ops() or {}
+
+        # Acumular entradas/ubicados por fecha para reproducir el saldo día a día.
+        daily = {s: {} for s in stores}
+        def bucket(store, day):
+            return daily[store].setdefault(day, {
+                "dev": 0.0, "muertos": 0.0, "cajas": 0.0,
+                "probador": 0.0, "ubicado": 0.0,
+            })
 
         for row in data.get("rows") or []:
             store = str(row.get("store") or "")
-            if store not in allowed or str(row.get("date") or "") != previous:
+            day = str(row.get("date") or "")[:10]
+            if store not in allowed or not day or day >= current_date:
                 continue
             if wanted_area and module.normalize_col(row.get("area") or "") != wanted_area:
                 continue
@@ -132,7 +147,8 @@ def _install_pending_cut(module) -> None:
                 a0 = module.normalize_col(row.get("activity_original") or "")
                 if a1 != wanted_activity and a0 != wanted_activity:
                     continue
-            d = daily[store]
+
+            d = bucket(store, day)
             muertos = _number(row.get("muertos"))
             # En el Excel real una Recolección de muertos puede venir sin motivo.
             if (
@@ -149,15 +165,23 @@ def _install_pending_cut(module) -> None:
             recovery = module._get_recovery_fifo_rows(data)
         except Exception:
             recovery = data.get("recovery_fifo") or data.get("commercial_daily") or []
+
         for row in recovery or []:
             store = str(row.get("store") or "")
-            if store in allowed and str(row.get("date") or "") == previous:
-                daily[store]["dev"] += _number(row.get("dev_pzs"))
+            day = str(row.get("date") or "")[:10]
+            if store not in allowed or not day or day >= current_date:
+                continue
+            bucket(store, day)["dev"] += _number(row.get("dev_pzs"))
 
-        return {
-            s: max(d["dev"] + d["muertos"] + d["cajas"] + d["probador"] - d["ubicado"], 0.0)
-            for s, d in daily.items()
-        }
+        opening = {}
+        for store in stores:
+            saldo = 0.0
+            for day in sorted(daily.get(store, {})):
+                d = daily[store][day]
+                ingresos = d["dev"] + d["muertos"] + d["cajas"] + d["probador"]
+                saldo = max(saldo + ingresos - d["ubicado"], 0.0)
+            opening[store] = saldo
+        return opening
 
     @wraps(original)
     def operations_v90(*args, **kwargs):
