@@ -81,6 +81,7 @@ from v177_sellthrough_report_patch import install as _install_v177_sellthrough_r
 from v190_lingerie_checklist_patch import install as _install_v190_lingerie_checklist_patch
 from v192_sellthrough_raw_rebuild import install as _install_v192_sellthrough_raw_rebuild
 from v193_sellthrough_clean_ui import install as _install_v193_sellthrough_clean_ui
+from pwa_patch import install as _install_pwa_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -158,4 +159,5 @@ _install_v177_sellthrough_report_patch(web_app)
 _install_v190_lingerie_checklist_patch(web_app)
 _install_v192_sellthrough_raw_rebuild(web_app)
 _install_v193_sellthrough_clean_ui(web_app)
+_install_pwa_patch(web_app)
 app = web_app.app

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Operaciones Ropa">
+  <rect width="512" height="512" rx="112" fill="#123B73"/>
+  <path d="M402 0h110v512H402z" fill="#E4007F"/>
+  <circle cx="235" cy="256" r="160" fill="#1769E8" opacity=".28"/>
+  <path d="M147 128h126c78 0 123 39 123 104 0 48-27 81-72 94l83 104h-93l-72-94h-22v94h-73V128zm73 67v80h48c35 0 54-14 54-40 0-27-19-40-54-40h-48z" fill="#FFF"/>
+</svg>

@@ -1,0 +1,50 @@
+name: PWA smoke check
+
+on:
+  pull_request:
+    paths:
+      - "web/manifest.webmanifest"
+      - "web/service-worker.js"
+      - "web/pwa_install.js"
+      - "web/app-icon-*.svg"
+      - "web/offline.html"
+      - "web/index.html"
+      - "pwa_patch.py"
+      - "server_entry.py"
+      - ".github/workflows/pwa-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  validate-pwa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PWA files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("web/manifest.webmanifest").read_text(encoding="utf-8"))
+          assert manifest["name"] == "Operaciones Ropa"
+          assert manifest["start_url"] == "/"
+          assert manifest["scope"] == "/"
+          assert manifest["display"] == "standalone"
+          sizes = {i["sizes"] for i in manifest["icons"]}
+          assert {"192x192", "512x512"} <= sizes
+
+          index = Path("web/index.html").read_text(encoding="utf-8")
+          assert 'rel="manifest" href="/manifest.webmanifest"' in index
+          assert '/static/pwa_install.js' in index
+          assert 'viewport-fit=cover' in index
+
+          sw = Path("web/service-worker.js").read_text(encoding="utf-8")
+          assert "url.pathname.startsWith('/api/')" in sw
+          assert "caches.match('/static/offline.html')" in sw
+
+          entry = Path("server_entry.py").read_text(encoding="utf-8")
+          assert "_install_pwa_patch(web_app)" in entry
+
+          compile(Path("pwa_patch.py").read_text(encoding="utf-8"), "pwa_patch.py", "exec")
+          print("PWA smoke check OK")
+          PY
