@@ -1715,10 +1715,16 @@ function monthlyCrossTable(mt,showOpening=false){
       <td>${meta}</td>
       <td><b>${total}</b></td>
     </tr>`;
+  const mobileRow=(label,value,sub='',cls='')=>`
+    <div class="mct-mobile-row ${cls}">
+      <div class="mct-mobile-label">${label}</div>
+      <div class="mct-mobile-value"><b>${value}</b>${sub?`<small>${sub}</small>`:''}</div>
+    </div>`;
 
   return `
     <style>
       .monthly-cross-table{min-width:980px;font-size:17px}
+      .monthly-cross-mobile{display:none}
       .monthly-cross-table thead th{
         font-size:17px!important;
         font-weight:800!important;
@@ -1745,15 +1751,107 @@ function monthlyCrossTable(mt,showOpening=false){
         font-weight:800!important;
       }
       @media (max-width:700px){
-        .monthly-cross-table{font-size:14px}
-        .monthly-cross-table thead th{font-size:14px!important;padding:8px 9px!important}
-        .monthly-cross-table tbody td{font-size:14px!important;padding:6px 9px!important}
-        .monthly-cross-table tbody td b{font-size:15px!important}
-        .monthly-cross-table .monthly-cat{font-size:16px!important}
-        .monthly-cross-table .monthly-cat span{font-size:11px!important}
+        .monthly-cross-desktop{display:none!important}
+        .monthly-cross-mobile{
+          display:block;
+          width:100%;
+          max-width:100%;
+          margin:0 0 10px;
+          overflow:hidden;
+          border:1px solid #d8e0eb;
+          border-radius:12px;
+          background:#fff;
+          box-sizing:border-box;
+        }
+        .mct-mobile-head{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) auto;
+          gap:8px;
+          align-items:center;
+          background:#173B73;
+          color:#fff;
+          padding:8px 10px;
+          font-size:11px;
+          line-height:1.05;
+          font-weight:900;
+        }
+        .mct-mobile-section{
+          padding:6px 10px;
+          border-top:1px solid #e7edf5;
+          font-size:10px;
+          line-height:1.1;
+          font-weight:950;
+          letter-spacing:.02em;
+        }
+        .mct-mobile-section small{font-size:8px;font-weight:800}
+        .mct-mobile-section.operation{background:#ECFDF5;color:#047857}
+        .mct-mobile-section.pending{background:#FFF2E8;color:#C2410C}
+        .mct-mobile-section.progress{background:#F3EAFF;color:#6D28D9}
+        .mct-mobile-row{
+          display:grid;
+          grid-template-columns:minmax(0,1fr) minmax(74px,auto);
+          gap:8px;
+          align-items:center;
+          width:100%;
+          min-height:35px;
+          padding:6px 10px;
+          border-top:1px solid #edf1f5;
+          box-sizing:border-box;
+        }
+        .mct-mobile-label{
+          min-width:0;
+          color:#173B73;
+          font-size:11px;
+          line-height:1.12;
+          font-weight:800;
+          overflow-wrap:anywhere;
+        }
+        .mct-mobile-value{
+          min-width:0;
+          color:#173B73;
+          text-align:right;
+          line-height:1.05;
+        }
+        .mct-mobile-value b{
+          display:block;
+          font-size:12px;
+          line-height:1.08;
+          font-weight:950;
+          white-space:nowrap;
+        }
+        .mct-mobile-value small{
+          display:block;
+          margin-top:2px;
+          color:#667085;
+          font-size:8px;
+          line-height:1.1;
+          font-weight:750;
+          white-space:nowrap;
+        }
+        .mct-mobile-row.mct-total{background:#f4fbf7}
+        .mct-mobile-row.mct-pending-total{background:#fff7f0}
+        .mct-mobile-row.mct-general{
+          background:#EAF3FF;
+          border-top:2px solid #cbdcf4;
+        }
+        .mct-mobile-row.mct-general .mct-mobile-label,
+        .mct-mobile-row.mct-general .mct-mobile-value b{
+          font-size:12px;
+          font-weight:950;
+        }
+      }
+      @media (max-width:390px){
+        .mct-mobile-head{padding:7px 8px;font-size:10px}
+        .mct-mobile-section{padding:5px 8px;font-size:9px}
+        .mct-mobile-row{grid-template-columns:minmax(0,1fr) minmax(68px,auto);padding:5px 8px;gap:6px;min-height:32px}
+        .mct-mobile-label{font-size:10px}
+        .mct-mobile-value b{font-size:11px}
+        .mct-mobile-value small{font-size:7px}
+        .mct-mobile-row.mct-general .mct-mobile-label,
+        .mct-mobile-row.mct-general .mct-mobile-value b{font-size:11px}
       }
     </style>
-    <div class="tablewrap" style="margin-bottom:12px">
+    <div class="tablewrap monthly-cross-desktop" style="margin-bottom:12px">
     <table class="table monthly-cross-table">
       <thead>
         <tr>
@@ -1801,6 +1899,29 @@ function monthlyCrossTable(mt,showOpening=false){
         <tr><td><b>% UBICADO</b></td><td><b>${pct(pctUbicado)}</b></td><td>${fmt(ubicado)}</td><td><b>${pct(pctUbicado)}</b></td><td>${dash}</td><td>${dash}</td></tr>
       </tbody>
     </table>
+  </div>
+  <div class="monthly-cross-mobile" aria-label="Resumen operativo móvil">
+    <div class="mct-mobile-head"><span>Indicador</span><span>Valor</span></div>
+
+    <div class="mct-mobile-section operation">OPERACIÓN <small>(RECOLECCIÓN)</small></div>
+    ${mobileRow('DEV PZS',fmt(dev))}
+    ${mobileRow('MUERTOS',fmt(muertos))}
+    ${mobileRow('PROBADOR',fmt(probador))}
+    ${mobileRow('CAJAS',fmt(cajas))}
+    ${showOpening?mobileRow('PENDIENTE ANTERIOR',fmt(pendingPrev)):''}
+    ${mobileRow('TOTAL OPERACIÓN',fmt(totalOperacion),'','mct-total')}
+
+    <div class="mct-mobile-section pending">PENDIENTES</div>
+    ${mobileRow('PENDIENTE DE ACONDICIONAR',fmt(pendAcond))}
+    ${mobileRow('PENDIENTE DE UBICAR',fmt(pendUbicar))}
+    ${mobileRow('TOTAL PENDIENTES',fmt(totalPend),'','mct-pending-total')}
+
+    ${mobileRow('TOTAL GENERAL · TOTAL PZS',fmt(totalPzs),'','mct-general')}
+
+    <div class="mct-mobile-section progress">AVANCE %</div>
+    ${mobileRow('RECORRIDOS REALIZADOS',fmt(recorridos),`Meta ${fmt(metaRecorridos)} · ${pct(pctRec)}`)}
+    ${mobileRow('% ACONDICIONADO',pct(pctAcond),`${fmt(acondicionado)} pzs`)}
+    ${mobileRow('% UBICADO',pct(pctUbicado),`${fmt(ubicado)} pzs`)}
   </div>`;
 }
 function opTable(rows,rec=[]){
