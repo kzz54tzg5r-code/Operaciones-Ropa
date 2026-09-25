@@ -1,0 +1,26 @@
+{
+  "name": "operaciones-ropa-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Contenedor iOS de Operaciones Ropa para TestFlight y App Store.",
+  "scripts": {
+    "ios:init": "npx cap add ios && node scripts/configure-ios.mjs && npx cap sync ios",
+    "ios:sync": "node scripts/configure-ios.mjs && npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "ios:doctor": "npx cap doctor"
+  },
+  "dependencies": {
+    "@capacitor/app": "8.1.1",
+    "@capacitor/camera": "8.2.4",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/network": "8.0.1",
+    "@capacitor/share": "8.0.1",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

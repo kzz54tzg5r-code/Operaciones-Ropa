@@ -1,0 +1,5 @@
+node_modules/
+ios/App/DerivedData/
+ios/App/build/
+*.xcuserstate
+.DS_Store
