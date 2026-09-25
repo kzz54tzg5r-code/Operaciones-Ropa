@@ -1,0 +1,41 @@
+name: iOS Capacitor smoke build
+
+on:
+  pull_request:
+    paths:
+      - "mobile/ios-app/**"
+      - "web/ios_native.js"
+      - "web/index.html"
+      - ".github/workflows/ios-capacitor-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile/ios-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate and sync iOS
+        run: npm run ios:init
+
+      - name: Build simulator without signing
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
