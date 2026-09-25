@@ -1,0 +1,38 @@
+name: Web UI syntax check
+
+on:
+  pull_request:
+    paths:
+      - "web/index.html"
+      - ".github/workflows/web-ui-syntax.yml"
+  workflow_dispatch:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate inline JavaScript and mobile summary
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          assert 'class="monthly-cross-mobile"' in html
+          assert '.monthly-cross-desktop{display:none!important}' in html
+          assert 'TOTAL GENERAL · TOTAL PZS' in html
+
+          scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, flags=re.S|re.I)
+          if not scripts:
+              raise SystemExit("No inline scripts found")
+          out = Path("/tmp/inline-scripts")
+          out.mkdir(exist_ok=True)
+          for i, script in enumerate(scripts):
+              (out / f"script-{i}.js").write_text(script, encoding="utf-8")
+          print(f"Extracted {len(scripts)} inline scripts")
+          PY
+          for f in /tmp/inline-scripts/*.js; do node --check "$f"; done
