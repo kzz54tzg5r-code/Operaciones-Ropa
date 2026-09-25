@@ -1,0 +1,24 @@
+{
+  "appId": "com.operacionesropa.app",
+  "appName": "Operaciones Ropa",
+  "webDir": "www",
+  "server": {
+    "url": "https://operaciones-ropa.onrender.com",
+    "cleartext": false,
+    "allowNavigation": [
+      "operaciones-ropa.onrender.com"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "launchShowDuration": 1200,
+      "launchFadeOutDuration": 250,
+      "backgroundColor": "#123B73",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT"
+    }
+  }
+}
