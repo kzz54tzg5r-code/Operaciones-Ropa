@@ -6,6 +6,8 @@ on:
       - "web/index.html"
       - "web/design_system.css"
       - "web/design_system.js"
+      - "v194_mobile_ui_final_patch.py"
+      - "server_entry.py"
       - ".github/workflows/web-ui-syntax.yml"
   workflow_dispatch:
 
@@ -54,10 +56,24 @@ jobs:
           html = Path("web/index.html").read_text(encoding="utf-8")
           css = Path("web/design_system.css").read_text(encoding="utf-8")
           js = Path("web/design_system.js").read_text(encoding="utf-8")
-          assert 'design_system.css?v=20260928-mobile-v4' in html
-          assert 'design_system.js?v=20260928-mobile-v4' in html
+          assert 'design_system.css?v=20260928-mobile-v5' in html
+          assert 'design_system.js?v=20260928-mobile-v5' in html
           assert html.index('id="operativoNav"') < html.index('id="globalFilters"'), "Tabs must precede global filters"
           assert "MOBILE EXPERIENCE V4" in css
           assert "const enforceTopOrder = () =>" in js
           print("Mobile V4 layout guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          js = Path("web/design_system.js").read_text(encoding="utf-8")
+          patch = Path("v194_mobile_ui_final_patch.py").read_text(encoding="utf-8")
+          entry = Path("server_entry.py").read_text(encoding="utf-8")
+          compile(patch, "v194_mobile_ui_final_patch.py", "exec")
+          assert 'apple-mobile-web-app-status-bar-style" content="default"' in html
+          assert 'class="or-report-filter-card"' in html
+          assert 'or-tab-icon' in js
+          assert "v194-mobile-ui-final-css" in patch
+          assert entry.index("_install_v194_mobile_ui_final_patch(web_app)") > entry.index("_install_pwa_patch(web_app)")
+          print("V194 final visual guard OK")
           PY
