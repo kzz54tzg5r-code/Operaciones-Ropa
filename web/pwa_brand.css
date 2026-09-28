@@ -1,0 +1,112 @@
+/* Operaciones Ropa · identidad móvil PWA */
+:root{
+  --or-navy:#082f5c;
+  --or-navy-deep:#001f40;
+  --or-blue:#0d7ff4;
+  --or-blue-bright:#1798ff;
+  --or-surface:#ffffff;
+  --or-bg:#f4f7fb;
+  --or-line:#dfe7f1;
+  --or-muted:#6b7890;
+}
+
+/* Splash real de la PWA/web */
+#orSplash{
+  position:fixed;inset:0;z-index:30000;
+  display:grid;place-items:center;
+  background:
+    radial-gradient(circle at 50% 108%,rgba(22,126,235,.42),transparent 38%),
+    radial-gradient(circle at 10% 110%,rgba(16,92,170,.55),transparent 40%),
+    linear-gradient(180deg,#0b477b 0%,#063663 46%,#002143 100%);
+  color:#fff;
+  transition:opacity .28s ease,visibility .28s ease;
+  padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));
+}
+#orSplash.or-splash-hide{opacity:0;visibility:hidden}
+.or-splash-inner{width:min(330px,76vw);text-align:center}
+.or-splash-logo{display:block;width:100%;height:auto;opacity:.99}
+.or-splash-logo-wrap{width:min(285px,72vw);margin:0 auto 20px}
+.or-splash-loading{margin:42px auto 12px;width:min(210px,62vw);height:5px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden}
+.or-splash-loading i{display:block;height:100%;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0788ff,#6cc7ff);animation:orLoad 1.15s ease-in-out infinite alternate}
+.or-splash-caption{font-size:12px;opacity:.9}
+@keyframes orLoad{from{transform:translateX(-45%)}to{transform:translateX(145%)}}
+
+/* Login blanco/azul como la propuesta aprobada */
+.login-v15{background:#fff!important;color:var(--or-navy)!important}
+.login-v15-bg,.login-v15-shade{display:none!important}
+.login-v15:before,.login-v15:after{
+  content:"";position:fixed;left:-14%;right:-14%;bottom:-18vh;height:34vh;pointer-events:none;
+  border-radius:50% 50% 0 0/70% 70% 0 0;
+}
+.login-v15:before{background:rgba(19,135,248,.09);transform:rotate(-4deg)}
+.login-v15:after{background:rgba(19,135,248,.05);transform:rotate(5deg);bottom:-13vh}
+.login-v15-card{
+  z-index:1;width:min(430px,calc(100vw - 34px))!important;
+  color:var(--or-navy)!important;background:transparent!important;
+  border:0!important;box-shadow:none!important;backdrop-filter:none!important;
+  padding:28px 30px 26px!important;
+}
+.login-logo-v15{
+  width:min(238px,68vw)!important;max-width:none!important;height:auto!important;
+  filter:none!important;margin:0 auto 10px!important;
+}
+.login-brand-v15{display:none!important}
+.login-sub-v15{
+  margin:2px 0 26px!important;color:#63728a!important;
+  font-size:13px!important;line-height:1.35!important;
+}
+.login-sub-v15:after{
+  content:"Inicia sesión para continuar";
+  display:block;margin-top:7px;color:#7a879a;font-size:12px;font-weight:500;
+}
+.login-form-v15{gap:12px!important}
+.login-field-v15{
+  grid-template-columns:38px 1fr!important;
+  border:1px solid #d7e1ec!important;border-radius:10px!important;
+  background:#fff!important;padding:2px 8px!important;
+  box-shadow:0 2px 8px rgba(13,59,105,.035);
+}
+.login-icon-v15{
+  color:#0d67c9!important;filter:none!important;font-size:17px!important;
+  display:grid;place-items:center;
+}
+.login-field-v15 input{
+  min-height:46px!important;color:#263b58!important;background:transparent!important;
+  font-size:14px!important;padding:9px 6px!important;
+}
+.login-field-v15 input::placeholder{color:#7d899b!important}
+.login-btn-v15{
+  margin-top:10px!important;border-radius:8px!important;
+  background:linear-gradient(135deg,#158cf8,#0873e8)!important;
+  color:#fff!important;font-size:15px!important;padding:13px 18px!important;
+  box-shadow:0 10px 22px rgba(13,127,244,.20)!important;
+}
+.login-help-v15{margin-top:15px!important;align-items:center!important}
+.login-link-v17{color:#0b69c8!important;font-size:12px!important}
+.login-msg-v15{color:#c62748!important}
+.server-msg-v15{color:#8a96a8!important}
+.recovery-panel-v17{border-top:1px solid #e4eaf1!important;color:var(--or-navy)!important}
+.recovery-note-v17{color:#687891!important}
+.recovery-cancel-v17{border-color:#cdd8e4!important;color:#0b4c8e!important;border-radius:8px!important}
+
+/* Marca dentro de la app */
+.sidebrand img{width:54px!important;max-height:54px!important}
+.sidebrand{gap:8px!important}
+.sidebrand-text b{color:var(--or-navy)!important}
+.hero{background:linear-gradient(135deg,#0a3b6d,#0b518f)!important}
+
+/* Apariencia de app instalada */
+html.pwa-standalone body{background:var(--or-bg)}
+html.pwa-standalone .main{padding-top:max(7px,env(safe-area-inset-top))}
+html.pwa-standalone .mobile{padding-bottom:calc(5px + env(safe-area-inset-bottom))!important}
+
+@media(max-width:900px){
+  .hero{border-radius:12px!important}
+  .mobile{background:rgba(255,255,255,.97)!important;backdrop-filter:blur(12px)}
+  .mnav.active{color:var(--or-blue)!important;background:#eaf4ff!important;box-shadow:inset 0 3px 0 var(--or-blue)!important}
+}
+@media(max-width:600px){
+  .login-v15{align-items:flex-start!important;padding-top:max(5vh,env(safe-area-inset-top))!important}
+  .login-v15-card{padding:18px 22px 24px!important}
+  .login-logo-v15{width:min(205px,62vw)!important}
+}
