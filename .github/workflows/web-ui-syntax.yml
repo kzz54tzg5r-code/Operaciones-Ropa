@@ -6,6 +6,7 @@ on:
       - "web/index.html"
       - "web/design_system.css"
       - "web/design_system.js"
+      - "web/report_tab_carousel.js"
       - "v194_mobile_ui_final_patch.py"
       - "server_entry.py"
       - ".github/workflows/web-ui-syntax.yml"
@@ -43,6 +44,7 @@ jobs:
           PY
           for f in /tmp/inline-scripts/*.js; do node --check "$f"; done
           node --check web/design_system.js
+          node --check web/report_tab_carousel.js
           python - <<'PY'
           from pathlib import Path
           js = Path("web/design_system.js").read_text(encoding="utf-8")
@@ -76,4 +78,20 @@ jobs:
           assert "v194-mobile-ui-final-css" in patch
           assert entry.index("_install_v194_mobile_ui_final_patch(web_app)") > entry.index("_install_pwa_patch(web_app)")
           print("V194 final visual guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
+          ds = Path("web/design_system.js").read_text(encoding="utf-8")
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v1' in html
+          assert 'scroll-snap-type:x mandatory' in js
+          assert "commercial.sellthrough" in js
+          assert "data.v125Tab" in js or "dataset.v125Tab" in js
+          assert "rt-carousel-arrow" in js
+          assert "nearest.click()" in js
+          assert "activateFirst" in js
+          assert "closest('.rt-carousel-shell')" in ds
+          assert "#metricSwitch" in js and "#paretoGroupSwitch" in js
+          print("ReportTabCarousel guard OK")
           PY
