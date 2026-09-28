@@ -195,7 +195,7 @@ jobs:
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
-          assert "width:56px!important" in js
+          assert "width:52px!important" in js
           assert "rt-icon-rail-v1-current" in js
           assert "rt-icon-rail-v1-indicator" in js
           assert "shell.classList.remove('rt-mundial-stage','rt-mundial-v6','rt-mundial-v7')" in js
