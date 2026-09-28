@@ -191,7 +191,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
@@ -219,7 +219,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
           assert "userSelectedButton" in js
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
@@ -232,7 +232,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
           assert "function circularizeAround" in js
           assert "state.logicalButtons" in js
           assert "btn.dataset.rtRingOrder" in js
@@ -247,7 +247,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
           assert "el.toggleAttribute('hidden',!visible)" in html
           assert "report-tabs-visibility-changed" in html
           assert "#operativoNav.rt-carousel>button.hidden" in js
@@ -262,7 +262,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
           assert "function oneStepTarget" in js
           assert "function bindOneStepSwipe" in js
           assert "function animateScrollTo" in js
@@ -292,4 +292,21 @@ jobs:
           assert "#operPeriodApply.or-filter-apply-v5{grid-column:span 1!important}" in patch
           assert "font-size:7.5px!important" in icon
           print("Operational nav + compact Consultar guard OK")
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          rail = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
+          entry = Path("server_entry.py").read_text(encoding="utf-8")
+          patch = Path("v195_report_navigation_restore_patch.py").read_text(encoding="utf-8")
+          compile(patch, "v195_report_navigation_restore_patch.py", "exec")
+          assert "function applyTabVisibility(){\n  $$('[data-tab-key]').forEach" in html
+          assert "let OP_RENDER_SEQ=0;" in html
+          assert "if(isStale())return;" in html
+          assert "TARGET_IDS=['operativoNav','analysisNav']" in rail
+          assert "window.ReportTabIconRailV8=api" in rail
+          assert "_install_v195_report_navigation_restore_patch(web_app)" in entry
+          assert "opsDropzone" in patch and "analysis-upload" in patch
+          print("V195 report navigation restore guard OK")
           PY
