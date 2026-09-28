@@ -23,11 +23,9 @@
   padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));
 }
 #orSplash.or-splash-hide{opacity:0;visibility:hidden}
-.or-splash-inner{width:min(300px,72vw);text-align:center}
-.or-splash-logo{display:block;width:100%;height:auto;filter:brightness(0) invert(1);opacity:.98}
-.or-splash-logo-wrap{width:min(210px,58vw);margin:0 auto 28px}
-.or-splash-name{font-size:25px;font-weight:900;letter-spacing:.02em;margin-top:-18px}
-.or-splash-name span{display:block;color:#2d9bff;font-size:34px;margin-top:2px}
+.or-splash-inner{width:min(330px,76vw);text-align:center}
+.or-splash-logo{display:block;width:100%;height:auto;opacity:.99}
+.or-splash-logo-wrap{width:min(285px,72vw);margin:0 auto 20px}
 .or-splash-loading{margin:42px auto 12px;width:min(210px,62vw);height:5px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden}
 .or-splash-loading i{display:block;height:100%;width:42%;border-radius:inherit;background:linear-gradient(90deg,#0788ff,#6cc7ff);animation:orLoad 1.15s ease-in-out infinite alternate}
 .or-splash-caption{font-size:12px;opacity:.9}
