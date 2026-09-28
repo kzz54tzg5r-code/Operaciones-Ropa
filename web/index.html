@@ -16,9 +16,9 @@
 <script defer src="/static/ios_native.js"></script>
 <script defer src="/static/pwa_brand.js"></script>
 <script defer src="/static/design_system.js?v=20260928-mobile-v5"></script>
-<script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v5"></script>
+<script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v6"></script>
 <script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-v7"></script>
-<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6"></script>
+<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7"></script>
 <script defer src="/static/pwa_install.js?v=auto-update-v1"></script>
 <style>
 :root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
@@ -380,10 +380,10 @@ body{max-width:100%;overflow-x:hidden}
 <button class="nav adminOnly" data-main="share">Compartir sistema<small>Liga para móvil y usuarios</small></button>
 <div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><div id="viewRoleBox" class="hidden" style="margin-top:6px"><small>Ver sistema como</small><select id="viewRoleSelect" style="width:100%;font-size:9px;padding:5px"><option value="superadmin">Super Administrador</option><option value="admin">Administrador</option><option value="director">Director</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Demo · Colaborador de Lencería</option><option value="colaborador_operativo">Demo · Colaborador Operativo · Productividad</option></select><div id="viewRoleStoreWrap" class="hidden" style="margin-top:5px"><small>Tienda demo</small><select id="viewRoleStore" style="width:100%;font-size:9px;padding:5px"></select></div></div><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
 <main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div></div><div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
-  <button class="switch active" data-opview="Centro Ejecutivo" data-tab-key="operations.center">Centro Ejecutivo</button>
-  <button class="switch" data-opview="Operación Diaria" data-tab-key="operations.day">Día</button>
-  <button class="switch" data-opview="Reporte Semanal" data-tab-key="operations.week">Semanal</button>
-  <button class="switch" data-opview="Reporte Mensual" data-tab-key="operations.month">Mensual</button>
+  <button class="switch active" data-opview="Centro Ejecutivo" data-tab-key="operations.center">Centro Operativo</button>
+  <button class="switch hidden" hidden aria-hidden="true" data-opview="Operación Diaria" data-tab-key="operations.day">Día</button>
+  <button class="switch hidden" hidden aria-hidden="true" data-opview="Reporte Semanal" data-tab-key="operations.week">Semanal</button>
+  <button class="switch hidden" hidden aria-hidden="true" data-opview="Reporte Mensual" data-tab-key="operations.month">Mensual</button>
   <button class="switch" data-opview="Conversión" data-tab-key="operations.conversion">Conversión</button>
   <button class="switch" data-opview="Recuperación Económica" data-tab-key="operations.recovery">Recuperación $</button>
   <button class="switch" data-opview="Recuperación por Tienda" data-tab-key="operations.recovery_store">Recuperación por Tienda</button>
