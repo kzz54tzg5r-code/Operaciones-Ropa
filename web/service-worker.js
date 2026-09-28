@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   '/static/design_system.css',
   '/static/design_system.js',
   '/static/report_tab_carousel.js',
-  '/static/report_tab_mundial_v5.js',
+  '/static/report_tab_mundial_v6.js',
   '/static/pwa_install.js',
   '/static/ios_native.js'
 ];
