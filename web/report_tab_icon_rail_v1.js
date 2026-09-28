@@ -36,6 +36,9 @@
       scrollbar-width:none!important;
       -webkit-overflow-scrolling:touch!important;
       touch-action:pan-y pinch-zoom!important;
+      overscroll-behavior-x:contain!important;
+      overflow-anchor:none!important;
+      scroll-behavior:auto!important;
     }
     #operativoNav.rt-carousel.rt-icon-rail-v1::-webkit-scrollbar{display:none!important}
 
@@ -421,12 +424,18 @@
       .filter(btn=>btn.isConnected && !visible.includes(btn))
       .forEach(btn=>frag.appendChild(btn));
 
+    // Reordenar sin un fotograma intermedio evita el "salto" que Safari
+    // mostraba antes de volver a centrar la pestaña.
+    viewport.style.setProperty('scroll-snap-type','none','important');
+    viewport.style.setProperty('scroll-behavior','auto','important');
     viewport.appendChild(frag);
     centerPadding(viewport);
+    centerButtonLocal(viewport,selected,'auto');
 
     requestAnimationFrame(()=>{
-      centerButtonLocal(viewport,selected,behavior);
-      requestAnimationFrame(()=>centerButtonLocal(viewport,selected,'auto'));
+      centerButtonLocal(viewport,selected,'auto');
+      viewport.style.setProperty('scroll-snap-type','x mandatory','important');
+      viewport.style.setProperty('scroll-behavior','auto','important');
     });
 
     setTimeout(()=>{
@@ -516,55 +525,151 @@
     viewport.style.setProperty('--rt-edge-pad',edge+'px');
   }
 
-  function oneStepTarget(state,direction){
+  function oneStepTarget(state,direction,baseButton=null){
     const visible=logicalCards(state);
     if(!visible.length) return null;
 
-    const selected=visualButton(state) || visible[0];
+    const selected=baseButton || visualButton(state) || visible[0];
     let idx=visible.indexOf(selected);
     if(idx<0) idx=0;
 
     return visible[(idx+direction+visible.length)%visible.length] || null;
   }
 
-  function finishOneStepSwipe(state,event){
+  function buttonCenterScroll(viewport,btn){
+    if(!viewport || !btn) return viewport?.scrollLeft || 0;
+    return Math.max(0,btn.offsetLeft + btn.offsetWidth/2 - viewport.clientWidth/2);
+  }
+
+  function stopMotion(state){
+    if(state.motionRaf){
+      cancelAnimationFrame(state.motionRaf);
+      state.motionRaf=0;
+    }
+    if(state.dragRaf){
+      cancelAnimationFrame(state.dragRaf);
+      state.dragRaf=0;
+    }
+    if(state.activateTimer){
+      clearTimeout(state.activateTimer);
+      state.activateTimer=0;
+    }
+  }
+
+  function animateScrollTo(state,to,duration=150,onDone=null){
     const viewport=state.viewport;
-    const mode=state.touchMode;
-    const dx=state.touchLastX-state.touchStartX;
+    if(!viewport) return;
 
-    if(mode==='horizontal'){
-      event?.preventDefault?.();
-      event?.stopImmediatePropagation?.();
-
-      viewport.style.setProperty('scroll-snap-type','x mandatory','important');
-      viewport.style.setProperty('scroll-behavior','smooth','important');
-
-      const direction=Math.abs(dx)>=22 ? (dx<0 ? 1 : -1) : 0;
-      const current=visualButton(state);
-
-      if(direction){
-        const target=oneStepTarget(state,direction);
-        if(target){
-          state.userSelectedButton=target;
-          state.suppressTrustedClickUntil=Date.now()+360;
-          applyVisualSelection(state);
-
-          // Un gesto = exactamente una pestaña.
-          target.click();
-
-          setTimeout(()=>circularizeAround(state,target,{behavior:'smooth'}),45);
-          setTimeout(()=>centerButtonLocal(viewport,target,'auto'),210);
-        }
-      }else if(current){
-        centerButtonLocal(viewport,current,'smooth');
-      }
+    if(state.motionRaf){
+      cancelAnimationFrame(state.motionRaf);
+      state.motionRaf=0;
     }
 
+    viewport.style.setProperty('scroll-snap-type','none','important');
+    viewport.style.setProperty('scroll-behavior','auto','important');
+
+    const from=viewport.scrollLeft;
+    const delta=to-from;
+    if(Math.abs(delta)<0.75 || matchMedia('(prefers-reduced-motion: reduce)').matches){
+      viewport.scrollLeft=to;
+      onDone?.();
+      return;
+    }
+
+    const started=performance.now();
+    const ms=Math.max(90,Math.min(190,duration));
+    const frame=now=>{
+      const p=Math.min(1,(now-started)/ms);
+      // easeOutCubic: respuesta rápida al dedo y llegada suave, tipo iOS.
+      const eased=1-Math.pow(1-p,3);
+      viewport.scrollLeft=from + delta*eased;
+      if(p<1){
+        state.motionRaf=requestAnimationFrame(frame);
+      }else{
+        state.motionRaf=0;
+        viewport.scrollLeft=to;
+        onDone?.();
+      }
+    };
+    state.motionRaf=requestAnimationFrame(frame);
+  }
+
+  function animateSelectionTo(state,target,{activate=false}={}){
+    if(!target || !target.isConnected) return;
+
+    const viewport=state.viewport;
+    state.userSelectedButton=target;
+    applyVisualSelection(state);
+    state.animating=true;
+
+    const to=buttonCenterScroll(viewport,target);
+
+    if(activate){
+      state.suppressTrustedClickUntil=Date.now()+420;
+      state.activateTimer=setTimeout(()=>{
+        state.activateTimer=0;
+        if(!target.isConnected) return;
+        state.ignoreProgrammaticButton=target;
+        target.click();
+      },55);
+    }
+
+    animateScrollTo(state,to,145,()=>{
+      state.animating=false;
+      // El orden circular se normaliza sólo después del movimiento y dentro
+      // del mismo ciclo de pintura; así no hay teletransporte visual.
+      circularizeAround(state,target,{behavior:'auto'});
+    });
+  }
+
+  function resetTouchState(state){
     state.touchMode='idle';
     state.touchStartX=0;
     state.touchStartY=0;
     state.touchLastX=0;
     state.touchLastY=0;
+    state.touchStartScroll=0;
+    state.touchStartTime=0;
+    state.touchLastTime=0;
+    state.touchCurrentButton=null;
+    state.dragDesiredScroll=null;
+  }
+
+  function finishOneStepSwipe(state,event,{cancelled=false}={}){
+    const viewport=state.viewport;
+    const mode=state.touchMode;
+    const dx=state.touchLastX-state.touchStartX;
+    const elapsed=Math.max(1,(state.touchLastTime||performance.now())-(state.touchStartTime||performance.now()));
+    const velocity=dx/elapsed;
+
+    if(mode==='horizontal'){
+      event?.preventDefault?.();
+      event?.stopImmediatePropagation?.();
+
+      if(state.dragRaf){
+        cancelAnimationFrame(state.dragRaf);
+        state.dragRaf=0;
+      }
+      if(Number.isFinite(state.dragDesiredScroll)) viewport.scrollLeft=state.dragDesiredScroll;
+
+      const current=state.touchCurrentButton || visualButton(state);
+      const committed=!cancelled && (Math.abs(dx)>=20 || Math.abs(velocity)>=0.28);
+      const direction=committed ? (dx<0 ? 1 : -1) : 0;
+
+      if(direction){
+        const target=oneStepTarget(state,direction,current);
+        if(target && target!==current){
+          // Un gesto = una pestaña, con recorrido visible completo.
+          animateSelectionTo(state,target,{activate:true});
+        }else if(current){
+          animateSelectionTo(state,current,{activate:false});
+        }
+      }else if(current){
+        animateSelectionTo(state,current,{activate:false});
+      }
+    }
+
+    resetTouchState(state);
   }
 
   function bindOneStepSwipe(state){
@@ -572,6 +677,7 @@
 
     viewport.addEventListener('touchstart',event=>{
       if(!event.touches || event.touches.length!==1) return;
+      if(state.animating) return;
 
       const t=event.touches[0];
       state.touchStartX=t.clientX;
@@ -579,7 +685,11 @@
       state.touchLastX=t.clientX;
       state.touchLastY=t.clientY;
       state.touchStartScroll=viewport.scrollLeft;
+      state.touchStartTime=performance.now();
+      state.touchLastTime=state.touchStartTime;
+      state.touchCurrentButton=visualButton(state);
       state.touchMode='pending';
+      state.dragDesiredScroll=viewport.scrollLeft;
 
       // Evitar que el carrusel base active su arrastre libre.
       event.stopImmediatePropagation();
@@ -591,6 +701,7 @@
       const t=event.touches[0];
       state.touchLastX=t.clientX;
       state.touchLastY=t.clientY;
+      state.touchLastTime=performance.now();
 
       const dx=t.clientX-state.touchStartX;
       const dy=t.clientY-state.touchStartY;
@@ -598,9 +709,9 @@
       const ay=Math.abs(dy);
 
       if(state.touchMode==='pending'){
-        if(ax<6 && ay<6) return;
+        if(ax<5 && ay<5) return;
 
-        if(ax>ay*1.12){
+        if(ax>ay*1.08){
           state.touchMode='horizontal';
           viewport.style.setProperty('scroll-snap-type','none','important');
           viewport.style.setProperty('scroll-behavior','auto','important');
@@ -614,23 +725,45 @@
         event.preventDefault();
         event.stopImmediatePropagation();
 
-        // Feedback táctil limitado: nunca permite recorrer más de media pestaña.
-        const maxPreview=34;
-        const preview=Math.max(-maxPreview,Math.min(maxPreview,dx));
-        viewport.scrollLeft=state.touchStartScroll-preview;
+        const current=state.touchCurrentButton || visualButton(state);
+        const direction=dx<0 ? 1 : -1;
+        const target=oneStepTarget(state,direction,current);
+
+        if(!target || target===current) return;
+
+        const targetScroll=buttonCenterScroll(viewport,target);
+        const fullDelta=targetScroll-state.touchStartScroll;
+        const fullDistance=Math.max(1,Math.abs(fullDelta));
+        const travel=Math.min(Math.abs(dx),fullDistance);
+        const overshoot=Math.max(0,Math.abs(dx)-fullDistance);
+        const elastic=Math.min(7,overshoot*.08);
+
+        // La tarjeta acompaña al dedo durante TODO el gesto. Al llegar a una
+        // pestaña completa ofrece una pequeña resistencia elástica.
+        state.dragDesiredScroll=
+          state.touchStartScroll + Math.sign(fullDelta)*(travel+elastic);
+
+        if(!state.dragRaf){
+          state.dragRaf=requestAnimationFrame(()=>{
+            state.dragRaf=0;
+            if(Number.isFinite(state.dragDesiredScroll)){
+              viewport.scrollLeft=state.dragDesiredScroll;
+            }
+          });
+        }
       }
     },{capture:true,passive:false});
 
     viewport.addEventListener('touchend',event=>{
       if(state.touchMode==='horizontal'){
-        finishOneStepSwipe(state,event);
+        finishOneStepSwipe(state,event,{cancelled:false});
       }else{
-        state.touchMode='idle';
+        resetTouchState(state);
       }
     },{capture:true,passive:false});
 
     viewport.addEventListener('touchcancel',event=>{
-      finishOneStepSwipe(state,event);
+      finishOneStepSwipe(state,event,{cancelled:true});
     },{capture:true,passive:false});
 
     // Evitar el click fantasma que Safari genera justo después de un swipe.
@@ -694,6 +827,15 @@
       touchLastX:0,
       touchLastY:0,
       touchStartScroll:0,
+      touchStartTime:0,
+      touchLastTime:0,
+      touchCurrentButton:null,
+      dragDesiredScroll:null,
+      dragRaf:0,
+      motionRaf:0,
+      activateTimer:0,
+      animating:false,
+      ignoreProgrammaticButton:null,
       suppressTrustedClickUntil:0
     };
     STATE.set(viewport,state);
@@ -711,17 +853,16 @@
       const btn=event.target.closest('button');
       if(!btn || btn.parentElement!==viewport) return;
 
-      // La selección visual responde inmediatamente al usuario.
-      state.userSelectedButton=btn;
-      applyVisualSelection(state);
+      // El click programático de un swipe debe activar el reporte, pero no
+      // iniciar una segunda animación del propio rail.
+      if(!event.isTrusted && state.ignoreProgrammaticButton===btn){
+        state.ignoreProgrammaticButton=null;
+        return;
+      }
 
-      // Al terminar la selección reordenamos los mismos botones reales en forma
-      // circular: antes del primero aparece el último y después del último el primero.
-      setTimeout(()=>applyVisualSelection(state),40);
-      setTimeout(()=>{
-        applyVisualSelection(state);
-        circularizeAround(state,btn,{behavior:'smooth'});
-      },210);
+      // Toque directo: el contenido cambia normalmente y el icono se centra
+      // con la misma curva corta usada por el swipe.
+      animateSelectionTo(state,btn,{activate:false});
     },true);
     viewport.addEventListener('scroll',()=>{}, {passive:true});
 
@@ -792,14 +933,13 @@
         const viewport=document.getElementById(TARGET_ID);
         const state=viewport?STATE.get(viewport):null;
         if(!state || !(btn instanceof HTMLButtonElement)) return;
-        state.userSelectedButton=btn;
-        applyVisualSelection(state);
-        setTimeout(()=>circularizeAround(state,btn,{behavior:'smooth'}),40);
+        animateSelectionTo(state,btn,{activate:false});
       }
     };
     window.ReportTabIconRailV1=api;
     window.ReportTabIconRailV3=api;
     window.ReportTabIconRailV5=api;
+    window.ReportTabIconRailV6=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
