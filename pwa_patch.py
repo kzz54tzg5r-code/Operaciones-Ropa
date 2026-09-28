@@ -4,8 +4,9 @@ Sirve el manifest y el service worker desde el alcance raíz sin almacenar
 respuestas de /api/. La lógica de negocio permanece en web_app.
 """
 from pathlib import Path
+import os
 
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 
 def install(mod):
@@ -28,4 +29,17 @@ def install(mod):
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Service-Worker-Allowed": "/",
             },
+        )
+
+    @mod.app.get("/api/app-version", include_in_schema=False)
+    def pwa_app_version():
+        commit = (os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or "local").strip()
+        deploy_id = (os.getenv("RENDER_DEPLOY_ID") or "").strip()
+        return JSONResponse(
+            {
+                "version": commit[:12] if commit else "local",
+                "commit": commit,
+                "deploy_id": deploy_id,
+            },
+            headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
         )
