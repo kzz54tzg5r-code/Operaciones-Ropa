@@ -599,7 +599,7 @@
       window.__rtIconRailResize=setTimeout(enhance,80);
     },{passive:true});
 
-    window.ReportTabIconRailV3={
+    const api={
       refresh:enhance,
       select:(btn)=>{
         const viewport=document.getElementById(TARGET_ID);
@@ -610,6 +610,8 @@
         setTimeout(()=>circularizeAround(state,btn,{behavior:'smooth'}),40);
       }
     };
+    window.ReportTabIconRailV1=api;
+    window.ReportTabIconRailV3=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
