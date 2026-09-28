@@ -118,7 +118,8 @@
     /* activo: ligeramente más grande, no tarjeta grande */
     #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active,
     #operativoNav.rt-carousel.rt-icon-rail-v1>button.active,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"]{
+    #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"],
+    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active{
       opacity:1!important;
       color:#fff!important;
       z-index:3!important;
@@ -128,10 +129,10 @@
     #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon,
     #operativoNav.rt-carousel.rt-icon-rail-v1>button.active .rt-tab-icon,
     #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"] .rt-tab-icon{
-      width:56px!important;
-      height:56px!important;
-      min-width:56px!important;
-      max-width:56px!important;
+      width:52px!important;
+      height:52px!important;
+      min-width:52px!important;
+      max-width:52px!important;
       border-color:#0d6fd1!important;
       background:linear-gradient(145deg,#0b3a6e 0%,#0c579e 58%,#0d7ff4 100%)!important;
       color:#fff!important;
@@ -261,10 +262,10 @@
       #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon,
       #operativoNav.rt-carousel.rt-icon-rail-v1>button.active .rt-tab-icon,
       #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"] .rt-tab-icon{
-        width:54px!important;
-        height:54px!important;
-        min-width:54px!important;
-        max-width:54px!important;
+        width:50px!important;
+        height:50px!important;
+        min-width:50px!important;
+        max-width:50px!important;
       }
 
       #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon svg,
@@ -346,19 +347,38 @@
 
   function activeButton(viewport){
     const list=cards(viewport);
-    return list.find(btn => btn.classList.contains('active') || btn.getAttribute('aria-selected')==='true') || list[0] || null;
+    return list.find(btn => btn.classList.contains('active'))
+      || list.find(btn => btn.getAttribute('aria-selected')==='true')
+      || list[0]
+      || null;
+  }
+
+  function visualButton(state){
+    const list=cards(state.viewport);
+    if(state.userSelectedButton && list.includes(state.userSelectedButton)){
+      return state.userSelectedButton;
+    }
+    return activeButton(state.viewport);
+  }
+
+  function applyVisualSelection(state){
+    const selected=visualButton(state);
+    const list=cards(state.viewport);
+
+    list.forEach(btn=>{
+      btn.classList.toggle('rt-icon-user-active',btn===selected);
+    });
+
+    if(!selected) return;
+    const label=labelOf(selected);
+    if(state.current.textContent!==label) state.current.textContent=label;
+
+    const idx=list.indexOf(selected);
+    [...state.indicator.children].forEach((dot,i)=>dot.classList.toggle('active',i===idx));
   }
 
   function setCurrent(state){
-    const active=activeButton(state.viewport);
-    if(!active) return;
-
-    const label=labelOf(active);
-    if(state.current.textContent!==label) state.current.textContent=label;
-
-    const list=cards(state.viewport);
-    const idx=list.indexOf(active);
-    [...state.indicator.children].forEach((dot,i)=>dot.classList.toggle('active',i===idx));
+    applyVisualSelection(state);
   }
 
   function rebuildDots(state){
@@ -419,20 +439,39 @@
 
     shell.append(current,indicator);
 
-    state={viewport,shell,current,indicator,observer:null};
+    state={viewport,shell,current,indicator,observer:null,userSelectedButton:null};
     STATE.set(viewport,state);
 
     rebuildDots(state);
     setCurrent(state);
     centerPadding(viewport);
 
-    viewport.addEventListener('click',()=>setTimeout(()=>setCurrent(state),35));
+    viewport.addEventListener('click',event=>{
+      const btn=event.target.closest('button');
+      if(!btn || btn.parentElement!==viewport) return;
+
+      // La selección visual responde inmediatamente al usuario y no depende
+      // de que la vista interna agregue .active (Metas y tiendas no lo hacía).
+      state.userSelectedButton=btn;
+      applyVisualSelection(state);
+
+      // El carrusel base se encarga del centrado; nosotros sólo persistimos
+      // cuál opción debe verse activa.
+      setTimeout(()=>applyVisualSelection(state),40);
+      setTimeout(()=>applyVisualSelection(state),180);
+    },true);
     viewport.addEventListener('scroll',()=>{}, {passive:true});
 
     const mo=new MutationObserver(()=>{
       cards(viewport).forEach(restoreIcon);
       rebuildDots(state);
-      setCurrent(state);
+
+      // Mantener la selección hecha por el usuario aunque el reporte cambie
+      // clases/aria-selected durante su renderizado.
+      if(state.userSelectedButton && !cards(viewport).includes(state.userSelectedButton)){
+        state.userSelectedButton=null;
+      }
+      applyVisualSelection(state);
       centerPadding(viewport);
     });
     mo.observe(viewport,{
@@ -458,7 +497,16 @@
       window.__rtIconRailResize=setTimeout(enhance,80);
     },{passive:true});
 
-    window.ReportTabIconRailV1={ refresh:enhance };
+    window.ReportTabIconRailV1={
+      refresh:enhance,
+      select:(btn)=>{
+        const viewport=document.getElementById(TARGET_ID);
+        const state=viewport?STATE.get(viewport):null;
+        if(!state || !(btn instanceof HTMLButtonElement)) return;
+        state.userSelectedButton=btn;
+        applyVisualSelection(state);
+      }
+    };
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
