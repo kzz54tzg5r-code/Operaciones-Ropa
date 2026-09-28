@@ -18,7 +18,7 @@
 <script defer src="/static/design_system.js?v=20260928-mobile-v5"></script>
 <script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v6"></script>
 <script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-v7"></script>
-<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7"></script>
+<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8"></script>
 <script defer src="/static/pwa_install.js?v=auto-update-v1"></script>
 <style>
 :root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
@@ -1030,7 +1030,7 @@ $('#saveTabVisibility')?.addEventListener('click',async()=>{
   }catch(e){$('#tabVisibilityMsg').textContent='Error: '+e.message}
 });
 
-const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],'lingerie-checklist':['Checklist lencería','Top 10 manual por subcategoría vs datos reales'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
+const titles={operativo:['Cambios y Muertos','Recuperación, conversión, recolección y seguimiento operativo'],macro:['Análisis Comercial','Venta, sugerido y utilidad'],accordion:['Acordeón Comercial','Lectura integral para toma de decisiones'],stores:['Tiendas','Ranking y semaforización'],sections:['Sección / Rubro','Análisis macro → micro'],areas:['Ubicación / Área','Colgado · Doblado · Jeans · Lencería'],more:['Más opciones','Dinero, utilidad y evolución'],'lingerie-checklist':['Checklist lencería','Top 10 manual por subcategoría vs datos reales'],'analysis-upload':['Carga de datos · Análisis Comercial','Capacidades, ventas y fuentes comerciales'],upload:['Carga de archivos','Centro único de carga para todo Operaciones Ropa'],users:['Usuarios','Administración de accesos'],share:['Compartir sistema','Liga para móvil, WhatsApp y usuarios']};
 let MAIN='operativo', SUB='macro';
 function showPage(p){
   $$('.page').forEach(x=>x.classList.toggle('active',x.id==='page-'+p));
@@ -1102,11 +1102,13 @@ async function goMain(m){
     const firstVisible=$$('#analysisNav [data-sub]:not(.hidden)')[0];
     SUB=firstVisible?.dataset.sub||'macro';
     showPage(SUB);
+    $('#globalFilters').classList.toggle('hidden',SUB==='analysis-upload');
     await loadCommercialBootstrap();
     if(SUB==='lingerie-checklist')await loadLingerieChecklist();
     else if(SUB==='sections')await loadCommercialDetail('rubro');
     else if(SUB==='areas')await loadCommercialDetail('area');
     else if(SUB==='accordion')await renderAccordion();
+    else if(SUB==='analysis-upload')await loadUploadHistories();
     else{
       const wanted=ANALYSIS_STORE||$('#store')?.value||'Compañía';
       await loadDash(wanted,$('#section')?.value||'Todas');
@@ -1121,7 +1123,7 @@ async function goMain(m){
 }
 async function goSub(p){
   SUB=p;MAIN='analysis';
-  $('#globalFilters').classList.remove('hidden');
+  $('#globalFilters').classList.toggle('hidden',p==='analysis-upload');
   $$('[data-main]').forEach(x=>x.classList.toggle('active',x.dataset.main==='analysis'));
   $('#analysisNav').classList.remove('hidden');$('#operativoNav').classList.add('hidden');
   const storeFilter=$('#globalStoreFilter');
@@ -1174,7 +1176,8 @@ $$('[data-main]').forEach(b=>b.onclick=()=>goMain(b.dataset.main));
 $$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));
 
 let OP_VIEW='Centro Ejecutivo';
-$$('[data-opview]').forEach(b=>b.onclick=async()=>{
+let OP_RENDER_SEQ=0;
+$('[data-opview]').forEach(b=>b.onclick=async()=>{
   OP_VIEW=b.dataset.opview;
   $$('[data-opview]').forEach(x=>x.classList.toggle('active',x===b));
   OPER_PERIOD={type:'all',value:''};
@@ -2254,6 +2257,8 @@ async function downloadCurrentReport(format,name,button){
 }
 
 async function renderOperativoView(name,force=false){
+  const renderSeq=++OP_RENDER_SEQ;
+  const isStale=()=>renderSeq!==OP_RENDER_SEQ;
   const centro=$('#operativoCentro'), dyn=$('#operativoDynamic');
 
   // Nunca dejar visible la pantalla anterior mientras se consulta el nuevo reporte.
@@ -2272,6 +2277,7 @@ async function renderOperativoView(name,force=false){
     let cur={available:false},curError='';
     try{cur=await api('/api/upload/operations/current',{timeoutMs:30000})}
     catch(e){curError=e.message||String(e);console.error('[OPS-UPLOAD] current:',e)}
+    if(isStale())return;
     const currentHtml=cur.available?`<div class="preview-grid">
       <div class="preview-item">Archivo actual<b>${cur.file}</b></div>
       <div class="preview-item">Fecha de carga<b>${cur.uploaded_at||'Información no disponible'}</b></div>
@@ -2298,6 +2304,7 @@ async function renderOperativoView(name,force=false){
 
   let base=OPSDATA;
   if(!base) base=await refreshOperativoMeta();
+  if(isStale())return;
   setPeriodSelector(name,base);
 
   if(name==='Centro Ejecutivo'){
@@ -2306,7 +2313,9 @@ async function renderOperativoView(name,force=false){
     let d;
     try{
       d=await fetchOpsForView(name);
+      if(isStale())return;
     }catch(e){
+      if(isStale())return;
       $('#operativoDynamicContent').innerHTML=`<div class="infoempty">No fue posible consultar Centro Ejecutivo: ${e.message||e}</div>`;
       return;
     }
@@ -2333,6 +2342,7 @@ async function renderOperativoView(name,force=false){
   $('#operativoDynamicSub').textContent=OPER_TITLES[name]||'Cambios y Muertos';
 
   const d=await fetchOpsForView(name);
+  if(isStale())return;
   const mt=d.metrics||{}, rows=d.rows||[], stores=d.stores||[], rec=d.recovery_by_store||[], prod=d.productivity||[], activityDetail=d.activity_detail||[];
 
   if(!d.available){
@@ -2480,6 +2490,7 @@ async function renderOperativoView(name,force=false){
   }
 
   out+=reportDownloadBar(name);
+  if(isStale())return;
   $('#operativoDynamicContent').innerHTML=out;
 }
 
