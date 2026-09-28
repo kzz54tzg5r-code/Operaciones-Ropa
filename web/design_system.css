@@ -148,6 +148,7 @@ button{touch-action:manipulation}
 .shell.sidebar-collapsed .nav{display:block;text-align:center;padding:10px 4px!important}
 .shell.sidebar-collapsed .nav .or-icon{display:grid;margin:auto}
 .shell.sidebar-collapsed .nav:before{display:none!important}
+.shell.sidebar-collapsed .or-nav-section{display:none!important}
 
 /* ---------- PAGE / HEADER ---------- */
 .main{
@@ -157,6 +158,7 @@ button{touch-action:manipulation}
   margin:0 auto;
 }
 .hero{
+  position:relative;
   min-height:78px;
   border-radius:var(--or-radius-lg)!important;
   padding:16px 20px!important;
@@ -502,6 +504,7 @@ button .or-btn-icon{display:inline-flex;vertical-align:-4px;margin-right:6px}
   .shell.sidebar-collapsed{display:block!important}
   body.or-mobile-drawer-open .shell.sidebar-collapsed .sidebrand-text,
   body.or-mobile-drawer-open .shell.sidebar-collapsed .group,
+  body.or-mobile-drawer-open .shell.sidebar-collapsed .or-nav-section,
   body.or-mobile-drawer-open .shell.sidebar-collapsed .profile b,
   body.or-mobile-drawer-open .shell.sidebar-collapsed .profile small{display:block!important}
   body.or-mobile-drawer-open .shell.sidebar-collapsed .nav{
