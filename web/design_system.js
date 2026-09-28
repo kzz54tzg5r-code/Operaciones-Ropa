@@ -233,7 +233,7 @@
     refreshEnhancements();
 
     const observer = new MutationObserver(schedule);
-    observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']});
+    observer.observe(document.body,{subtree:true,childList:true});
     window.addEventListener('resize', () => {
       if (innerWidth > 900) document.body.classList.remove('or-mobile-drawer-open');
     });
@@ -275,8 +275,9 @@
     const out = panel.querySelector('.or-filter-summary-v3');
     if (!out) return;
     const values = panelValues(panel);
-    out.textContent = values.length ? values.join(' · ') : 'Sin filtros adicionales';
-    out.title = out.textContent;
+    const next = values.length ? values.join(' · ') : 'Sin filtros adicionales';
+    if (out.textContent !== next) out.textContent = next;
+    if (out.title !== next) out.title = next;
   };
 
   const makePanel = (panel, title='Filtros') => {
@@ -312,9 +313,14 @@
 
     const toggle = head.querySelector('.or-filter-toggle-v3');
     const setOpen = open => {
-      panel.classList.toggle('or-filters-open', Boolean(open));
-      toggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (toggle) toggle.textContent = open ? 'Cerrar' : 'Cambiar';
+      const shouldOpen = Boolean(open);
+      if (panel.classList.contains('or-filters-open') !== shouldOpen) {
+        panel.classList.toggle('or-filters-open', shouldOpen);
+      }
+      const expanded = shouldOpen ? 'true' : 'false';
+      const label = shouldOpen ? 'Cerrar' : 'Cambiar';
+      if (toggle && toggle.getAttribute('aria-expanded') !== expanded) toggle.setAttribute('aria-expanded', expanded);
+      if (toggle && toggle.textContent !== label) toggle.textContent = label;
     };
 
     setOpen(!isMobile());
@@ -334,9 +340,6 @@
         }, 120);
       });
     });
-
-    const observer = new MutationObserver(() => updatePanelSummary(panel));
-    observer.observe(body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
 
     updatePanelSummary(panel);
 
@@ -388,10 +391,18 @@
     cleanSubnav();
     syncResponsiveState();
 
-    const observer = new MutationObserver(() => {
-      enhanceFilterPanels();
-      cleanSubnav();
-      document.querySelectorAll('.or-filter-panel-v3').forEach(updatePanelSummary);
+    let observerScheduled = false;
+    const observer = new MutationObserver(mutations => {
+      if (observerScheduled) return;
+      const meaningful = mutations.some(m => m.addedNodes.length || m.removedNodes.length);
+      if (!meaningful) return;
+      observerScheduled = true;
+      requestAnimationFrame(() => {
+        observerScheduled = false;
+        enhanceFilterPanels();
+        cleanSubnav();
+        document.querySelectorAll('.or-filter-panel-v3').forEach(updatePanelSummary);
+      });
     });
     observer.observe(document.body,{subtree:true,childList:true});
 
