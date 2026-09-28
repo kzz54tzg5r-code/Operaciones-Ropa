@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="520" viewBox="0 0 640 520" role="img" aria-labelledby="title">
+<title id="title">Operaciones Ropa</title>
+<defs><linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#49B4FF"/><stop offset="1" stop-color="#1484FF"/></linearGradient></defs>
+<g fill="none" stroke="#fff" stroke-width="19" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M308 68c0-28 21-50 50-50 29 0 51 20 51 48 0 25-17 37-41 50-17 10-27 22-27 36"/>
+  <path d="M339 150 172 263c-15 10-8 34 11 34h273c19 0 26-24 11-34l-128-86"/>
+</g>
+<g>
+  <rect x="249" y="229" width="31" height="69" rx="4" fill="#fff"/>
+  <rect x="292" y="207" width="31" height="91" rx="4" fill="url(#blue)"/>
+  <rect x="335" y="183" width="31" height="115" rx="4" fill="#fff"/>
+</g>
+<text x="320" y="391" text-anchor="middle" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="67" font-weight="800" letter-spacing="1">OPERACIONES</text>
+<text x="320" y="470" text-anchor="middle" fill="url(#blue)" font-family="Arial,Helvetica,sans-serif" font-size="86" font-weight="900" letter-spacing="2">ROPA</text>
+</svg>
