@@ -41,3 +41,11 @@ jobs:
           PY
           for f in /tmp/inline-scripts/*.js; do node --check "$f"; done
           node --check web/design_system.js
+          python - <<'PY'
+          from pathlib import Path
+          js = Path("web/design_system.js").read_text(encoding="utf-8")
+          assert "characterData:true" not in js, "Safari DOM loop guard: characterData observer remains"
+          assert "attributeFilter:['class']" not in js, "Safari DOM loop guard: class observer remains"
+          assert "if (out.textContent !== next)" in js, "Safari DOM loop guard missing idempotent summary"
+          print("Safari DOM loop guard OK")
+          PY
