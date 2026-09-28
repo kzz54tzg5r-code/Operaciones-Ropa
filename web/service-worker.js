@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-pwa-v3';
+const CACHE_NAME = 'operaciones-ropa-pwa-v4';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -8,6 +8,8 @@ const STATIC_ASSETS = [
   '/static/app-logo-white.svg',
   '/static/pwa_brand.css',
   '/static/pwa_brand.js',
+  '/static/design_system.css',
+  '/static/design_system.js',
   '/static/pwa_install.js',
   '/static/ios_native.js'
 ];
