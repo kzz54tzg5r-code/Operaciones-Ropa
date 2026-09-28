@@ -16,7 +16,7 @@
 <script defer src="/static/ios_native.js"></script>
 <script defer src="/static/pwa_brand.js"></script>
 <script defer src="/static/design_system.js?v=20260928-mobile-v5"></script>
-<script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v2"></script>
+<script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v3"></script>
 <script defer src="/static/pwa_install.js?v=auto-update-v1"></script>
 <style>
 :root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
@@ -389,10 +389,8 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-opview="Cumplimiento de Recorridos" data-tab-key="operations.routes">Recorridos</button>
   <button class="switch" data-opview="Índice Integral" data-tab-key="operations.score">Score</button>
   <button class="switch" data-opview="Alertas Inteligentes" data-tab-key="operations.alerts">Alertas</button>
-  <div style="margin-left:auto;display:flex;gap:5px">
-    <button class="switch adminOnly" data-opview="Carga de datos">Carga de datos</button>
-    <button class="switch" id="openGoalsBtn">Metas y tiendas</button>
-  </div>
+  <button class="switch adminOnly" data-opview="Carga de datos">Carga de datos</button>
+  <button class="switch" id="openGoalsBtn">Metas y tiendas</button>
 </div>
 <div id="analysisNav" class="hidden" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;flex-wrap:wrap">
   <button class="switch active" data-sub="macro" data-tab-key="commercial.macro">Macro compañía</button>
