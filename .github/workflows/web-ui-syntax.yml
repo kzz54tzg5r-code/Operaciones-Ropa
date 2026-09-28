@@ -191,7 +191,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v4' in html
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
@@ -219,7 +219,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v4' in html
           assert "userSelectedButton" in js
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
@@ -232,7 +232,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v4' in html
           assert "function circularizeAround" in js
           assert "state.logicalButtons" in js
           assert "btn.dataset.rtRingOrder" in js
@@ -242,4 +242,19 @@ jobs:
           assert "window.ReportTabIconRailV1=api" in js
           assert "window.ReportTabIconRailV3=api" in js
           print("Circular icon rail V3 guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v4' in html
+          assert "el.toggleAttribute('hidden',!visible)" in html
+          assert "report-tabs-visibility-changed" in html
+          assert "#operativoNav.rt-carousel>button.hidden" in js
+          assert "#analysisNav.rt-carousel>button.hidden" in js
+          assert ".v125-tabs.rt-carousel>button.hidden" in js
+          assert "display:none!important" in js
+          assert "logicalCards(state)" in js
+          assert "document.addEventListener('report-tabs-visibility-changed'" in js
+          print("Strict tab visibility guard OK")
           PY
