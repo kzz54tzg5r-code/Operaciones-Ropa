@@ -2,16 +2,16 @@
   'use strict';
 
   const STYLE_ID='rt-icon-rail-v1-style';
-  const TARGET_ID='operativoNav';
+  const TARGET_IDS=['operativoNav','analysisNav'];
   const STATE=new WeakMap();
 
   const css=`
     /* =========================================================
        OPTION 1 · Carrusel de iconos + nombre activo
-       Sólo Cambios y Muertos / #operativoNav
+       Cambios y Muertos + Análisis Comercial
        ========================================================= */
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1{
       --rt-card-w:66px!important;
       --rt-gap:10px!important;
       display:flex!important;
@@ -40,10 +40,10 @@
       overflow-anchor:none!important;
       scroll-behavior:auto!important;
     }
-    #operativoNav.rt-carousel.rt-icon-rail-v1::-webkit-scrollbar{display:none!important}
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1::-webkit-scrollbar{display:none!important}
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.switch,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>button{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.switch,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>button{
       position:relative!important;
       flex:0 0 var(--rt-card-w)!important;
       width:var(--rt-card-w)!important;
@@ -71,14 +71,14 @@
       -webkit-tap-highlight-color:transparent!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.switch::after,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>button::after{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.switch::after,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>button::after{
       display:none!important;
       content:none!important;
     }
 
     /* círculo visual */
-    #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
       display:grid!important;
       place-items:center!important;
       width:44px!important;
@@ -106,7 +106,7 @@
       pointer-events:none!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-icon svg{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1 .rt-tab-icon svg{
       display:block!important;
       width:21px!important;
       height:21px!important;
@@ -120,20 +120,20 @@
     }
 
     /* activo: ligeramente más grande, no tarjeta grande */
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"],
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"],
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.rt-icon-user-active{
       opacity:1!important;
       color:#fff!important;
       z-index:3!important;
       transform:translateY(-1px)!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon{
       width:52px!important;
       height:52px!important;
       min-width:52px!important;
@@ -145,10 +145,10 @@
       transform:scale(1.02)!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon svg,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon svg,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon svg,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon svg{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon svg,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon svg,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon svg,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon svg{
       width:25px!important;
       height:25px!important;
       transform:scale(1.02)!important;
@@ -156,7 +156,7 @@
 
     /* Las pestañas inactivas muestran su nombre pequeño debajo del icono.
        La activa conserva el tratamiento actual: icono protagonista + título grande inferior. */
-    #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-label{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1 .rt-tab-label{
       position:static!important;
       display:-webkit-box!important;
       width:calc(var(--rt-card-w) - 4px)!important;
@@ -183,10 +183,10 @@
       pointer-events:none!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-label,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-label,
-    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-label,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-label{
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-label,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-label,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-label,
+    :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-label{
       position:absolute!important;
       width:1px!important;
       max-width:1px!important;
@@ -273,15 +273,15 @@
     .rt-icon-rail-v1-dot{display:none!important}
 
     /* neutraliza restos de las variantes Mundial anteriores */
-    #operativoNav.rt-icon-rail-v1 .rt-m7-base,
-    #operativoNav.rt-icon-rail-v1 .rt-m7-face,
-    #operativoNav.rt-icon-rail-v1 .rt-mundial-base,
-    #operativoNav.rt-icon-rail-v1 .rt-mundial-face{
+    :is(#operativoNav,#analysisNav).rt-icon-rail-v1 .rt-m7-base,
+    :is(#operativoNav,#analysisNav).rt-icon-rail-v1 .rt-m7-face,
+    :is(#operativoNav,#analysisNav).rt-icon-rail-v1 .rt-mundial-base,
+    :is(#operativoNav,#analysisNav).rt-icon-rail-v1 .rt-mundial-face{
       display:none!important;
     }
 
     @media(max-width:900px){
-      #operativoNav.rt-carousel.rt-icon-rail-v1{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1{
         --rt-card-w:64px!important;
         --rt-gap:8px!important;
         min-height:80px!important;
@@ -290,39 +290,39 @@
         padding-bottom:6px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1>.switch,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>button{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.switch,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>button{
         height:68px!important;
         min-height:68px!important;
         max-height:68px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
         width:42px!important;
         height:42px!important;
         min-width:42px!important;
         max-width:42px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-icon svg{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1 .rt-tab-icon svg{
         width:20px!important;
         height:20px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon,
-      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon,
-      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon{
         width:50px!important;
         height:50px!important;
         min-width:50px!important;
         max-width:50px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon svg,
-      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon svg,
-      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon svg,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon svg{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon svg,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon svg,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon svg,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon svg{
         width:24px!important;
         height:24px!important;
       }
@@ -334,7 +334,7 @@
     }
 
     @media(min-width:901px){
-      #operativoNav.rt-carousel.rt-icon-rail-v1{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1{
         --rt-card-w:72px!important;
         --rt-gap:10px!important;
       }
@@ -366,9 +366,9 @@
     }
 
     @media(prefers-reduced-motion:reduce){
-      #operativoNav.rt-carousel.rt-icon-rail-v1>.switch,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>button,
-      #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>.switch,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1>button,
+      :is(#operativoNav,#analysisNav).rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
         transition:none!important;
       }
     }
@@ -806,10 +806,10 @@
     },{capture:true});
   }
 
-  function enhance(){
+  function enhance(targetId){
     installStyle();
 
-    const viewport=document.getElementById(TARGET_ID);
+    const viewport=document.getElementById(targetId);
     if(!(viewport instanceof HTMLElement) || !viewport.classList.contains('rt-carousel')) return;
 
     const shell=viewport.closest('.rt-carousel-shell');
@@ -927,43 +927,51 @@
     reconnectObserver(state);
   }
 
+  function refreshAll(){
+    TARGET_IDS.forEach(id=>enhance(id));
+  }
+
   function init(){
-    enhance();
+    refreshAll();
 
     document.addEventListener('report-tabs-visibility-changed',()=>{
-      const viewport=document.getElementById(TARGET_ID);
-      const state=viewport?STATE.get(viewport):null;
-      if(!state)return;
+      TARGET_IDS.forEach(id=>{
+        const viewport=document.getElementById(id);
+        const state=viewport?STATE.get(viewport):null;
+        if(!state)return;
 
-      const visible=logicalCards(state);
-      if(state.userSelectedButton && !visible.includes(state.userSelectedButton)){
-        state.userSelectedButton=null;
-      }
+        const visible=logicalCards(state);
+        if(state.userSelectedButton && !visible.includes(state.userSelectedButton)){
+          state.userSelectedButton=null;
+        }
 
-      rebuildDots(state);
-      applyVisualSelection(state);
-      centerPadding(viewport);
-      const selected=visualButton(state);
-      setTimeout(()=>circularizeAround(state,selected,{behavior:'auto'}),20);
+        rebuildDots(state);
+        applyVisualSelection(state);
+        centerPadding(viewport);
+        const selected=visualButton(state);
+        setTimeout(()=>circularizeAround(state,selected,{behavior:'auto'}),20);
+      });
     });
 
     const mo=new MutationObserver(()=>{
       clearTimeout(window.__rtIconRailScan);
-      window.__rtIconRailScan=setTimeout(enhance,35);
+      window.__rtIconRailScan=setTimeout(refreshAll,35);
     });
     mo.observe(document.body,{subtree:true,childList:true});
 
     window.addEventListener('resize',()=>{
       clearTimeout(window.__rtIconRailResize);
-      window.__rtIconRailResize=setTimeout(enhance,80);
+      window.__rtIconRailResize=setTimeout(refreshAll,80);
     },{passive:true});
 
     const api={
-      refresh:enhance,
+      refresh:refreshAll,
       select:(btn)=>{
-        const viewport=document.getElementById(TARGET_ID);
-        const state=viewport?STATE.get(viewport):null;
-        if(!state || !(btn instanceof HTMLButtonElement)) return;
+        if(!(btn instanceof HTMLButtonElement)) return;
+        const viewport=btn.parentElement;
+        if(!(viewport instanceof HTMLElement) || !TARGET_IDS.includes(viewport.id)) return;
+        const state=STATE.get(viewport);
+        if(!state) return;
         animateSelectionTo(state,btn,{activate:false});
       }
     };
@@ -972,6 +980,7 @@
     window.ReportTabIconRailV5=api;
     window.ReportTabIconRailV6=api;
     window.ReportTabIconRailV7=api;
+    window.ReportTabIconRailV8=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
