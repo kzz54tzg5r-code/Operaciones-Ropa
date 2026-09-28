@@ -60,3 +60,28 @@ Regla: no modificar fórmulas, cálculos, fuentes, APIs, backend, roles, permiso
 ## Criterio de implementación
 
 La capa de diseño vive en `web/design_system.css` y `web/design_system.js`. Se aplica por clases y mejoras progresivas al DOM existente. Así, los cálculos y listeners originales continúan intactos y las futuras modificaciones visuales se realizan centralmente.
+
+
+## Revisión visual V3 · captura móvil 390 px
+
+La revisión visual posterior detectó que la primera capa del Design System no había cambiado suficientemente la composición en móvil. La captura mostró:
+
+- El acceso al menú se percibía como un bloque flotante encima del encabezado.
+- Los filtros ocupaban aproximadamente un tercio de la primera pantalla antes de llegar a información útil.
+- Cada filtro se mostraba como una tarjeta alta, aunque su función sólo requiere etiqueta + control.
+- La navegación interna de Operación se convertía en mosaicos de iconos y ocupaba dos filas.
+- Existía demasiado peso visual en controles frente a la tabla/KPIs.
+- Parte de los estilos móviles históricos seguía ganando la cascada CSS porque estaba declarada después de la hoja del Design System.
+
+### Corrección V3
+
+- Design System cargado después de los estilos heredados para que sea la fuente visual final.
+- Menú hamburguesa integrado al lado derecho del encabezado, sin superposición sobre el título.
+- Drawer con botón de cierre propio.
+- Pestañas internas como chips de una sola fila con desplazamiento horizontal.
+- Eliminación visual de iconos decorativos dentro de las pestañas.
+- Filtros convertidos en panel reutilizable con encabezado, resumen de valores activos y acción Cambiar/Cerrar.
+- En móvil los filtros inician cerrados y ocupan aproximadamente 44 px; sólo se expanden cuando el usuario necesita cambiarlos.
+- Al consultar/aplicar, el panel vuelve a cerrarse para devolver espacio al análisis.
+- Controles de filtro reducidos a 36 px de alto en móvil, con dos columnas y sin tarjetas gigantes.
+- El mismo patrón se aplica a filtros operativos y filtros globales/comerciales.
