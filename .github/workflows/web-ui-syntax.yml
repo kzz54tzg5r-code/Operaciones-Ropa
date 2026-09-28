@@ -8,6 +8,7 @@ on:
       - "web/design_system.js"
       - "web/report_tab_carousel.js"
       - "web/report_tab_mundial_v7.js"
+      - "web/report_tab_icon_rail_v1.js"
       - "v194_mobile_ui_final_patch.py"
       - "server_entry.py"
       - ".github/workflows/web-ui-syntax.yml"
@@ -47,6 +48,7 @@ jobs:
           node --check web/design_system.js
           node --check web/report_tab_carousel.js
           node --check web/report_tab_mundial_v7.js
+          node --check web/report_tab_icon_rail_v1.js
           python - <<'PY'
           from pathlib import Path
           js = Path("web/design_system.js").read_text(encoding="utf-8")
@@ -184,4 +186,18 @@ jobs:
           assert 'rt-m7-current-label' in js
           assert "OPVIEW_LABELS" in js and "KEY_LABELS" in js
           print("Mundial pixel-match V7 guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v1' in html
+          assert "TARGET_ID='operativoNav'" in js
+          assert "rt-icon-rail-v1" in js
+          assert "width:44px!important" in js
+          assert "width:56px!important" in js
+          assert "rt-icon-rail-v1-current" in js
+          assert "rt-icon-rail-v1-indicator" in js
+          assert "shell.classList.remove('rt-mundial-stage','rt-mundial-v6','rt-mundial-v7')" in js
+          print("Icon Rail option 1 guard OK")
           PY
