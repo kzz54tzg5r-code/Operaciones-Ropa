@@ -35,6 +35,7 @@
       box-shadow:0 5px 18px rgba(12,53,92,.055)!important;
       scrollbar-width:none!important;
       -webkit-overflow-scrolling:touch!important;
+      touch-action:pan-y pinch-zoom!important;
     }
     #operativoNav.rt-carousel.rt-icon-rail-v1::-webkit-scrollbar{display:none!important}
 
@@ -274,18 +275,20 @@
         height:20px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>button.active .rt-tab-icon,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"] .rt-tab-icon{
+      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon,
+      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon,
+      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon,
+      #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon{
         width:50px!important;
         height:50px!important;
         min-width:50px!important;
         max-width:50px!important;
       }
 
-      #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon svg,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>button.active .rt-tab-icon svg,
-      #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"] .rt-tab-icon svg{
+      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon svg,
+      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon svg,
+      #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon svg,
+      #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon svg{
         width:24px!important;
         height:24px!important;
       }
@@ -513,6 +516,132 @@
     viewport.style.setProperty('--rt-edge-pad',edge+'px');
   }
 
+  function oneStepTarget(state,direction){
+    const visible=logicalCards(state);
+    if(!visible.length) return null;
+
+    const selected=visualButton(state) || visible[0];
+    let idx=visible.indexOf(selected);
+    if(idx<0) idx=0;
+
+    return visible[(idx+direction+visible.length)%visible.length] || null;
+  }
+
+  function finishOneStepSwipe(state,event){
+    const viewport=state.viewport;
+    const mode=state.touchMode;
+    const dx=state.touchLastX-state.touchStartX;
+
+    if(mode==='horizontal'){
+      event?.preventDefault?.();
+      event?.stopImmediatePropagation?.();
+
+      viewport.style.setProperty('scroll-snap-type','x mandatory','important');
+      viewport.style.setProperty('scroll-behavior','smooth','important');
+
+      const direction=Math.abs(dx)>=22 ? (dx<0 ? 1 : -1) : 0;
+      const current=visualButton(state);
+
+      if(direction){
+        const target=oneStepTarget(state,direction);
+        if(target){
+          state.userSelectedButton=target;
+          state.suppressTrustedClickUntil=Date.now()+360;
+          applyVisualSelection(state);
+
+          // Un gesto = exactamente una pestaña.
+          target.click();
+
+          setTimeout(()=>circularizeAround(state,target,{behavior:'smooth'}),45);
+          setTimeout(()=>centerButtonLocal(viewport,target,'auto'),210);
+        }
+      }else if(current){
+        centerButtonLocal(viewport,current,'smooth');
+      }
+    }
+
+    state.touchMode='idle';
+    state.touchStartX=0;
+    state.touchStartY=0;
+    state.touchLastX=0;
+    state.touchLastY=0;
+  }
+
+  function bindOneStepSwipe(state){
+    const viewport=state.viewport;
+
+    viewport.addEventListener('touchstart',event=>{
+      if(!event.touches || event.touches.length!==1) return;
+
+      const t=event.touches[0];
+      state.touchStartX=t.clientX;
+      state.touchStartY=t.clientY;
+      state.touchLastX=t.clientX;
+      state.touchLastY=t.clientY;
+      state.touchStartScroll=viewport.scrollLeft;
+      state.touchMode='pending';
+
+      // Evitar que el carrusel base active su arrastre libre.
+      event.stopImmediatePropagation();
+    },{capture:true,passive:true});
+
+    viewport.addEventListener('touchmove',event=>{
+      if(!event.touches || event.touches.length!==1 || state.touchMode==='idle') return;
+
+      const t=event.touches[0];
+      state.touchLastX=t.clientX;
+      state.touchLastY=t.clientY;
+
+      const dx=t.clientX-state.touchStartX;
+      const dy=t.clientY-state.touchStartY;
+      const ax=Math.abs(dx);
+      const ay=Math.abs(dy);
+
+      if(state.touchMode==='pending'){
+        if(ax<6 && ay<6) return;
+
+        if(ax>ay*1.12){
+          state.touchMode='horizontal';
+          viewport.style.setProperty('scroll-snap-type','none','important');
+          viewport.style.setProperty('scroll-behavior','auto','important');
+        }else if(ay>ax){
+          state.touchMode='vertical';
+          return;
+        }
+      }
+
+      if(state.touchMode==='horizontal'){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        // Feedback táctil limitado: nunca permite recorrer más de media pestaña.
+        const maxPreview=34;
+        const preview=Math.max(-maxPreview,Math.min(maxPreview,dx));
+        viewport.scrollLeft=state.touchStartScroll-preview;
+      }
+    },{capture:true,passive:false});
+
+    viewport.addEventListener('touchend',event=>{
+      if(state.touchMode==='horizontal'){
+        finishOneStepSwipe(state,event);
+      }else{
+        state.touchMode='idle';
+      }
+    },{capture:true,passive:false});
+
+    viewport.addEventListener('touchcancel',event=>{
+      finishOneStepSwipe(state,event);
+    },{capture:true,passive:false});
+
+    // Evitar el click fantasma que Safari genera justo después de un swipe.
+    viewport.addEventListener('click',event=>{
+      if(event.isTrusted && Date.now()<state.suppressTrustedClickUntil){
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    },{capture:true});
+  }
+
   function enhance(){
     installStyle();
 
@@ -553,7 +682,20 @@
 
     shell.append(current,indicator);
 
-    state={viewport,shell,current,indicator,observer:null,userSelectedButton:null,logicalButtons:cards(viewport).slice(),reordering:false};
+    state={
+      viewport,shell,current,indicator,
+      observer:null,
+      userSelectedButton:null,
+      logicalButtons:cards(viewport).slice(),
+      reordering:false,
+      touchMode:'idle',
+      touchStartX:0,
+      touchStartY:0,
+      touchLastX:0,
+      touchLastY:0,
+      touchStartScroll:0,
+      suppressTrustedClickUntil:0
+    };
     STATE.set(viewport,state);
 
     state.logicalButtons.forEach((btn,i)=>btn.dataset.rtRingOrder=String(i));
@@ -561,8 +703,11 @@
     setCurrent(state);
     centerPadding(viewport);
     setTimeout(()=>circularizeAround(state,visualButton(state),{behavior:'auto'}),60);
+    bindOneStepSwipe(state);
 
     viewport.addEventListener('click',event=>{
+      if(event.isTrusted && Date.now()<state.suppressTrustedClickUntil) return;
+
       const btn=event.target.closest('button');
       if(!btn || btn.parentElement!==viewport) return;
 
@@ -654,6 +799,7 @@
     };
     window.ReportTabIconRailV1=api;
     window.ReportTabIconRailV3=api;
+    window.ReportTabIconRailV5=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
