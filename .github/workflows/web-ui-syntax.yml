@@ -191,7 +191,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v2' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3' in html
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
@@ -219,7 +219,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v2' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3' in html
           assert "userSelectedButton" in js
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
@@ -227,4 +227,19 @@ jobs:
           assert "btn.parentElement!==viewport" in js
           assert "state.userSelectedButton=null" in js
           print("Icon Rail visual selection V2 guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3' in html
+          assert "function circularizeAround" in js
+          assert "state.logicalButtons" in js
+          assert "btn.dataset.rtRingOrder" in js
+          assert "before=Math.floor(visible.length/2)" in js
+          assert "visible[(idx+step+visible.length)%visible.length]" in js
+          assert "rt-icon-has-user-selection" in js
+          assert "window.ReportTabIconRailV1=api" in js
+          assert "window.ReportTabIconRailV3=api" in js
+          print("Circular icon rail V3 guard OK")
           PY
