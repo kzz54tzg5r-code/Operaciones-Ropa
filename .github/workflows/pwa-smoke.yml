@@ -43,7 +43,7 @@ jobs:
           assert 'rel="manifest" href="/manifest.webmanifest"' in index
           assert '/static/pwa_install.js?v=auto-update-v1' in index
           assert '/static/report_tab_carousel.js?v=20260928-carousel-v4' in index
-          assert '/static/report_tab_mundial_v5.js?v=20260928-mundial-v5' in index
+          assert '/static/report_tab_mundial_v6.js?v=20260928-mundial-v6' in index
           assert '/static/pwa_brand.js' in index
           assert '/static/pwa_brand.css' in index
           assert '/static/app-icon-maskable.svg' in Path("web/manifest.webmanifest").read_text(encoding="utf-8")
@@ -55,7 +55,7 @@ jobs:
           assert "cache: 'no-store'" in sw
           assert "REFRESH_APP_SHELL" in sw
           assert "'/static/report_tab_carousel.js'" in sw
-          assert "'/static/report_tab_mundial_v5.js'" in sw
+          assert "'/static/report_tab_mundial_v6.js'" in sw
 
           entry = Path("server_entry.py").read_text(encoding="utf-8")
           assert "_install_pwa_patch(web_app)" in entry
