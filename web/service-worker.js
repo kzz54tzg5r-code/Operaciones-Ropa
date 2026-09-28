@@ -12,6 +12,7 @@ const STATIC_ASSETS = [
   '/static/design_system.js',
   '/static/report_tab_carousel.js',
   '/static/report_tab_mundial_v7.js',
+  '/static/report_tab_icon_rail_v1.js',
   '/static/pwa_install.js',
   '/static/ios_native.js'
 ];
