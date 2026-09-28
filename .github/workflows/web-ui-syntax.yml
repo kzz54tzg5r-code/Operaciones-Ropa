@@ -224,7 +224,7 @@ jobs:
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
           assert "applyVisualSelection(state)" in js
-          assert "btn.parentElement!==viewport" in js
+          assert "btn.parentElement !== viewport" in js
           assert "state.userSelectedButton=null" in js
           print("Icon Rail visual selection V2 guard OK")
           PY
