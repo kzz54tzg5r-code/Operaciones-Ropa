@@ -30,27 +30,42 @@ body[data-v163-module="operation"] #operativoNav,
 body[data-v163-module="operation"] #analysisNav{
   display:none!important;
 }
-body[data-v163-module="operation"] .v125-tabs:not(.hidden){
+body[data-v163-module="operation"] .v125-tabs:not(.hidden):not(.rt-carousel){
   display:grid!important;
   grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+body[data-v163-module="operation"] .v125-tabs.rt-carousel:not(.hidden){
+  display:flex!important;
+  grid-template-columns:none!important;
+  flex-wrap:nowrap!important;
 }
 
 body[data-v163-module="operativo"] #analysisNav,
 body[data-v163-module="operativo"] .v125-tabs{
   display:none!important;
 }
-body[data-v163-module="operativo"] #operativoNav:not(.hidden){
+body[data-v163-module="operativo"] #operativoNav:not(.hidden):not(.rt-carousel){
   display:grid!important;
   grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+body[data-v163-module="operativo"] #operativoNav.rt-carousel:not(.hidden){
+  display:flex!important;
+  grid-template-columns:none!important;
+  flex-wrap:nowrap!important;
 }
 
 body[data-v163-module="analysis"] #operativoNav,
 body[data-v163-module="analysis"] .v125-tabs{
   display:none!important;
 }
-body[data-v163-module="analysis"] #analysisNav:not(.hidden){
+body[data-v163-module="analysis"] #analysisNav:not(.hidden):not(.rt-carousel){
   display:grid!important;
   grid-template-columns:repeat(5,minmax(0,1fr))!important;
+}
+body[data-v163-module="analysis"] #analysisNav.rt-carousel:not(.hidden){
+  display:flex!important;
+  grid-template-columns:none!important;
+  flex-wrap:nowrap!important;
 }
 
 body[data-v163-module="users"] #operativoNav,
@@ -71,9 +86,9 @@ body[data-v163-module="share"] .v125-tabs{
 
 /* En escritorio las pestañas quedan compactas, alineadas y sin filas fantasma. */
 @media(min-width:901px){
-  body[data-v163-module="operation"] .v125-tabs:not(.hidden),
-  body[data-v163-module="operativo"] #operativoNav:not(.hidden),
-  body[data-v163-module="analysis"] #analysisNav:not(.hidden){
+  body[data-v163-module="operation"] .v125-tabs:not(.hidden):not(.rt-carousel),
+  body[data-v163-module="operativo"] #operativoNav:not(.hidden):not(.rt-carousel),
+  body[data-v163-module="analysis"] #analysisNav:not(.hidden):not(.rt-carousel){
     gap:4px!important;
     padding:4px!important;
     margin:7px 0 9px!important;
