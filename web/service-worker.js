@@ -10,6 +10,7 @@ const STATIC_ASSETS = [
   '/static/pwa_brand.js',
   '/static/design_system.css',
   '/static/design_system.js',
+  '/static/report_tab_carousel.js',
   '/static/pwa_install.js',
   '/static/ios_native.js'
 ];
