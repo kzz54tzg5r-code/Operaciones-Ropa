@@ -242,3 +242,162 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',init,{once:true});
   else init();
 })();
+
+
+/* =========================================================
+   EXPERIENCE V3 · filtros compactos y drawer
+   ========================================================= */
+(() => {
+  'use strict';
+
+  const filterSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M7 12h10m-7 7h4"/></svg>';
+
+  const isMobile = () => window.matchMedia('(max-width:900px)').matches;
+
+  const panelValues = panel => {
+    const values = [];
+    panel.querySelectorAll('.filter:not(.hidden)').forEach(box => {
+      const control = box.querySelector('select,input');
+      if (!control || control.disabled && !control.value) return;
+      let value = '';
+      if (control.tagName === 'SELECT') {
+        value = control.selectedOptions?.[0]?.textContent?.trim() || control.value || '';
+      } else {
+        value = control.value || '';
+      }
+      if (!value) return;
+      values.push(value);
+    });
+    return values;
+  };
+
+  const updatePanelSummary = panel => {
+    const out = panel.querySelector('.or-filter-summary-v3');
+    if (!out) return;
+    const values = panelValues(panel);
+    out.textContent = values.length ? values.join(' · ') : 'Sin filtros adicionales';
+    out.title = out.textContent;
+  };
+
+  const makePanel = (panel, title='Filtros') => {
+    if (!panel || panel.dataset.orFilterV3 === '1') return;
+    panel.dataset.orFilterV3 = '1';
+    panel.classList.add('or-filter-panel-v3');
+
+    let body;
+    if (panel.id === 'operativoPeriodBar') {
+      body = [...panel.children].find(el => !el.classList.contains('or-filter-head-v3'));
+      if (!body) return;
+      body.classList.add('or-filter-body-v3');
+    } else {
+      body = document.createElement('div');
+      body.className = 'or-filter-body-v3';
+      [...panel.children].forEach(child => body.appendChild(child));
+      panel.appendChild(body);
+    }
+
+    const head = document.createElement('div');
+    head.className = 'or-filter-head-v3';
+    head.innerHTML = `
+      <div class="or-filter-head-main-v3">
+        <span class="or-filter-head-icon-v3" aria-hidden="true">${filterSvg}</span>
+        <div class="or-filter-head-copy-v3">
+          <b>${title}</b>
+          <span class="or-filter-summary-v3"></span>
+        </div>
+      </div>
+      <button type="button" class="or-filter-toggle-v3" aria-expanded="false">Cambiar</button>
+    `;
+    panel.prepend(head);
+
+    const toggle = head.querySelector('.or-filter-toggle-v3');
+    const setOpen = open => {
+      panel.classList.toggle('or-filters-open', Boolean(open));
+      toggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (toggle) toggle.textContent = open ? 'Cerrar' : 'Cambiar';
+    };
+
+    setOpen(!isMobile());
+
+    toggle?.addEventListener('click', () => {
+      setOpen(!panel.classList.contains('or-filters-open'));
+    });
+
+    panel.addEventListener('change', () => updatePanelSummary(panel));
+
+    const applyButtons = panel.querySelectorAll('#operPeriodApply,#refresh,.primary');
+    applyButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        window.setTimeout(() => {
+          updatePanelSummary(panel);
+          if (isMobile()) setOpen(false);
+        }, 120);
+      });
+    });
+
+    const observer = new MutationObserver(() => updatePanelSummary(panel));
+    observer.observe(body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
+
+    updatePanelSummary(panel);
+
+    panel.__orSetFilterOpen = setOpen;
+  };
+
+  const enhanceFilterPanels = () => {
+    makePanel(document.getElementById('operativoPeriodBar'),'Filtros del reporte');
+    makePanel(document.getElementById('globalFilters'),'Filtros globales');
+    document.getElementById('orActiveFilters')?.remove();
+  };
+
+  const enhanceDrawer = () => {
+    const side = document.querySelector('.side');
+    if (!side || side.querySelector('.or-drawer-close-v3')) return;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'or-drawer-close-v3';
+    close.setAttribute('aria-label','Cerrar menú');
+    close.textContent = '×';
+    close.addEventListener('click',() => {
+      document.body.classList.remove('or-mobile-drawer-open');
+      document.getElementById('orMobileMenuBtn')?.setAttribute('aria-expanded','false');
+    });
+    side.prepend(close);
+  };
+
+  const cleanSubnav = () => {
+    document.querySelectorAll('#operativoNav .switch,#analysisNav .switch').forEach(btn => {
+      btn.querySelectorAll('.or-icon,.mnav-icon').forEach(x => x.remove());
+    });
+  };
+
+  const syncResponsiveState = () => {
+    document.querySelectorAll('.or-filter-panel-v3').forEach(panel => {
+      if (!isMobile()) panel.__orSetFilterOpen?.(true);
+      else if (!panel.dataset.orMobileInitialized) {
+        panel.dataset.orMobileInitialized='1';
+        panel.__orSetFilterOpen?.(false);
+      }
+    });
+    if (!isMobile()) document.body.classList.remove('or-mobile-drawer-open');
+  };
+
+  const initV3 = () => {
+    document.documentElement.classList.add('or-experience-v3');
+    enhanceFilterPanels();
+    enhanceDrawer();
+    cleanSubnav();
+    syncResponsiveState();
+
+    const observer = new MutationObserver(() => {
+      enhanceFilterPanels();
+      cleanSubnav();
+      document.querySelectorAll('.or-filter-panel-v3').forEach(updatePanelSummary);
+    });
+    observer.observe(document.body,{subtree:true,childList:true});
+
+    window.addEventListener('resize',syncResponsiveState,{passive:true});
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initV3,{once:true});
+  else initV3();
+})();
