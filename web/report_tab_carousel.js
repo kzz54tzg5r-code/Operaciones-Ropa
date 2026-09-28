@@ -107,6 +107,56 @@
       box-shadow:none!important;
     }
     .rt-carousel-shell.rt-hidden{display:none!important}
+
+    /* Prioridad final sobre V161/V163/V194: estas capas históricas usan IDs +
+       !important y podían convertir el carrusel en cuadrícula. */
+    body[data-v163-module="operativo"] #operativoNav.rt-carousel,
+    body[data-v163-module="analysis"] #analysisNav.rt-carousel,
+    body[data-v163-module="operation"] .v125-tabs.rt-carousel{
+      display:flex!important;
+      grid-template-columns:none!important;
+      flex-wrap:nowrap!important;
+      align-items:stretch!important;
+      overflow-x:auto!important;
+      overflow-y:visible!important;
+      gap:var(--rt-gap)!important;
+      width:100%!important;
+      max-width:100%!important;
+      min-height:0!important;
+      padding:8px var(--rt-edge-pad) 12px!important;
+      margin:0!important;
+      border:0!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      scroll-snap-type:x mandatory!important;
+      scroll-padding-inline:var(--rt-edge-pad)!important;
+    }
+
+    body[data-v163-module="operativo"] #operativoNav.rt-carousel .switch,
+    body[data-v163-module="analysis"] #analysisNav.rt-carousel .switch,
+    body[data-v163-module="operation"] .v125-tabs.rt-carousel .v125-tab{
+      flex:0 0 var(--rt-card-w)!important;
+      width:var(--rt-card-w)!important;
+      min-width:var(--rt-card-w)!important;
+      max-width:var(--rt-card-w)!important;
+      min-height:66px!important;
+      height:66px!important;
+      padding:8px 10px 9px!important;
+      display:flex!important;
+      flex-direction:column!important;
+      align-items:center!important;
+      justify-content:center!important;
+      gap:5px!important;
+      border-radius:15px!important;
+      white-space:normal!important;
+      scroll-snap-align:center!important;
+      scroll-snap-stop:always!important;
+    }
+
+    body[data-v163-module="operativo"] #v161FilterBar{
+      display:none!important;
+    }
     .rt-carousel{
       --rt-edge-pad:14px;
       display:flex!important;
@@ -330,6 +380,39 @@
     @media(min-width:901px){
       .rt-carousel-shell{padding:0 44px!important}
       .rt-carousel{padding-left:var(--rt-edge-pad)!important;padding-right:var(--rt-edge-pad)!important}
+    }
+
+    /* Filtros inferiores de Cambios y Muertos:
+       en Día/Semanal/Mensual no se repite el selector Vista. */
+    #operativoPeriodBar.or-fixed-period>.or-report-filter-grid{
+      grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    }
+    #operativoPeriodBar.or-fixed-period #operPeriodSelectWrap,
+    #operativoPeriodBar.or-fixed-period #operStoreWrap,
+    #operativoPeriodBar.or-fixed-period #operAreaWrap,
+    #operativoPeriodBar.or-fixed-period #operActivityWrap{
+      grid-column:span 1!important;
+    }
+    #operativoPeriodBar.or-fixed-period #operPeriodApply{
+      grid-column:1/-1!important;
+    }
+
+    @media(max-width:900px){
+      body[data-v163-module="operativo"] #operativoNav.rt-carousel,
+      body[data-v163-module="analysis"] #analysisNav.rt-carousel,
+      body[data-v163-module="operation"] .v125-tabs.rt-carousel{
+        padding:7px var(--rt-edge-pad) 11px!important;
+      }
+      body[data-v163-module="operativo"] #operativoNav.rt-carousel .switch,
+      body[data-v163-module="analysis"] #analysisNav.rt-carousel .switch,
+      body[data-v163-module="operation"] .v125-tabs.rt-carousel .v125-tab{
+        min-height:64px!important;
+        height:64px!important;
+        border-radius:14px!important;
+      }
+      #operativoPeriodBar.or-fixed-period>.or-report-filter-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      }
     }
 
     @media(prefers-reduced-motion:reduce){
@@ -731,6 +814,62 @@
     return null;
   }
 
+  function syncOperativeFilterUI(viewName){
+    const bar=document.getElementById('operativoPeriodBar');
+    if(!bar||document.body.dataset.v163Module!=='operativo') return;
+
+    const modeWrap=document.getElementById('operPeriodModeWrap');
+    const periodLabel=document.getElementById('operPeriodLabel');
+    const areaWrap=document.getElementById('operAreaWrap');
+    const activityWrap=document.getElementById('operActivityWrap');
+    const storeWrap=document.getElementById('operStoreWrap');
+
+    if(viewName==='Carga de datos'){
+      bar.classList.add('hidden');
+      bar.classList.remove('or-fixed-period');
+      return;
+    }
+
+    // Los filtros inferiores son la única fuente visible.
+    bar.classList.remove('hidden');
+    storeWrap?.classList.remove('hidden');
+    areaWrap?.classList.remove('hidden');
+    activityWrap?.classList.remove('hidden');
+
+    const fixed={
+      'Operación Diaria':'Fecha',
+      'Reporte Semanal':'Semana ISO',
+      'Reporte Mensual':'Mes',
+      'Indicadores Diarios':'Fecha'
+    };
+    const fixedLabel=fixed[viewName];
+
+    if(fixedLabel){
+      modeWrap?.classList.add('hidden');
+      bar.classList.add('or-fixed-period');
+      if(periodLabel) periodLabel.textContent=fixedLabel;
+    }else{
+      bar.classList.remove('or-fixed-period');
+      // Para vistas flexibles se conserva Vista + Periodo.
+      if(modeWrap && modeWrap.querySelector('select')?.options?.length){
+        modeWrap.classList.remove('hidden');
+      }
+    }
+  }
+
+  function bindOperativeFilterGuard(){
+    document.addEventListener('click',event=>{
+      const btn=event.target.closest?.('#operativoNav [data-opview]');
+      if(!btn) return;
+      const view=btn.dataset.opview||'';
+      // La lógica original procesa la pestaña primero; luego sólo corregimos la UI.
+      [40,140,360].forEach(ms=>setTimeout(()=>syncOperativeFilterUI(view),ms));
+    },true);
+
+    const initial=document.querySelector('#operativoNav [data-opview].active');
+    if(initial) setTimeout(()=>syncOperativeFilterUI(initial.dataset.opview||''),180);
+  }
+
   function bindMainReset(){
     lastMainModule=document.querySelector('.nav[data-main].active')?.dataset.main||null;
     document.addEventListener('click',event=>{
@@ -764,6 +903,7 @@
     installStyle();
     scan(document);
     bindMainReset();
+    bindOperativeFilterGuard();
 
     const observer=new MutationObserver(mutations=>{
       if(globalObserverScheduled) return;

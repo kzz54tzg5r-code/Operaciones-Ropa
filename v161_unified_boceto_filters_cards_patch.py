@@ -288,7 +288,17 @@ def install(m):
   }
 
   function render(){
-    const mod=moduleName(),tab=activeTab(mod),h=ensureHost(),g=gid('v161FilterGrid');
+    const mod=moduleName();
+
+    // Cambios y Muertos ya usa el filtro operativo branded nativo
+    // (#operativoPeriodBar). No crear ni mostrar una segunda fachada arriba.
+    if(mod==='cambios'){
+      const legacy=gid('v161FilterBar');
+      if(legacy)legacy.classList.remove('on');
+      return;
+    }
+
+    const tab=activeTab(mod),h=ensureHost(),g=gid('v161FilterGrid');
     if(!mod){h.classList.remove('on');return}
     ensureMode();
     const fields=spec(mod,tab);g.innerHTML='';

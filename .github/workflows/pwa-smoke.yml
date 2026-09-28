@@ -42,7 +42,7 @@ jobs:
           index = Path("web/index.html").read_text(encoding="utf-8")
           assert 'rel="manifest" href="/manifest.webmanifest"' in index
           assert '/static/pwa_install.js?v=auto-update-v1' in index
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v1' in index
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v2' in index
           assert '/static/pwa_brand.js' in index
           assert '/static/pwa_brand.css' in index
           assert '/static/app-icon-maskable.svg' in Path("web/manifest.webmanifest").read_text(encoding="utf-8")
