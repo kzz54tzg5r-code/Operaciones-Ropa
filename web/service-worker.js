@@ -5,6 +5,7 @@ const STATIC_ASSETS = [
   '/static/app-icon-512.svg',
   '/static/app-icon-maskable.svg',
   '/static/app-logo.svg',
+  '/static/app-logo-white.svg',
   '/static/pwa_brand.css',
   '/static/pwa_brand.js',
   '/static/pwa_install.js',
