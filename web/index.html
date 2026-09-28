@@ -938,7 +938,7 @@ async function enter(u){
 }
 
 function applyTabVisibility(){
-  $('[data-tab-key]').forEach(el=>{
+  $$('[data-tab-key]').forEach(el=>{
     const visible=TAB_VISIBILITY[el.dataset.tabKey]!==false;
     el.classList.toggle('hidden',!visible);
     el.toggleAttribute('hidden',!visible);
