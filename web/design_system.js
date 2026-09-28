@@ -135,6 +135,7 @@
       });
     };
 
+    window.__orRenderFilterSummary = render;
     controls.forEach(c => c.addEventListener('change', render));
     clear.addEventListener('click', () => {
       controls.forEach(control => {
@@ -160,10 +161,10 @@
   };
 
   const enhanceTable = table => {
-    if (!table || table.dataset.orEnhanced === '1') return;
-    table.dataset.orEnhanced = '1';
-    const rows = [...table.rows];
+    if (!table) return;
+    const rows = [...table.rows].filter(row => row.dataset.orEnhanced !== '1');
     rows.forEach(row => {
+      row.dataset.orEnhanced = '1';
       [...row.cells].forEach(cell => {
         if (isNumericText(cell.textContent)) cell.classList.add('or-num');
         if (/^(total|total general|subtotal)/i.test(cell.textContent.trim())) {
@@ -215,6 +216,7 @@
     enhanceKpis(document);
     enhanceStates(document);
     enhanceButtons(document);
+    if (typeof window.__orRenderFilterSummary === 'function') window.__orRenderFilterSummary();
   };
 
   const schedule = () => {
@@ -231,7 +233,7 @@
     refreshEnhancements();
 
     const observer = new MutationObserver(schedule);
-    observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']});
     window.addEventListener('resize', () => {
       if (innerWidth > 900) document.body.classList.remove('or-mobile-drawer-open');
     });
