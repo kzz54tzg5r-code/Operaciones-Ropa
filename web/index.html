@@ -15,7 +15,7 @@
 <meta name="msapplication-TileColor" content="#082F5C">
 <script defer src="/static/ios_native.js"></script>
 <script defer src="/static/pwa_brand.js"></script>
-<script defer src="/static/design_system.js?v=20260928-safari-hotfix2"></script>
+<script defer src="/static/design_system.js?v=20260928-mobile-v4"></script>
 <script defer src="/static/pwa_install.js"></script>
 <style>
 :root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
@@ -313,7 +313,7 @@ body{max-width:100%;overflow-x:hidden}
   .lingerie-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .lingerie-entry-table{min-width:520px!important}
 }
-</style><link rel="stylesheet" href="/static/design_system.css">\n</head>
+</style><link rel="stylesheet" href="/static/design_system.css?v=20260928-mobile-v4">\n</head>
 <body>
 
 <section id="loginView" class="login-v15">
@@ -376,8 +376,7 @@ body{max-width:100%;overflow-x:hidden}
 <button class="nav adminOnly" data-main="users">Usuarios<small>Administración de accesos</small></button>
 <button class="nav adminOnly" data-main="share">Compartir sistema<small>Liga para móvil y usuarios</small></button>
 <div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><div id="viewRoleBox" class="hidden" style="margin-top:6px"><small>Ver sistema como</small><select id="viewRoleSelect" style="width:100%;font-size:9px;padding:5px"><option value="superadmin">Super Administrador</option><option value="admin">Administrador</option><option value="director">Director</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Demo · Colaborador de Lencería</option><option value="colaborador_operativo">Demo · Colaborador Operativo · Productividad</option></select><div id="viewRoleStoreWrap" class="hidden" style="margin-top:5px"><small>Tienda demo</small><select id="viewRoleStore" style="width:100%;font-size:9px;padding:5px"></select></div></div><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
-<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div></div><div class="filters hidden" id="globalFilters"><div class="filter"><label id="globalPeriodLabel">Periodo</label><select id="week"></select></div><div class="filter" id="globalStoreFilter"><label>Tienda</label><select id="store"><option>Compañía</option></select></div><div class="filter commercialFilter" id="globalSectionFilter"><label>Sección</label><select id="section"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter commercialFilter" id="globalCatalogFilter"><label>Tipo catálogo</label><select id="catalog"><option>Todos</option><option>VIGENTE</option><option>DESCONTINUADO</option><option>PROXIMO A SALIR</option><option>IMPULSO</option></select></div><button class="primary" id="refresh">Actualizar</button></div>
-<div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
+<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div></div><div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
   <button class="switch active" data-opview="Centro Ejecutivo" data-tab-key="operations.center">Centro Ejecutivo</button>
   <button class="switch" data-opview="Operación Diaria" data-tab-key="operations.day">Día</button>
   <button class="switch" data-opview="Reporte Semanal" data-tab-key="operations.week">Semanal</button>
@@ -404,6 +403,8 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-sub="more" data-tab-key="commercial.more">Más opciones</button>
   <button class="switch adminOnly" data-sub="analysis-upload">Carga de datos</button>
 </div>
+
+<div class="filters hidden" id="globalFilters"><div class="filter"><label id="globalPeriodLabel">Periodo</label><select id="week"></select></div><div class="filter" id="globalStoreFilter"><label>Tienda</label><select id="store"><option>Compañía</option></select></div><div class="filter commercialFilter" id="globalSectionFilter"><label>Sección</label><select id="section"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter commercialFilter" id="globalCatalogFilter"><label>Tipo catálogo</label><select id="catalog"><option>Todos</option><option>VIGENTE</option><option>DESCONTINUADO</option><option>PROXIMO A SALIR</option><option>IMPULSO</option></select></div><button class="primary" id="refresh">Actualizar</button></div>
 
 <section class="page active" id="page-operativo">
   
@@ -454,10 +455,10 @@ body{max-width:100%;overflow-x:hidden}
     <div id="operativoPeriodBar" class="panel" style="margin-bottom:10px">
       <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
         <div class="filter hidden" id="operPeriodModeWrap" style="min-width:170px"><label id="operPeriodModeLabel">Vista periodo</label><select id="operPeriodMode" style="width:100%"></select></div>
-        <div class="filter" style="min-width:220px"><label id="operPeriodLabel">Periodo</label><select id="operPeriodSelect" style="width:100%"></select></div>
-        <div class="filter" style="min-width:220px"><label>Tienda</label><select id="operStoreSelect" style="width:100%"><option>Compañía</option></select></div>
-        <div class="filter" style="min-width:160px"><label>Área</label><select id="operAreaSelect" style="width:100%"><option value="">Todas</option></select></div>
-        <div class="filter" style="min-width:210px"><label>Actividad</label><select id="operActivitySelect" style="width:100%"><option value="">Todas</option></select></div>
+        <div class="filter" id="operPeriodSelectWrap" style="min-width:220px"><label id="operPeriodLabel">Periodo</label><select id="operPeriodSelect" style="width:100%"></select></div>
+        <div class="filter" id="operStoreWrap" style="min-width:220px"><label>Tienda</label><select id="operStoreSelect" style="width:100%"><option>Compañía</option></select></div>
+        <div class="filter" id="operAreaWrap" style="min-width:160px"><label>Área</label><select id="operAreaSelect" style="width:100%"><option value="">Todas</option></select></div>
+        <div class="filter" id="operActivityWrap" style="min-width:210px"><label>Actividad</label><select id="operActivitySelect" style="width:100%"><option value="">Todas</option></select></div>
         <div class="filter hidden" id="operStartWrap" style="min-width:150px"><label>Desde</label><input id="operStartDate" type="date" style="width:100%"></div>
         <div class="filter hidden" id="operEndWrap" style="min-width:150px"><label>Hasta</label><input id="operEndDate" type="date" style="width:100%"></div>
         <button class="primary" id="operPeriodApply">Consultar</button>
