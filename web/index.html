@@ -18,7 +18,7 @@
 <script defer src="/static/design_system.js?v=20260928-mobile-v5"></script>
 <script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v5"></script>
 <script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-v7"></script>
-<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v3"></script>
+<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v4"></script>
 <script defer src="/static/pwa_install.js?v=auto-update-v1"></script>
 <style>
 :root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
@@ -938,10 +938,40 @@ async function enter(u){
 }
 
 function applyTabVisibility(){
-  $$('[data-tab-key]').forEach(el=>{
+  $('[data-tab-key]').forEach(el=>{
     const visible=TAB_VISIBILITY[el.dataset.tabKey]!==false;
     el.classList.toggle('hidden',!visible);
+    el.toggleAttribute('hidden',!visible);
+    el.setAttribute('aria-hidden',visible?'false':'true');
+    if(!visible){
+      el.classList.remove('rt-icon-user-active');
+      el.setAttribute('aria-selected','false');
+    }
   });
+
+  // Si el administrador oculta la pestaña que estaba abierta, mover la vista
+  // a la primera pestaña realmente visible del mismo reporte.
+  const ensureVisibleSelection=(selector)=>{
+    const nav=$(selector);
+    if(!nav)return;
+    const direct=[...nav.children].filter(x=>x instanceof HTMLButtonElement);
+    const current=direct.find(x=>x.classList.contains('active')||x.classList.contains('rt-icon-user-active'));
+    const isHidden=current && (current.hidden||current.classList.contains('hidden')||current.getAttribute('aria-hidden')==='true');
+    if(!isHidden)return;
+    const fallback=direct.find(x=>
+      !x.hidden &&
+      !x.classList.contains('hidden') &&
+      x.getAttribute('aria-hidden')!=='true' &&
+      x.dataset.tabKey
+    );
+    if(fallback)setTimeout(()=>fallback.click(),0);
+  };
+  ensureVisibleSelection('#operativoNav');
+  ensureVisibleSelection('#analysisNav');
+
+  document.dispatchEvent(new CustomEvent('report-tabs-visibility-changed',{
+    detail:{visibility:{...TAB_VISIBILITY}}
+  }));
 }
 async function loadTabVisibility(){
   try{

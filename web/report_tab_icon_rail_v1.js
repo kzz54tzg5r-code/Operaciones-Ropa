@@ -303,6 +303,31 @@
       }
     }
 
+    /* La configuración Pestañas visibles manda sobre cualquier carrusel.
+       Ningún !important histórico puede volver a pintar una pestaña desmarcada. */
+    #operativoNav.rt-carousel>button.hidden,
+    #analysisNav.rt-carousel>button.hidden,
+    .v125-tabs.rt-carousel>button.hidden,
+    #operativoNav.rt-carousel>button[hidden],
+    #analysisNav.rt-carousel>button[hidden],
+    .v125-tabs.rt-carousel>button[hidden]{
+      display:none!important;
+      visibility:hidden!important;
+      flex:0 0 0!important;
+      width:0!important;
+      min-width:0!important;
+      max-width:0!important;
+      height:0!important;
+      min-height:0!important;
+      max-height:0!important;
+      margin:0!important;
+      padding:0!important;
+      border:0!important;
+      opacity:0!important;
+      pointer-events:none!important;
+      overflow:hidden!important;
+    }
+
     @media(prefers-reduced-motion:reduce){
       #operativoNav.rt-carousel.rt-icon-rail-v1>.switch,
       #operativoNav.rt-carousel.rt-icon-rail-v1>button,
@@ -587,6 +612,23 @@
 
   function init(){
     enhance();
+
+    document.addEventListener('report-tabs-visibility-changed',()=>{
+      const viewport=document.getElementById(TARGET_ID);
+      const state=viewport?STATE.get(viewport):null;
+      if(!state)return;
+
+      const visible=logicalCards(state);
+      if(state.userSelectedButton && !visible.includes(state.userSelectedButton)){
+        state.userSelectedButton=null;
+      }
+
+      rebuildDots(state);
+      applyVisualSelection(state);
+      centerPadding(viewport);
+      const selected=visualButton(state);
+      setTimeout(()=>circularizeAround(state,selected,{behavior:'auto'}),20);
+    });
 
     const mo=new MutationObserver(()=>{
       clearTimeout(window.__rtIconRailScan);
