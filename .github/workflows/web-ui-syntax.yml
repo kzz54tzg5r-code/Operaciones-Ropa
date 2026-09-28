@@ -88,7 +88,7 @@ jobs:
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
           ds = Path("web/design_system.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v5' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
           assert 'scroll-snap-type:x mandatory' in js
           assert "commercial.sellthrough" in js
           assert "data.v125Tab" in js or "dataset.v125Tab" in js
@@ -104,7 +104,7 @@ jobs:
           car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
           v161 = Path("v161_unified_boceto_filters_cards_patch.py").read_text(encoding="utf-8")
           html = Path("web/index.html").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v5' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
           assert 'body[data-v163-module="operativo"] #operativoNav.rt-carousel' in car
           assert 'display:flex!important' in car
           assert 'body[data-v163-module="operativo"] #v161FilterBar' in car
@@ -120,7 +120,7 @@ jobs:
           html = Path("web/index.html").read_text(encoding="utf-8")
           car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
           v163 = Path("v163_module_nav_cleanup_patch.py").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v5' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
           assert '<div style="margin-left:auto;display:flex;gap:5px">' not in html
           assert 'viewport.style.setProperty(\'display\',\'flex\',\'important\')' in car
           assert '#operativoNav.rt-carousel:not(.hidden)' in v163
@@ -133,7 +133,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v5' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
           assert "touch-action:pan-y pinch-zoom!important" in car
           assert "viewport.addEventListener('touchmove'" in car
           assert "{passive:false}" in car
@@ -191,7 +191,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
@@ -205,7 +205,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v5' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
           assert "buttons.find(b=>b.classList.contains('active'))" in js
           assert "state.userCenteredButton=nearest" in js
           assert "state.userAnchored=true" in js
@@ -219,7 +219,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
           assert "userSelectedButton" in js
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
@@ -232,7 +232,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
           assert "function circularizeAround" in js
           assert "state.logicalButtons" in js
           assert "btn.dataset.rtRingOrder" in js
@@ -247,7 +247,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
           assert "el.toggleAttribute('hidden',!visible)" in html
           assert "report-tabs-visibility-changed" in html
           assert "#operativoNav.rt-carousel>button.hidden" in js
@@ -262,7 +262,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v7' in html
           assert "function oneStepTarget" in js
           assert "function bindOneStepSwipe" in js
           assert "function animateScrollTo" in js
@@ -272,5 +272,24 @@ jobs:
           assert "La tarjeta acompaña al dedo durante TODO el gesto." in js
           assert "overflow-anchor:none!important" in js
           assert "window.ReportTabIconRailV6=api" in js
-          print("Fluid one-step swipe V6 guard OK")
+          assert "window.ReportTabIconRailV7=api" in js
+          assert "Las pestañas inactivas muestran su nombre pequeño" in js
+          print("Fluid one-step swipe + labels V7 guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
+          icon = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
+          patch = Path("v194_mobile_ui_final_patch.py").read_text(encoding="utf-8")
+          assert "'operations.center': ['Centro Operativo', 'dashboard']" in car
+          assert "CONSOLIDATED_OPERATION_TABS" in car
+          assert 'data-tab-key="operations.day"' in html
+          assert 'data-tab-key="operations.week"' in html
+          assert 'data-tab-key="operations.month"' in html
+          assert html.count('hidden aria-hidden="true" data-opview=') >= 3
+          assert "#operPeriodApply.or-filter-apply-v5{\n  grid-column:span 2!important;" in patch
+          assert "#operPeriodApply.or-filter-apply-v5{grid-column:span 1!important}" in patch
+          assert "font-size:7.5px!important" in icon
+          print("Operational nav + compact Consultar guard OK")
           PY
