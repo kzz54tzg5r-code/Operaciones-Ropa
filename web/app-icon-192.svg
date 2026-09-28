@@ -1,6 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="Operaciones Ropa">
-  <rect width="192" height="192" rx="42" fill="#123B73"/>
-  <path d="M151 0h41v192h-41z" fill="#E4007F"/>
-  <circle cx="88" cy="96" r="60" fill="#1769E8" opacity=".28"/>
-  <path d="M55 48h47c29 0 46 15 46 39 0 18-10 30-27 35l31 39h-35l-27-35H82v35H55V48zm27 25v30h18c13 0 20-5 20-15 0-10-7-15-20-15H82z" fill="#FFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title id="title">Operaciones Ropa</title>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0D477B"/>
+    <stop offset=".48" stop-color="#06345F"/>
+    <stop offset="1" stop-color="#001D3C"/>
+  </linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#1992FF"/>
+    <stop offset="1" stop-color="#0874EE"/>
+  </linearGradient>
+  <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+    <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#00182E" flood-opacity=".24"/>
+  </filter>
+</defs>
+<rect x="12" y="12" width="488" height="488" rx="104" fill="url(#bg)"/>
+<g filter="url(#soft)" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M245 112c0-24 18-42 42-42 24 0 43 17 43 40 0 21-14 31-34 42-14 8-22 18-22 30"/>
+  <path d="M272 179 145 265c-12 8-6 28 9 28h204c15 0 21-20 9-28l-95-64"/>
+</g>
+<g filter="url(#soft)">
+  <rect x="202" y="241" width="24" height="53" rx="3" fill="#fff"/>
+  <rect x="235" y="224" width="24" height="70" rx="3" fill="#fff"/>
+  <rect x="268" y="205" width="24" height="89" rx="3" fill="#fff"/>
+  <rect x="244" y="224" width="15" height="70" rx="3" fill="url(#blue)" opacity=".92"/>
+</g>
+<text x="256" y="361" text-anchor="middle" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="49" font-weight="800" letter-spacing="1">OPERACIONES</text>
+<text x="256" y="427" text-anchor="middle" fill="url(#blue)" font-family="Arial,Helvetica,sans-serif" font-size="68" font-weight="900" letter-spacing="2">ROPA</text>
 </svg>
