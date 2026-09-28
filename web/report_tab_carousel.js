@@ -356,8 +356,24 @@
     });
   }
 
+  function directNavButtons(el){
+    const buttons=[];
+    [...el.children].forEach(child=>{
+      if(child instanceof HTMLButtonElement){
+        buttons.push(child);
+        return;
+      }
+      if(child instanceof HTMLElement){
+        [...child.children].forEach(grand=>{
+          if(grand instanceof HTMLButtonElement) buttons.push(grand);
+        });
+      }
+    });
+    return buttons;
+  }
+
   function semanticButtons(el){
-    return [...el.querySelectorAll('button')].filter(btn=>
+    return directNavButtons(el).filter(btn=>
       btn.dataset.tabKey ||
       btn.dataset.opview ||
       btn.dataset.sub ||
@@ -381,7 +397,7 @@
   }
 
   function buttonsOf(viewport){
-    return [...viewport.querySelectorAll('button')].filter(btn=>btn.closest('.rt-carousel')===viewport);
+    return directNavButtons(viewport);
   }
 
   function visibleButtons(viewport){
@@ -475,9 +491,21 @@
     catch(_){viewport.scrollLeft=left;}
   }
 
+  function containerShown(viewport){
+    if(viewport.hidden||viewport.classList.contains('hidden')||viewport.style.display==='none') return false;
+    return getComputedStyle(viewport).display!=='none';
+  }
+
   function updateArrows(viewport){
     const state=ENHANCED.get(viewport);
     if(!state) return;
+    const shown=containerShown(viewport);
+    state.shell.classList.toggle('rt-hidden',!shown);
+    if(!shown){
+      state.prev.disabled=true;
+      state.next.disabled=true;
+      return;
+    }
     const max=Math.max(0,viewport.scrollWidth-viewport.clientWidth);
     const canPrev=viewport.scrollLeft>8;
     const canNext=viewport.scrollLeft<max-8;
@@ -710,7 +738,6 @@
 
   function refreshAll(){
     scan(document);
-    ENHANCED.forEach?.(()=>{});
     document.querySelectorAll('.rt-carousel').forEach(viewport=>{
       setEdgePadding(viewport);
       refreshCards(viewport);
