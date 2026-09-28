@@ -222,7 +222,7 @@ def install(m):
 #operStoreWrap,#operAreaWrap,#operActivityWrap{grid-column:span 2!important}
 #operStartWrap,#operEndWrap{grid-column:span 3!important}
 #operPeriodApply.or-filter-apply-v5{
-  grid-column:1/-1!important;
+  grid-column:span 2!important;
   display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;
   width:100%!important;height:34px!important;min-height:34px!important;
   margin:1px 0 0!important;padding:0 12px!important;
@@ -301,7 +301,7 @@ def install(m):
   #operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap,#operAreaWrap,#operActivityWrap,#operStartWrap,#operEndWrap{
     grid-column:span 1!important;
   }
-  #operPeriodApply.or-filter-apply-v5{grid-column:1/-1!important}
+  #operPeriodApply.or-filter-apply-v5{grid-column:span 1!important}
 }
 </style>'''
 
