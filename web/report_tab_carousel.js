@@ -95,6 +95,7 @@
   const css = `
     .rt-carousel-shell{
       --rt-card-w:clamp(154px,16vw,190px);
+      box-sizing:border-box!important;
       --rt-gap:10px;
       position:relative!important;
       width:100%!important;
@@ -372,21 +373,31 @@
     return buttons;
   }
 
-  function semanticButtons(el){
-    return directNavButtons(el).filter(btn=>
-      btn.dataset.tabKey ||
-      btn.dataset.opview ||
-      btn.dataset.sub ||
-      btn.dataset.v125Tab ||
-      btn.dataset.reportTab
+  function isSemanticButton(btn){
+    return Boolean(
+      btn?.dataset?.tabKey ||
+      btn?.dataset?.opview ||
+      btn?.dataset?.sub ||
+      btn?.dataset?.v125Tab ||
+      btn?.dataset?.reportTab
     );
+  }
+
+  function semanticButtons(el){
+    return directNavButtons(el).filter(isSemanticButton);
+  }
+
+  function directSemanticButtons(el){
+    return [...el.children].filter(child=>child instanceof HTMLButtonElement && isSemanticButton(child));
   }
 
   function isReportTabContainer(el){
     if(!(el instanceof Element)||isExcluded(el)) return false;
     if(el.id==='operativoNav'||el.id==='analysisNav'||el.classList.contains('v125-tabs')||el.hasAttribute('data-report-tab-carousel')) return true;
-    const buttons=semanticButtons(el);
-    return buttons.length>=2;
+    // Para detección genérica exigimos botones semánticos DIRECTOS.
+    // Esto evita que main/page/shell se confundan con un carrusel por contener
+    // navegaciones varios niveles más abajo.
+    return directSemanticButtons(el).length>=2;
   }
 
   function visibleButton(btn){
@@ -484,7 +495,10 @@
 
   function centerButton(viewport,btn,behavior='smooth'){
     if(!btn||!visibleButton(btn)||!viewport.clientWidth) return;
-    const target=btn.offsetLeft + btn.offsetWidth/2 - viewport.clientWidth/2;
+    const vr=viewport.getBoundingClientRect();
+    const br=btn.getBoundingClientRect();
+    const delta=(br.left+br.width/2)-(vr.left+vr.width/2);
+    const target=viewport.scrollLeft+delta;
     const max=Math.max(0,viewport.scrollWidth-viewport.clientWidth);
     const left=Math.max(0,Math.min(max,target));
     try{viewport.scrollTo({left,behavior});}
@@ -518,6 +532,7 @@
   function syncActive(viewport,{center=true,behavior='smooth'}={}){
     const btn=activeButton(viewport);
     if(!btn) return;
+    setEdgePadding(viewport);
     updateAria(viewport);
     if(center) centerButton(viewport,btn,behavior);
     requestAnimationFrame(()=>updateArrows(viewport));
