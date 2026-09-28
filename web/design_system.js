@@ -357,9 +357,15 @@
     const analysisNav = document.getElementById('analysisNav');
     const globalFilters = document.getElementById('globalFilters');
     if (!main || !hero || !opNav || !analysisNav || !globalFilters) return;
-    if (hero.nextElementSibling !== opNav) hero.after(opNav);
-    if (opNav.nextElementSibling !== analysisNav) opNav.after(analysisNav);
-    if (analysisNav.nextElementSibling !== globalFilters) analysisNav.after(globalFilters);
+
+    // Si las pestañas ya fueron mejoradas por ReportTabCarousel, mover el shell
+    // completo y no extraer el viewport del componente.
+    const opNode = opNav.closest('.rt-carousel-shell') || opNav;
+    const analysisNode = analysisNav.closest('.rt-carousel-shell') || analysisNav;
+
+    if (hero.nextElementSibling !== opNode) hero.after(opNode);
+    if (opNode.nextElementSibling !== analysisNode) opNode.after(analysisNode);
+    if (analysisNode.nextElementSibling !== globalFilters) analysisNode.after(globalFilters);
   };
 
   const enhanceDrawer = () => {
