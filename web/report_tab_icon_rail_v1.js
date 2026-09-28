@@ -29,10 +29,10 @@
       overflow-y:visible!important;
       scroll-snap-type:x mandatory!important;
       scroll-padding-inline:var(--rt-edge-pad)!important;
-      background:transparent!important;
-      border:0!important;
-      border-radius:0!important;
-      box-shadow:none!important;
+      background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(247,251,255,.64))!important;
+      border:1px solid rgba(199,216,233,.72)!important;
+      border-radius:22px!important;
+      box-shadow:0 5px 18px rgba(12,53,92,.055)!important;
       scrollbar-width:none!important;
       -webkit-overflow-scrolling:touch!important;
     }
@@ -116,9 +116,9 @@
     }
 
     /* activo: ligeramente más grande, no tarjeta grande */
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>button.active,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"],
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"],
     #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active{
       opacity:1!important;
       color:#fff!important;
@@ -126,9 +126,10 @@
       transform:translateY(-1px)!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>button.active .rt-tab-icon,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"] .rt-tab-icon{
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon,
+    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon{
       width:52px!important;
       height:52px!important;
       min-width:52px!important;
@@ -140,9 +141,10 @@
       transform:scale(1.02)!important;
     }
 
-    #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active .rt-tab-icon svg,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>button.active .rt-tab-icon svg,
-    #operativoNav.rt-carousel.rt-icon-rail-v1>[aria-selected="true"] .rt-tab-icon svg{
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-icon svg,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-icon svg,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-icon svg,
+    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-icon svg{
       width:25px!important;
       height:25px!important;
       transform:scale(1.02)!important;
@@ -169,6 +171,28 @@
       width:100%!important;
       margin:0 0 8px!important;
       padding:0!important;
+      isolation:isolate!important;
+    }
+
+    .rt-icon-rail-v1-shell::before,
+    .rt-icon-rail-v1-shell::after{
+      content:""!important;
+      position:absolute!important;
+      top:5px!important;
+      z-index:8!important;
+      width:24px!important;
+      height:64px!important;
+      pointer-events:none!important;
+    }
+    .rt-icon-rail-v1-shell::before{
+      left:0!important;
+      background:linear-gradient(90deg,#f4f8fc 12%,rgba(244,248,252,0))!important;
+      border-radius:22px 0 0 22px!important;
+    }
+    .rt-icon-rail-v1-shell::after{
+      right:0!important;
+      background:linear-gradient(270deg,#f4f8fc 12%,rgba(244,248,252,0))!important;
+      border-radius:0 22px 22px 0!important;
     }
 
     .rt-icon-rail-v1-current{
@@ -201,26 +225,17 @@
     }
 
     .rt-icon-rail-v1-indicator{
-      display:flex!important;
-      align-items:center!important;
-      justify-content:center!important;
-      gap:4px!important;
-      height:8px!important;
-      margin-top:-1px!important;
-      pointer-events:none!important;
-    }
-    .rt-icon-rail-v1-dot{
-      width:4px!important;
-      height:4px!important;
-      border-radius:50%!important;
-      background:#c7d4e2!important;
-      transition:width .18s ease,background .18s ease,border-radius .18s ease!important;
-    }
-    .rt-icon-rail-v1-dot.active{
-      width:14px!important;
+      display:block!important;
+      width:32px!important;
+      height:3px!important;
+      margin:0 auto 1px!important;
       border-radius:999px!important;
-      background:#0d7ff4!important;
+      background:linear-gradient(90deg,#0d7ff4,#0b4f91)!important;
+      opacity:.78!important;
+      pointer-events:none!important;
+      box-shadow:0 1px 4px rgba(13,127,244,.16)!important;
     }
+    .rt-icon-rail-v1-dot{display:none!important}
 
     /* neutraliza restos de las variantes Mundial anteriores */
     #operativoNav.rt-icon-rail-v1 .rt-m7-base,
@@ -314,6 +329,84 @@
     );
   }
 
+  function reconnectObserver(state){
+    if(!state?.observer) return;
+    state.observer.disconnect();
+    state.observer.observe(state.viewport,{
+      subtree:true,
+      childList:true,
+      attributes:true,
+      attributeFilter:['class','aria-selected','hidden','style']
+    });
+  }
+
+  function logicalCards(state){
+    if(!state.logicalButtons?.length){
+      state.logicalButtons=cards(state.viewport).slice();
+      state.logicalButtons.forEach((btn,i)=>btn.dataset.rtRingOrder=String(i));
+    }
+
+    // Registrar botones nuevos sin alterar el orden lógico ya conocido.
+    [...state.viewport.children].forEach(el=>{
+      if(!(el instanceof HTMLButtonElement)) return;
+      if(state.logicalButtons.includes(el)) return;
+      el.dataset.rtRingOrder=String(state.logicalButtons.length);
+      state.logicalButtons.push(el);
+    });
+
+    return state.logicalButtons.filter(btn=>
+      btn.isConnected &&
+      btn.parentElement===state.viewport &&
+      !btn.hidden &&
+      !btn.classList.contains('hidden') &&
+      getComputedStyle(btn).display!=='none'
+    );
+  }
+
+  function centerButtonLocal(viewport,btn,behavior='auto'){
+    if(!viewport||!btn) return;
+    const left=btn.offsetLeft + btn.offsetWidth/2 - viewport.clientWidth/2;
+    viewport.scrollTo({left:Math.max(0,left),behavior});
+  }
+
+  function circularizeAround(state,selected,{behavior='auto'}={}){
+    const viewport=state.viewport;
+    const visible=logicalCards(state);
+    if(!selected || visible.length<3 || !visible.includes(selected)) return;
+    if(state.reordering) return;
+
+    const idx=visible.indexOf(selected);
+    const before=Math.floor(visible.length/2);
+    const ordered=[];
+    for(let step=-before; step<visible.length-before; step++){
+      ordered.push(visible[(idx+step+visible.length)%visible.length]);
+    }
+
+    state.reordering=true;
+    state.observer?.disconnect();
+
+    const frag=document.createDocumentFragment();
+    ordered.forEach(btn=>frag.appendChild(btn));
+
+    // Los ocultos se mantienen en DOM para conservar permisos/listeners.
+    state.logicalButtons
+      .filter(btn=>btn.isConnected && !visible.includes(btn))
+      .forEach(btn=>frag.appendChild(btn));
+
+    viewport.appendChild(frag);
+    centerPadding(viewport);
+
+    requestAnimationFrame(()=>{
+      centerButtonLocal(viewport,selected,behavior);
+      requestAnimationFrame(()=>centerButtonLocal(viewport,selected,'auto'));
+    });
+
+    setTimeout(()=>{
+      state.reordering=false;
+      reconnectObserver(state);
+    },50);
+  }
+
   function labelOf(btn){
     return (
       btn.dataset.rtLabel ||
@@ -365,6 +458,7 @@
     const selected=visualButton(state);
     const list=cards(state.viewport);
 
+    state.viewport.classList.toggle('rt-icon-has-user-selection',!!state.userSelectedButton);
     list.forEach(btn=>{
       btn.classList.toggle('rt-icon-user-active',btn===selected);
     });
@@ -382,14 +476,9 @@
   }
 
   function rebuildDots(state){
-    const count=cards(state.viewport).length;
-    if(state.indicator.children.length===count) return;
-    state.indicator.innerHTML='';
-    for(let i=0;i<count;i++){
-      const dot=document.createElement('span');
-      dot.className='rt-icon-rail-v1-dot';
-      state.indicator.appendChild(dot);
-    }
+    // En un carrusel circular no existe un inicio/fin real; usamos una
+    // pequeña barra de foco en vez de una fila de puntos.
+    if(state.indicator.childElementCount) state.indicator.innerHTML='';
   }
 
   function centerPadding(viewport){
@@ -439,48 +528,61 @@
 
     shell.append(current,indicator);
 
-    state={viewport,shell,current,indicator,observer:null,userSelectedButton:null};
+    state={viewport,shell,current,indicator,observer:null,userSelectedButton:null,logicalButtons:cards(viewport).slice(),reordering:false};
     STATE.set(viewport,state);
 
+    state.logicalButtons.forEach((btn,i)=>btn.dataset.rtRingOrder=String(i));
     rebuildDots(state);
     setCurrent(state);
     centerPadding(viewport);
+    setTimeout(()=>circularizeAround(state,visualButton(state),{behavior:'auto'}),60);
 
     viewport.addEventListener('click',event=>{
       const btn=event.target.closest('button');
       if(!btn || btn.parentElement!==viewport) return;
 
-      // La selección visual responde inmediatamente al usuario y no depende
-      // de que la vista interna agregue .active (Metas y tiendas no lo hacía).
+      // La selección visual responde inmediatamente al usuario.
       state.userSelectedButton=btn;
       applyVisualSelection(state);
 
-      // El carrusel base se encarga del centrado; nosotros sólo persistimos
-      // cuál opción debe verse activa.
+      // Al terminar la selección reordenamos los mismos botones reales en forma
+      // circular: antes del primero aparece el último y después del último el primero.
       setTimeout(()=>applyVisualSelection(state),40);
-      setTimeout(()=>applyVisualSelection(state),180);
+      setTimeout(()=>{
+        applyVisualSelection(state);
+        circularizeAround(state,btn,{behavior:'smooth'});
+      },210);
     },true);
     viewport.addEventListener('scroll',()=>{}, {passive:true});
 
-    const mo=new MutationObserver(()=>{
+    const mo=new MutationObserver(mutations=>{
+      if(state.reordering) return;
+
       cards(viewport).forEach(restoreIcon);
+      logicalCards(state);
       rebuildDots(state);
 
       // Mantener la selección hecha por el usuario aunque el reporte cambie
       // clases/aria-selected durante su renderizado.
-      if(state.userSelectedButton && !cards(viewport).includes(state.userSelectedButton)){
+      const visible=logicalCards(state);
+      if(state.userSelectedButton && !visible.includes(state.userSelectedButton)){
         state.userSelectedButton=null;
       }
+
       applyVisualSelection(state);
       centerPadding(viewport);
-    });
-    mo.observe(viewport,{
-      subtree:true,
-      childList:true,
-      attributes:true,
-      attributeFilter:['class','aria-selected','hidden','style']
+
+      const visibilityChanged=mutations.some(m=>
+        m.type==='childList' ||
+        (m.type==='attributes' && ['hidden','style'].includes(m.attributeName))
+      );
+      if(visibilityChanged){
+        const selected=visualButton(state);
+        setTimeout(()=>circularizeAround(state,selected,{behavior:'auto'}),30);
+      }
     });
     state.observer=mo;
+    reconnectObserver(state);
   }
 
   function init(){
@@ -497,7 +599,7 @@
       window.__rtIconRailResize=setTimeout(enhance,80);
     },{passive:true});
 
-    window.ReportTabIconRailV1={
+    const api={
       refresh:enhance,
       select:(btn)=>{
         const viewport=document.getElementById(TARGET_ID);
@@ -505,8 +607,11 @@
         if(!state || !(btn instanceof HTMLButtonElement)) return;
         state.userSelectedButton=btn;
         applyVisualSelection(state);
+        setTimeout(()=>circularizeAround(state,btn,{behavior:'smooth'}),40);
       }
     };
+    window.ReportTabIconRailV1=api;
+    window.ReportTabIconRailV3=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
