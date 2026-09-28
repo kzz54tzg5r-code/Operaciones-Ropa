@@ -557,12 +557,18 @@
 
   function activeButton(viewport){
     const buttons=visibleButtons(viewport);
-    return buttons.find(b=>b.classList.contains('active')||b.getAttribute('aria-selected')==='true')||buttons[0]||null;
+    // La clase .active representa el estado real del reporte.
+    // aria-selected es sólo accesibilidad y puede quedar momentáneamente desfasado.
+    return buttons.find(b=>b.classList.contains('active'))
+      || buttons.find(b=>b.getAttribute('aria-selected')==='true')
+      || buttons[0]
+      || null;
   }
 
   function updateAria(viewport){
+    const current=activeButton(viewport);
     buttonsOf(viewport).forEach(btn=>{
-      const active=btn.classList.contains('active')||btn===activeButton(viewport);
+      const active=btn===current;
       btn.setAttribute('aria-selected',active?'true':'false');
       btn.tabIndex=active?0:-1;
     });
@@ -650,14 +656,24 @@
     const state=ENHANCED.get(viewport);
     if(!state||!state.gesturePending) return;
     state.gesturePending=false;
+
     const nearest=nearestButton(viewport);
     if(!nearest) return;
+
+    // La pestaña que quedó más cerca del centro pasa a ser la elegida
+    // y se queda anclada ahí. No dependemos de que la lógica del reporte
+    // actualice .active de forma síncrona.
+    state.userCenteredButton=nearest;
+    state.userAnchored=true;
+
     const active=activeButton(viewport);
     if(nearest!==active){
       nearest.click();
-    }else{
-      centerButton(viewport,nearest,'smooth');
     }
+
+    centerButton(viewport,nearest,'smooth');
+    setTimeout(()=>centerButton(viewport,nearest,'smooth'),70);
+    setTimeout(()=>centerButton(viewport,nearest,'auto'),190);
   }
 
   function refreshCards(viewport){
@@ -727,7 +743,9 @@
       touchStartScroll:0,
       touchMode:'idle',
       dragged:false,
-      suppressClickUntil:0
+      suppressClickUntil:0,
+      userAnchored:false,
+      userCenteredButton:null
     };
     ENHANCED.set(viewport,state);
 
@@ -747,8 +765,14 @@
       }
 
       state.gesturePending=false;
-      requestAnimationFrame(()=>syncActive(viewport,{center:true,behavior:'smooth'}));
-      setTimeout(()=>syncActive(viewport,{center:true,behavior:'smooth'}),80);
+      state.userAnchored=true;
+      state.userCenteredButton=btn;
+
+      // Centrar el botón que el usuario tocó, no "la activa" calculada,
+      // porque el reporte puede actualizar .active unas décimas después.
+      requestAnimationFrame(()=>centerButton(viewport,btn,'smooth'));
+      setTimeout(()=>centerButton(viewport,btn,'smooth'),80);
+      setTimeout(()=>centerButton(viewport,btn,'auto'),180);
     });
 
     viewport.addEventListener('touchstart',event=>{
@@ -838,11 +862,29 @@
     const observer=new MutationObserver(mutations=>{
       const needsCards=mutations.some(m=>m.type==='childList');
       const needsActive=mutations.some(m=>m.type==='attributes');
+
       if(state.mutationFrame) cancelAnimationFrame(state.mutationFrame);
       state.mutationFrame=requestAnimationFrame(()=>{
         state.mutationFrame=null;
+
         if(needsCards) refreshCards(viewport);
-        if(needsActive) syncActive(viewport,{center:true,behavior:'smooth'});
+
+        if(needsActive){
+          // Actualizar accesibilidad/estado visual sin mover el carrusel.
+          // Una carga de datos, cambio de filtros o render interno NO debe
+          // reposicionar las pestañas.
+          updateAria(viewport);
+          updateArrows(viewport);
+
+          // Si el usuario ya ancló una pestaña, mantener exactamente ese centro.
+          if(state.userAnchored && state.userCenteredButton && visibleButton(state.userCenteredButton)){
+            // Sólo corregimos desviaciones perceptibles, sin animaciones repetidas.
+            const vr=viewport.getBoundingClientRect();
+            const br=state.userCenteredButton.getBoundingClientRect();
+            const delta=Math.abs((br.left+br.width/2)-(vr.left+vr.width/2));
+            if(delta>4) centerButton(viewport,state.userCenteredButton,'auto');
+          }
+        }
       });
     });
     observer.observe(viewport,{
@@ -856,6 +898,8 @@
     refreshCards(viewport);
     requestAnimationFrame(()=>{
       setEdgePadding(viewport);
+      state.userAnchored=false;
+      state.userCenteredButton=null;
       syncActive(viewport,{center:true,behavior:'auto'});
     });
   }
@@ -886,6 +930,11 @@
   function activateFirst(viewport){
     const first=visibleButtons(viewport)[0];
     if(!first) return;
+    const state=ENHANCED.get(viewport);
+    if(state){
+      state.userAnchored=false;
+      state.userCenteredButton=null;
+    }
     if(!first.classList.contains('active')) first.click();
     requestAnimationFrame(()=>centerButton(viewport,first,'smooth'));
   }
