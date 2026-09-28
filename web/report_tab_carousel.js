@@ -176,7 +176,7 @@
       overscroll-behavior-x:contain!important;
       -webkit-overflow-scrolling:touch!important;
       scrollbar-width:none!important;
-      touch-action:pan-x pan-y!important;
+      touch-action:pan-y pinch-zoom!important;
       background:linear-gradient(90deg,rgba(244,247,251,.15),rgba(244,247,251,.75) 12%,rgba(244,247,251,.75) 88%,rgba(244,247,251,.15))!important;
       border:0!important;
       border-radius:0!important;
@@ -721,7 +721,13 @@
       shell,prev,next,
       gesturePending:false,
       scrollTimer:null,
-      mutationFrame:null
+      mutationFrame:null,
+      touchStartX:0,
+      touchStartY:0,
+      touchStartScroll:0,
+      touchMode:'idle',
+      dragged:false,
+      suppressClickUntil:0
     };
     ENHANCED.set(viewport,state);
 
@@ -731,19 +737,75 @@
     viewport.addEventListener('click',event=>{
       const btn=event.target.closest('button');
       if(!btn||btn.closest('.rt-carousel')!==viewport) return;
+
+      // Después de un swipe, iOS puede emitir click sobre la tarjeta bajo el dedo.
+      // Lo anulamos para no abrir una pestaña distinta accidentalmente.
+      if(Date.now()<state.suppressClickUntil){
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
       state.gesturePending=false;
       requestAnimationFrame(()=>syncActive(viewport,{center:true,behavior:'smooth'}));
       setTimeout(()=>syncActive(viewport,{center:true,behavior:'smooth'}),80);
     });
 
-    viewport.addEventListener('pointerdown',event=>{
-      if(event.pointerType==='touch'||matchMedia('(max-width:900px)').matches) state.gesturePending=true;
-    },{passive:true});
-    viewport.addEventListener('touchstart',()=>{state.gesturePending=true;},{passive:true});
-    viewport.addEventListener('touchend',()=>{
+    viewport.addEventListener('touchstart',event=>{
+      if(!event.touches||event.touches.length!==1) return;
+      const t=event.touches[0];
+      state.touchStartX=t.clientX;
+      state.touchStartY=t.clientY;
+      state.touchStartScroll=viewport.scrollLeft;
+      state.touchMode='pending';
+      state.dragged=false;
+      state.gesturePending=false;
       clearTimeout(state.scrollTimer);
-      state.scrollTimer=setTimeout(()=>commitSwipe(viewport),130);
     },{passive:true});
+
+    viewport.addEventListener('touchmove',event=>{
+      if(!event.touches||event.touches.length!==1||state.touchMode==='idle') return;
+      const t=event.touches[0];
+      const dx=t.clientX-state.touchStartX;
+      const dy=t.clientY-state.touchStartY;
+      const ax=Math.abs(dx), ay=Math.abs(dy);
+
+      if(state.touchMode==='pending'){
+        if(ax<5&&ay<5) return;
+        if(ax>ay*1.08){
+          state.touchMode='horizontal';
+          state.gesturePending=true;
+          viewport.style.setProperty('scroll-snap-type','none','important');
+          viewport.style.setProperty('scroll-behavior','auto','important');
+        }else if(ay>ax){
+          state.touchMode='vertical';
+          state.gesturePending=false;
+          return;
+        }
+      }
+
+      if(state.touchMode==='horizontal'){
+        if(ax>6) state.dragged=true;
+        event.preventDefault();
+        viewport.scrollLeft=state.touchStartScroll-dx;
+        updateArrows(viewport);
+      }
+    },{passive:false});
+
+    const finishTouch=()=>{
+      if(state.touchMode==='horizontal'){
+        viewport.style.setProperty('scroll-snap-type','x mandatory','important');
+        viewport.style.setProperty('scroll-behavior','smooth','important');
+        if(state.dragged) state.suppressClickUntil=Date.now()+320;
+        state.gesturePending=true;
+        clearTimeout(state.scrollTimer);
+        state.scrollTimer=setTimeout(()=>commitSwipe(viewport),40);
+      }
+      state.touchMode='idle';
+    };
+
+    viewport.addEventListener('touchend',finishTouch,{passive:true});
+    viewport.addEventListener('touchcancel',finishTouch,{passive:true});
 
     viewport.addEventListener('scroll',()=>{
       updateArrows(viewport);
