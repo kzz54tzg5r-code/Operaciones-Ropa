@@ -154,20 +154,51 @@
       transform:scale(1.02)!important;
     }
 
-    /* nombre interno oculto: el texto se muestra sólo debajo */
+    /* Las pestañas inactivas muestran su nombre pequeño debajo del icono.
+       La activa conserva el tratamiento actual: icono protagonista + título grande inferior. */
     #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-label{
+      position:static!important;
+      display:-webkit-box!important;
+      width:calc(var(--rt-card-w) - 4px)!important;
+      max-width:calc(var(--rt-card-w) - 4px)!important;
+      height:auto!important;
+      min-height:14px!important;
+      margin:2px 0 0!important;
+      padding:0 1px!important;
+      overflow:hidden!important;
+      clip:auto!important;
+      clip-path:none!important;
+      -webkit-box-orient:vertical!important;
+      -webkit-line-clamp:2!important;
+      white-space:normal!important;
+      text-overflow:ellipsis!important;
+      border:0!important;
+      color:#607891!important;
+      font-size:7.5px!important;
+      line-height:1.02!important;
+      font-weight:800!important;
+      letter-spacing:-.01em!important;
+      text-align:center!important;
+      opacity:.92!important;
+      pointer-events:none!important;
+    }
+
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>.switch.active .rt-tab-label,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>button.active .rt-tab-label,
+    #operativoNav.rt-carousel.rt-icon-rail-v1:not(.rt-icon-has-user-selection)>[aria-selected="true"] .rt-tab-label,
+    #operativoNav.rt-carousel.rt-icon-rail-v1>.rt-icon-user-active .rt-tab-label{
       position:absolute!important;
       width:1px!important;
+      max-width:1px!important;
       height:1px!important;
+      min-height:1px!important;
       margin:-1px!important;
       padding:0!important;
       overflow:hidden!important;
       clip:rect(0,0,0,0)!important;
       clip-path:inset(50%)!important;
       white-space:nowrap!important;
-      border:0!important;
       opacity:0!important;
-      pointer-events:none!important;
     }
 
     .rt-icon-rail-v1-shell{
@@ -253,17 +284,17 @@
       #operativoNav.rt-carousel.rt-icon-rail-v1{
         --rt-card-w:64px!important;
         --rt-gap:8px!important;
-        min-height:72px!important;
-        height:72px!important;
-        padding-top:6px!important;
-        padding-bottom:7px!important;
+        min-height:80px!important;
+        height:80px!important;
+        padding-top:5px!important;
+        padding-bottom:6px!important;
       }
 
       #operativoNav.rt-carousel.rt-icon-rail-v1>.switch,
       #operativoNav.rt-carousel.rt-icon-rail-v1>button{
-        height:58px!important;
-        min-height:58px!important;
-        max-height:58px!important;
+        height:68px!important;
+        min-height:68px!important;
+        max-height:68px!important;
       }
 
       #operativoNav.rt-carousel.rt-icon-rail-v1 .rt-tab-icon{
@@ -940,6 +971,7 @@
     window.ReportTabIconRailV3=api;
     window.ReportTabIconRailV5=api;
     window.ReportTabIconRailV6=api;
+    window.ReportTabIconRailV7=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
