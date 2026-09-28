@@ -938,10 +938,40 @@ async function enter(u){
 }
 
 function applyTabVisibility(){
-  $$('[data-tab-key]').forEach(el=>{
+  $('[data-tab-key]').forEach(el=>{
     const visible=TAB_VISIBILITY[el.dataset.tabKey]!==false;
     el.classList.toggle('hidden',!visible);
+    el.toggleAttribute('hidden',!visible);
+    el.setAttribute('aria-hidden',visible?'false':'true');
+    if(!visible){
+      el.classList.remove('rt-icon-user-active');
+      el.setAttribute('aria-selected','false');
+    }
   });
+
+  // Si el administrador oculta la pestaña que estaba abierta, mover la vista
+  // a la primera pestaña realmente visible del mismo reporte.
+  const ensureVisibleSelection=(selector)=>{
+    const nav=$(selector);
+    if(!nav)return;
+    const direct=[...nav.children].filter(x=>x instanceof HTMLButtonElement);
+    const current=direct.find(x=>x.classList.contains('active')||x.classList.contains('rt-icon-user-active'));
+    const isHidden=current && (current.hidden||current.classList.contains('hidden')||current.getAttribute('aria-hidden')==='true');
+    if(!isHidden)return;
+    const fallback=direct.find(x=>
+      !x.hidden &&
+      !x.classList.contains('hidden') &&
+      x.getAttribute('aria-hidden')!=='true' &&
+      x.dataset.tabKey
+    );
+    if(fallback)setTimeout(()=>fallback.click(),0);
+  };
+  ensureVisibleSelection('#operativoNav');
+  ensureVisibleSelection('#analysisNav');
+
+  document.dispatchEvent(new CustomEvent('report-tabs-visibility-changed',{
+    detail:{visibility:{...TAB_VISIBILITY}}
+  }));
 }
 async function loadTabVisibility(){
   try{
