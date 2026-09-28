@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "web/index.html"
+      - "web/design_system.css"
+      - "web/design_system.js"
       - ".github/workflows/web-ui-syntax.yml"
   workflow_dispatch:
 
@@ -25,6 +27,8 @@ jobs:
           assert 'class="monthly-cross-mobile"' in html
           assert '.monthly-cross-desktop{display:none!important}' in html
           assert 'TOTAL GENERAL · TOTAL PZS' in html
+          assert '/static/design_system.css' in html
+          assert '/static/design_system.js' in html
 
           scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, flags=re.S|re.I)
           if not scripts:
@@ -36,3 +40,4 @@ jobs:
           print(f"Extracted {len(scripts)} inline scripts")
           PY
           for f in /tmp/inline-scripts/*.js; do node --check "$f"; done
+          node --check web/design_system.js
