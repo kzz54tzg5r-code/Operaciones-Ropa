@@ -41,7 +41,7 @@ jobs:
 
           index = Path("web/index.html").read_text(encoding="utf-8")
           assert 'rel="manifest" href="/manifest.webmanifest"' in index
-          assert '/static/pwa_install.js' in index
+          assert '/static/pwa_install.js?v=auto-update-v1' in index
           assert '/static/pwa_brand.js' in index
           assert '/static/pwa_brand.css' in index
           assert '/static/app-icon-maskable.svg' in Path("web/manifest.webmanifest").read_text(encoding="utf-8")
@@ -49,13 +49,22 @@ jobs:
 
           sw = Path("web/service-worker.js").read_text(encoding="utf-8")
           assert "url.pathname.startsWith('/api/')" in sw
-          assert "caches.match('/static/offline.html')" in sw
+          assert "networkFirst(request" in sw
+          assert "cache: 'no-store'" in sw
+          assert "REFRESH_APP_SHELL" in sw
 
           entry = Path("server_entry.py").read_text(encoding="utf-8")
           assert "_install_pwa_patch(web_app)" in entry
 
-          compile(Path("pwa_patch.py").read_text(encoding="utf-8"), "pwa_patch.py", "exec")
-          print("PWA smoke check OK")
+          patch = Path("pwa_patch.py").read_text(encoding="utf-8")
+          compile(patch, "pwa_patch.py", "exec")
+          assert '"/api/app-version"' in patch
+          assert "RENDER_GIT_COMMIT" in patch
+          pwa = Path("web/pwa_install.js").read_text(encoding="utf-8")
+          assert "Nueva versión disponible" in pwa
+          assert "updateViaCache: 'none'" in pwa
+          assert "120000" in pwa
+          print("PWA auto-update smoke check OK")
           PY
           node --check web/pwa_install.js
           node --check web/pwa_brand.js

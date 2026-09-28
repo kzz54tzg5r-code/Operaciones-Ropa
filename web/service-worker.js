@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-pwa-v7';
+const CACHE_NAME = 'operaciones-ropa-runtime-v1';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -13,6 +13,28 @@ const STATIC_ASSETS = [
   '/static/pwa_install.js',
   '/static/ios_native.js'
 ];
+
+const putInCache = async (request, response) => {
+  if (!response || response.status !== 200 || response.type !== 'basic') return;
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(request, response.clone());
+};
+
+const networkFirst = async (request, fallbackUrl = null) => {
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    await putInCache(request, response);
+    return response;
+  } catch (error) {
+    const cached = await caches.match(request, { ignoreSearch: true });
+    if (cached) return cached;
+    if (fallbackUrl) {
+      const fallback = await caches.match(fallbackUrl, { ignoreSearch: true });
+      if (fallback) return fallback;
+    }
+    throw error;
+  }
+};
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -30,6 +52,22 @@ self.addEventListener('activate', event => {
   );
 });
 
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+
+  if (event.data?.type === 'REFRESH_APP_SHELL') {
+    event.waitUntil((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      await Promise.all(STATIC_ASSETS.map(async url => {
+        try {
+          const response = await fetch(url, { cache: 'no-store' });
+          if (response.ok) await cache.put(url, response.clone());
+        } catch (_) {}
+      }));
+    })());
+  }
+});
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
@@ -38,28 +76,18 @@ self.addEventListener('fetch', event => {
 
   // Datos, sesiones, descargas y reportes nunca se almacenan en caché.
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(request));
+    event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
 
+  // La navegación siempre intenta el servidor primero.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/static/offline.html'))
-    );
+    event.respondWith(networkFirst(request, '/static/offline.html'));
     return;
   }
 
+  // CSS/JS/íconos: siempre red primero; caché sólo como respaldo sin conexión.
   if (url.pathname.startsWith('/static/')) {
-    event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(response => {
-          if (!response || response.status !== 200 || response.type !== 'basic') return response;
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-          return response;
-        });
-      })
-    );
+    event.respondWith(networkFirst(request));
   }
 });
