@@ -46,7 +46,7 @@
   };
 
   const TAB_META = {
-    'operations.center': ['Centro Ejecutivo', 'dashboard'],
+    'operations.center': ['Centro Operativo', 'dashboard'],
     'operations.day': ['Día', 'calendar'],
     'operations.week': ['Semanal', 'week'],
     'operations.month': ['Mensual', 'calendar'],
@@ -73,6 +73,14 @@
     productivity: ['Productividad', 'productivity'],
     standards: ['Estándares', 'standards']
   };
+
+  // Día / Semanal / Mensual ya viven dentro del selector Vista de Centro Operativo.
+  // Se conservan en DOM sólo por compatibilidad con los renderizadores históricos.
+  const CONSOLIDATED_OPERATION_TABS = new Set([
+    'operations.day',
+    'operations.week',
+    'operations.month'
+  ]);
 
   const EXCLUDED_SELECTORS = [
     '#globalFilters',
@@ -676,7 +684,19 @@
     setTimeout(()=>centerButton(viewport,nearest,'auto'),190);
   }
 
+  function enforceConsolidatedOperationTabs(viewport){
+    if(viewport?.id!=='operativoNav') return;
+    buttonsOf(viewport).forEach(btn=>{
+      if(!CONSOLIDATED_OPERATION_TABS.has(btn.dataset.tabKey||'')) return;
+      if(!btn.hidden) btn.hidden=true;
+      if(!btn.classList.contains('hidden')) btn.classList.add('hidden');
+      if(btn.getAttribute('aria-hidden')!=='true') btn.setAttribute('aria-hidden','true');
+      if(btn.tabIndex!==-1) btn.tabIndex=-1;
+    });
+  }
+
   function refreshCards(viewport){
+    enforceConsolidatedOperationTabs(viewport);
     viewport.style.setProperty('display','flex','important');
     viewport.style.setProperty('grid-template-columns','none','important');
     viewport.style.setProperty('flex-wrap','nowrap','important');
@@ -699,6 +719,7 @@
 
   function enhance(viewport){
     if(!isReportTabContainer(viewport)) return;
+    enforceConsolidatedOperationTabs(viewport);
     if(ENHANCED.has(viewport)){
       refreshCards(viewport);
       return;
