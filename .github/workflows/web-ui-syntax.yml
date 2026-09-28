@@ -49,3 +49,15 @@ jobs:
           assert "if (out.textContent !== next)" in js, "Safari DOM loop guard missing idempotent summary"
           print("Safari DOM loop guard OK")
           PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          css = Path("web/design_system.css").read_text(encoding="utf-8")
+          js = Path("web/design_system.js").read_text(encoding="utf-8")
+          assert 'design_system.css?v=20260928-mobile-v4' in html
+          assert 'design_system.js?v=20260928-mobile-v4' in html
+          assert html.index('id="operativoNav"') < html.index('id="globalFilters"'), "Tabs must precede global filters"
+          assert "MOBILE EXPERIENCE V4" in css
+          assert "const enforceTopOrder = () =>" in js
+          print("Mobile V4 layout guard OK")
+          PY

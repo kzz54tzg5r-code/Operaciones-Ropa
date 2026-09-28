@@ -977,3 +977,300 @@ button .or-btn-icon{display:inline-flex;vertical-align:-4px;margin-right:6px}
   .or-filter-toggle-v3{display:none!important}
   .or-filter-body-v3{display:grid!important}
 }
+
+
+/* =========================================================
+   MOBILE EXPERIENCE V4 · tabs arriba + filtros compactos
+   Fuente visual final para iPhone/Android.
+   ========================================================= */
+
+/* Si alguna sesión trae el wrapper V3, no mostrar su cabecera extra. */
+.or-filter-head-v3{display:none!important}
+#operativoPeriodBar.or-filter-panel-v3,
+#globalFilters.or-filter-panel-v3{
+  overflow:visible!important;
+}
+#operativoPeriodBar .or-filter-body-v3,
+#globalFilters .or-filter-body-v3{
+  display:grid!important;
+  max-height:none!important;
+  overflow:visible!important;
+  border-top:0!important;
+}
+
+/* Pestañas: una sola fila, sin mosaicos ni iconos. */
+#operativoNav,#analysisNav{
+  position:relative!important;
+  top:auto!important;
+  z-index:5!important;
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  gap:5px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  white-space:nowrap!important;
+  padding:4px 1px 6px!important;
+  margin:7px 0 5px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  scrollbar-width:none!important;
+  -webkit-overflow-scrolling:touch;
+}
+#operativoNav.hidden,#analysisNav.hidden{display:none!important}
+#operativoNav::-webkit-scrollbar,#analysisNav::-webkit-scrollbar{display:none!important}
+#operativoNav>div,#analysisNav>div{display:contents!important}
+#operativoNav .switch,#analysisNav .switch{
+  flex:0 0 auto!important;
+  min-height:30px!important;
+  height:30px!important;
+  padding:0 10px!important;
+  border:1px solid #D7E1EC!important;
+  border-radius:999px!important;
+  background:#fff!important;
+  color:#496078!important;
+  font-size:9px!important;
+  font-weight:820!important;
+  line-height:1!important;
+  box-shadow:none!important;
+}
+#operativoNav .switch.active,#analysisNav .switch.active{
+  background:#0B3A6E!important;
+  border-color:#0B3A6E!important;
+  color:#fff!important;
+}
+#operativoNav .switch:before,#operativoNav .switch:after,
+#analysisNav .switch:before,#analysisNav .switch:after,
+#operativoNav .or-icon,#analysisNav .or-icon,
+#operativoNav svg,#analysisNav svg{
+  display:none!important;
+  content:none!important;
+}
+
+/* Filtros operativos: toolbar plano y compacto. */
+#operativoPeriodBar{
+  display:block!important;
+  width:100%!important;
+  margin:3px 0 8px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+#operativoPeriodBar.hidden{display:none!important}
+#operativoPeriodBar>div,
+#operativoPeriodBar>.or-filter-body-v3{
+  display:grid!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:5px!important;
+  align-items:end!important;
+  padding:7px!important;
+  background:#fff!important;
+  border:1px solid #D9E3EE!important;
+  border-radius:10px!important;
+  box-shadow:0 2px 8px rgba(21,53,88,.035)!important;
+}
+#operativoPeriodBar .filter{
+  min-width:0!important;
+  width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+#operativoPeriodBar .filter:before,#operativoPeriodBar .filter:after,
+#operativoPeriodBar .filter>*:before,#operativoPeriodBar .filter>*:after,
+#operativoPeriodBar .filter-icon,
+#operativoPeriodBar .or-icon,
+#operativoPeriodBar svg{
+  display:none!important;
+  content:none!important;
+}
+#operativoPeriodBar .filter label{
+  display:block!important;
+  margin:0 0 3px!important;
+  padding:0!important;
+  color:#697D94!important;
+  font-size:7.5px!important;
+  line-height:1!important;
+  font-weight:850!important;
+  letter-spacing:.045em!important;
+  text-transform:uppercase!important;
+}
+#operativoPeriodBar .filter select,
+#operativoPeriodBar .filter input{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  height:33px!important;
+  min-height:33px!important;
+  max-height:33px!important;
+  margin:0!important;
+  padding:0 8px!important;
+  border:1px solid #C8D5E3!important;
+  border-radius:7px!important;
+  background-color:#fff!important;
+  background-image:none!important;
+  color:#173E6C!important;
+  font-size:10.5px!important;
+  line-height:33px!important;
+  font-weight:780!important;
+  box-shadow:none!important;
+}
+#operativoPeriodBar .filter select{
+  appearance:auto!important;
+  -webkit-appearance:menulist!important;
+}
+#operativoPeriodBar .filter input[type="date"]{
+  appearance:auto!important;
+  -webkit-appearance:auto!important;
+}
+#operPeriodModeWrap,#operPeriodSelectWrap{grid-column:span 3!important}
+#operStoreWrap,#operAreaWrap,#operActivityWrap{grid-column:span 2!important}
+#operStartWrap,#operEndWrap{grid-column:span 3!important}
+#operPeriodApply{
+  grid-column:1/-1!important;
+  width:100%!important;
+  min-width:0!important;
+  height:34px!important;
+  min-height:34px!important;
+  margin-top:1px!important;
+  padding:0 12px!important;
+  border-radius:7px!important;
+  font-size:10.5px!important;
+  font-weight:850!important;
+  box-shadow:none!important;
+}
+#operPeriodApply .or-btn-icon{width:14px!important;height:14px!important;margin-right:4px!important}
+#operPeriodApply .or-btn-icon svg{display:block!important;width:14px!important;height:14px!important}
+
+/* Filtros comerciales/globales: misma densidad visual. */
+#globalFilters{
+  width:100%!important;
+  margin:3px 0 8px!important;
+  padding:7px!important;
+  gap:5px!important;
+  background:#fff!important;
+  border:1px solid #D9E3EE!important;
+  border-radius:10px!important;
+  box-shadow:0 2px 8px rgba(21,53,88,.035)!important;
+}
+#globalFilters.hidden{display:none!important}
+#globalFilters .filter{
+  min-width:0!important;
+  margin:0!important;
+}
+#globalFilters .filter label{
+  margin-bottom:3px!important;
+  font-size:7.5px!important;
+}
+#globalFilters .filter select,
+#globalFilters .filter input{
+  min-height:33px!important;
+  height:33px!important;
+  padding:0 8px!important;
+  font-size:10.5px!important;
+  border-radius:7px!important;
+}
+#globalFilters>.primary,#globalFilters>.or-clear-filters{
+  min-height:33px!important;
+  height:33px!important;
+  border-radius:7px!important;
+  font-size:10px!important;
+}
+
+/* Menú: más visible dentro del header. */
+.or-mobile-menu-trigger{
+  border:1px solid rgba(255,255,255,.42)!important;
+  background:rgba(0,22,48,.32)!important;
+  box-shadow:0 2px 8px rgba(0,20,45,.16)!important;
+}
+
+/* Móvil: respetar barra superior/notch y reducir espacio vertical. */
+@media(max-width:900px){
+  .main{
+    padding-top:max(18px,calc(env(safe-area-inset-top) + 9px))!important;
+    padding-left:6px!important;
+    padding-right:6px!important;
+    padding-bottom:calc(14px + env(safe-area-inset-bottom))!important;
+  }
+  .hero{
+    margin:0 0 6px!important;
+    min-height:62px!important;
+    padding:10px 48px 10px 12px!important;
+    border-radius:13px!important;
+  }
+  .hero h1{font-size:17px!important;line-height:1.08!important}
+  .hero p{font-size:8.5px!important;line-height:1.2!important;margin-top:4px!important}
+
+  #operativoNav,#analysisNav{
+    margin:0 0 5px!important;
+    padding:2px 0 4px!important;
+    scroll-snap-type:x proximity;
+  }
+  #operativoNav .switch,#analysisNav .switch{
+    min-height:29px!important;
+    height:29px!important;
+    padding:0 9px!important;
+    font-size:8.5px!important;
+    scroll-snap-align:start;
+  }
+
+  #operativoPeriodBar>div,
+  #operativoPeriodBar>.or-filter-body-v3{
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+    gap:5px!important;
+    padding:6px!important;
+  }
+  #operPeriodModeWrap,#operPeriodSelectWrap{grid-column:span 3!important}
+  #operStoreWrap,#operAreaWrap,#operActivityWrap{grid-column:span 2!important}
+  #operStartWrap,#operEndWrap{grid-column:span 3!important}
+
+  #operativoPeriodBar .filter label{font-size:7px!important}
+  #operativoPeriodBar .filter select,
+  #operativoPeriodBar .filter input{
+    height:31px!important;
+    min-height:31px!important;
+    max-height:31px!important;
+    line-height:31px!important;
+    font-size:9.5px!important;
+    padding:0 6px!important;
+  }
+  #operPeriodApply{
+    height:32px!important;
+    min-height:32px!important;
+    font-size:10px!important;
+  }
+
+  #globalFilters{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:5px!important;
+    padding:6px!important;
+  }
+  #globalFilters.hidden{display:none!important}
+  #globalFilters>.primary,#globalFilters>.or-clear-filters{width:100%!important}
+  #globalFilters>.primary:last-of-type{grid-column:1/-1!important}
+
+  #operativoDynamicTitle{
+    margin-top:8px!important;
+  }
+}
+
+@media(max-width:370px){
+  #operativoPeriodBar>div,
+  #operativoPeriodBar>.or-filter-body-v3{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #operPeriodModeWrap,#operPeriodSelectWrap,
+  #operStoreWrap,#operAreaWrap,#operActivityWrap,
+  #operStartWrap,#operEndWrap{
+    grid-column:span 1!important;
+  }
+  #operPeriodApply{grid-column:1/-1!important}
+}
