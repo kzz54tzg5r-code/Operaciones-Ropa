@@ -191,7 +191,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v5' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
@@ -219,7 +219,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v5' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
           assert "userSelectedButton" in js
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
@@ -232,7 +232,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v5' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
           assert "function circularizeAround" in js
           assert "state.logicalButtons" in js
           assert "btn.dataset.rtRingOrder" in js
@@ -247,7 +247,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v5' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
           assert "el.toggleAttribute('hidden',!visible)" in html
           assert "report-tabs-visibility-changed" in html
           assert "#operativoNav.rt-carousel>button.hidden" in js
@@ -262,13 +262,15 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v5' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v6' in html
           assert "function oneStepTarget" in js
           assert "function bindOneStepSwipe" in js
-          assert "const direction=Math.abs(dx)>=22 ? (dx<0 ? 1 : -1) : 0" in js
-          assert "const maxPreview=34" in js
-          assert "Un gesto = exactamente una pestaña." in js
-          assert "event.stopImmediatePropagation()" in js
-          assert "window.ReportTabIconRailV5=api" in js
-          print("One-step swipe V5 guard OK")
+          assert "function animateScrollTo" in js
+          assert "function animateSelectionTo" in js
+          assert "const committed=!cancelled && (Math.abs(dx)>=20 || Math.abs(velocity)>=0.28)" in js
+          assert "const elastic=Math.min(7,overshoot*.08)" in js
+          assert "La tarjeta acompaña al dedo durante TODO el gesto." in js
+          assert "overflow-anchor:none!important" in js
+          assert "window.ReportTabIconRailV6=api" in js
+          print("Fluid one-step swipe V6 guard OK")
           PY
