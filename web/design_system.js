@@ -377,9 +377,40 @@
     side.prepend(close);
   };
 
-  const cleanSubnav = () => {
+  const tabIconPaths = {
+    'operations.center':'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    'operations.day':'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+    'operations.week':'<path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/>',
+    'operations.month':'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/>',
+    'operations.conversion':'<path d="M4 18 9 13l4 3 7-9"/><path d="M15 7h5v5"/>',
+    'operations.recovery':'<circle cx="12" cy="12" r="9"/><path d="M15 8.5c-.7-.7-1.7-1-3-1-1.7 0-3 .9-3 2.2 0 3.2 6 1.4 6 4.5 0 1.3-1.3 2.3-3 2.3-1.2 0-2.4-.4-3.2-1.2M12 5.5v13"/>',
+    'operations.recovery_store':'<path d="M3 10h18l-2-5H5l-2 5Z"/><path d="M5 10v9h14v-9M9 19v-5h6v5"/>',
+    'operations.productivity':'<path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/>',
+    'operations.routes':'<path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/>',
+    'operations.score':'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+    'operations.alerts':'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+    'commercial.macro':'<path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/>',
+    'commercial.accordion':'<path d="M4 6h16M4 12h16M4 18h16"/>',
+    'commercial.stores':'<path d="M3 10h18l-2-5H5l-2 5Z"/><path d="M5 10v9h14v-9M9 19v-5h6v5"/>',
+    'commercial.sections':'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
+    'commercial.areas':'<path d="M4 5h16M7 12h10m-7 7h4"/>',
+    'commercial.lingerie_checklist':'<path d="m5 12 4 4L19 6"/>',
+    'commercial.more':'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'
+  };
+
+  const enhanceSubnavIcons = () => {
     document.querySelectorAll('#operativoNav .switch,#analysisNav .switch').forEach(btn => {
-      btn.querySelectorAll('.or-icon,.mnav-icon').forEach(x => x.remove());
+      if (btn.querySelector('.or-tab-icon')) return;
+      const key = btn.dataset.tabKey || '';
+      let path = tabIconPaths[key];
+      if (!path) {
+        if ((btn.textContent || '').includes('Carga')) path = iconPaths.upload;
+        else if (btn.id === 'openGoalsBtn') path = iconPaths.settings;
+        else path = iconPaths.file;
+      }
+      btn.insertAdjacentHTML('afterbegin',
+        '<span class="or-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + path + '</svg></span>'
+      );
     });
   };
 
@@ -399,7 +430,7 @@
     enforceTopOrder();
     enhanceFilterPanels();
     enhanceDrawer();
-    cleanSubnav();
+    enhanceSubnavIcons();
     syncResponsiveState();
 
     let observerScheduled = false;
@@ -412,7 +443,7 @@
         observerScheduled = false;
         enforceTopOrder();
         enhanceFilterPanels();
-        cleanSubnav();
+        enhanceSubnavIcons();
         document.querySelectorAll('.or-filter-panel-v3').forEach(updatePanelSummary);
       });
     });
