@@ -7,7 +7,7 @@ on:
       - "web/design_system.css"
       - "web/design_system.js"
       - "web/report_tab_carousel.js"
-      - "web/report_tab_mundial_v6.js"
+      - "web/report_tab_mundial_v7.js"
       - "v194_mobile_ui_final_patch.py"
       - "server_entry.py"
       - ".github/workflows/web-ui-syntax.yml"
@@ -46,7 +46,7 @@ jobs:
           for f in /tmp/inline-scripts/*.js; do node --check "$f"; done
           node --check web/design_system.js
           node --check web/report_tab_carousel.js
-          node --check web/report_tab_mundial_v6.js
+          node --check web/report_tab_mundial_v7.js
           python - <<'PY'
           from pathlib import Path
           js = Path("web/design_system.js").read_text(encoding="utf-8")
@@ -146,7 +146,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_mundial_v5.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v6.js?v=20260928-mundial-v6' in html
+          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-v7' in html
           assert "rt-mundial-stage" in js
           assert "rt-worldcup-pedestal" in js
           assert "rt-worldcup-current" in js
@@ -159,7 +159,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_mundial_v6.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v6.js?v=20260928-mundial-v6' in html
+          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-v7' in html
           assert 'report_tab_mundial_v5.js' not in html
           assert "rt-mundial-base" in js
           assert "rt-mundial-face" in js
@@ -168,4 +168,20 @@ jobs:
           assert "const scale=.68 + .32*focus" in js
           assert "cards(viewport).forEach(buildCard)" in js
           print("Mundial exact V6 guard OK")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          js = Path("web/report_tab_mundial_v7.js").read_text(encoding="utf-8")
+          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-v7' in html
+          assert 'report_tab_mundial_v6.js' not in html
+          assert 'width:196px!important' in js
+          assert 'height:131px!important' in js
+          assert '--rt-card-w:220px!important' in js
+          assert 'const scale=.56 + .44*focus' in js
+          assert '.rt-m7-face .rt-tab-icon svg' in js
+          assert 'display:block!important' in js
+          assert 'rt-m7-current-label' in js
+          assert "OPVIEW_LABELS" in js and "KEY_LABELS" in js
+          print("Mundial pixel-match V7 guard OK")
           PY
