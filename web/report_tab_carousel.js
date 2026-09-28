@@ -661,6 +661,11 @@
   }
 
   function refreshCards(viewport){
+    viewport.style.setProperty('display','flex','important');
+    viewport.style.setProperty('grid-template-columns','none','important');
+    viewport.style.setProperty('flex-wrap','nowrap','important');
+    viewport.style.setProperty('overflow-x','auto','important');
+    viewport.style.setProperty('overflow-y','visible','important');
     buttonsOf(viewport).forEach(decorateButton);
     setEdgePadding(viewport);
     syncActive(viewport,{center:false});
@@ -696,6 +701,21 @@
     viewport.classList.add('rt-carousel');
     viewport.setAttribute('role','tablist');
     viewport.setAttribute('aria-orientation','horizontal');
+
+    // Blindaje contra capas CSS históricas que intentaban convertir la navegación
+    // en grid. Inline !important gana sobre V161/V163/V194.
+    const forceSingleRow = () => {
+      viewport.style.setProperty('display','flex','important');
+      viewport.style.setProperty('grid-template-columns','none','important');
+      viewport.style.setProperty('flex-wrap','nowrap','important');
+      viewport.style.setProperty('align-items','stretch','important');
+      viewport.style.setProperty('overflow-x','auto','important');
+      viewport.style.setProperty('overflow-y','visible','important');
+      viewport.style.setProperty('white-space','nowrap','important');
+      viewport.style.setProperty('width','100%','important');
+      viewport.style.setProperty('max-width','100%','important');
+    };
+    forceSingleRow();
 
     const state={
       shell,prev,next,
