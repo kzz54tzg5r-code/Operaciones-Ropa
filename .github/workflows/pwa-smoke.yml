@@ -6,6 +6,9 @@ on:
       - "web/manifest.webmanifest"
       - "web/service-worker.js"
       - "web/pwa_install.js"
+      - "web/pwa_brand.js"
+      - "web/pwa_brand.css"
+      - "web/app-logo*.svg"
       - "web/app-icon-*.svg"
       - "web/offline.html"
       - "web/index.html"
@@ -19,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Validate PWA files
         run: |
           python - <<'PY'
@@ -36,6 +42,9 @@ jobs:
           index = Path("web/index.html").read_text(encoding="utf-8")
           assert 'rel="manifest" href="/manifest.webmanifest"' in index
           assert '/static/pwa_install.js' in index
+          assert '/static/pwa_brand.js' in index
+          assert '/static/pwa_brand.css' in index
+          assert '/static/app-icon-maskable.svg' in Path("web/manifest.webmanifest").read_text(encoding="utf-8")
           assert 'viewport-fit=cover' in index
 
           sw = Path("web/service-worker.js").read_text(encoding="utf-8")
@@ -48,3 +57,5 @@ jobs:
           compile(Path("pwa_patch.py").read_text(encoding="utf-8"), "pwa_patch.py", "exec")
           print("PWA smoke check OK")
           PY
+          node --check web/pwa_install.js
+          node --check web/pwa_brand.js
