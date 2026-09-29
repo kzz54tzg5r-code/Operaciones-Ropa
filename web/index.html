@@ -1099,20 +1099,10 @@ async function goMain(m){
     if(!OPSDATA) await refreshOperativoMeta();
     await renderOperativoView(OP_VIEW,false);
   }else if(analysis){
-    const firstVisible=$$('#analysisNav [data-sub]:not(.hidden)')[0];
-    SUB=firstVisible?.dataset.sub||'macro';
-    showPage(SUB);
-    $('#globalFilters').classList.toggle('hidden',SUB==='analysis-upload');
-    await loadCommercialBootstrap();
-    if(SUB==='lingerie-checklist')await loadLingerieChecklist();
-    else if(SUB==='sections')await loadCommercialDetail('rubro');
-    else if(SUB==='areas')await loadCommercialDetail('area');
-    else if(SUB==='accordion')await renderAccordion();
-    else if(SUB==='analysis-upload')await loadUploadHistories();
-    else{
-      const wanted=ANALYSIS_STORE||$('#store')?.value||'Compañía';
-      await loadDash(wanted,$('#section')?.value||'Todas');
-    }
+    // Una sola ruta de entrada para Comercial. Evita que el menú principal y
+    // las pestañas ejecuten loaders distintos o dejen una pantalla a medias.
+    const firstVisible=$('#analysisNav [data-sub]:not(.hidden)')[0];
+    await goSub(firstVisible?.dataset.sub||'macro');
   }else if(m==='share'){
     showPage('share');
     renderShareInfo();
