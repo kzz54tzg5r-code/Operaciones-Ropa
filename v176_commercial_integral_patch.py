@@ -557,23 +557,39 @@ def install(m):
                 cut_dates.append(str(payload.get("cut_date")))
             for name, row in (payload.get("stores") or {}).items():
                 is_puebla_sur = norm(name) == norm("Puebla Sur") and int(year) == 2026
-                # Puebla Sur inició operación en agosto 2026: no se le atribuyen
-                # meses previos ni un comparativo 2025 que no es homologable.
                 if is_puebla_sur and mo < 8:
                     continue
                 x = acc[str(name)]
                 x["current"] += num(row.get("current"))
                 x["target"] += num(row.get("target"))
                 x["pieces"] += num(row.get("pieces"))
+                x["pieces_previous"] += num(row.get("pieces_previous"))
                 if is_puebla_sur:
                     x["opening_month"] = 8
                     x["comparison_note"] = "Apertura Ago 2026 · sin base comparable 2025"
                 else:
                     x["previous"] += num(row.get("previous"))
-                    x["pieces_previous"] += num(row.get("pieces_previous"))
                 x["months"] += 1
+
+        # Si el PDF actual no trae la columna de piezas del año anterior,
+        # recuperar las piezas reales desde los PDF del año previo, mes a mes.
+        previous_pieces = defaultdict(float)
+        try:
+            prev_latest = latest_sales_entries(int(year) - 1)
+            for mo in months_to_use:
+                entry = prev_latest.get(mo)
+                if not entry:
+                    continue
+                _company, payload = scope_ocr(entry, "Compañía")
+                for name, row in (payload.get("stores") or {}).items():
+                    previous_pieces[norm(name)] += num(row.get("pieces"))
+        except Exception as exc:
+            print(f"[V197-PIECES-STORE] {type(exc).__name__}: {exc}", flush=True)
+
         out = []
         for name, x in acc.items():
+            if num(x.get("pieces_previous")) <= 0:
+                x["pieces_previous"] = previous_pieces.get(norm(name), 0.0)
             cur, prev, goal = x["current"], x["previous"], x["target"]
             special = bool(x.get("comparison_note"))
             out.append({
@@ -653,6 +669,34 @@ def install(m):
         base = dict(base or {})
         months = enrich_sales_months(base.get("months") or [], view_scope, latest, available, True)
 
+        async def _repair_previous_pieces(rows, scope_name):
+            """Completa piezas del año anterior desde la misma fuente del año previo."""
+            try:
+                prev_base = sales_base(
+                    request=request, year=yy - 1,
+                    through_month=max_month, store=scope_name,
+                )
+                if inspect.isawaitable(prev_base):
+                    prev_base = await prev_base
+                prev_rows = list((prev_base or {}).get("months") or [])
+                by_month = {
+                    int(r.get("month") or (idx + 1)): num(r.get("pieces"))
+                    for idx, r in enumerate(prev_rows)
+                }
+                for row in rows:
+                    mo = int(row.get("month") or 0)
+                    if num(row.get("pieces_previous")) <= 0 and by_month.get(mo, 0) > 0:
+                        row["pieces_previous"] = by_month[mo]
+                    row["pieces_growth"] = (
+                        (num(row.get("pieces")) / num(row.get("pieces_previous")) - 1) * 100
+                        if num(row.get("pieces_previous")) > 0 else None
+                    )
+            except Exception as exc:
+                print(f"[V197-PIECES-MONTH] {scope_name}: {type(exc).__name__}: {exc}", flush=True)
+            return rows
+
+        months = await _repair_previous_pieces(months, view_scope)
+
         # La tabla mensual es deliberadamente independiente del filtro Tienda/Mes:
         # siempre representa Compañía, enero-diciembre, y sólo cambia Pesos/Piezas.
         if is_company(view_scope):
@@ -665,6 +709,7 @@ def install(m):
             company_months = enrich_sales_months(
                 company_base.get("months") or [], "Compañía", latest, available, True
             )
+            company_months = await _repair_previous_pieces(company_months, "Compañía")
 
         use_months = [selected_month] if selected_month else available
         selected_rows = [r for r in months if int(r.get("month") or 0) in use_months]
@@ -1288,6 +1333,12 @@ body[data-v163-module="analysis"] .v176-select-tabs{
 .v176-store-sales-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:14px 0 7px}
 .v176-store-sales-head .title{margin:0!important}
 .v176-store-sales-month-filter{min-width:190px}
+.v197-sales-detail{margin:10px 0;border:1px solid #d8e3ef;border-radius:11px;background:#fff;overflow:hidden}
+.v197-sales-detail>summary{list-style:none;cursor:pointer;padding:10px 12px;font-size:10px;font-weight:950;color:#13477f;background:#f7faff;display:flex;align-items:center;gap:7px;user-select:none}
+.v197-sales-detail>summary::-webkit-details-marker{display:none}
+.v197-sales-detail>summary:before{content:'+';display:inline-grid;place-items:center;width:20px;height:20px;border:1px solid #b9cce1;border-radius:50%;font-size:15px;line-height:1;color:#1769e8;background:#fff}
+.v197-sales-detail[open]>summary:before{content:'−'}
+.v197-sales-detail>.v176-month-store-bar,.v197-sales-detail>#v168SalesStores,.v197-sales-detail>.sales-month-table{margin:8px 10px 10px}
 
 /* Ubicación agrupada. */
 .v176-area-company td:nth-child(1),.v176-area-company td:nth-child(2){font-weight:900}
@@ -2064,38 +2115,36 @@ function renderMonthTableRows(d,rows){
   const metric=salesMetric;
   const ordered=[...(rows||[])].sort((a,b)=>n(a.month)-n(b.month));
   const table=q('#salesExecRows')?.closest('table'),head=table?.querySelector('thead tr');
-  const currentHead=metric==='pieces'?'Piezas '+d.year:'Venta '+d.year;
-  const previousHead=metric==='pieces'?'Piezas '+d.previous_year:'Venta '+d.previous_year;
-  const lastHead=metric==='pieces'?'Venta $':'Venta pzas';
-  if(head)head.innerHTML='<th>Mes</th><th>Meta</th><th id="salesYearTh">'+currentHead+'</th><th id="salesPrevTh">'+previousHead+'</th><th>'+(metric==='pieces'?'% Meta $':'% Meta')+'</th><th>% vs '+d.previous_year+'</th><th>'+lastHead+'</th>';
   const monthBody=q('#salesExecRows');
   if(!monthBody)return;
-  const detail=ordered.map(r=>{
-    const pctPrev=metric==='pieces'?r.pieces_growth:r.pct_previous;
-    const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
-    const last=metric==='pieces'?money(r.current):nf(r.pieces);
-    return '<tr><td><b>'+esc(r.label)+'</b></td><td>'+(n(r.target)>0?money(r.target):'—')+'</td><td><b>'+cv+'</b></td><td>'+pv+'</td><td class="'+tone(r.pct_goal,true)+'">'+pct(r.pct_goal)+'</td><td class="'+tone(pctPrev,false)+'">'+pct(pctPrev)+'</td><td>'+last+'</td></tr>';
-  }).join('');
 
-  if(!ordered.length){
-    monthBody.innerHTML='<tr><td colspan="7">Sin información para la tienda seleccionada.</td></tr>';
+  if(metric==='pieces'){
+    if(head)head.innerHTML='<th>Mes</th><th id="salesYearTh">Piezas '+d.year+'</th><th id="salesPrevTh">Piezas '+d.previous_year+'</th><th>% vs '+d.previous_year+'</th><th>Venta $</th>';
+    if(!ordered.length){monthBody.innerHTML='<tr><td colspan="5">Sin información para la tienda seleccionada.</td></tr>';return}
+    const totals=ordered.reduce((a,r)=>{a.current+=n(r.current);a.pieces+=n(r.pieces);a.piecesPrevious+=n(r.pieces_previous);return a},{current:0,pieces:0,piecesPrevious:0});
+    const prevPct=totals.piecesPrevious?(totals.pieces/totals.piecesPrevious-1)*100:null;
+    const detail=ordered.map(r=>
+      '<tr><td><b>'+esc(r.label)+'</b></td><td><b>'+nf(r.pieces)+'</b></td><td>'+nf(r.pieces_previous)+'</td><td class="'+tone(r.pieces_growth,false)+'">'+pct(r.pieces_growth)+'</td><td>'+money(r.current)+'</td></tr>'
+    ).join('');
+    const pueblaNoCompare=salesTableStore==='Puebla Sur'&&Number(d.year)===2026;
+    monthBody.innerHTML=detail+
+      '<tr class="v176-general-row"><td>GENERAL</td><td>'+nf(totals.pieces)+'</td><td>'+(pueblaNoCompare?'No aplica':nf(totals.piecesPrevious))+'</td><td>'+(pueblaNoCompare?'No aplica':pct(prevPct))+'</td><td>'+money(totals.current)+'</td></tr>';
     return;
   }
-  const totals=ordered.reduce((a,r)=>{
-    a.target+=n(r.target);a.current+=n(r.current);a.previous+=n(r.previous);
-    a.pieces+=n(r.pieces);a.piecesPrevious+=n(r.pieces_previous);return a;
-  },{target:0,current:0,previous:0,pieces:0,piecesPrevious:0});
+
+  if(head)head.innerHTML='<th>Mes</th><th>Meta</th><th id="salesYearTh">Venta '+d.year+'</th><th id="salesPrevTh">Venta '+d.previous_year+'</th><th>% Meta</th><th>% vs '+d.previous_year+'</th><th>Venta pzas</th>';
+  if(!ordered.length){monthBody.innerHTML='<tr><td colspan="7">Sin información para la tienda seleccionada.</td></tr>';return}
+  const detail=ordered.map(r=>
+    '<tr><td><b>'+esc(r.label)+'</b></td><td>'+(n(r.target)>0?money(r.target):'—')+'</td><td><b>'+money(r.current)+'</b></td><td>'+money(r.previous)+'</td><td class="'+tone(r.pct_goal,true)+'">'+pct(r.pct_goal)+'</td><td class="'+tone(r.pct_previous,false)+'">'+pct(r.pct_previous)+'</td><td>'+nf(r.pieces)+'</td></tr>'
+  ).join('');
+  const totals=ordered.reduce((a,r)=>{a.target+=n(r.target);a.current+=n(r.current);a.previous+=n(r.previous);a.pieces+=n(r.pieces);return a},{target:0,current:0,previous:0,pieces:0});
   const goalPct=totals.target?totals.current/totals.target*100:null;
-  const prevPct=metric==='pieces'
-    ?(totals.piecesPrevious?(totals.pieces/totals.piecesPrevious-1)*100:null)
-    :(totals.previous?(totals.current/totals.previous-1)*100:null);
-  const totalCurrent=metric==='pieces'?nf(totals.pieces):money(totals.current);
-  const totalPrevious=metric==='pieces'?nf(totals.piecesPrevious):money(totals.previous);
-  const totalLast=metric==='pieces'?money(totals.current):nf(totals.pieces);
+  const prevPct=totals.previous?(totals.current/totals.previous-1)*100:null;
   const pueblaNoCompare=salesTableStore==='Puebla Sur'&&Number(d.year)===2026;
   monthBody.innerHTML=detail+
-    '<tr class="v176-general-row"><td>GENERAL</td><td>'+money(totals.target)+'</td><td>'+totalCurrent+'</td><td>'+(pueblaNoCompare?'No aplica':totalPrevious)+'</td><td>'+pct(goalPct)+'</td><td>'+(pueblaNoCompare?'No aplica':pct(prevPct))+'</td><td>'+totalLast+'</td></tr>';
+    '<tr class="v176-general-row"><td>GENERAL</td><td>'+money(totals.target)+'</td><td>'+money(totals.current)+'</td><td>'+(pueblaNoCompare?'No aplica':money(totals.previous))+'</td><td>'+pct(goalPct)+'</td><td>'+(pueblaNoCompare?'No aplica':pct(prevPct))+'</td><td>'+nf(totals.pieces)+'</td></tr>';
 }
+
 async function loadMonthTableStore(baseD){
   if(!baseD||salesTableBusy)return;
   ensureMonthTableStoreControl(baseD);
@@ -2110,13 +2159,13 @@ async function loadMonthTableStore(baseD){
   }
   salesTableBusy=true;
   const body=q('#salesExecRows');
-  if(body)body.innerHTML='<tr><td colspan="7">Cargando '+esc(salesTableStore)+'…</td></tr>';
+  if(body)body.innerHTML='<tr><td colspan="'+(salesMetric==='pieces'?5:7)+'">Cargando '+esc(salesTableStore)+'…</td></tr>';
   try{
     const data=await A('/api/commercial-sales-v176?year='+encodeURIComponent(baseD.year)+'&month=0&store='+encodeURIComponent(salesTableStore),{timeoutMs:180000});
     salesTableData={year:data.year,store:salesTableStore,months:data.months||[]};
     renderMonthTableRows(baseD,salesTableData.months);
   }catch(e){
-    if(body)body.innerHTML='<tr><td colspan="7">No fue posible consultar '+esc(salesTableStore)+'.</td></tr>';
+    if(body)body.innerHTML='<tr><td colspan="'+(salesMetric==='pieces'?5:7)+'">No fue posible consultar '+esc(salesTableStore)+'.</td></tr>';
     console.warn('[V176] tabla mensual por tienda',e);
   }finally{salesTableBusy=false}
 }
@@ -2136,24 +2185,34 @@ function renderStoreSalesTable(baseD,data){
   t.compliance=t.target?t.current/t.target*100:null;
   t.growth=t.previous?(t.current/t.previous-1)*100:null;
   t.pieces_growth=t.pieces_previous?(t.pieces/t.pieces_previous-1)*100:null;
-  const totalGrowth=metric==='pieces'?t.pieces_growth:t.growth;
-  const totalCurrent=metric==='pieces'?nf(t.pieces):money(t.current);
-  const totalPrevious=metric==='pieces'?nf(t.pieces_previous):money(t.previous);
-  const totalRow='<tr class="v176-general-row"><td></td><td>GENERAL</td><td>'+money(t.target)+'</td><td>'+totalCurrent+'</td><td>'+totalPrevious+'</td><td>'+pct(t.compliance)+'</td><td>'+pct(totalGrowth)+'</td></tr>';
+
+  let tableHtml='';
+  if(metric==='pieces'){
+    const totalRow='<tr class="v176-general-row"><td></td><td>GENERAL</td><td>'+nf(t.pieces)+'</td><td>'+nf(t.pieces_previous)+'</td><td>'+pct(t.pieces_growth)+'</td><td>'+money(t.current)+'</td></tr>';
+    tableHtml='<div class="tablewrap"><table class="table v168-sales-rank v176-sales-rank"><thead><tr><th>#</th><th>Tienda</th><th>Piezas '+baseD.year+'</th><th>Piezas '+baseD.previous_year+'</th><th>'+sortButton('pct_previous','% vs '+baseD.previous_year)+'</th><th>Venta $</th></tr></thead><tbody>'+
+      (stores.length?stores.map((r,i)=>{
+        const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pieces_growth);
+        const prevCell=r.comparison_note?'No aplica':nf(r.pieces_previous);
+        return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td><b>'+nf(r.pieces)+'</b></td><td>'+prevCell+'</td><td class="'+(r.comparison_note?'':(n(r.pieces_growth)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td><td>'+money(r.current)+'</td></tr>';
+      }).join('')+totalRow:'<tr><td colspan="6">Sin información para el periodo seleccionado.</td></tr>')+
+      '</tbody></table></div>';
+  }else{
+    const totalRow='<tr class="v176-general-row"><td></td><td>GENERAL</td><td>'+money(t.target)+'</td><td>'+money(t.current)+'</td><td>'+money(t.previous)+'</td><td>'+pct(t.compliance)+'</td><td>'+pct(t.growth)+'</td></tr>';
+    tableHtml='<div class="tablewrap"><table class="table v168-sales-rank v176-sales-rank"><thead><tr><th>#</th><th>Tienda</th><th>Meta</th><th>Venta '+baseD.year+'</th><th>Venta '+baseD.previous_year+'</th><th>'+sortButton('pct_goal','% Meta')+'</th><th>'+sortButton('pct_previous','% vs '+baseD.previous_year)+'</th></tr></thead><tbody>'+
+      (stores.length?stores.map((r,i)=>{
+        const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pct_previous);
+        const prevCell=r.comparison_note?'No aplica':money(r.previous);
+        const targetCell=n(r.target)>0?money(r.target):'—';
+        return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+targetCell+'</td><td><b>'+money(r.current)+'</b></td><td>'+prevCell+'</td><td class="'+(r.pct_goal==null?'':(n(r.pct_goal)>=100?'v176-pos':'v176-neg'))+'">'+pct(r.pct_goal)+'</td><td class="'+(r.comparison_note?'':(n(r.pct_previous)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td></tr>';
+      }).join('')+totalRow:'<tr><td colspan="7">Sin información para el periodo seleccionado.</td></tr>')+
+      '</tbody></table></div>';
+  }
+
   box.innerHTML=
     '<div class="v176-store-sales-head">'+
       '<div class="title">'+storeSalesTitle(baseD,month)+'</div>'+
       '<label class="v176-store-sales-month-filter"><span>Mes</span><select id="v176StoreSalesMonth">'+opts.join('')+'</select></label>'+
-    '</div>'+
-    '<div class="tablewrap"><table class="table v168-sales-rank v176-sales-rank"><thead><tr><th>#</th><th>Tienda</th><th>Meta</th><th>Venta '+baseD.year+'</th><th>Venta '+baseD.previous_year+'</th><th>'+sortButton('pct_goal','% Meta')+'</th><th>'+sortButton('pct_previous','% vs '+baseD.previous_year)+'</th></tr></thead><tbody>'+
-    (stores.length?stores.map((r,i)=>{
-      const cv=metric==='pieces'?nf(r.pieces):money(r.current),pv=metric==='pieces'?nf(r.pieces_previous):money(r.previous);
-      const opening=r.comparison_note?'<span class="v176-opening">'+esc(r.comparison_note)+'</span>':pct(r.pct_previous);
-      const prevCell=r.comparison_note?'No aplica':pv;
-      const targetCell=n(r.target)>0?money(r.target):'—';
-      return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.store)+'</b></td><td>'+targetCell+'</td><td><b>'+cv+'</b></td><td>'+prevCell+'</td><td class="'+(r.pct_goal==null?'':(n(r.pct_goal)>=100?'v176-pos':'v176-neg'))+'">'+pct(r.pct_goal)+'</td><td class="'+(r.comparison_note?'':(n(r.pct_previous)>=0?'v176-pos':'v176-neg'))+'">'+opening+'</td></tr>';
-    }).join('')+totalRow:'<tr><td colspan="7">Sin información para el periodo seleccionado.</td></tr>')+
-    '</tbody></table></div>';
+    '</div>'+tableHtml;
 
   const sel=q('#v176StoreSalesMonth',box);
   if(sel){
@@ -2165,7 +2224,9 @@ function renderStoreSalesTable(baseD,data){
     });
   }
   bindSort(box,baseD);
+  setTimeout(ensureSalesDetails,0);
 }
+
 async function loadStoreSalesMonth(baseD){
   if(!baseD||salesStoreTableBusy)return;
   const month=Number(salesStoreTableMonth||0);
@@ -2203,7 +2264,31 @@ function renderSalesTables(d){
   }else{
     setTimeout(()=>loadStoreSalesMonth(d),0);
   }
+  setTimeout(ensureSalesDetails,0);
 }
+function ensureSalesDetails(){
+  const monthWrap=q('#salesExecRows')?.closest('.sales-month-table,.tablewrap');
+  const monthBar=q('#v176MonthStoreBar');
+  if(monthWrap&&!q('#v197MonthDetails')){
+    const details=document.createElement('details');
+    details.id='v197MonthDetails';details.className='v197-sales-detail';
+    const summary=document.createElement('summary');summary.textContent='Detalle mes';
+    const anchor=monthBar||monthWrap;
+    anchor.parentNode.insertBefore(details,anchor);
+    details.append(summary);
+    if(monthBar)details.append(monthBar);
+    details.append(monthWrap);
+  }
+  const storeBox=q('#v168SalesStores');
+  if(storeBox&&!q('#v197StoreDetails')){
+    const details=document.createElement('details');
+    details.id='v197StoreDetails';details.className='v197-sales-detail';
+    const summary=document.createElement('summary');summary.textContent='Detalle tienda';
+    storeBox.parentNode.insertBefore(details,storeBox);
+    details.append(summary,storeBox);
+  }
+}
+
 function prepareSalesControls(d){
   const ms=q('#salesExecThrough'),ys=q('#salesExecYear');
   if(ys){
@@ -2249,17 +2334,36 @@ async function renderSales176(existing,force){
     const t=d.totals||{},gap=n(t.gap_to_goal);
     const kpi=(l,v,sub,c,cl)=>'<div class="sales-kpi" style="--sk:'+c+'"><div class="sl">'+l+'</div><div class="sv '+(cl||'')+'">'+v+'</div><div class="ss">'+sub+'</div></div>';
     const kpis=q('#salesExecKpis');
-    if(kpis)kpis.innerHTML=
-      kpi('Meta acumulada',money(t.target),t.target?(gap>=0?'Meta superada por '+money(gap):'Brecha '+money(Math.abs(gap))):'Sin meta cargada','#ec007c')+
-      kpi('Venta '+d.year,money(t.current),d.selected_month?monthLong[d.selected_month-1]:'Meses con PDF','#1769e8')+
-      kpi('Venta '+d.previous_year,money(t.previous),'Mismo alcance','#9fb0c6')+
-      kpi('Cumplimiento',pct(t.compliance),'Venta / Meta','#10b981',tone(t.compliance,true))+
-      kpi('Crecimiento',pct(t.growth),d.year+' vs '+d.previous_year,'#f59e0b',tone(t.growth,false));
+    if(kpis){
+      if(salesMetric==='pieces'){
+        const pieceDiff=n(t.pieces)-n(t.pieces_previous);
+        kpis.innerHTML=
+          kpi('Piezas '+d.year,nf(t.pieces),d.selected_month?monthLong[d.selected_month-1]:'Acumulado del periodo','#1769e8')+
+          kpi('Piezas '+d.previous_year,nf(t.pieces_previous),'Mismo alcance','#9fb0c6')+
+          kpi('Diferencia pzas',(pieceDiff>=0?'+':'')+nf(pieceDiff),'Actual - año anterior',pieceDiff>=0?'#10b981':'#ef4444')+
+          kpi('Crecimiento',pct(t.pieces_growth),d.year+' vs '+d.previous_year,'#f59e0b',tone(t.pieces_growth,false))+
+          kpi('Venta $ '+d.year,money(t.current),'Referencia monetaria','#7047c8');
+      }else{
+        kpis.innerHTML=
+          kpi('Meta acumulada',money(t.target),t.target?(gap>=0?'Meta superada por '+money(gap):'Brecha '+money(Math.abs(gap))):'Sin meta cargada','#ec007c')+
+          kpi('Venta '+d.year,money(t.current),d.selected_month?monthLong[d.selected_month-1]:'Meses con PDF','#1769e8')+
+          kpi('Venta '+d.previous_year,money(t.previous),'Mismo alcance','#9fb0c6')+
+          kpi('Cumplimiento',pct(t.compliance),'Venta / Meta','#10b981',tone(t.compliance,true))+
+          kpi('Crecimiento',pct(t.growth),d.year+' vs '+d.previous_year,'#f59e0b',tone(t.growth,false));
+      }
+    }
     const empty=q('#salesExecEmpty');if(empty)empty.classList.toggle('hidden',n(t.current)>0||n(t.previous)>0||n(t.target)>0);
     const src=q('#salesExecSource');if(src)src.textContent=d.source_label+' · '+d.store;
     const salesMainTitle=q('#v109-sales-exec .sales-exec-title');
     if(salesMainTitle)salesMainTitle.textContent='Ventas · '+d.store+' · Año vs año pasado';
-    const title=q('#salesChartTitle');if(title)title.textContent=d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta mensual '+d.year+' vs '+d.previous_year+' · '+d.store;
+    const title=q('#salesChartTitle');
+    if(title)title.textContent=salesMetric==='pieces'
+      ?(d.selected_month?'Piezas por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Piezas mensuales '+d.year+' vs '+d.previous_year+' · '+d.store)
+      :(d.selected_month?'Venta por tienda · '+monthLong[d.selected_month-1]+' '+d.year:'Venta mensual '+d.year+' vs '+d.previous_year+' · '+d.store);
+    const legend=q('#v109-sales-exec .sales-legend');
+    if(legend)legend.innerHTML=salesMetric==='pieces'
+      ?'<span><i class="cur"></i>Piezas '+d.year+'</span><span><i class="prev"></i>Piezas '+d.previous_year+'</span>'
+      :'<span><i class="cur"></i>Venta '+d.year+'</span><span><i class="prev"></i>Venta '+d.previous_year+'</span><span><i class="goal"></i>Meta</span>';
     const coverage=q('#salesCoverage');if(coverage)coverage.textContent=(d.available_months||[]).length+' PDF/mes disponibles'+(d.cut_date?' · último corte '+d.cut_date:'');
     salesChart176(d);renderSalesTables(d);
   }catch(e){

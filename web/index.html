@@ -1271,7 +1271,8 @@ function renderDash(d){
   setKpiLabel('#kOcc',storeScoped?`Ocupación · ${scope}`:'Ocupación');
 
   $('#kExist').textContent=fmt(k.existence);
-  $('#kExistNote').textContent='Piso '+fmt(k.floor)+' pzas · Bodega '+fmt(k.warehouse)+' pzas';
+  $('#kExistNote').textContent='Piso '+fmt(k.floor)+' pzas · Bodega '+fmt(k.warehouse)+' pzas'+
+    (Object.prototype.hasOwnProperty.call(k,'cedis')?' · CEDIS '+fmt(k.cedis||0)+' pzas':'');
   $('#kSug').textContent=fmt(k.suggested);
   $('#kSugNote').textContent='Dama '+sm(dama?.suggested)+' · Cab. '+sm(cab?.suggested)+' · Inf. '+sm(inf?.suggested);
   $('#kDdi').textContent=fmt(k.ddi)+' días';

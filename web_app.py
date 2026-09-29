@@ -4042,6 +4042,23 @@ def _capacity_model_basis_v188(g: pd.DataFrame, period: str="") -> pd.DataFrame:
     return basis
 
 
+def _capacity_cedis_total_v197(g: pd.DataFrame) -> float:
+    """CEDIS central sin duplicar por tienda/ubicación.
+
+    Existencia CEDIS se repite por ID_ART en distintas filas y tiendas. En Macro
+    Compañía cada ID aporta una sola vez: máximo por ID y después suma.
+    """
+    if g is None or g.empty or "ID_ART" not in g.columns or "Existencia CEDIS" not in g.columns:
+        return 0.0
+    ids=g["ID_ART"].fillna("").astype(str).str.strip()
+    values=pd.to_numeric(g["Existencia CEDIS"],errors="coerce").fillna(0.0)
+    valid=~ids.isin(["","nan","None"])
+    if not bool(valid.any()):
+        return 0.0
+    slim=pd.DataFrame({"id":ids.loc[valid],"cedis":values.loc[valid]})
+    return float(slim.groupby("id",sort=False,observed=True)["cedis"].max().sum())
+
+
 def _capacity_metrics_from_basis_v188(basis: pd.DataFrame) -> dict:
     if basis is None or basis.empty:
         return {"existence":0.0,"floor":0.0,"warehouse":0.0,"suggested":0.0,"capacity":0.0,"ddi":0.0,"occupancy":0.0,"sales_pzas":0.0,"sales_value":0.0,"utility_value":0.0}
@@ -4236,6 +4253,16 @@ def dashboard(request: Request, week: str|None=None, store: str="Compañía", se
     work=_capacity_scope_v45(frame,store,section,catalog)
     basis=_capacity_model_basis_v188(work,selected)
     k=_capacity_metrics_from_basis_v188(basis)
+
+    # V197 · Macro Compañía incluye inventario CEDIS una sola vez por ID_ART.
+    # Piso/Bodega y % Ocupación conservan la lectura física de tienda; sólo la
+    # Existencia total macro agrega el inventario central.
+    if store=="Compañía":
+        cedis_total=_capacity_cedis_total_v197(work)
+        k["existence_store"]=float(k.get("existence") or 0.0)
+        k["cedis"]=cedis_total
+        k["existence"]=k["existence_store"]+cedis_total
+        k["inventory_total"]=k["existence"]
 
     # Las tarjetas por sección deben respetar tienda/catálogo, pero ignorar el
     # filtro superior de sección para poder mostrar el contexto completo.
