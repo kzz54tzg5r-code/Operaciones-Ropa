@@ -17,8 +17,8 @@
 <script defer src="/static/pwa_brand.js"></script>
 <script defer src="/static/design_system.js?v=20260928-mobile-v5"></script>
 <script defer src="/static/report_tab_carousel.js?v=20260928-carousel-v6"></script>
-<script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-v7"></script>
-<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8"></script>
+<script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8"></script>
+<script defer src="/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v9"></script>
 <script defer src="/static/pwa_install.js?v=auto-update-v1"></script>
 <style>
 :root{--navy:#123b73;--blue:#1769e8;--pink:#e4007f;--bg:#f3f6fa;--card:#fff;--text:#153a70;--muted:#6b778c;--line:#dce4ee;--green:#159447;--yellow:#d99b00;--red:#d72c2c;--purple:#7047c8}
@@ -402,7 +402,7 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-sub="areas" data-tab-key="commercial.areas">Ubicación / Área</button>
   <button class="switch" data-sub="lingerie-checklist" data-tab-key="commercial.lingerie_checklist">Checklist lencería</button>
   <button class="switch" data-sub="more" data-tab-key="commercial.more">Más opciones</button>
-  <button class="switch adminOnly" data-sub="analysis-upload">Carga de datos</button>
+  <button class="switch adminOnly" data-sub="analysis-upload" data-tab-key="commercial.upload">Carga de datos</button>
 </div>
 
 <div class="filters hidden" id="globalFilters"><div class="filter"><label id="globalPeriodLabel">Periodo</label><select id="week"></select></div><div class="filter" id="globalStoreFilter"><label>Tienda</label><select id="store"><option>Compañía</option></select></div><div class="filter commercialFilter" id="globalSectionFilter"><label>Sección</label><select id="section"><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></div><div class="filter commercialFilter" id="globalCatalogFilter"><label>Tipo catálogo</label><select id="catalog"><option>Todos</option><option>VIGENTE</option><option>DESCONTINUADO</option><option>PROXIMO A SALIR</option><option>IMPULSO</option></select></div><button class="primary" id="refresh">Actualizar</button></div>
