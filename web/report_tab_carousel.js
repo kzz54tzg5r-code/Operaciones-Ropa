@@ -798,6 +798,9 @@
     });
 
     viewport.addEventListener('touchstart',event=>{
+      // V196: cuando el rail final está activo, él es el único dueño del gesto.
+      // Evita dos listeners compitiendo por el mismo dedo en Android.
+      if(viewport.classList.contains('rt-icon-rail-v1')) return;
       if(!event.touches||event.touches.length!==1) return;
       const t=event.touches[0];
       state.touchStartX=t.clientX;
@@ -810,6 +813,7 @@
     },{passive:true});
 
     viewport.addEventListener('touchmove',event=>{
+      if(viewport.classList.contains('rt-icon-rail-v1')) return;
       if(!event.touches||event.touches.length!==1||state.touchMode==='idle') return;
       const t=event.touches[0];
       const dx=t.clientX-state.touchStartX;

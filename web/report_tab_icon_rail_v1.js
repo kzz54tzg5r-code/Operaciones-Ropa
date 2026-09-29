@@ -722,8 +722,8 @@
       state.touchMode='pending';
       state.dragDesiredScroll=viewport.scrollLeft;
 
-      // Evitar que el carrusel base active su arrastre libre.
-      event.stopImmediatePropagation();
+      // V196 Android: NO detener touchstart. El navegador debe conservar
+      // el desplazamiento vertical de un dedo hasta confirmar un swipe horizontal.
     },{capture:true,passive:true});
 
     viewport.addEventListener('touchmove',event=>{
@@ -742,19 +742,22 @@
       if(state.touchMode==='pending'){
         if(ax<5 && ay<5) return;
 
-        if(ax>ay*1.08){
+        // Android necesita una intención horizontal más clara. Así un gesto
+        // vertical ligeramente diagonal sigue desplazando la página con un dedo.
+        if(ax>=8 && ax>ay*1.35){
           state.touchMode='horizontal';
           viewport.style.setProperty('scroll-snap-type','none','important');
           viewport.style.setProperty('scroll-behavior','auto','important');
-        }else if(ay>ax){
+        }else if(ay>=6 && ay>=ax*1.05){
           state.touchMode='vertical';
           return;
         }
       }
 
       if(state.touchMode==='horizontal'){
+        // Sólo aquí se cancela el gesto nativo: ya sabemos que el usuario
+        // quiso mover pestañas, no desplazar la página.
         event.preventDefault();
-        event.stopImmediatePropagation();
 
         const current=state.touchCurrentButton || visualButton(state);
         const direction=dx<0 ? 1 : -1;
@@ -981,6 +984,7 @@
     window.ReportTabIconRailV6=api;
     window.ReportTabIconRailV7=api;
     window.ReportTabIconRailV8=api;
+    window.ReportTabIconRailV10=api;
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
