@@ -58,7 +58,7 @@ jobs:
           assert "'/static/report_tab_carousel.js'" in sw
           assert "'/static/report_tab_mundial_v7.js'" in sw
           assert "'/static/report_tab_icon_rail_v1.js'" in sw
-          assert "operaciones-ropa-runtime-v7" in sw
+          assert "operaciones-ropa-runtime-v8" in sw
 
           entry = Path("server_entry.py").read_text(encoding="utf-8")
           assert "_install_pwa_patch(web_app)" in entry
