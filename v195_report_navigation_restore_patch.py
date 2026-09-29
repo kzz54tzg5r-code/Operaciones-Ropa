@@ -148,6 +148,19 @@ body.v195-commercial-upload #page-analysis-upload.active{display:block!important
     setTimeout(syncCommercialUpload,60);
   });
 
+  // Guardia específica de Carga de datos: si un render asíncrono antiguo
+  // reemplaza el formulario después de varios segundos, lo restauramos.
+  const opContent=q('#operativoDynamicContent');
+  if(opContent){
+    const uploadGuard=new MutationObserver(()=>{
+      if(currentOperational()!=='Carga de datos')return;
+      if(!q('#opsDropzone') || !q('#opsModuleFile') || !q('#opsModuleUploadBtn')){
+        scheduleRestore('Carga de datos',25);
+      }
+    });
+    uploadGuard.observe(opContent,{childList:true,subtree:true});
+  }
+
   setTimeout(syncCommercialUpload,120);
   console.info('[V195] navegación de reportes y cargas protegida contra renders tardíos.');
 })();
