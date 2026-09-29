@@ -15,6 +15,99 @@ la semana siguiente con devoluciones y error de pronóstico, recupera Acordeón
 y lee el Resumen Ejecutivo rasterizado de los PDF de ventas mediante OCR.
 V169 unifica los periodos disponibles de operación y conversión para no cortar Día en el 13.
 """
+# V197 · Preflight de disco persistente.
+# Render usa un disco de 1 GB y los catálogos normalizados son cachés
+# reconstruibles. Si el disco se llena, SQLite ni siquiera puede iniciar.
+# Esta limpieza ocurre ANTES de importar web_app y nunca toca Excel/PDF
+# históricos, manifiestos, evidencias ni la base SQLite.
+import json as _pre_json
+import os as _pre_os
+import time as _pre_time
+from pathlib import Path as _PrePath
+
+def _preflight_persistent_disk_cleanup():
+    root=_PrePath(_pre_os.environ.get("OPERACIONES_ROPA_DATA") or "/var/data")
+    if not root.exists():
+        return
+    removed=0
+    freed=0
+
+    def _unlink(path):
+        nonlocal removed,freed
+        try:
+            if not path.is_file():
+                return
+            size=path.stat().st_size
+            path.unlink(missing_ok=True)
+            removed+=1
+            freed+=size
+        except Exception:
+            pass
+
+    # Preservar el cache normalizado de la capacidad vigente cuando se puede
+    # identificar en el manifiesto. Todo lo demás aquí se puede regenerar.
+    keep_prefix=""
+    try:
+        manifest_path=root/"commercial"/"manifest.json"
+        payload=_pre_json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+        caps=[x for x in (payload.get("capacities") or []) if str(x.get("status") or "").lower()=="procesado"]
+        if caps:
+            latest=max(caps,key=lambda x:str(x.get("uploaded_at") or x.get("created_at") or ""))
+            cache_rel=str(latest.get("cache_file") or "").strip()
+            if cache_rel:
+                keep_prefix=_PrePath(cache_rel).stem
+    except Exception:
+        keep_prefix=""
+
+    normalized=root/"capacity_normalized"
+    if normalized.exists():
+        files=sorted((p for p in normalized.glob("*.pkl") if p.is_file()),key=lambda p:p.stat().st_mtime,reverse=True)
+        # Si el manifiesto no dice cuál es el vigente, conservar sólo el más reciente.
+        newest_name=files[0].stem if files else ""
+        for p in files:
+            keep=bool(keep_prefix and p.name.startswith(keep_prefix))
+            if not keep_prefix:
+                keep=(p.stem==newest_name)
+            if not keep:
+                _unlink(p)
+
+    # Cache comercial: siempre reconstruible desde las fuentes resguardadas.
+    commercial_cache=root/"commercial"/"cache"
+    if commercial_cache.exists():
+        for p in commercial_cache.rglob("*"):
+            if p.is_file():
+                _unlink(p)
+
+    # Temporales abandonados. Los jobs operativos grandes se conservan 24 h
+    # para no interrumpir una carga reciente; después se pueden volver a subir
+    # desde su histórico/origen si hubieran quedado huérfanos.
+    staging=root/"staging"
+    now=_pre_time.time()
+    if staging.exists():
+        for p in staging.iterdir():
+            if not p.is_file():
+                continue
+            try:
+                age=now-p.stat().st_mtime
+            except Exception:
+                age=0
+            name=p.name.lower()
+            disposable=(
+                name.startswith("capacity_job_")
+                or name.startswith("legacy_")
+                or name.endswith(".worker.json")
+                or name.endswith(".payload.json")
+            )
+            stale_ops=name.startswith("operations_job_") and age>24*3600
+            stale_other=age>48*3600 and name.endswith((".tmp",".part"))
+            if disposable or stale_ops or stale_other:
+                _unlink(p)
+
+    if removed:
+        print(f"[V197-DISK] cachés/temporales eliminados={removed} · liberado={freed/1024/1024:.1f} MB",flush=True)
+
+_preflight_persistent_disk_cleanup()
+
 import web_app
 from fastapi import Request as _FastAPIRequest
 import v121_operation_indicator_patch as _v121_operation_module
