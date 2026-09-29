@@ -88,7 +88,7 @@ jobs:
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
           ds = Path("web/design_system.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v7' in html
           assert 'scroll-snap-type:x mandatory' in js
           assert "commercial.sellthrough" in js
           assert "data.v125Tab" in js or "dataset.v125Tab" in js
@@ -104,7 +104,7 @@ jobs:
           car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
           v161 = Path("v161_unified_boceto_filters_cards_patch.py").read_text(encoding="utf-8")
           html = Path("web/index.html").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v7' in html
           assert 'body[data-v163-module="operativo"] #operativoNav.rt-carousel' in car
           assert 'display:flex!important' in car
           assert 'body[data-v163-module="operativo"] #v161FilterBar' in car
@@ -120,7 +120,7 @@ jobs:
           html = Path("web/index.html").read_text(encoding="utf-8")
           car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
           v163 = Path("v163_module_nav_cleanup_patch.py").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v7' in html
           assert '<div style="margin-left:auto;display:flex;gap:5px">' not in html
           assert 'viewport.style.setProperty(\'display\',\'flex\',\'important\')' in car
           assert '#operativoNav.rt-carousel:not(.hidden)' in v163
@@ -133,7 +133,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v7' in html
           assert "touch-action:pan-y pinch-zoom!important" in car
           assert "viewport.addEventListener('touchmove'" in car
           assert "{passive:false}" in car
@@ -148,7 +148,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_mundial_v5.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-v7' in html
+          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in html
           assert "rt-mundial-stage" in js
           assert "rt-worldcup-pedestal" in js
           assert "rt-worldcup-current" in js
@@ -161,7 +161,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_mundial_v6.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-v7' in html
+          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in html
           assert 'report_tab_mundial_v5.js' not in html
           assert "rt-mundial-base" in js
           assert "rt-mundial-face" in js
@@ -175,7 +175,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_mundial_v7.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-v7' in html
+          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in html
           assert 'report_tab_mundial_v6.js' not in html
           assert 'width:196px!important' in js
           assert 'height:131px!important' in js
@@ -191,7 +191,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v9' in html
           assert "TARGET_ID='operativoNav'" in js
           assert "rt-icon-rail-v1" in js
           assert "width:44px!important" in js
@@ -205,7 +205,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v6' in html
+          assert '/static/report_tab_carousel.js?v=20260928-carousel-v7' in html
           assert "buttons.find(b=>b.classList.contains('active'))" in js
           assert "state.userCenteredButton=nearest" in js
           assert "state.userAnchored=true" in js
@@ -219,7 +219,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v9' in html
           assert "userSelectedButton" in js
           assert "rt-icon-user-active" in js
           assert "state.userSelectedButton=btn" in js
@@ -232,7 +232,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v9' in html
           assert "function circularizeAround" in js
           assert "state.logicalButtons" in js
           assert "btn.dataset.rtRingOrder" in js
@@ -247,7 +247,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v9' in html
           assert "el.toggleAttribute('hidden',!visible)" in html
           assert "report-tabs-visibility-changed" in html
           assert "#operativoNav.rt-carousel>button.hidden" in js
@@ -262,7 +262,7 @@ jobs:
           from pathlib import Path
           html = Path("web/index.html").read_text(encoding="utf-8")
           js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v8' in html
+          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v9' in html
           assert "function oneStepTarget" in js
           assert "function bindOneStepSwipe" in js
           assert "function animateScrollTo" in js
@@ -309,4 +309,23 @@ jobs:
           assert "_install_v195_report_navigation_restore_patch(web_app)" in entry
           assert "opsDropzone" in patch and "analysis-upload" in patch
           print("V195 report navigation restore guard OK")
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          html = Path("web/index.html").read_text(encoding="utf-8")
+          carousel = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
+          rail = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
+          mundial = Path("web/report_tab_mundial_v7.js").read_text(encoding="utf-8")
+          assert "20260928-carousel-v7" in html
+          assert "20260928-iconrail-v9" in html
+          assert "20260928-mundial-disabled-v8" in html
+          assert 'data-sub="analysis-upload" data-tab-key="commercial.upload"' in html
+          assert "'commercial.upload': ['Carga de datos', 'upload']" in carousel
+          assert "TARGET_IDS=['operativoNav','analysisNav']" in rail
+          assert "disabled:true" in mundial
+          assert "rt-worldcup-pedestal" in mundial
+          assert "$$('[data-opview]').forEach(b=>b.onclick=async()=>{" in html
+          assert "$$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));" in html
+          print("Unified operational/commercial tab navigation guard OK")
           PY
