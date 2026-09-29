@@ -64,7 +64,8 @@
     'commercial.areas': ['Ubicación / Área', 'pin'],
     'commercial.lingerie_checklist': ['Checklist Lencería', 'checklist'],
     'commercial.sellthrough': ['Sell Through', 'percent'],
-    'commercial.more': ['Más opciones', 'more']
+    'commercial.more': ['Más opciones', 'more'],
+    'commercial.upload': ['Carga de datos', 'upload']
   };
 
   const V125_META = {
