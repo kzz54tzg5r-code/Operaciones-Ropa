@@ -424,6 +424,7 @@ def install(m):
     linear-gradient(145deg,#f7faff 0%,#eef5ff 52%,#f8fbff 100%)!important;
 }
 #loginView.login-v15 .login-v15-bg,#loginView.login-v15 .login-v15-shade{display:none!important}
+#loginView.login-v15.hidden,#loginView.hidden{display:none!important}
 #loginView .login-v15-card{
   width:min(440px,calc(100vw - 30px))!important;
   padding:30px 30px 26px!important;
