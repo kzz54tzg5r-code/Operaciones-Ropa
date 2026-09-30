@@ -26,7 +26,7 @@ document.querySelectorAll(".report-tabs").forEach(group=>{
 
 const stores=["Iztapalapa","Vallejo","Ecatepec","Toluca","Arco Norte","Ixtapaluca","Querétaro","Centro","Olivar","León","Puebla","Puebla Sur","Aguascalientes","Veracruz","Naucalpan","Miravalle","Atemajac"];
 document.getElementById("storeGoalRows").innerHTML=stores.map(s=>`<tr><td>${s}</td><td>✓</td><td>✓</td><td>784</td><td>47</td></tr>`).join("");
-document.getElementById("recoveryRows").innerHTML=stores.slice(0,8).map(s=>`<tr><td>${s}</td><td>$—</td><td>$—</td><td>—%</td><td>—</td></tr>`).join("");
+document.getElementById("recoveryRows").innerHTML=stores.slice(0,8).map(s=>`<tr><td>${s}</td><td>—</td><td>—</td><td>—</td><td>—%</td><td>—%</td></tr>`).join("");
 const months=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 document.getElementById("monthRows").innerHTML=months.map(m=>`<tr><td>${m}</td><td>$—</td><td>$—</td><td>—%</td><td>—%</td><td>＋ Ver detalle</td></tr>`).join("");
 
