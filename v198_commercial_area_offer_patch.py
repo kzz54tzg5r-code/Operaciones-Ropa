@@ -224,6 +224,8 @@ def install(m):
   const modelPayloads={};
   let setupTimer=0;
   let offerRequest=0;
+  let summaryLoadKey='';
+  let summaryLoadBusy=false;
 
   const nativeFetch=window.fetch.bind(window);
   window.fetch=function(input,init){
@@ -349,9 +351,16 @@ def install(m):
     });
   }
 
-  function renderSummary(id,rows){
+  function renderSummary(id,rows,loaded,errorText){
     const host=q('#'+id);
     if(!host)return;
+    if(!loaded){
+      host.innerHTML='<div class="tablewrap v198-area-summary"><table class="table"><thead><tr>'+
+        '<th>Área</th><th>Modelos</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th>'+
+        '<th>Exist. CEDIS</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th>'+
+        '</tr></thead><tbody><tr><td colspan="10">'+esc(errorText||'Cargando información real del reporte…')+'</td></tr></tbody></table></div>';
+      return;
+    }
     const data=summaryRows(rows);
     host.innerHTML='<div class="tablewrap v198-area-summary"><table class="table"><thead><tr>'+
       '<th>Área</th><th>Modelos</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th>'+
@@ -375,12 +384,71 @@ def install(m):
 
   function renderAllSummaries(){
     ensureShells();
-    const champ=(modelPayloads['80_20']&&modelPayloads['80_20'].champions)||[];
-    const slow=sectionFiltered((modelPayloads.slow&&modelPayloads.slow.slow)||[]);
-    const zero=sectionFiltered((modelPayloads.suggested_zero&&modelPayloads.suggested_zero.zero)||[]);
-    renderSummary('v198ChampSummary',champ);
-    renderSummary('v198SlowSummary',slow);
-    renderSummary('v198ZeroSummary',zero);
+    const champData=modelPayloads['80_20'];
+    const slowData=modelPayloads.slow;
+    const zeroData=modelPayloads.suggested_zero;
+    const champ=(champData&&champData.champions)||[];
+    const slow=sectionFiltered((slowData&&slowData.slow)||[]);
+    const zero=sectionFiltered((zeroData&&zeroData.zero)||[]);
+    renderSummary('v198ChampSummary',champ,!!champData&&!champData.__error,champData&&champData.__error);
+    renderSummary('v198SlowSummary',slow,!!slowData&&!slowData.__error,slowData&&slowData.__error);
+    renderSummary('v198ZeroSummary',zero,!!zeroData&&!zeroData.__error,zeroData&&zeroData.__error);
+  }
+
+  function summaryContextKey(){
+    return [
+      currentWeek(),
+      currentStore(),
+      q('#section')?.value||'Todas',
+      currentCatalog()
+    ].join('|');
+  }
+
+  async function loadSummaryData(force){
+    const page=q('#page-macro');
+    if(!page||!page.classList.contains('active')||!currentWeek())return;
+    const key=summaryContextKey();
+    const ready=modelPayloads['80_20']&&modelPayloads.slow&&modelPayloads.suggested_zero;
+    if(!force&&summaryLoadKey===key&&ready)return;
+    if(summaryLoadBusy&&summaryLoadKey===key)return;
+
+    if(summaryLoadKey!==key||force){
+      delete modelPayloads['80_20'];
+      delete modelPayloads.slow;
+      delete modelPayloads.suggested_zero;
+      renderAllSummaries();
+    }
+    summaryLoadKey=key;
+    summaryLoadBusy=true;
+
+    const section=q('#section')?.value||'Todas';
+    const root='/api/commercial-models-v176?week='+encodeURIComponent(currentWeek())+
+      '&store='+encodeURIComponent(currentStore())+
+      '&section='+encodeURIComponent(section)+
+      '&catalog='+encodeURIComponent(currentCatalog())+
+      '&group_by=section&mode=';
+
+    try{
+      for(const mode of ['80_20','slow','suggested_zero']){
+        if(key!==summaryContextKey())return;
+        try{
+          const res=await nativeFetch(root+encodeURIComponent(mode),{credentials:'same-origin'});
+          if(!res.ok){
+            let detail='HTTP '+res.status;
+            try{const j=await res.clone().json();detail=j.detail||j.message||detail}catch(_){}
+            throw Error(detail);
+          }
+          const data=await res.json();
+          if(key!==summaryContextKey())return;
+          modelPayloads[mode]=data||{};
+        }catch(e){
+          modelPayloads[mode]={__error:'No fue posible cargar este resumen. '+String(e&&e.message||e)};
+        }
+        renderAllSummaries();
+      }
+    }finally{
+      if(key===summaryContextKey())summaryLoadBusy=false;
+    }
   }
 
   function wrapModelRenderer(){
@@ -464,6 +532,7 @@ def install(m):
     ensureShells();
     wrapModelRenderer();
     renderAllSummaries();
+    setTimeout(()=>loadSummaryData(false),120);
     if(activeArea()==='Oferta')setTimeout(renderOfferArea,80);
   }
 
@@ -483,9 +552,14 @@ def install(m):
   },true);
 
   document.addEventListener('change',event=>{
-    if(event.target.matches&&event.target.matches('#store,#week,#catalog,#slowSection,#v161FilterGrid select')){
+    if(event.target.matches&&event.target.matches('#store,#week,#section,#catalog,#v161FilterGrid select')){
+      summaryLoadKey='';
+      delete modelPayloads['80_20'];delete modelPayloads.slow;delete modelPayloads.suggested_zero;
       setTimeout(setup,180);
       if(activeArea()==='Oferta')setTimeout(renderOfferArea,320);
+    }
+    if(event.target.matches&&event.target.matches('#slowSection')){
+      setTimeout(renderAllSummaries,80);
     }
   },true);
 
