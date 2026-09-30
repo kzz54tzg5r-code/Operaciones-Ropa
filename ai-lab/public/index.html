@@ -49,9 +49,22 @@
         <article data-open="usuarios"><span>ACL</span><h3>Usuarios y roles</h3><p>Vista de Super Admin, Administrador, Director, Tienda y colaboradores.</p><button>Ver roles →</button></article>
       </div>
       <div class="roadmap">
-        <div><b>FASE ACTUAL</b><strong>Interfaz y navegación</strong><span>Listo para pruebas</span></div>
-        <div><b>SIGUIENTE</b><strong>Copia de datos solo lectura</strong><span>Sin tocar Producción</span></div>
-        <div><b>DESPUÉS</b><strong>IA con datos reales</strong><span>Cuando activemos API</span></div>
+        <div class="done"><b>FASE 1 · COMPLETADA</b><strong>Interfaz y navegación</strong><span>Lista para pruebas</span></div>
+        <div class="current"><b>FASE 2 · ACTUAL</b><strong>Copia de datos solo lectura</strong><span id="snapshotPhaseText">Comprobando fuente aislada…</span></div>
+        <div><b>FASE 3</b><strong>IA con datos reales</strong><span>Después de validar la copia</span></div>
+      </div>
+      <div class="snapshot-card">
+        <div class="snapshot-head">
+          <div><span class="eyebrow">FUENTE AISLADA</span><h3>Copia de datos · solo lectura</h3></div>
+          <span class="pill" id="snapshotBadge">Comprobando…</span>
+        </div>
+        <div class="snapshot-grid">
+          <div><small>Origen</small><b id="snapshotSource">—</b></div>
+          <div><small>Última actualización</small><b id="snapshotUpdated">—</b></div>
+          <div><small>Tiendas detectadas</small><b id="snapshotStores">—</b></div>
+          <div><small>Archivos / fuentes</small><b id="snapshotFiles">—</b></div>
+        </div>
+        <p id="snapshotNote">Esta fase trabaja con una copia independiente y no escribe en Producción.</p>
       </div>
     </section>
 
