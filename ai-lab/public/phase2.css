@@ -1,0 +1,7 @@
+
+.lab-upload-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.lab-upload-row input{max-width:250px;font-size:10px;color:#66758A}
+.lab-upload-row button{border:0;background:#0B3A6E;color:#fff;border-radius:9px;padding:9px 12px;font-size:10px;font-weight:750;cursor:pointer}
+.lab-upload-row button:disabled{opacity:.55;cursor:wait}
+.lab-upload-help{display:block;margin-top:8px;color:#8B98AA;font-size:9px;line-height:1.4}
+#opsSourceTag{background:#EFF6FF;color:#0B3A6E;border-color:#C7DDF5}
