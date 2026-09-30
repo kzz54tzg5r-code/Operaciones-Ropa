@@ -25,10 +25,10 @@ document.querySelectorAll(".report-tabs").forEach(group=>{
 });
 
 const stores=["Iztapalapa","Vallejo","Ecatepec","Toluca","Arco Norte","Ixtapaluca","Querétaro","Centro","Olivar","León","Puebla","Puebla Sur","Aguascalientes","Veracruz","Naucalpan","Miravalle","Atemajac"];
-document.getElementById("storeGoalRows").innerHTML=stores.map(s=>`<tr><td>${s}</td><td>✓</td><td>✓</td><td>784</td><td>47</td></tr>`).join("");
-document.getElementById("recoveryRows").innerHTML=stores.slice(0,8).map(s=>`<tr><td>${s}</td><td>—</td><td>—</td><td>—</td><td>—%</td><td>—%</td></tr>`).join("");
+const storeGoalRows=document.getElementById("storeGoalRows"); if(storeGoalRows) storeGoalRows.innerHTML=stores.map(s=>`<tr><td>${s}</td><td>✓</td><td>✓</td><td>784</td><td>47</td></tr>`).join("");
+const recoveryRows=document.getElementById("recoveryRows"); if(recoveryRows) recoveryRows.innerHTML=stores.slice(0,8).map(s=>`<tr><td>${s}</td><td>—</td><td>—</td><td>—</td><td>—%</td><td>—%</td></tr>`).join("");
 const months=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-document.getElementById("monthRows").innerHTML=months.map(m=>`<tr><td>${m}</td><td>$—</td><td>$—</td><td>—%</td><td>—%</td><td>＋ Ver detalle</td></tr>`).join("");
+const monthRows=document.getElementById("monthRows"); if(monthRows) monthRows.innerHTML=months.map(m=>`<tr><td>${m}</td><td>$—</td><td>$—</td><td>—%</td><td>—%</td><td>＋ Ver detalle</td></tr>`).join("");
 
 const roleHints={
   "Super Administrador":"Acceso completo al laboratorio, incluidas vistas de rol, usuarios, cargas y metas.",
@@ -38,7 +38,7 @@ const roleHints={
   "Colaborador Lencería":"Acceso enfocado al Checklist Lencería y evidencias.",
   "Colaborador Operativo":"Acceso enfocado a productividad y captura operativa."
 };
-document.getElementById("roleDemo").addEventListener("change",e=>{document.getElementById("roleHint").textContent=roleHints[e.target.value]||""});
+const roleDemo=document.getElementById("roleDemo"); if(roleDemo) roleDemo.addEventListener("change",e=>{const hint=document.getElementById("roleHint"); if(hint) hint.textContent=roleHints[e.target.value]||""});
 
 async function health(){
   try{
