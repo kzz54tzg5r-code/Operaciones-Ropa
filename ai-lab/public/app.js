@@ -96,3 +96,5 @@ async function snapshotStatus(){
   }
 }
 snapshotStatus();
+
+const phase2=document.createElement("script");phase2.src="/phase2.js?v=20260930-2120";document.body.appendChild(phase2);
