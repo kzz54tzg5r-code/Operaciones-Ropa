@@ -7,102 +7,174 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="logo">OR</div>
-        <div>
-          <strong>Operaciones Ropa</strong>
-          <span>IA LAB · AISLADO</span>
-        </div>
-      </div>
-      <nav>
-        <button class="nav active" data-view="home">⌂ Inicio</button>
-        <button class="nav" data-view="cambios">↔ Cambios y Muertos</button>
-        <button class="nav" data-view="operaciones">▦ Operaciones</button>
-        <button class="nav" data-view="ia">✦ Asistente IA</button>
-        <button class="nav" data-view="usuarios">♙ Usuarios</button>
-      </nav>
-      <div class="isolation">
-        <b>Entorno separado</b>
-        <span>No modifica la app principal ni su base de datos.</span>
-      </div>
-    </aside>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">OR</div>
+      <div><strong>Operaciones Ropa</strong><span>IA LAB · AISLADO</span></div>
+    </div>
+    <div class="nav-label">MENÚ PRINCIPAL</div>
+    <nav>
+      <button class="nav active" data-view="home">⌂ <span>Inicio</span></button>
+      <button class="nav" data-view="cambios">↔ <span>Cambios y Muertos</span></button>
+      <button class="nav" data-view="operaciones">▦ <span>Operaciones</span></button>
+      <button class="nav" data-view="ia">✦ <span>Asistente IA</span></button>
+      <button class="nav" data-view="usuarios">♙ <span>Usuarios</span></button>
+    </nav>
+    <div class="profile-card">
+      <div class="avatar">SA</div>
+      <div><b>Super Administrador</b><small>Laboratorio</small></div>
+    </div>
+    <div class="isolation"><b>✓ Entorno separado</b><span>No modifica Producción ni comparte su base de datos.</span></div>
+  </aside>
 
-    <main>
-      <header>
-        <div>
-          <small>Laboratorio independiente</small>
-          <h1 id="title">Centro de control IA</h1>
-        </div>
+  <main>
+    <header>
+      <div><small id="contextLabel">Laboratorio independiente</small><h1 id="title">Centro de control IA</h1></div>
+      <div class="header-actions">
+        <span class="readonly">SOLO PRUEBAS</span>
         <div class="status"><span></span><b id="mode">Comprobando…</b></div>
-      </header>
+      </div>
+    </header>
 
-      <section id="home" class="view active">
-        <div class="hero">
-          <div>
-            <span class="eyebrow">OPERACIONES ROPA · IA</span>
-            <h2>Pruebas nuevas sin mover Producción</h2>
-            <p>Este entorno se usa para probar inteligencia artificial, análisis y navegación antes de integrar cualquier función al sistema principal.</p>
-          </div>
-          <div class="shield">✓<span>Aislado</span></div>
+    <section id="home" class="view active">
+      <div class="hero">
+        <div><span class="eyebrow">OPERACIONES ROPA · IA</span><h2>Software paralelo para probar la siguiente versión</h2><p>Replica la estructura del sistema real, pero trabaja como laboratorio independiente para probar navegación, reportes, roles e inteligencia artificial antes de llevar algo a Producción.</p></div>
+        <div class="shield">✓<span>Aislado</span></div>
+      </div>
+      <div class="cards home-cards">
+        <article data-open="cambios"><span>REPORTE 01</span><h3>Cambios y Muertos</h3><p>Centro Operativo, conversión, recuperación, productividad, recorridos, score y alertas.</p><button>Entrar →</button></article>
+        <article data-open="operaciones"><span>REPORTE 02</span><h3>Operaciones</h3><p>Macro compañía, ventas, 80/20, lentos, sugerido 0–1, Sell Through, ubicación y checklist.</p><button>Entrar →</button></article>
+        <article data-open="ia"><span>IA</span><h3>Asistente IA</h3><p>Consulta operacional en lenguaje natural. Sigue en modo demo hasta conectar una clave API.</p><button>Probar →</button></article>
+        <article data-open="usuarios"><span>ACL</span><h3>Usuarios y roles</h3><p>Vista de Super Admin, Administrador, Director, Tienda y colaboradores.</p><button>Ver roles →</button></article>
+      </div>
+      <div class="roadmap">
+        <div><b>FASE ACTUAL</b><strong>Interfaz y navegación</strong><span>Listo para pruebas</span></div>
+        <div><b>SIGUIENTE</b><strong>Copia de datos solo lectura</strong><span>Sin tocar Producción</span></div>
+        <div><b>DESPUÉS</b><strong>IA con datos reales</strong><span>Cuando activemos API</span></div>
+      </div>
+    </section>
+
+    <section id="cambios" class="view report-view">
+      <div class="report-heading">
+        <div><span class="eyebrow">REPORTE 01</span><h2>Cambios y Muertos</h2><p>Recuperación, recolección, conversión y seguimiento operativo.</p></div>
+        <span class="pill">Demo aislada</span>
+      </div>
+      <div class="report-tabs" data-group="cambios">
+        <button class="active" data-tab="cy-centro">Centro Operativo</button>
+        <button data-tab="cy-conversion">Conversión</button>
+        <button data-tab="cy-recuperacion">Recuperación $</button>
+        <button data-tab="cy-tienda">Recuperación por Tienda</button>
+        <button data-tab="cy-productividad">Productividad</button>
+        <button data-tab="cy-recorridos">Recorridos</button>
+        <button data-tab="cy-score">Score</button>
+        <button data-tab="cy-alertas">Alertas</button>
+        <button data-tab="cy-carga">Carga de datos</button>
+        <button data-tab="cy-metas">Metas y tiendas</button>
+      </div>
+      <div class="filters">
+        <label>Periodo<select><option>Semana actual</option><option>Semana anterior</option></select></label>
+        <label>Tienda<select><option>Compañía</option><option>Iztapalapa</option><option>Vallejo</option><option>Ecatepec</option><option>Toluca</option></select></label>
+        <button class="filter-action">Actualizar</button>
+      </div>
+
+      <div class="tab-panel active" id="cy-centro">
+        <div class="kpi-grid">
+          <div class="kpi"><small>Muertos</small><strong>—</strong><span>Recolección</span></div>
+          <div class="kpi"><small>Probador</small><strong>—</strong><span>Recolección</span></div>
+          <div class="kpi"><small>Cajas</small><strong>—</strong><span>Recolección</span></div>
+          <div class="kpi"><small>Piezas recolectadas</small><strong>—</strong><span>Total</span></div>
+          <div class="kpi"><small>Recorridos</small><strong>—</strong><span>Meta 47 / semana</span></div>
+          <div class="kpi"><small>Acondicionado</small><strong>—</strong><span>% de ingreso</span></div>
+          <div class="kpi"><small>Ubicado</small><strong>—</strong><span>% acondicionado</span></div>
+          <div class="kpi"><small>Pend. acondicionar</small><strong>—</strong><span>Recolectadas - acondicionado</span></div>
+          <div class="kpi"><small>Pend. ubicar</small><strong>—</strong><span>Acondicionado - ubicado</span></div>
+          <div class="kpi"><small>Productividad</small><strong>—</strong><span>Meta 784 pzas/día</span></div>
         </div>
-        <div class="cards">
-          <article><span>01</span><h3>Cambios y Muertos</h3><p>Espacio preparado para consulta y análisis del reporte.</p></article>
-          <article><span>02</span><h3>Operaciones</h3><p>KPIs, productividad, recorridos y seguimiento operativo.</p></article>
-          <article><span>AI</span><h3>Asistente IA</h3><p>Preguntas en lenguaje natural y análisis guiado.</p></article>
-          <article><span>ACL</span><h3>Usuarios</h3><p>Diseño listo para roles y permisos del laboratorio.</p></article>
+        <div class="two-col">
+          <div class="panel"><div class="panel-title"><b>Avance operativo</b><span>Demo</span></div><div class="progress-list"><div><label>Ingreso → Acondicionado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Acondicionado → Ubicado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ingreso → Ubicado <b>—%</b></label><i><em style="width:0%"></em></i></div></div></div>
+          <div class="panel"><div class="panel-title"><b>Estado de fuente</b><span class="tag">Sin datos</span></div><p class="muted">La estructura está replicada. Los indicadores se llenarán desde una copia de solo lectura, no desde la base productiva.</p></div>
         </div>
-      </section>
+      </div>
+      <div class="tab-panel" id="cy-conversion"><div class="section-card"><h3>Conversión Dev → Venta</h3><p>Misma semana ISO, comparativo por tienda y detalle de conversión.</p><div class="placeholder-chart"><span>Gráfica de conversión</span></div></div></div>
+      <div class="tab-panel" id="cy-recuperacion"><div class="section-card"><h3>Recuperación económica</h3><p>Venta recuperada vs costo de devolución.</p><div class="metric-row"><div><small>Venta recuperada</small><b>$—</b></div><div><small>Costo devolución</small><b>$—</b></div><div><small>Recuperación</small><b>—%</b></div></div></div></div>
+      <div class="tab-panel" id="cy-tienda"><div class="section-card"><h3>Recuperación por tienda</h3><div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Venta recuperada</th><th>Costo devolución</th><th>Recuperación</th><th>Variación</th></tr></thead><tbody id="recoveryRows"></tbody></table></div></div></div>
+      <div class="tab-panel" id="cy-productividad"><div class="section-card"><h3>Productividad por colaborador</h3><p>Meta de referencia: 784 piezas por día.</p><div class="tablewrap"><table><thead><tr><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Días</th><th>Productividad</th><th>% Meta</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Pendiente de conectar copia de datos</td></tr></tbody></table></div></div></div>
+      <div class="tab-panel" id="cy-recorridos"><div class="section-card"><h3>Cumplimiento de recorridos</h3><p>Meta semanal de referencia: 47 recorridos.</p><div class="placeholder-chart"><span>Comparativo por tienda</span></div></div></div>
+      <div class="tab-panel" id="cy-score"><div class="section-card"><h3>Score integral</h3><div class="formula">40% Conversión <b>+</b> 40% Productividad <b>+</b> 20% Recorridos</div><div class="placeholder-chart"><span>Ranking sin orden evaluativo en modo demo</span></div></div></div>
+      <div class="tab-panel" id="cy-alertas"><div class="section-card"><h3>Alertas inteligentes</h3><div class="alert-list"><div>○ Tiendas con bajo cumplimiento de ubicación</div><div>○ Caídas de productividad vs periodo anterior</div><div>○ Recorridos por debajo de meta</div><div>○ Diferencias entre ingreso, acondicionado y ubicado</div></div></div></div>
+      <div class="tab-panel" id="cy-carga"><div class="section-card"><h3>Carga de datos · laboratorio</h3><div class="upload-box">Arrastra aquí una copia de prueba del Excel<div><button disabled>Seleccionar archivo</button></div><small>Deshabilitado hasta crear almacenamiento propio del laboratorio.</small></div></div></div>
+      <div class="tab-panel" id="cy-metas"><div class="section-card"><h3>Metas y tiendas</h3><div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Activa</th><th>Proyecto</th><th>Productividad</th><th>Recorridos</th></tr></thead><tbody id="storeGoalRows"></tbody></table></div></div></div>
+    </section>
 
-      <section id="cambios" class="view">
-        <div class="section-head"><div><span class="eyebrow">REPORTE 1</span><h2>Cambios y Muertos</h2></div><span class="pill">Demo aislada</span></div>
-        <div class="tabs"><button>Resumen</button><button>Conversión</button><button>Recuperación</button><button>Productividad</button><button>Comparativo</button></div>
-        <div class="empty">La interfaz está lista para conectar una copia o fuente de solo lectura de los datos reales.</div>
-      </section>
-
-      <section id="operaciones" class="view">
-        <div class="section-head"><div><span class="eyebrow">REPORTE 2</span><h2>Operaciones</h2></div><span class="pill">Demo aislada</span></div>
-        <div class="tabs"><button>Centro Operativo</button><button>Ventas</button><button>80/20</button><button>Lentos</button><button>Sugerido 0–1</button><button>Sell Through</button></div>
-        <div class="empty">Aquí replicaremos por etapas las pestañas operativas, sin depender del servicio de Producción.</div>
-      </section>
-
-      <section id="ia" class="view">
-        <div class="chat-layout">
-          <div class="chat-card">
-            <div class="chat-head">
-              <div class="ai-dot">✦</div>
-              <div><h2>Asistente Operativo</h2><p id="aiState">Modo laboratorio</p></div>
-            </div>
-            <div id="messages" class="messages">
-              <div class="msg bot">Hola. Soy el asistente del entorno de pruebas de Operaciones Ropa. Pregúntame sobre Cambios y Muertos, Operaciones, productividad, recorridos o Sell Through.</div>
-            </div>
-            <form id="chatForm">
-              <input id="chatInput" autocomplete="off" placeholder="Ej. ¿qué podríamos analizar en Operaciones?" />
-              <button>Enviar</button>
-            </form>
-          </div>
-          <aside class="suggestions">
-            <h3>Prueba con</h3>
-            <button data-q="¿Qué reportes tiene este laboratorio?">¿Qué reportes tiene?</button>
-            <button data-q="¿Cómo analizarías Sell Through?">Analizar Sell Through</button>
-            <button data-q="¿Qué métricas de productividad tenemos?">Métricas de productividad</button>
-            <button data-q="¿Cómo funcionará por tienda?">Consulta por tienda</button>
-          </aside>
+    <section id="operaciones" class="view report-view">
+      <div class="report-heading">
+        <div><span class="eyebrow">REPORTE 02</span><h2>Operaciones</h2><p>Venta, sugerido, utilidad, inventario, capacidades y ejecución comercial.</p></div>
+        <span class="pill">Demo aislada</span>
+      </div>
+      <div class="report-tabs" data-group="operaciones">
+        <button class="active" data-tab="op-macro">Macro Compañía</button>
+        <button data-tab="op-ventas">Ventas</button>
+        <button data-tab="op-8020">80/20</button>
+        <button data-tab="op-lentos">Modelos Lentos</button>
+        <button data-tab="op-sug">Sugerido 0–1</button>
+        <button data-tab="op-sell">Sell Through</button>
+        <button data-tab="op-areas">Ubicación / Área</button>
+        <button data-tab="op-rubro">Sección / Rubro</button>
+        <button data-tab="op-check">Checklist Lencería</button>
+        <button data-tab="op-carga">Carga de datos</button>
+      </div>
+      <div class="filters">
+        <label>Periodo<select><option>Septiembre 2026</option><option>Agosto 2026</option></select></label>
+        <label>Tienda<select><option>Compañía</option><option>Iztapalapa</option><option>Vallejo</option><option>Ecatepec</option><option>Toluca</option></select></label>
+        <label>Sección<select><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></label>
+        <button class="filter-action">Actualizar</button>
+      </div>
+      <div class="tab-panel active" id="op-macro">
+        <div class="kpi-grid five">
+          <div class="kpi"><small>Existencia total</small><strong>—</strong><span>Piso + bodega + CEDIS</span></div>
+          <div class="kpi"><small>Sugerido compañía</small><strong>—</strong><span>Promedio ponderado</span></div>
+          <div class="kpi"><small>DDI compañía</small><strong>—</strong><span>Días inventario</span></div>
+          <div class="kpi"><small>Capacidad</small><strong>—</strong><span>Curva</span></div>
+          <div class="kpi"><small>Ocupación</small><strong>—%</strong><span>Capacidad utilizada</span></div>
         </div>
-      </section>
+        <div class="section-card"><div class="panel-title"><b>Macro sección</b><span>Compañía</span></div><div class="area-cards"><div>Dama<b>—</b></div><div>Caballero<b>—</b></div><div>Infantil<b>—</b></div></div></div>
+        <div class="section-card"><div class="panel-title"><b>Macro ubicación</b><span>Por área</span></div><div class="area-cards five"><div>Colgado<b>—</b></div><div>Doblado<b>—</b></div><div>Jeans<b>—</b></div><div>Lencería<b>—</b></div><div>Oferta<b>—</b></div></div></div>
+      </div>
+      <div class="tab-panel" id="op-ventas"><div class="section-card"><h3>Ventas por mes / tienda</h3><div class="segmented"><button class="active">Pesos</button><button>Piezas</button></div><div class="placeholder-chart"><span>Gráfica mensual / tiendas</span></div><div class="tablewrap"><table><thead><tr><th>Mes</th><th>Venta 2026</th><th>Venta 2025</th><th>% Meta</th><th>% vs 2025</th><th>+ Detalle tienda</th></tr></thead><tbody id="monthRows"></tbody></table></div></div></div>
+      <div class="tab-panel" id="op-8020"><div class="section-card"><h3>Modelos 80/20</h3><div class="area-filter"><button>Colgado</button><button>Doblado</button><button>Jeans</button><button>Lencería</button><button>Oferta</button></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Sección</th><th>Área</th><th>Venta acum pzs</th><th>Existencia</th><th>CEDIS</th><th>+ Detalle 80/20</th></tr></thead><tbody><tr><td colspan="7" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
+      <div class="tab-panel" id="op-lentos"><div class="section-card"><h3>Modelos Lentos</h3><div class="area-filter"><button>Colgado</button><button>Doblado</button><button>Jeans</button><button>Lencería</button><button>Oferta</button></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Tienda</th><th>Área</th><th>Sugerido</th><th>Ult. entrada</th><th>Semanas</th><th>+ Detalle lentos</th></tr></thead><tbody><tr><td colspan="7" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
+      <div class="tab-panel" id="op-sug"><div class="section-card"><h3>Modelos Sugerido 0–1</h3><div class="area-filter"><button>Colgado</button><button>Doblado</button><button>Jeans</button><button>Lencería</button><button>Oferta</button></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Sección</th><th>Área</th><th>Sugerido</th><th>Existencia</th><th>Ult. entrada</th><th>+ Detalle</th></tr></thead><tbody><tr><td colspan="7" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
+      <div class="tab-panel" id="op-sell"><div class="section-card"><h3>Sell Through · Catálogo vigente</h3><div class="metric-row"><div><small>Venta anual pzs</small><b>—</b></div><div><small>Existencia piso+bodega</small><b>—</b></div><div><small>CEDIS</small><b>—</b></div><div><small>Tránsito</small><b>—</b></div><div><small>Sell Through</small><b>—%</b></div></div><p class="muted">Compañía: considera CEDIS. Tienda: muestra CEDIS pero no lo suma al cálculo.</p><div class="tablewrap"><table><thead><tr><th>ID</th><th>Venta acum pzs</th><th>Existencia</th><th>CEDIS</th><th>Tránsito</th><th>Sell Through</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
+      <div class="tab-panel" id="op-areas"><div class="section-card"><h3>Ubicación / Área</h3><div class="area-cards five"><div>Colgado<b>Pasillos</b></div><div>Doblado<b>Mesas</b></div><div>Jeans<b>Mesas jeans</b></div><div>Lencería<b>Familias</b></div><div>Oferta<b>Estatus comercial</b></div></div><div class="placeholder-chart"><span>Tabla por ubicación con + detalle</span></div></div></div>
+      <div class="tab-panel" id="op-rubro"><div class="section-card"><h3>Sección / Rubro</h3><div class="area-cards"><div>Dama<b>—</b></div><div>Caballero<b>—</b></div><div>Infantil<b>—</b></div></div><div class="placeholder-chart"><span>Ranking por rubro</span></div></div></div>
+      <div class="tab-panel" id="op-check"><div class="section-card"><h3>Checklist Lencería</h3><div class="tablewrap"><table><thead><tr><th>Familia</th><th>Modelo</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Captura demo pendiente de datos</td></tr></tbody></table></div><div class="metric-row"><div><small>% Checklist</small><b>—%</b></div><div><small>% Evidencias</small><b>—%</b></div><div><small>Score</small><b>—</b></div></div></div></div>
+      <div class="tab-panel" id="op-carga"><div class="section-card"><h3>Carga de datos · laboratorio</h3><div class="upload-grid"><div class="upload-box"><b>Capacidades / Existencias</b><small>Fuente principal</small><button disabled>Seleccionar Excel</button></div><div class="upload-box"><b>Ventas</b><small>Histórico mensual</small><button disabled>Seleccionar archivo</button></div><div class="upload-box"><b>PDF semanal</b><small>Histórico por tienda</small><button disabled>Seleccionar PDF</button></div></div><p class="muted">Se habilitará cuando creemos almacenamiento aislado del laboratorio.</p></div></div>
+    </section>
 
-      <section id="usuarios" class="view">
-        <div class="section-head"><div><span class="eyebrow">CONTROL</span><h2>Usuarios y permisos</h2></div><span class="pill">Sin acceso a Producción</span></div>
-        <div class="user-grid">
-          <article><b>Super Administrador</b><p>Configuración total del laboratorio.</p></article>
-          <article><b>Administrador</b><p>Gestión y análisis.</p></article>
-          <article><b>Director / Consulta</b><p>Lectura de reportes.</p></article>
-          <article><b>Tienda</b><p>Solo datos de su tienda cuando conectemos la fuente real.</p></article>
-        </div>
-      </section>
-    </main>
-  </div>
-  <script src="/app.js"></script>
+    <section id="ia" class="view">
+      <div class="report-heading"><div><span class="eyebrow">INTELIGENCIA ARTIFICIAL</span><h2>Asistente Operativo</h2><p>Pregunta en lenguaje natural sobre el laboratorio.</p></div><span class="pill" id="aiPill">Modo demo</span></div>
+      <div class="chat-layout">
+        <div class="chat-card"><div class="chat-head"><div class="ai-dot">✦</div><div><h3>Arqui · Operaciones Ropa</h3><p id="aiState">Modo laboratorio</p></div></div><div id="messages" class="messages"><div class="msg bot">Hola. Este asistente está dentro del laboratorio aislado. Puedo ayudarte a probar preguntas sobre Cambios y Muertos, Operaciones, productividad, recorridos, inventario y Sell Through.</div></div><form id="chatForm"><input id="chatInput" autocomplete="off" placeholder="Ej. ¿qué información mostrarías para Vallejo?" /><button>Enviar</button></form></div>
+        <aside class="suggestions"><h3>Prueba con</h3><button data-q="¿Qué pestañas tiene Cambios y Muertos?">Pestañas de Cambios y Muertos</button><button data-q="¿Qué pestañas tiene Operaciones?">Pestañas de Operaciones</button><button data-q="¿Cómo analizarías Sell Through?">Analizar Sell Through</button><button data-q="¿Qué métricas de productividad tenemos?">Métricas de productividad</button></aside>
+      </div>
+    </section>
+
+    <section id="usuarios" class="view">
+      <div class="report-heading"><div><span class="eyebrow">CONTROL DE ACCESO</span><h2>Usuarios y permisos</h2><p>Prueba de vistas por rol sin modificar usuarios productivos.</p></div><span class="pill">Laboratorio</span></div>
+      <div class="role-switcher"><label>Ver laboratorio como<select id="roleDemo"><option>Super Administrador</option><option>Administrador</option><option>Director / Consulta</option><option>Tienda</option><option>Colaborador Lencería</option><option>Colaborador Operativo</option></select></label><div id="roleHint">Acceso completo al laboratorio.</div></div>
+      <div class="user-grid six">
+        <article><span>SA</span><b>Super Administrador</b><p>Configuración total, usuarios, carga, metas y vistas.</p></article>
+        <article><span>AD</span><b>Administrador</b><p>Gestión de datos, reportes y usuarios autorizados.</p></article>
+        <article><span>DR</span><b>Director / Consulta</b><p>Lectura ejecutiva de reportes y comparativos.</p></article>
+        <article><span>TD</span><b>Tienda</b><p>Información limitada a la tienda asignada.</p></article>
+        <article><span>CL</span><b>Colaborador Lencería</b><p>Checklist por familia, modelos y evidencias.</p></article>
+        <article><span>CO</span><b>Colaborador Operativo</b><p>Captura y consulta de productividad operativa.</p></article>
+      </div>
+      <div class="section-card"><h3>Matriz de permisos · demo</h3><div class="tablewrap"><table><thead><tr><th>Rol</th><th>Cambios y Muertos</th><th>Operaciones</th><th>Usuarios</th><th>Carga</th><th>Metas</th></tr></thead><tbody><tr><td>Super Administrador</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>Administrador</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>Director / Consulta</td><td>✓</td><td>✓</td><td>—</td><td>—</td><td>—</td></tr><tr><td>Tienda</td><td>Su tienda</td><td>Su tienda</td><td>—</td><td>—</td><td>Su tienda</td></tr><tr><td>Colab. Lencería</td><td>—</td><td>Checklist</td><td>—</td><td>—</td><td>—</td></tr><tr><td>Colab. Operativo</td><td>Productividad</td><td>—</td><td>—</td><td>—</td><td>—</td></tr></tbody></table></div></div>
+    </section>
+  </main>
+</div>
+<script src="/app.js"></script>
 </body>
 </html>
