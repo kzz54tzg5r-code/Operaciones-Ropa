@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Operaciones Ropa · IA Lab</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">OR</div>
+        <div>
+          <strong>Operaciones Ropa</strong>
+          <span>IA LAB · AISLADO</span>
+        </div>
+      </div>
+      <nav>
+        <button class="nav active" data-view="home">⌂ Inicio</button>
+        <button class="nav" data-view="cambios">↔ Cambios y Muertos</button>
+        <button class="nav" data-view="operaciones">▦ Operaciones</button>
+        <button class="nav" data-view="ia">✦ Asistente IA</button>
+        <button class="nav" data-view="usuarios">♙ Usuarios</button>
+      </nav>
+      <div class="isolation">
+        <b>Entorno separado</b>
+        <span>No modifica la app principal ni su base de datos.</span>
+      </div>
+    </aside>
+
+    <main>
+      <header>
+        <div>
+          <small>Laboratorio independiente</small>
+          <h1 id="title">Centro de control IA</h1>
+        </div>
+        <div class="status"><span></span><b id="mode">Comprobando…</b></div>
+      </header>
+
+      <section id="home" class="view active">
+        <div class="hero">
+          <div>
+            <span class="eyebrow">OPERACIONES ROPA · IA</span>
+            <h2>Pruebas nuevas sin mover Producción</h2>
+            <p>Este entorno se usa para probar inteligencia artificial, análisis y navegación antes de integrar cualquier función al sistema principal.</p>
+          </div>
+          <div class="shield">✓<span>Aislado</span></div>
+        </div>
+        <div class="cards">
+          <article><span>01</span><h3>Cambios y Muertos</h3><p>Espacio preparado para consulta y análisis del reporte.</p></article>
+          <article><span>02</span><h3>Operaciones</h3><p>KPIs, productividad, recorridos y seguimiento operativo.</p></article>
+          <article><span>AI</span><h3>Asistente IA</h3><p>Preguntas en lenguaje natural y análisis guiado.</p></article>
+          <article><span>ACL</span><h3>Usuarios</h3><p>Diseño listo para roles y permisos del laboratorio.</p></article>
+        </div>
+      </section>
+
+      <section id="cambios" class="view">
+        <div class="section-head"><div><span class="eyebrow">REPORTE 1</span><h2>Cambios y Muertos</h2></div><span class="pill">Demo aislada</span></div>
+        <div class="tabs"><button>Resumen</button><button>Conversión</button><button>Recuperación</button><button>Productividad</button><button>Comparativo</button></div>
+        <div class="empty">La interfaz está lista para conectar una copia o fuente de solo lectura de los datos reales.</div>
+      </section>
+
+      <section id="operaciones" class="view">
+        <div class="section-head"><div><span class="eyebrow">REPORTE 2</span><h2>Operaciones</h2></div><span class="pill">Demo aislada</span></div>
+        <div class="tabs"><button>Centro Operativo</button><button>Ventas</button><button>80/20</button><button>Lentos</button><button>Sugerido 0–1</button><button>Sell Through</button></div>
+        <div class="empty">Aquí replicaremos por etapas las pestañas operativas, sin depender del servicio de Producción.</div>
+      </section>
+
+      <section id="ia" class="view">
+        <div class="chat-layout">
+          <div class="chat-card">
+            <div class="chat-head">
+              <div class="ai-dot">✦</div>
+              <div><h2>Asistente Operativo</h2><p id="aiState">Modo laboratorio</p></div>
+            </div>
+            <div id="messages" class="messages">
+              <div class="msg bot">Hola. Soy el asistente del entorno de pruebas de Operaciones Ropa. Pregúntame sobre Cambios y Muertos, Operaciones, productividad, recorridos o Sell Through.</div>
+            </div>
+            <form id="chatForm">
+              <input id="chatInput" autocomplete="off" placeholder="Ej. ¿qué podríamos analizar en Operaciones?" />
+              <button>Enviar</button>
+            </form>
+          </div>
+          <aside class="suggestions">
+            <h3>Prueba con</h3>
+            <button data-q="¿Qué reportes tiene este laboratorio?">¿Qué reportes tiene?</button>
+            <button data-q="¿Cómo analizarías Sell Through?">Analizar Sell Through</button>
+            <button data-q="¿Qué métricas de productividad tenemos?">Métricas de productividad</button>
+            <button data-q="¿Cómo funcionará por tienda?">Consulta por tienda</button>
+          </aside>
+        </div>
+      </section>
+
+      <section id="usuarios" class="view">
+        <div class="section-head"><div><span class="eyebrow">CONTROL</span><h2>Usuarios y permisos</h2></div><span class="pill">Sin acceso a Producción</span></div>
+        <div class="user-grid">
+          <article><b>Super Administrador</b><p>Configuración total del laboratorio.</p></article>
+          <article><b>Administrador</b><p>Gestión y análisis.</p></article>
+          <article><b>Director / Consulta</b><p>Lectura de reportes.</p></article>
+          <article><b>Tienda</b><p>Solo datos de su tienda cuando conectemos la fuente real.</p></article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
