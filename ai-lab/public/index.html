@@ -96,7 +96,7 @@
         </div>
         <div class="two-col">
           <div class="panel"><div class="panel-title"><b>Avance de recuperación</b><span>Demo</span></div><div class="progress-list"><div><label>Habilitado / Ingresos <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ubicado / Habilitado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ubicado / Ingresos <b>—%</b></label><i><em style="width:0%"></em></i></div></div></div>
-          <div class="panel"><div class="panel-title"><b>Fuente del laboratorio</b><span class="tag">Sin datos</span></div><p class="muted">La interfaz está separada de Producción. Los datos se conectarán después mediante una copia de solo lectura.</p></div>
+          <div class="panel"><div class="panel-title"><b>Fuente del laboratorio</b><span class="tag" id="opsSourceTag">Sin copia operativa</span></div><p class="muted" id="opsSourceText">Carga una copia del Excel operativo para alimentar estos indicadores sin tocar Producción.</p><div class="lab-upload-row"><input id="opsFileInput" type="file" accept=".xlsx,.xls"><button id="opsUploadBtn" type="button">Cargar copia operativa</button></div><small class="lab-upload-help" id="opsUploadHelp">Se procesa únicamente dentro del IA Lab.</small></div>
         </div>
       </div>
       <div class="tab-panel" id="cy-conversion"><div class="section-card"><h3>Conversión Dev → Venta</h3><p>Conversión de mercancía devuelta a venta dentro de la misma semana ISO.</p><div class="placeholder-chart"><span>Gráfica de conversión por tienda</span></div></div></div>
