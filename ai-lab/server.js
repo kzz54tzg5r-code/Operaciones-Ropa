@@ -7,6 +7,33 @@ app.use(express.static("public"));
 const PORT = process.env.PORT || 10000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-6-astra";
+const SNAPSHOT_MANIFEST_URL = "https://raw.githubusercontent.com/kzz54tzg5r-code/Operaciones-Ropa/main/data/commercial/manifest.json";
+const SNAPSHOT_DATA_URL = "https://raw.githubusercontent.com/kzz54tzg5r-code/Operaciones-Ropa/main/data/commercial/snapshots.json";
+let snapshotCache = { manifest:null, data:null, loadedAt:null, error:null };
+
+async function loadReadOnlySnapshot(includeData=false){
+  try{
+    if(!snapshotCache.manifest){
+      const mr=await fetch(SNAPSHOT_MANIFEST_URL,{headers:{"User-Agent":"Operaciones-Ropa-IA-Lab"}});
+      if(!mr.ok) throw new Error("Manifest HTTP "+mr.status);
+      snapshotCache.manifest=await mr.json();
+    }
+    if(includeData && !snapshotCache.data){
+      const sr=await fetch(SNAPSHOT_DATA_URL,{headers:{"User-Agent":"Operaciones-Ropa-IA-Lab"}});
+      if(!sr.ok) throw new Error("Snapshot HTTP "+sr.status);
+      snapshotCache.data=await sr.json();
+    }
+    snapshotCache.loadedAt=new Date().toISOString();
+    snapshotCache.error=null;
+    return snapshotCache;
+  }catch(e){snapshotCache.error=String(e?.message||e);throw e;}
+}
+
+function describeNode(value){
+  if(Array.isArray(value)) return {type:"array",length:value.length,sampleKeys:value[0]&&typeof value[0]==="object"?Object.keys(value[0]).slice(0,30):[]};
+  if(value&&typeof value==="object") return {type:"object",keys:Object.keys(value).slice(0,60)};
+  return {type:typeof value};
+}
 
 const demoData = {
   proyecto: "Operaciones Ropa - IA Lab",
@@ -63,6 +90,22 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/context", (_req, res) => {
   res.json({ ...demoData, aiEnabled: Boolean(OPENAI_API_KEY), model: OPENAI_MODEL });
+});
+
+app.get("/api/lab/snapshot/status",async(_req,res)=>{
+  try{
+    const s=await loadReadOnlySnapshot(false),m=s.manifest||{};
+    res.json({ok:true,mode:"read-only-copy",source:"GitHub snapshot main",productionTouched:false,manifestUpdatedAt:m.updated_at||null,capacities:Array.isArray(m.capacities)?m.capacities.length:0,pdfs:Array.isArray(m.pdfs)?m.pdfs.length:0,sales:Array.isArray(m.sales)?m.sales.length:0,stores:[...new Set((m.pdfs||[]).map(x=>x.store).filter(Boolean))].sort(),loadedAt:s.loadedAt});
+  }catch(e){res.status(502).json({ok:false,mode:"read-only-copy",productionTouched:false,error:String(e?.message||e)});}
+});
+
+app.get("/api/lab/snapshot/inspect",async(_req,res)=>{
+  try{
+    const s=await loadReadOnlySnapshot(true),data=s.data,out={root:describeNode(data)};
+    if(data&&typeof data==="object"&&!Array.isArray(data)) out.children=Object.fromEntries(Object.entries(data).slice(0,30).map(([k,v])=>[k,describeNode(v)]));
+    else if(Array.isArray(data)) out.first=data.length?describeNode(data[0]):null;
+    res.json({ok:true,mode:"read-only-copy",productionTouched:false,loadedAt:s.loadedAt,inspection:out});
+  }catch(e){res.status(502).json({ok:false,mode:"read-only-copy",productionTouched:false,error:String(e?.message||e)});}
 });
 
 app.post("/api/chat", async (req, res) => {
