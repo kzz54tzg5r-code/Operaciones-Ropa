@@ -785,18 +785,25 @@ $('#createOwner').onclick=async()=>{
 };
 
 $('#loginBtn').onclick=async()=>{
+  const btn=$('#loginBtn');
+  if(btn?.disabled)return;
+  if(btn)btn.disabled=true;
   try{
-    $('#loginMsg').textContent='Ingresando…';
-    $('#loginMsg').textContent='';const r=await api('/api/login',{
+    $('#loginMsg').textContent='Verificando acceso…';
+    const r=await api('/api/login',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username:$('#loginUser').value,password:$('#loginPass').value})
+      body:JSON.stringify({username:$('#loginUser').value,password:$('#loginPass').value}),
+      timeoutMs:90000
     });
+    $('#loginMsg').textContent='Acceso correcto. Abriendo…';
     await enter(r.user);
     $('#loginMsg').textContent='';
     if(r.must_change_password)showForcedPasswordChange();
   }catch(e){
     $('#loginMsg').textContent=e.message;
+  }finally{
+    if(btn)btn.disabled=false;
   }
 };
 

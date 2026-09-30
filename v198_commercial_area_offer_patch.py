@@ -226,6 +226,8 @@ def install(m):
   let offerRequest=0;
   let summaryLoadKey='';
   let summaryLoadBusy=false;
+  let summaryObserver=null;
+  let summaryObservedNode=null;
 
   const nativeFetch=window.fetch.bind(window);
   window.fetch=function(input,init){
@@ -463,6 +465,27 @@ def install(m):
     }
   }
 
+  function armLazySummaryLoad(){
+    const node=q('#v198ChampSummary');
+    if(!node)return;
+    if(summaryObservedNode===node&&summaryObserver)return;
+    try{summaryObserver?.disconnect?.()}catch(_){}
+    summaryObservedNode=node;
+    if('IntersectionObserver' in window){
+      summaryObserver=new IntersectionObserver(entries=>{
+        if(entries.some(x=>x.isIntersecting)){
+          summaryObserver.disconnect();
+          summaryObserver=null;
+          summaryObservedNode=null;
+          loadSummaryData(false);
+        }
+      },{root:null,rootMargin:'420px 0px 420px 0px',threshold:0.01});
+      summaryObserver.observe(node);
+    }else{
+      setTimeout(()=>loadSummaryData(false),900);
+    }
+  }
+
   function wrapModelRenderer(){
     if(typeof window.renderModelRows!=='function'||window.renderModelRows.__v198)return;
     const base=window.renderModelRows;
@@ -544,7 +567,7 @@ def install(m):
     ensureShells();
     wrapModelRenderer();
     renderAllSummaries();
-    setTimeout(()=>loadSummaryData(false),120);
+    armLazySummaryLoad();
     if(activeArea()==='Oferta')setTimeout(renderOfferArea,80);
   }
 
@@ -567,6 +590,8 @@ def install(m):
     if(event.target.matches&&event.target.matches('#store,#week,#section,#catalog,#v161FilterGrid select')){
       summaryLoadKey='';
       delete modelPayloads['80_20'];delete modelPayloads.slow;delete modelPayloads.suggested_zero;delete modelPayloads.__v199summary;delete modelPayloads.__v199error;
+      try{summaryObserver?.disconnect?.()}catch(_){}
+      summaryObserver=null;summaryObservedNode=null;
       setTimeout(setup,180);
       if(activeArea()==='Oferta')setTimeout(renderOfferArea,320);
     }
