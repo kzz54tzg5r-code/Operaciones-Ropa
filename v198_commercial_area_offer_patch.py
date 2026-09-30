@@ -382,8 +382,29 @@ def install(m):
     return (rows||[]).filter(r=>norm(r&&r.section).startsWith(key));
   }
 
+  function renderPrecomputedSummary(id,rows,errorText){
+    const host=q('#'+id);if(!host)return;
+    if(errorText){
+      host.innerHTML='<div class="tablewrap v198-area-summary"><table class="table"><thead><tr><th>Área</th><th>Modelos</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Exist. CEDIS</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th></tr></thead><tbody><tr><td colspan="10">'+esc(errorText)+'</td></tr></tbody></table></div>';
+      return;
+    }
+    if(!rows){
+      renderSummary(id,[],false,'Cargando resumen optimizado…');return;
+    }
+    host.innerHTML='<div class="tablewrap v198-area-summary"><table class="table"><thead><tr><th>Área</th><th>Modelos</th><th>Vta pzas</th><th>Venta $</th><th>Existencia</th><th>Exist. CEDIS</th><th>Sugerido 7</th><th>DDI 7</th><th>Capacidad</th><th>% Ocupación</th></tr></thead><tbody>'+
+      rows.map(r=>'<tr class="'+(Number(r.models||0)?'':'v198-zero')+'"><td class="v198-summary-label">'+esc(r.area)+'</td><td>'+nf(r.models)+'</td><td>'+nf(r.sales_pzas)+'</td><td>'+money(r.sales_value)+'</td><td>'+nf(r.existence)+'</td><td>'+nf(r.cedis)+'</td><td>'+n(r.suggested).toLocaleString('es-MX',{maximumFractionDigits:2})+'</td><td>'+nf(r.ddi)+'</td><td>'+nf(r.capacity)+'</td><td>'+(r.occupancy==null?'N/D':pct(r.occupancy))+'</td></tr>').join('')+
+      '</tbody></table></div>';
+  }
+
   function renderAllSummaries(){
     ensureShells();
+    if(modelPayloads.__v199summary||modelPayloads.__v199error){
+      const s=modelPayloads.__v199summary||{};
+      renderPrecomputedSummary('v198ChampSummary',s['80_20'],modelPayloads.__v199error);
+      renderPrecomputedSummary('v198SlowSummary',s.slow,modelPayloads.__v199error);
+      renderPrecomputedSummary('v198ZeroSummary',s.suggested_zero,modelPayloads.__v199error);
+      return;
+    }
     const champData=modelPayloads['80_20'];
     const slowData=modelPayloads.slow;
     const zeroData=modelPayloads.suggested_zero;
@@ -408,46 +429,37 @@ def install(m):
     const page=q('#page-macro');
     if(!page||!page.classList.contains('active')||!currentWeek())return;
     const key=summaryContextKey();
-    const ready=modelPayloads['80_20']&&modelPayloads.slow&&modelPayloads.suggested_zero;
-    if(!force&&summaryLoadKey===key&&ready)return;
+    if(!force&&summaryLoadKey===key&&modelPayloads.__v199summary)return;
     if(summaryLoadBusy&&summaryLoadKey===key)return;
 
     if(summaryLoadKey!==key||force){
-      delete modelPayloads['80_20'];
-      delete modelPayloads.slow;
-      delete modelPayloads.suggested_zero;
+      delete modelPayloads.__v199summary;
+      delete modelPayloads.__v199error;
       renderAllSummaries();
     }
     summaryLoadKey=key;
     summaryLoadBusy=true;
-
     const section=q('#section')?.value||'Todas';
-    const root='/api/commercial-models-v176?week='+encodeURIComponent(currentWeek())+
+    const url='/api/commercial-model-summaries-v199?week='+encodeURIComponent(currentWeek())+
       '&store='+encodeURIComponent(currentStore())+
       '&section='+encodeURIComponent(section)+
-      '&catalog='+encodeURIComponent(currentCatalog())+
-      '&group_by=section&mode=';
-
+      '&catalog='+encodeURIComponent(currentCatalog());
     try{
-      for(const mode of ['80_20','slow','suggested_zero']){
-        if(key!==summaryContextKey())return;
-        try{
-          const res=await nativeFetch(root+encodeURIComponent(mode),{credentials:'same-origin'});
-          if(!res.ok){
-            let detail='HTTP '+res.status;
-            try{const j=await res.clone().json();detail=j.detail||j.message||detail}catch(_){}
-            throw Error(detail);
-          }
-          const data=await res.json();
-          if(key!==summaryContextKey())return;
-          modelPayloads[mode]=data||{};
-        }catch(e){
-          modelPayloads[mode]={__error:'No fue posible cargar este resumen. '+String(e&&e.message||e)};
-        }
-        renderAllSummaries();
+      const res=await nativeFetch(url,{credentials:'same-origin'});
+      if(!res.ok){
+        let detail='HTTP '+res.status;
+        try{const j=await res.clone().json();detail=j.detail||j.message||detail}catch(_){}
+        throw Error(detail);
       }
+      const data=await res.json();
+      if(key!==summaryContextKey())return;
+      modelPayloads.__v199summary=(data&&data.summaries)||{};
+      delete modelPayloads.__v199error;
+    }catch(e){
+      modelPayloads.__v199error='No fue posible cargar el resumen. '+String(e&&e.message||e);
     }finally{
       if(key===summaryContextKey())summaryLoadBusy=false;
+      renderAllSummaries();
     }
   }
 
@@ -554,7 +566,7 @@ def install(m):
   document.addEventListener('change',event=>{
     if(event.target.matches&&event.target.matches('#store,#week,#section,#catalog,#v161FilterGrid select')){
       summaryLoadKey='';
-      delete modelPayloads['80_20'];delete modelPayloads.slow;delete modelPayloads.suggested_zero;
+      delete modelPayloads['80_20'];delete modelPayloads.slow;delete modelPayloads.suggested_zero;delete modelPayloads.__v199summary;delete modelPayloads.__v199error;
       setTimeout(setup,180);
       if(activeArea()==='Oferta')setTimeout(renderOfferArea,320);
     }
