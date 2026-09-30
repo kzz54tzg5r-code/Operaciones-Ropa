@@ -1,4 +1,6 @@
 import express from "express";
+import multer from "multer";
+import * as XLSX from "xlsx";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -41,6 +43,130 @@ function describeNode(value){
   if(Array.isArray(value)) return {type:"array",length:value.length,sampleKeys:value[0]&&typeof value[0]==="object"?Object.keys(value[0]).slice(0,30):[]};
   if(value&&typeof value==="object") return {type:"object",keys:Object.keys(value).slice(0,60)};
   return {type:typeof value};
+}
+
+
+const labUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 60 * 1024 * 1024 } });
+let labOperationsState = { loaded:false, sourceFile:null, loadedAt:null, rows:[], periods:[], stores:[], sheets:[] };
+
+function labNorm(v){
+  return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/[^a-z0-9]+/g," ");
+}
+function labNum(v){
+  if(typeof v==="number" && Number.isFinite(v)) return v;
+  const n=Number(String(v??"").replace(/,/g,"").replace(/[^0-9.-]/g,""));
+  return Number.isFinite(n)?n:0;
+}
+function labPick(row,aliases){
+  const map={};
+  for(const [k,v] of Object.entries(row||{})) map[labNorm(k)]=v;
+  for(const a of aliases){
+    const k=labNorm(a);
+    if(Object.prototype.hasOwnProperty.call(map,k)) return map[k];
+  }
+  return null;
+}
+function labDate(v){
+  if(v instanceof Date && !isNaN(v)) return v;
+  if(typeof v==="number"){
+    const d=XLSX.SSF.parse_date_code(v);
+    if(d) return new Date(Date.UTC(d.y,d.m-1,d.d));
+  }
+  const t=String(v??"").trim();
+  if(!t) return null;
+  const d=new Date(t);
+  return isNaN(d)?null:d;
+}
+function labIsoWeek(d){
+  const x=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+  const day=x.getUTCDay()||7;
+  x.setUTCDate(x.getUTCDate()+4-day);
+  const y0=new Date(Date.UTC(x.getUTCFullYear(),0,1));
+  const w=Math.ceil((((x-y0)/86400000)+1)/7);
+  return x.getUTCFullYear()+"-W"+String(w).padStart(2,"0");
+}
+function parseLabWorkbook(buffer,filename){
+  const wb=XLSX.read(buffer,{type:"buffer",cellDates:true});
+  const sheets=wb.SheetNames.filter(n=>{
+    const x=labNorm(n);
+    return x.startsWith("resultados productividad")||x.startsWith("resultados de productividad");
+  });
+  if(!sheets.length) throw new Error("No encontré una hoja Resultados de productividad.");
+  const out=[];
+  for(const sn of sheets){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:null,raw:true});
+    for(const r of rows){
+      const store=String(labPick(r,["Tienda","Sucursal"])??"").trim();
+      const name=String(labPick(r,["Nombre","Usuario","Colaborador"])??"").trim();
+      const occurrence=String(labPick(r,["Ocurrencia","Occurrence"])??"").trim();
+      const date=labDate(labPick(r,["Fecha"]));
+      const activity=String(labPick(r,["Actividad Realizada","Actividad","Proceso"])??"").trim();
+      const pieces=labNum(labPick(r,["Número de Piezas","Numero de Piezas","Piezas","Pzs"]));
+      let dev=labNum(labPick(r,["Dev_Pzs","Dev Pzs","Devoluciones","Devolucion Pzs"]));
+      let muertos=labNum(labPick(r,["Muertos"]));
+      let cajas=labNum(labPick(r,["Cajas"]));
+      let probador=labNum(labPick(r,["Probado","Probador","Aduana"]));
+      let habilitado=labNum(labPick(r,["Habilitado","Acondicionado"]));
+      let ubicado=labNum(labPick(r,["Ubicado"]));
+      const recorridos=labNum(labPick(r,["RECORRIDOS","Recorridos"]));
+      const a=labNorm(activity);
+      if(pieces){
+        if(!dev && (a.includes("dev")||a.includes("devol"))) dev=pieces;
+        else if(!muertos && a.includes("muerto")) muertos=pieces;
+        else if(!cajas && a.includes("caja")) cajas=pieces;
+        else if(!probador && (a.includes("probador")||a.includes("probado")||a.includes("aduana"))) probador=pieces;
+        else if(!habilitado && (a.includes("habilit")||a.includes("acondicion"))) habilitado=pieces;
+        else if(!ubicado && a.includes("ubicad")) ubicado=pieces;
+      }
+      if(!store && !name && !date && !(dev||muertos||cajas||probador||habilitado||ubicado||recorridos)) continue;
+      out.push({
+        store,name,occurrence,
+        date:date?date.toISOString().slice(0,10):"",
+        week:date?labIsoWeek(date):"",
+        activity,dev,muertos,cajas,probador,habilitado,ubicado,recorridos
+      });
+    }
+  }
+  if(!out.length) throw new Error("Las hojas operativas no contienen registros utilizables.");
+  return {
+    loaded:true,
+    sourceFile:filename,
+    loadedAt:new Date().toISOString(),
+    rows:out,
+    periods:[...new Set(out.map(r=>r.week).filter(Boolean))].sort(),
+    stores:[...new Set(out.map(r=>r.store).filter(Boolean))].sort(),
+    sheets
+  };
+}
+function labFilter(rows,store,period){
+  let x=rows||[];
+  if(store&&store!=="Compañía") x=x.filter(r=>labNorm(r.store)===labNorm(store));
+  if(period&&period!=="all") x=x.filter(r=>r.week===period);
+  return x;
+}
+function labSummary(rows){
+  const sum=k=>rows.reduce((a,r)=>a+labNum(r[k]),0);
+  const dev=sum("dev"),muertos=sum("muertos"),cajas=sum("cajas"),probador=sum("probador"),habilitado=sum("habilitado"),ubicado=sum("ubicado");
+  const ingresos=dev+muertos+cajas+probador;
+  const recSeen=new Set();
+  let recorridos=0;
+  for(const r of rows){
+    const key=r.occurrence?String(r.occurrence):[r.store,r.date,r.activity,r.recorridos].join("|");
+    if(r.recorridos && !recSeen.has(key)){recorridos+=r.recorridos;recSeen.add(key);}
+  }
+  const personDays=new Set(rows.filter(r=>r.name&&r.date).map(r=>labNorm(r.name)+"|"+r.date)).size;
+  const processed=dev+muertos+cajas+probador+habilitado+ubicado;
+  return {
+    ingresos,dev,muertos,cajas,probador,habilitado,ubicado,
+    pendienteAcondicionar:Math.max(ingresos-habilitado,0),
+    pendienteUbicar:Math.max(habilitado-ubicado,0),
+    pctHabilitadoIngresos:ingresos?habilitado/ingresos*100:0,
+    pctUbicadoHabilitado:habilitado?ubicado/habilitado*100:0,
+    pctUbicadoIngresos:ingresos?ubicado/ingresos*100:0,
+    recorridos,
+    productivity:personDays?processed/personDays:0,
+    personDays,processed,rows:rows.length
+  };
 }
 
 const demoData = {
@@ -114,6 +240,50 @@ app.get("/api/lab/snapshot/inspect",async(_req,res)=>{
     else if(Array.isArray(data)) out.first=data.length?describeNode(data[0]):null;
     res.json({ok:true,mode:"read-only-copy",productionTouched:false,loadedAt:s.loadedAt,inspection:out});
   }catch(e){res.status(502).json({ok:false,mode:"read-only-copy",productionTouched:false,error:String(e?.message||e)});}
+});
+
+
+app.get("/api/lab/operations/status",(_req,res)=>{
+  const st=labOperationsState;
+  res.json({
+    ok:true,productionTouched:false,loaded:st.loaded,sourceFile:st.sourceFile,
+    loadedAt:st.loadedAt,periods:st.periods,stores:st.stores,sheets:st.sheets,rowCount:st.rows.length
+  });
+});
+
+app.post("/api/lab/operations/upload",labUpload.single("file"),(req,res)=>{
+  try{
+    if(!req.file) return res.status(400).json({ok:false,error:"Selecciona un archivo Excel."});
+    labOperationsState=parseLabWorkbook(req.file.buffer,req.file.originalname);
+    const latest=labOperationsState.periods.at(-1)||"all";
+    res.json({
+      ok:true,productionTouched:false,sourceFile:labOperationsState.sourceFile,
+      loadedAt:labOperationsState.loadedAt,sheets:labOperationsState.sheets,
+      stores:labOperationsState.stores,periods:labOperationsState.periods,latestPeriod:latest,
+      summary:labSummary(labFilter(labOperationsState.rows,"Compañía",latest))
+    });
+  }catch(e){
+    res.status(400).json({ok:false,productionTouched:false,error:String(e?.message||e)});
+  }
+});
+
+app.get("/api/lab/operations/summary",(req,res)=>{
+  if(!labOperationsState.loaded){
+    return res.status(404).json({ok:false,productionTouched:false,error:"No hay copia operativa cargada en el laboratorio."});
+  }
+  const period=String(req.query.period||labOperationsState.periods.at(-1)||"all");
+  const store=String(req.query.store||"Compañía");
+  const rows=labFilter(labOperationsState.rows,store,period);
+  const byStore={};
+  for(const st of labOperationsState.stores){
+    const sr=labFilter(labOperationsState.rows,st,period);
+    if(sr.length) byStore[st]=labSummary(sr);
+  }
+  res.json({
+    ok:true,productionTouched:false,sourceFile:labOperationsState.sourceFile,
+    loadedAt:labOperationsState.loadedAt,period,store,periods:labOperationsState.periods,
+    stores:labOperationsState.stores,summary:labSummary(rows),byStore
+  });
 });
 
 app.post("/api/chat", async (req, res) => {
