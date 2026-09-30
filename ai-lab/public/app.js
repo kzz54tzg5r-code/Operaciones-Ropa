@@ -67,3 +67,32 @@ async function ask(q){
 }
 form.addEventListener("submit",e=>{e.preventDefault();ask(input.value)});
 document.querySelectorAll("[data-q]").forEach(b=>b.addEventListener("click",()=>ask(b.dataset.q)));
+
+async function snapshotStatus(){
+  const badge=document.getElementById("snapshotBadge");
+  const phase=document.getElementById("snapshotPhaseText");
+  if(!badge||!phase) return;
+  try{
+    const r=await fetch("/api/lab/snapshot/status");
+    const j=await r.json();
+    if(!r.ok||!j.ok) throw new Error(j.error||"No disponible");
+    badge.textContent="Solo lectura · activa";
+    badge.classList.add("ok");
+    phase.textContent="Fuente aislada disponible";
+    document.getElementById("snapshotSource").textContent="Snapshot independiente";
+    document.getElementById("snapshotUpdated").textContent=j.manifestUpdatedAt?new Date(j.manifestUpdatedAt).toLocaleString("es-MX"):"Sin fecha";
+    document.getElementById("snapshotStores").textContent=(j.stores||[]).length+" tiendas";
+    document.getElementById("snapshotFiles").textContent=(j.capacities||0)+(j.pdfs||0)+(j.sales||0)+" fuentes";
+    document.getElementById("snapshotNote").textContent="La copia se consulta en modo solo lectura. Producción no recibe escrituras ni modificaciones desde este laboratorio.";
+  }catch(e){
+    badge.textContent="Fuente no disponible";
+    badge.classList.add("warn");
+    phase.textContent="Esperando fuente aislada";
+    document.getElementById("snapshotSource").textContent="No conectada";
+    document.getElementById("snapshotUpdated").textContent="—";
+    document.getElementById("snapshotStores").textContent="—";
+    document.getElementById("snapshotFiles").textContent="—";
+    document.getElementById("snapshotNote").textContent="La interfaz está lista; falta que la copia aislada responda para comenzar a alimentar los reportes.";
+  }
+}
+snapshotStatus();
