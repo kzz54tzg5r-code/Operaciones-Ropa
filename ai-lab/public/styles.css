@@ -219,3 +219,22 @@ td{font-size:10.5px;padding:10px 11px}
   .kpi span{font-size:8.5px}
   .section-card,.panel{padding:14px}
 }
+
+
+/* ===== V5 · Fase 2 · Copia de datos solo lectura ===== */
+.roadmap .done{border-color:#B7E7D6;background:#F6FFFB}
+.roadmap .done b{color:#0E9F6E}
+.roadmap .current{border-color:#BBD9F7;background:#F3F9FF;box-shadow:inset 0 0 0 1px rgba(13,127,244,.05)}
+.roadmap .current b{color:#0D7FF4}
+.snapshot-card{margin-top:16px;padding:18px 20px;border:1px solid var(--or-border);border-radius:18px;background:#fff;box-shadow:0 1px 2px rgba(15,35,60,.03)}
+.snapshot-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.snapshot-head h3{margin:5px 0 0;color:var(--or-text);font-size:18px}
+.snapshot-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.snapshot-grid>div{padding:13px 14px;background:#F8FAFC;border:1px solid var(--or-border);border-radius:13px}
+.snapshot-grid small{display:block;color:var(--or-text-2);font-size:9px;margin-bottom:7px}
+.snapshot-grid b{color:var(--or-text);font-size:12px;line-height:1.35}
+.snapshot-card>p{margin:12px 2px 0;color:var(--or-text-2);font-size:11px;line-height:1.45}
+#snapshotBadge.ok{background:#ECFDF5;color:#0E9F6E;border-color:#B7E7D6}
+#snapshotBadge.warn{background:#FFF7E8;color:#B96500;border-color:#F2D6A2}
+@media(max-width:900px){.snapshot-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.snapshot-grid{grid-template-columns:1fr}}
