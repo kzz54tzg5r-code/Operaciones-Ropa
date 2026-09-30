@@ -435,9 +435,15 @@ def install(m):
   text-align:center!important;
 }
 #loginView .login-logo-v15{width:72px!important;height:72px!important;object-fit:contain!important;margin:0 auto 10px!important;display:block!important}
-#loginView .login-brand-v15{font-size:22px!important;font-weight:950!important;color:#123b73!important;letter-spacing:-.02em!important}
-#loginView .login-sub-v15{font-size:12px!important;color:#6b7c93!important;margin:5px 0 20px!important;font-weight:700!important}
+#loginView .login-brand-v15{font-size:0!important;font-weight:950!important;color:#123b73!important;letter-spacing:-.02em!important}
+#loginView .login-brand-v15::after{content:"Operaciones Ropa";font-size:22px!important}
+#loginView .login-sub-v15{font-size:0!important;color:#6b7c93!important;margin:5px 0 20px!important;font-weight:700!important}
+#loginView .login-sub-v15::after{content:"Inicia sesión para continuar";font-size:12px!important}
 #loginView .login-form-v15{display:grid!important;gap:11px!important}
+#loginView .login-form-v15.hidden,
+#loginView #ownerSetup.hidden,
+#loginView #normalLogin.hidden,
+#loginView #recoveryPanel.hidden{display:none!important}
 #loginView .login-field-v15{position:relative!important;display:flex!important;align-items:center!important;min-height:52px!important;background:#fff!important;border:1px solid #cfdbea!important;border-radius:12px!important;overflow:hidden!important}
 #loginView .login-field-v15:focus-within{border-color:#1769e8!important;box-shadow:0 0 0 3px rgba(23,105,232,.11)!important}
 #loginView .login-icon-v15{width:48px!important;display:grid!important;place-items:center!important;font-size:17px!important}
