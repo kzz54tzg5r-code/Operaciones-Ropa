@@ -43,8 +43,8 @@
         <div class="shield">✓<span>Aislado</span></div>
       </div>
       <div class="cards home-cards">
-        <article data-open="cambios"><span>REPORTE 01</span><h3>Cambios y Muertos</h3><p>Centro Operativo, conversión, recuperación, productividad, recorridos, score y alertas.</p><button>Entrar →</button></article>
-        <article data-open="operaciones"><span>REPORTE 02</span><h3>Operaciones</h3><p>Macro compañía, ventas, 80/20, lentos, sugerido 0–1, Sell Through, ubicación y checklist.</p><button>Entrar →</button></article>
+        <article data-open="cambios"><span>REPORTE 01</span><h3>Cambios y Muertos</h3><p>Resumen, conversión, recuperación, productividad y tiendas.</p><button>Entrar →</button></article>
+        <article data-open="operaciones"><span>REPORTE 02</span><h3>Operaciones</h3><p>Resumen, ingresos, habilitado, ubicado, recorridos y productividad.</p><button>Entrar →</button></article>
         <article data-open="ia"><span>IA</span><h3>Asistente IA</h3><p>Consulta operacional en lenguaje natural. Sigue en modo demo hasta conectar una clave API.</p><button>Probar →</button></article>
         <article data-open="usuarios"><span>ACL</span><h3>Usuarios y roles</h3><p>Vista de Super Admin, Administrador, Director, Tienda y colaboradores.</p><button>Ver roles →</button></article>
       </div>
@@ -57,20 +57,15 @@
 
     <section id="cambios" class="view report-view">
       <div class="report-heading">
-        <div><span class="eyebrow">REPORTE 01</span><h2>Cambios y Muertos</h2><p>Recuperación, recolección, conversión y seguimiento operativo.</p></div>
+        <div><span class="eyebrow">REPORTE 01</span><h2>Cambios y Muertos</h2><p>Recuperación de mercancía, conversión, productividad y comparativo por tienda.</p></div>
         <span class="pill">Demo aislada</span>
       </div>
       <div class="report-tabs" data-group="cambios">
-        <button class="active" data-tab="cy-centro">Centro Operativo</button>
+        <button class="active" data-tab="cy-resumen">Resumen</button>
         <button data-tab="cy-conversion">Conversión</button>
-        <button data-tab="cy-recuperacion">Recuperación $</button>
-        <button data-tab="cy-tienda">Recuperación por Tienda</button>
+        <button data-tab="cy-recuperacion">Recuperación</button>
         <button data-tab="cy-productividad">Productividad</button>
-        <button data-tab="cy-recorridos">Recorridos</button>
-        <button data-tab="cy-score">Score</button>
-        <button data-tab="cy-alertas">Alertas</button>
-        <button data-tab="cy-carga">Carga de datos</button>
-        <button data-tab="cy-metas">Metas y tiendas</button>
+        <button data-tab="cy-tiendas">Tiendas</button>
       </div>
       <div class="filters">
         <label>Periodo<select><option>Semana actual</option><option>Semana anterior</option></select></label>
@@ -78,82 +73,63 @@
         <button class="filter-action">Actualizar</button>
       </div>
 
-      <div class="tab-panel active" id="cy-centro">
+      <div class="tab-panel active" id="cy-resumen">
         <div class="kpi-grid">
+          <div class="kpi"><small>Ingresos</small><strong>—</strong><span>Total de piezas</span></div>
           <div class="kpi"><small>Muertos</small><strong>—</strong><span>Recolección</span></div>
-          <div class="kpi"><small>Probador</small><strong>—</strong><span>Recolección</span></div>
-          <div class="kpi"><small>Cajas</small><strong>—</strong><span>Recolección</span></div>
-          <div class="kpi"><small>Piezas recolectadas</small><strong>—</strong><span>Total</span></div>
-          <div class="kpi"><small>Recorridos</small><strong>—</strong><span>Meta 47 / semana</span></div>
-          <div class="kpi"><small>Acondicionado</small><strong>—</strong><span>% de ingreso</span></div>
-          <div class="kpi"><small>Ubicado</small><strong>—</strong><span>% acondicionado</span></div>
-          <div class="kpi"><small>Pend. acondicionar</small><strong>—</strong><span>Recolectadas - acondicionado</span></div>
-          <div class="kpi"><small>Pend. ubicar</small><strong>—</strong><span>Acondicionado - ubicado</span></div>
-          <div class="kpi"><small>Productividad</small><strong>—</strong><span>Meta 784 pzas/día</span></div>
+          <div class="kpi"><small>Habilitado</small><strong>—</strong><span>Acondicionado</span></div>
+          <div class="kpi"><small>Ubicado</small><strong>—</strong><span>Piezas ubicadas</span></div>
+          <div class="kpi"><small>Pendiente</small><strong>—</strong><span>Por ubicar</span></div>
         </div>
         <div class="two-col">
-          <div class="panel"><div class="panel-title"><b>Avance operativo</b><span>Demo</span></div><div class="progress-list"><div><label>Ingreso → Acondicionado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Acondicionado → Ubicado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ingreso → Ubicado <b>—%</b></label><i><em style="width:0%"></em></i></div></div></div>
-          <div class="panel"><div class="panel-title"><b>Estado de fuente</b><span class="tag">Sin datos</span></div><p class="muted">La estructura está replicada. Los indicadores se llenarán desde una copia de solo lectura, no desde la base productiva.</p></div>
+          <div class="panel"><div class="panel-title"><b>Avance de recuperación</b><span>Demo</span></div><div class="progress-list"><div><label>Habilitado / Ingresos <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ubicado / Habilitado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ubicado / Ingresos <b>—%</b></label><i><em style="width:0%"></em></i></div></div></div>
+          <div class="panel"><div class="panel-title"><b>Fuente del laboratorio</b><span class="tag">Sin datos</span></div><p class="muted">La interfaz está separada de Producción. Los datos se conectarán después mediante una copia de solo lectura.</p></div>
         </div>
       </div>
-      <div class="tab-panel" id="cy-conversion"><div class="section-card"><h3>Conversión Dev → Venta</h3><p>Misma semana ISO, comparativo por tienda y detalle de conversión.</p><div class="placeholder-chart"><span>Gráfica de conversión</span></div></div></div>
-      <div class="tab-panel" id="cy-recuperacion"><div class="section-card"><h3>Recuperación económica</h3><p>Venta recuperada vs costo de devolución.</p><div class="metric-row"><div><small>Venta recuperada</small><b>$—</b></div><div><small>Costo devolución</small><b>$—</b></div><div><small>Recuperación</small><b>—%</b></div></div></div></div>
-      <div class="tab-panel" id="cy-tienda"><div class="section-card"><h3>Recuperación por tienda</h3><div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Venta recuperada</th><th>Costo devolución</th><th>Recuperación</th><th>Variación</th></tr></thead><tbody id="recoveryRows"></tbody></table></div></div></div>
-      <div class="tab-panel" id="cy-productividad"><div class="section-card"><h3>Productividad por colaborador</h3><p>Meta de referencia: 784 piezas por día.</p><div class="tablewrap"><table><thead><tr><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Días</th><th>Productividad</th><th>% Meta</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Pendiente de conectar copia de datos</td></tr></tbody></table></div></div></div>
-      <div class="tab-panel" id="cy-recorridos"><div class="section-card"><h3>Cumplimiento de recorridos</h3><p>Meta semanal de referencia: 47 recorridos.</p><div class="placeholder-chart"><span>Comparativo por tienda</span></div></div></div>
-      <div class="tab-panel" id="cy-score"><div class="section-card"><h3>Score integral</h3><div class="formula">40% Conversión <b>+</b> 40% Productividad <b>+</b> 20% Recorridos</div><div class="placeholder-chart"><span>Ranking sin orden evaluativo en modo demo</span></div></div></div>
-      <div class="tab-panel" id="cy-alertas"><div class="section-card"><h3>Alertas inteligentes</h3><div class="alert-list"><div>○ Tiendas con bajo cumplimiento de ubicación</div><div>○ Caídas de productividad vs periodo anterior</div><div>○ Recorridos por debajo de meta</div><div>○ Diferencias entre ingreso, acondicionado y ubicado</div></div></div></div>
-      <div class="tab-panel" id="cy-carga"><div class="section-card"><h3>Carga de datos · laboratorio</h3><div class="upload-box">Arrastra aquí una copia de prueba del Excel<div><button disabled>Seleccionar archivo</button></div><small>Deshabilitado hasta crear almacenamiento propio del laboratorio.</small></div></div></div>
-      <div class="tab-panel" id="cy-metas"><div class="section-card"><h3>Metas y tiendas</h3><div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Activa</th><th>Proyecto</th><th>Productividad</th><th>Recorridos</th></tr></thead><tbody id="storeGoalRows"></tbody></table></div></div></div>
+      <div class="tab-panel" id="cy-conversion"><div class="section-card"><h3>Conversión Dev → Venta</h3><p>Conversión de mercancía devuelta a venta dentro de la misma semana ISO.</p><div class="placeholder-chart"><span>Gráfica de conversión por tienda</span></div></div></div>
+      <div class="tab-panel" id="cy-recuperacion"><div class="section-card"><h3>Recuperación</h3><div class="metric-row"><div><small>Venta recuperada</small><b>$—</b></div><div><small>Costo devolución</small><b>$—</b></div><div><small>Recuperación</small><b>—%</b></div></div><div class="placeholder-chart"><span>Recuperación por periodo</span></div></div></div>
+      <div class="tab-panel" id="cy-productividad"><div class="section-card"><h3>Productividad</h3><p>Seguimiento por colaborador y tienda.</p><div class="tablewrap"><table><thead><tr><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Días</th><th>Productividad</th><th>% Meta</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
+      <div class="tab-panel" id="cy-tiendas"><div class="section-card"><h3>Tiendas</h3><div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Ingresos</th><th>Habilitado</th><th>Ubicado</th><th>Conversión</th><th>Recuperación</th></tr></thead><tbody id="recoveryRows"></tbody></table></div></div></div>
     </section>
 
     <section id="operaciones" class="view report-view">
       <div class="report-heading">
-        <div><span class="eyebrow">REPORTE 02</span><h2>Operaciones</h2><p>Venta, sugerido, utilidad, inventario, capacidades y ejecución comercial.</p></div>
+        <div><span class="eyebrow">REPORTE 02</span><h2>Operaciones</h2><p>Seguimiento de ingresos, habilitado, ubicado, recorridos y productividad.</p></div>
         <span class="pill">Demo aislada</span>
       </div>
       <div class="report-tabs" data-group="operaciones">
-        <button class="active" data-tab="op-macro">Macro Compañía</button>
-        <button data-tab="op-ventas">Ventas</button>
-        <button data-tab="op-8020">80/20</button>
-        <button data-tab="op-lentos">Modelos Lentos</button>
-        <button data-tab="op-sug">Sugerido 0–1</button>
-        <button data-tab="op-sell">Sell Through</button>
-        <button data-tab="op-areas">Ubicación / Área</button>
-        <button data-tab="op-rubro">Sección / Rubro</button>
-        <button data-tab="op-check">Checklist Lencería</button>
-        <button data-tab="op-carga">Carga de datos</button>
+        <button class="active" data-tab="op-resumen">Resumen</button>
+        <button data-tab="op-ingresos">Ingresos</button>
+        <button data-tab="op-habilitado">Habilitado</button>
+        <button data-tab="op-ubicado">Ubicado</button>
+        <button data-tab="op-recorridos">Recorridos</button>
+        <button data-tab="op-productividad">Productividad</button>
       </div>
       <div class="filters">
-        <label>Periodo<select><option>Septiembre 2026</option><option>Agosto 2026</option></select></label>
+        <label>Periodo<select><option>Semana actual</option><option>Semana anterior</option></select></label>
         <label>Tienda<select><option>Compañía</option><option>Iztapalapa</option><option>Vallejo</option><option>Ecatepec</option><option>Toluca</option></select></label>
-        <label>Sección<select><option>Todas</option><option>Dama</option><option>Caballero</option><option>Infantil</option></select></label>
         <button class="filter-action">Actualizar</button>
       </div>
-      <div class="tab-panel active" id="op-macro">
-        <div class="kpi-grid five">
-          <div class="kpi"><small>Existencia total</small><strong>—</strong><span>Piso + bodega + CEDIS</span></div>
-          <div class="kpi"><small>Sugerido compañía</small><strong>—</strong><span>Promedio ponderado</span></div>
-          <div class="kpi"><small>DDI compañía</small><strong>—</strong><span>Días inventario</span></div>
-          <div class="kpi"><small>Capacidad</small><strong>—</strong><span>Curva</span></div>
-          <div class="kpi"><small>Ocupación</small><strong>—%</strong><span>Capacidad utilizada</span></div>
+
+      <div class="tab-panel active" id="op-resumen">
+        <div class="kpi-grid">
+          <div class="kpi"><small>Ingresos</small><strong>—</strong><span>Sistema / Dev / Muertos / Cajas</span></div>
+          <div class="kpi"><small>Habilitado</small><strong>—</strong><span>Acondicionado</span></div>
+          <div class="kpi"><small>Ubicado</small><strong>—</strong><span>Mercancía ubicada</span></div>
+          <div class="kpi"><small>Recorridos</small><strong>—</strong><span>Seguimiento semanal</span></div>
+          <div class="kpi"><small>Productividad</small><strong>—</strong><span>Piezas por colaborador</span></div>
         </div>
-        <div class="section-card"><div class="panel-title"><b>Macro sección</b><span>Compañía</span></div><div class="area-cards"><div>Dama<b>—</b></div><div>Caballero<b>—</b></div><div>Infantil<b>—</b></div></div></div>
-        <div class="section-card"><div class="panel-title"><b>Macro ubicación</b><span>Por área</span></div><div class="area-cards five"><div>Colgado<b>—</b></div><div>Doblado<b>—</b></div><div>Jeans<b>—</b></div><div>Lencería<b>—</b></div><div>Oferta<b>—</b></div></div></div>
+        <div class="section-card"><div class="panel-title"><b>Avance operativo</b><span>Compañía</span></div><div class="progress-list"><div><label>Habilitado / Ingresos <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ubicado / Habilitado <b>—%</b></label><i><em style="width:0%"></em></i></div><div><label>Ubicado / Ingresos <b>—%</b></label><i><em style="width:0%"></em></i></div></div></div>
       </div>
-      <div class="tab-panel" id="op-ventas"><div class="section-card"><h3>Ventas por mes / tienda</h3><div class="segmented"><button class="active">Pesos</button><button>Piezas</button></div><div class="placeholder-chart"><span>Gráfica mensual / tiendas</span></div><div class="tablewrap"><table><thead><tr><th>Mes</th><th>Venta 2026</th><th>Venta 2025</th><th>% Meta</th><th>% vs 2025</th><th>+ Detalle tienda</th></tr></thead><tbody id="monthRows"></tbody></table></div></div></div>
-      <div class="tab-panel" id="op-8020"><div class="section-card"><h3>Modelos 80/20</h3><div class="area-filter"><button>Colgado</button><button>Doblado</button><button>Jeans</button><button>Lencería</button><button>Oferta</button></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Sección</th><th>Área</th><th>Venta acum pzs</th><th>Existencia</th><th>CEDIS</th><th>+ Detalle 80/20</th></tr></thead><tbody><tr><td colspan="7" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
-      <div class="tab-panel" id="op-lentos"><div class="section-card"><h3>Modelos Lentos</h3><div class="area-filter"><button>Colgado</button><button>Doblado</button><button>Jeans</button><button>Lencería</button><button>Oferta</button></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Tienda</th><th>Área</th><th>Sugerido</th><th>Ult. entrada</th><th>Semanas</th><th>+ Detalle lentos</th></tr></thead><tbody><tr><td colspan="7" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
-      <div class="tab-panel" id="op-sug"><div class="section-card"><h3>Modelos Sugerido 0–1</h3><div class="area-filter"><button>Colgado</button><button>Doblado</button><button>Jeans</button><button>Lencería</button><button>Oferta</button></div><div class="tablewrap"><table><thead><tr><th>ID</th><th>Sección</th><th>Área</th><th>Sugerido</th><th>Existencia</th><th>Ult. entrada</th><th>+ Detalle</th></tr></thead><tbody><tr><td colspan="7" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
-      <div class="tab-panel" id="op-sell"><div class="section-card"><h3>Sell Through · Catálogo vigente</h3><div class="metric-row"><div><small>Venta anual pzs</small><b>—</b></div><div><small>Existencia piso+bodega</small><b>—</b></div><div><small>CEDIS</small><b>—</b></div><div><small>Tránsito</small><b>—</b></div><div><small>Sell Through</small><b>—%</b></div></div><p class="muted">Compañía: considera CEDIS. Tienda: muestra CEDIS pero no lo suma al cálculo.</p><div class="tablewrap"><table><thead><tr><th>ID</th><th>Venta acum pzs</th><th>Existencia</th><th>CEDIS</th><th>Tránsito</th><th>Sell Through</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
-      <div class="tab-panel" id="op-areas"><div class="section-card"><h3>Ubicación / Área</h3><div class="area-cards five"><div>Colgado<b>Pasillos</b></div><div>Doblado<b>Mesas</b></div><div>Jeans<b>Mesas jeans</b></div><div>Lencería<b>Familias</b></div><div>Oferta<b>Estatus comercial</b></div></div><div class="placeholder-chart"><span>Tabla por ubicación con + detalle</span></div></div></div>
-      <div class="tab-panel" id="op-rubro"><div class="section-card"><h3>Sección / Rubro</h3><div class="area-cards"><div>Dama<b>—</b></div><div>Caballero<b>—</b></div><div>Infantil<b>—</b></div></div><div class="placeholder-chart"><span>Ranking por rubro</span></div></div></div>
-      <div class="tab-panel" id="op-check"><div class="section-card"><h3>Checklist Lencería</h3><div class="tablewrap"><table><thead><tr><th>Familia</th><th>Modelo</th><th>Está en ubicación</th><th>Cenefa correcta</th><th>Todas las tallas</th><th>Exhibido</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Captura demo pendiente de datos</td></tr></tbody></table></div><div class="metric-row"><div><small>% Checklist</small><b>—%</b></div><div><small>% Evidencias</small><b>—%</b></div><div><small>Score</small><b>—</b></div></div></div></div>
-      <div class="tab-panel" id="op-carga"><div class="section-card"><h3>Carga de datos · laboratorio</h3><div class="upload-grid"><div class="upload-box"><b>Capacidades / Existencias</b><small>Fuente principal</small><button disabled>Seleccionar Excel</button></div><div class="upload-box"><b>Ventas</b><small>Histórico mensual</small><button disabled>Seleccionar archivo</button></div><div class="upload-box"><b>PDF semanal</b><small>Histórico por tienda</small><button disabled>Seleccionar PDF</button></div></div><p class="muted">Se habilitará cuando creemos almacenamiento aislado del laboratorio.</p></div></div>
+      <div class="tab-panel" id="op-ingresos"><div class="section-card"><h3>Ingresos</h3><div class="area-cards five"><div>Sistema / Dev<b>—</b></div><div>Muertos<b>—</b></div><div>Cajas<b>—</b></div><div>Probador / Aduana<b>—</b></div><div>Total<b>—</b></div></div><div class="placeholder-chart"><span>Ingresos por tienda y día</span></div></div></div>
+      <div class="tab-panel" id="op-habilitado"><div class="section-card"><h3>Habilitado</h3><p>Acondicionamiento de mercancía y avance contra ingresos.</p><div class="metric-row"><div><small>Ingresos</small><b>—</b></div><div><small>Habilitado</small><b>—</b></div><div><small>% Avance</small><b>—%</b></div><div><small>Pendiente</small><b>—</b></div></div><div class="placeholder-chart"><span>Avance de habilitado</span></div></div></div>
+      <div class="tab-panel" id="op-ubicado"><div class="section-card"><h3>Ubicado</h3><p>Seguimiento de mercancía ubicada contra habilitado e ingresos.</p><div class="metric-row"><div><small>Habilitado</small><b>—</b></div><div><small>Ubicado</small><b>—</b></div><div><small>% vs habilitado</small><b>—%</b></div><div><small>% vs ingresos</small><b>—%</b></div></div><div class="placeholder-chart"><span>Ubicado por tienda</span></div></div></div>
+      <div class="tab-panel" id="op-recorridos"><div class="section-card"><h3>Recorridos</h3><p>Cumplimiento de recorridos por tienda y periodo.</p><div class="metric-row"><div><small>Realizados</small><b>—</b></div><div><small>Meta</small><b>47</b></div><div><small>% Cumplimiento</small><b>—%</b></div></div><div class="placeholder-chart"><span>Recorridos por tienda</span></div></div></div>
+      <div class="tab-panel" id="op-productividad"><div class="section-card"><h3>Productividad</h3><p>Productividad operativa por colaborador.</p><div class="metric-row"><div><small>Piezas</small><b>—</b></div><div><small>Colaboradores</small><b>—</b></div><div><small>Productividad</small><b>—</b></div><div><small>Meta</small><b>784</b></div></div><div class="tablewrap"><table><thead><tr><th>Tienda</th><th>Colaborador</th><th>Piezas</th><th>Días</th><th>Productividad</th><th>% Meta</th></tr></thead><tbody><tr><td colspan="6" class="empty-row">Pendiente de conectar datos</td></tr></tbody></table></div></div></div>
     </section>
 
     <section id="ia" class="view">
-      <div class="report-heading"><div><span class="eyebrow">INTELIGENCIA ARTIFICIAL</span><h2>Asistente Operativo</h2><p>Pregunta en lenguaje natural sobre el laboratorio.</p></div><span class="pill" id="aiPill">Modo demo</span></div>
+      <div class="report-heading"><div><span class="eyebrow">INTELIGENCIA ARTIFICIAL</span><h2>Asistente Operativo</h2><p>Pregunta en lenguaje natural sobre los dos reportes del laboratorio.</p></div><span class="pill" id="aiPill">Modo demo</span></div>
       <div class="chat-layout">
         <div class="chat-card"><div class="chat-head"><div class="ai-dot">✦</div><div><h3>Arqui · Operaciones Ropa</h3><p id="aiState">Modo laboratorio</p></div></div><div id="messages" class="messages"><div class="msg bot">Hola. Este asistente está dentro del laboratorio aislado. Puedo ayudarte a probar preguntas sobre Cambios y Muertos, Operaciones, productividad, recorridos, inventario y Sell Through.</div></div><form id="chatForm"><input id="chatInput" autocomplete="off" placeholder="Ej. ¿qué información mostrarías para Vallejo?" /><button>Enviar</button></form></div>
         <aside class="suggestions"><h3>Prueba con</h3><button data-q="¿Qué pestañas tiene Cambios y Muertos?">Pestañas de Cambios y Muertos</button><button data-q="¿Qué pestañas tiene Operaciones?">Pestañas de Operaciones</button><button data-q="¿Cómo analizarías Sell Through?">Analizar Sell Through</button><button data-q="¿Qué métricas de productividad tenemos?">Métricas de productividad</button></aside>
