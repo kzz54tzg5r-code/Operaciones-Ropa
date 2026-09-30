@@ -178,6 +178,7 @@ from pwa_patch import install as _install_pwa_patch
 from v194_mobile_ui_final_patch import install as _install_v194_mobile_ui_final_patch
 from v195_report_navigation_restore_patch import install as _install_v195_report_navigation_restore_patch
 from v196_android_single_finger_scroll_patch import install as _install_v196_android_single_finger_scroll_patch
+from v198_commercial_area_offer_patch import install as _install_v198_commercial_area_offer_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -260,4 +261,5 @@ _install_pwa_patch(web_app)
 _install_v194_mobile_ui_final_patch(web_app)
 _install_v195_report_navigation_restore_patch(web_app)
 _install_v196_android_single_finger_scroll_patch(web_app)
+_install_v198_commercial_area_offer_patch(web_app)
 app = web_app.app
