@@ -2,7 +2,15 @@ import express from "express";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static("public"));
+app.use((req,res,next)=>{
+  if(req.path==="/" || req.path.endsWith(".js") || req.path.endsWith(".css") || req.path.startsWith("/api/")){
+    res.set("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.set("Pragma","no-cache");
+    res.set("Expires","0");
+  }
+  next();
+});
+app.use(express.static("public",{etag:false,lastModified:false,maxAge:0}));
 
 const PORT = process.env.PORT || 10000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
