@@ -18,7 +18,7 @@ from fastapi import Request, HTTPException
 from fastapi.responses import HTMLResponse
 
 MX = ZoneInfo("America/Mexico_City")
-AREAS = ("Doblado", "Colgado", "Jeans", "Lencería")
+AREAS = ("Doblado", "Frontal", "Colgado", "Jeans", "Lencería")
 ACTIVITIES = ("Acondicionado", "Clasificado", "Ubicado")
 PRIVILEGED = ("superadmin", "admin", "director", "consulta")
 
@@ -464,7 +464,7 @@ body[data-v163-module="operation"][data-v204-view="capture"] #operativoPeriodBar
     }
     if(area){
       const old=String(area.value||'Todas');
-      setOptions(area,['Todas','Doblado','Colgado','Jeans','Lencería'],old);
+      setOptions(area,['Todas','Doblado','Frontal','Colgado','Jeans','Lencería'],old);
       area.value=Array.from(area.options).some(o=>o.value===old)?old:'Todas';
       area.closest('.filter')?.classList.remove('hidden');
       const lab=area.closest('.filter')?.querySelector('label');if(lab)lab.textContent='Área';
@@ -499,12 +499,12 @@ body[data-v163-module="operation"][data-v204-view="capture"] #operativoPeriodBar
       let group='';
       if(grouped&&r.store!==lastStore){
         lastStore=r.store;
-        group='<tr class="v204-store-group"><td colspan="10">#'+r.store_rank+' · '+esc(r.store)+'</td></tr>';
+        group='<tr class="v204-store-group"><td colspan="13">#'+r.store_rank+' · '+esc(r.store)+'</td></tr>';
       }
-      return group+'<tr><td><span class="v204-local-rank">#'+r.rank_in_store+'</span></td><td class="strong">'+esc(r.name)+'</td><td>'+esc(r.employee_no||'—')+'</td><td>'+esc(r.store)+'</td><td class="num">'+nf(r.pieces)+'</td><td class="num">'+nf(r.days)+'</td><td class="num"><b>'+nf(r.daily)+'</b></td><td class="num '+tone(r.compliance_pct)+'">'+pct(r.compliance_pct)+'</td><td>'+esc((r.areas||[]).join(', '))+'</td><td>'+esc((r.activities||[]).join(', '))+'</td></tr>';
+      return group+'<tr><td><span class="v204-local-rank">#'+r.rank_in_store+'</span></td><td class="strong">'+esc(r.name)+'</td><td>'+esc(r.employee_no||'—')+'</td><td>'+esc(r.store)+'</td><td>'+esc(r.hire_date||'—')+'</td><td><span class="v204-level">'+esc(r.experience_level||'Sin fecha')+'</span></td><td class="num">'+nf(r.pieces)+'</td><td class="num">'+nf(r.days)+'</td><td class="num"><b>'+nf(r.daily)+'</b></td><td class="num">'+nf(r.target_daily)+'</td><td class="num '+tone(r.compliance_pct)+'">'+pct(r.compliance_pct)+'</td><td>'+esc((r.areas||[]).join(', '))+'</td><td>'+esc((r.activities||[]).join(', '))+'</td></tr>';
     }).join('');
-    return '<div class="v204-tablewrap"><table class="v204-table"><thead><tr><th>Ranking</th><th>Colaborador</th><th>Nómina</th><th>Tienda</th><th class="num">Piezas</th><th class="num">Días</th><th class="num">Pzas/día</th><th class="num">% Meta</th><th>Área</th><th>Actividad</th></tr></thead><tbody>'+
-      (body||'<tr><td colspan="10" class="v204-empty">Sin colaboradores con productividad para el periodo seleccionado.</td></tr>')+
+    return '<div class="v204-tablewrap"><table class="v204-table"><thead><tr><th>Ranking</th><th>Colaborador</th><th>Nómina</th><th>Tienda</th><th>Fecha ingreso</th><th>Nivel</th><th class="num">Piezas</th><th class="num">Días</th><th class="num">Pzas/día</th><th class="num">Estándar prom.</th><th class="num">% Cumpl.</th><th>Área</th><th>Actividad</th></tr></thead><tbody>'+
+      (body||'<tr><td colspan="13" class="v204-empty">Sin colaboradores con productividad para el periodo seleccionado.</td></tr>')+
       '</tbody></table></div>';
   }
   async function renderRanking(){
@@ -514,7 +514,7 @@ body[data-v163-module="operation"][data-v204-view="capture"] #operativoPeriodBar
     host.innerHTML='<div class="infoempty">Calculando ranking de productividad…</div>';
     try{
       await configureRankingFilters();
-      const d=await A('/api/operation-productivity-ranking-v204?'+rankingQuery());
+      const d=await A('/api/operation-productivity-ranking-v210?'+rankingQuery());
       const rows=d.collaborator_ranking||[],stores=d.store_ranking||[];
       const avg=rows.length?rows.reduce((a,r)=>a+n(r.daily),0)/rows.length:0;
       const avgPct=rows.length?rows.reduce((a,r)=>a+n(r.compliance_pct),0)/rows.length:0;
@@ -526,10 +526,10 @@ body[data-v163-module="operation"][data-v204-view="capture"] #operativoPeriodBar
         '<div class="v204-kpi"><small>Cumplimiento prom.</small><b>'+pct(avgPct)+'</b></div>'+
       '</div>';
       if(d.show_store_ranking){
-        html+='<div class="v204-panel"><h3>Ranking de tiendas</h3><div class="v204-note">Ordenado por productividad promedio diaria. '+esc(scope)+' · Meta '+nf(d.target_daily)+' pzas/día.</div>'+storeTable(stores)+'</div>';
+        html+='<div class="v204-panel"><h3>Ranking de tiendas</h3><div class="v204-note">Ordenado por % de cumplimiento contra el estándar asignado por antigüedad. '+esc(scope)+'.</div>'+storeTable(stores)+'</div>';
       }
       html+='<div class="v204-panel"><h3>'+(d.restricted_to_store?'Ranking de colaboradores · '+esc(d.selected_store):'Detalle de colaboradores por ranking de tienda')+'</h3>'+
-        '<div class="v204-note">'+(d.restricted_to_store?'Este perfil sólo puede consultar colaboradores de su propia tienda.':'Primero aparece la tienda según su posición y debajo sus colaboradores ordenados por productividad.')+'</div>'+
+        '<div class="v204-note">'+(d.restricted_to_store?'Este perfil sólo puede consultar colaboradores de su propia tienda.':'Primero aparece la tienda según su cumplimiento y debajo sus colaboradores ordenados contra su estándar individual.')+'</div>'+
         collaboratorTable(rows,!d.restricted_to_store)+'</div>';
       host.innerHTML=html;
     }catch(e){host.innerHTML='<div class="infoempty">No fue posible cargar Productividad: '+esc(e.message||e)+'</div>'}
@@ -562,7 +562,7 @@ body[data-v163-module="operation"][data-v204-view="capture"] #operativoPeriodBar
       host.innerHTML='<div class="v204-capture-card"><div class="v204-capture-head"><div><h3>Registro de productividad</h3><div class="v204-note">La fecha, tienda, colaborador y nómina se asignan automáticamente desde tu sesión.</div></div><div id="v204Timer" class="v204-timer">00:00:00</div></div>'+
         '<div class="v204-auto"><span>'+esc(meta.date)+'</span><span>'+esc(meta.store)+'</span><span>'+esc(meta.employee_name)+'</span><span>Nómina '+esc(meta.employee_no||'—')+'</span></div>'+
         '<div class="v204-form"><div class="v204-field"><label>Actividad</label><select id="v204Activity" '+(timerRecord?'disabled':'')+'>'+['Acondicionado','Clasificado','Ubicado'].map(x=>'<option '+(x===selectedActivity?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
-        '<div class="v204-field"><label>Área</label><select id="v204Area" '+(timerRecord?'disabled':'')+'>'+['Doblado','Colgado','Jeans','Lencería'].map(x=>'<option '+(x===selectedArea?'selected':'')+'>'+x+'</option>').join('')+'</select></div></div>'+
+        '<div class="v204-field"><label>Área</label><select id="v204Area" '+(timerRecord?'disabled':'')+'>'+['Doblado','Frontal','Colgado','Jeans','Lencería'].map(x=>'<option '+(x===selectedArea?'selected':'')+'>'+x+'</option>').join('')+'</select></div></div>'+
         '<div class="v204-field v204-pieces"><label>Piezas</label><input id="v204Pieces" type="number" min="0" inputmode="numeric" value="'+n(timerRecord?.pieces)+'"></div>'+
         '<div class="v204-actions"><button id="v204Start" class="v204-start" '+(timerRecord?'disabled':'')+'>▶ Inicio</button><button id="v204Finish" class="v204-finish" '+(!timerRecord?'disabled':'')+'>■ Fin</button></div><div id="v204Msg" class="v204-msg"></div></div>'+
         '<div class="v204-panel"><h3>Capturas de hoy</h3><div class="v204-note">Registro real de productividad de la sesión.</div>'+
