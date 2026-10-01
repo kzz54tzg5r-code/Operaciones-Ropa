@@ -893,7 +893,13 @@ def install(m):
 
  function bindStandardsTab(){
    const btn=q('#v200OperationTabs [data-v200-op="standards"]');if(!btn)return;
-   btn.textContent='Estándares Operativos';
+   const label=q('.v203-tab-label,.v206-tab-label',btn);
+   if(label){
+     if(label.textContent!=='Estándares Operativos')label.textContent='Estándares Operativos';
+   }else if(btn.textContent!=='Estándares Operativos'){
+     btn.textContent='Estándares Operativos';
+   }
+   btn.title='Estándares Operativos';
    if(btn.dataset.v210Bound==='1')return;
    btn.dataset.v210Bound='1';
    btn.addEventListener('click',e=>{
