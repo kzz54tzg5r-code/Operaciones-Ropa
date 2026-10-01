@@ -336,8 +336,20 @@ body[data-v163-module="operation"] .v201-demo-btn{
       if(btn.dataset.v206Decorated==='1')return;
       const label=cleanLabel(btn);
       const key=String(btn.dataset.opview||btn.dataset.sub||label).trim().toLowerCase();
+      const aliases={
+        'macro':'macro compañía',
+        'accordion':'acordeón comercial',
+        'stores':'tiendas',
+        'sections':'sección / rubro',
+        'areas':'ubicación / área',
+        'lingerie-checklist':'checklist lencería',
+        'more':'más opciones',
+        'analysis-upload':'carga de datos'
+      };
+      const iconKey=aliases[key]||key;
+      const labelKey=String(label||'').trim().toLowerCase();
       btn.dataset.v206Decorated='1';
-      btn.innerHTML='<span class="v206-tab-icon" aria-hidden="true">'+(iconMap[key]||fallback)+'</span><span class="v206-tab-label">'+label+'</span>';
+      btn.innerHTML='<span class="v206-tab-icon" aria-hidden="true">'+(iconMap[iconKey]||iconMap[labelKey]||fallback)+'</span><span class="v206-tab-label">'+label+'</span>';
       btn.title=label;
     });
   }
