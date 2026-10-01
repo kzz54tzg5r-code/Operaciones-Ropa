@@ -24,7 +24,7 @@ def install(m):
     if getattr(m, "_V200_OPERATION_TABS_TIMER", False):
         return
 
-    AREAS = ("Doblado", "Colgado", "Jeans", "Lencería")
+    AREAS = ("Doblado", "Frontal", "Colgado", "Jeans", "Lencería")
     ACTIVITIES = ("Acondicionado", "Clasificado", "Ubicado")
 
     with m.db() as con:
@@ -403,7 +403,7 @@ body[data-v163-module="operation"].v200-operation-no-filter #operativoPeriodBar{
     ['daily','Captura diaria'],
     ['capture','Cargar productividad'],
     ['productivity','Productividad'],
-    ['standards','Estándares'],
+    ['standards','Estándares Operativos'],
   ];
   let activeTimer=null;
   let timerInterval=0;
