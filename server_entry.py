@@ -187,6 +187,7 @@ from v204_operation_productivity_ranking_patch import install as _install_v204_o
 from v205_store_geofence_patch import install as _install_v205_store_geofence_patch
 from v210_operational_standards_tenure_patch import install as _install_v210_operational_standards_tenure_patch
 from v219_share_users_option3_patch import install as _install_v219_share_users_option3_patch
+from v220_operation_tabs_single_line_patch import install as _install_v220_operation_tabs_single_line_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -279,4 +280,5 @@ _install_v204_operation_productivity_ranking_patch(web_app)
 _install_v205_store_geofence_patch(web_app)
 _install_v210_operational_standards_tenure_patch(web_app)
 _install_v219_share_users_option3_patch(web_app)
+_install_v220_operation_tabs_single_line_patch(web_app)
 app = web_app.app
