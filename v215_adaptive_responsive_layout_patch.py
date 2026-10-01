@@ -501,7 +501,7 @@ body[data-v213-module="share"] :is(#operativoNav,#analysisNav,#v200OperationTabs
   window.addEventListener('orientationchange',()=>setTimeout(schedule,120),{passive:true});
   window.addEventListener('pageshow',()=>setTimeout(attach,80),{passive:true});
   document.addEventListener('report-tabs-visibility-changed',()=>setTimeout(schedule,30));
-  console.info('[V215] layout adaptativo por ancho real instalado.');
+  console.info('[V216] layout adaptativo + aislamiento de navegación instalado.');
 })();
 </script>"""
 
@@ -525,7 +525,7 @@ body[data-v213-module="share"] :is(#operativoNav,#analysisNav,#v200OperationTabs
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "X-Operations-UI-Version": "V215-RESPONSIVE",
+                "X-Operations-UI-Version": "V216-RESPONSIVE",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
@@ -533,4 +533,4 @@ body[data-v213-module="share"] :is(#operativoNav,#analysisNav,#v200OperationTabs
             return response
 
     m._V215_ADAPTIVE_RESPONSIVE_LAYOUT = True
-    print("[V215] pestañas una fila + layout adaptativo multidispositivo instalado.", flush=True)
+    print("[V216] pestañas una fila + aislamiento por reporte + responsive multidispositivo instalado.", flush=True)
