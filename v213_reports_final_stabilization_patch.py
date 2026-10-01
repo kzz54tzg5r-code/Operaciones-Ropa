@@ -175,12 +175,11 @@ body[data-v213-module] :is(#operativoNav,#analysisNav,#v200OperationTabs)>button
 }
 
 /* Sólo la iconografía canónica. */
-body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-icon,
-body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-label,
 body[data-v213-module] :is(#operativoNav,#analysisNav) .v166-tab-icon{
   display:none!important;
 }
 body[data-v213-module] :is(#operativoNav,#analysisNav) .v206-tab-icon,
+body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-icon,
 body[data-v213-module="operation"] #v200OperationTabs .v203-tab-icon{
   display:grid!important;
   place-items:center!important;
@@ -200,6 +199,7 @@ body[data-v213-module="operation"] #v200OperationTabs .v203-tab-icon{
   box-shadow:none!important;
 }
 body[data-v213-module] :is(#operativoNav,#analysisNav) .v206-tab-icon svg,
+body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-icon svg,
 body[data-v213-module="operation"] #v200OperationTabs .v203-tab-icon svg{
   display:block!important;
   width:21px!important;
@@ -210,6 +210,7 @@ body[data-v213-module="operation"] #v200OperationTabs .v203-tab-icon svg{
   fill:none!important;
 }
 body[data-v213-module] :is(#operativoNav,#analysisNav) .v206-tab-label,
+body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-label,
 body[data-v213-module="operation"] #v200OperationTabs .v203-tab-label{
   position:static!important;
   display:block!important;
@@ -242,6 +243,8 @@ body[data-v213-module] :is(#operativoNav,#analysisNav,#v200OperationTabs)>button
 }
 body[data-v213-module] :is(#operativoNav,#analysisNav)>button.active .v206-tab-icon,
 body[data-v213-module] :is(#operativoNav,#analysisNav)>button[aria-selected="true"] .v206-tab-icon,
+body[data-v213-module] :is(#operativoNav,#analysisNav)>button.active .rt-tab-icon,
+body[data-v213-module] :is(#operativoNav,#analysisNav)>button[aria-selected="true"] .rt-tab-icon,
 body[data-v213-module="operation"] #v200OperationTabs>button.active .v203-tab-icon,
 body[data-v213-module="operation"] #v200OperationTabs>button[aria-selected="true"] .v203-tab-icon{
   background:rgba(255,255,255,.14)!important;
@@ -435,16 +438,19 @@ body[data-v213-module="operation"] #operativoDynamic{
     padding:7px 6px 9px!important;
   }
   body[data-v213-module] :is(#operativoNav,#analysisNav) .v206-tab-icon,
+  body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-icon,
   body[data-v213-module="operation"] #v200OperationTabs .v203-tab-icon{
     width:34px!important;min-width:34px!important;max-width:34px!important;
     height:34px!important;min-height:34px!important;max-height:34px!important;
     flex-basis:34px!important;border-radius:12px!important;
   }
   body[data-v213-module] :is(#operativoNav,#analysisNav) .v206-tab-icon svg,
+  body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-icon svg,
   body[data-v213-module="operation"] #v200OperationTabs .v203-tab-icon svg{
     width:19px!important;height:19px!important;
   }
   body[data-v213-module] :is(#operativoNav,#analysisNav) .v206-tab-label,
+  body[data-v213-module] :is(#operativoNav,#analysisNav) .rt-tab-label,
   body[data-v213-module="operation"] #v200OperationTabs .v203-tab-label{
     font-size:8.2px!important;
   }
@@ -513,9 +519,16 @@ body[data-v213-module="operation"] #operativoDynamic{
   function cleanLegacyVisuals(){
     qa('.rt-icon-rail-v1-current,.rt-icon-rail-v1-indicator,.rt-worldcup-current,.rt-worldcup-pedestal,.rt-mundial-current,.rt-m7-current')
       .forEach(x=>x.remove());
-    ['operativoNav','analysisNav'].forEach(id=>{
+    ['operativoNav','analysisNav','v200OperationTabs'].forEach(id=>{
       const host=document.getElementById(id);if(!host)return;
-      host.classList.remove('rt-icon-rail-v1','rt-icon-has-user-selection');
+      const shell=host.parentElement?.classList?.contains('rt-carousel-shell')?host.parentElement:null;
+      if(shell&&shell.parentNode){
+        shell.parentNode.insertBefore(host,shell);
+        shell.remove();
+      }
+      host.classList.remove('rt-carousel','rt-icon-rail-v1','rt-icon-has-user-selection');
+      ['display','grid-template-columns','flex-wrap','align-items','overflow-x','overflow-y','white-space','width','max-width','scroll-snap-type','scroll-behavior','--rt-edge-pad']
+        .forEach(p=>host.style.removeProperty(p));
       qa(':scope > button',host).forEach(b=>b.classList.remove('rt-icon-user-active'));
     });
   }
@@ -813,6 +826,19 @@ body[data-v213-module="operation"] #operativoDynamic{
     syncChrome('operativo');
   }
 
+  let commercialRecoveryBusy=false;
+  async function recoverCommercialIfBlank(){
+    if(commercialRecoveryBusy||document.body.dataset.v213Module!=='analysis'||currentAnalysisSub()!=='macro')return;
+    const ids=['#kExist','#kSug','#kDdi','#kCap','#kOcc'];
+    const blank=ids.every(id=>{const x=q(id);return !x||['','—'].includes(String(x.textContent||'').trim())});
+    if(!blank||typeof loadDash!=='function')return;
+    commercialRecoveryBusy=true;
+    try{
+      await loadDash(q('#store')?.value||'Compañía',q('#section')?.value||'Todas');
+    }catch(e){console.warn('[V214] recuperación comercial',e)}
+    finally{commercialRecoveryBusy=false}
+  }
+
   async function openAnalysis(){
     const seq=++moduleSeq;
     try{MAIN='analysis'}catch(_){}
@@ -829,6 +855,8 @@ body[data-v213-module="operation"] #operativoDynamic{
     }catch(e){
       console.error('[V213] Análisis Comercial',e);
     }
+    syncChrome('analysis');
+    await recoverCommercialIfBlank();
     syncChrome('analysis');
   }
 
@@ -940,7 +968,7 @@ body[data-v213-module="operation"] #operativoDynamic{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initial,{once:true});
   else initial();
 
-  [180,600,1400].forEach(ms=>setTimeout(syncFromActive,ms));
+  [180,600,1400].forEach(ms=>setTimeout(()=>{syncFromActive();recoverCommercialIfBlank()},ms));
   window.addEventListener('pageshow',()=>setTimeout(syncFromActive,60),{passive:true});
   window.addEventListener('resize',()=>setTimeout(syncFromActive,90),{passive:true});
 
