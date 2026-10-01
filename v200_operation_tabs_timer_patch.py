@@ -624,12 +624,16 @@ body[data-v163-module="operation"].v200-operation-no-filter #operativoPeriodBar{
     const current=window.renderOperativoView;
     if(typeof current!=='function')return;
     if(current.__v200)return;
-    finalRenderer=current;
+    /* V214: cada wrapper conserva SU renderer base. Antes todos compartían
+       finalRenderer; al reenvolver después de V166/V167/V168 se formaba un
+       ciclo entre wrappers y terminaba en Maximum call stack size exceeded. */
+    const baseRenderer=current;
+    finalRenderer=baseRenderer;
     const wrapped=async function(name,force){
       if(name==='Operación' && opTab()==='capture'){
         return renderOperationCapture();
       }
-      const out=await finalRenderer.apply(this,arguments);
+      const out=await baseRenderer.apply(this,arguments);
       if(name==='Operación'){
         syncOperationChrome(opTab(),false);
       }else if(name==='Cargar productividad'){
