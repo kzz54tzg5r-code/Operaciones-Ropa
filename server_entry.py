@@ -192,6 +192,7 @@ from v210_operational_standards_tenure_patch import install as _install_v210_ope
 from v211_report_nav_responsive_fix import install as _install_v211_report_nav_responsive_fix
 from v213_reports_final_stabilization_patch import install as _install_v213_reports_final_stabilization_patch
 from v215_adaptive_responsive_layout_patch import install as _install_v215_adaptive_responsive_layout_patch
+from v217_other_reports_match_operation_patch import install as _install_v217_other_reports_match_operation_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -288,4 +289,5 @@ _install_v210_operational_standards_tenure_patch(web_app)
 _install_v211_report_nav_responsive_fix(web_app)
 _install_v213_reports_final_stabilization_patch(web_app)
 _install_v215_adaptive_responsive_layout_patch(web_app)
+_install_v217_other_reports_match_operation_patch(web_app)
 app = web_app.app
