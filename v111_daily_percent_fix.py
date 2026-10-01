@@ -34,6 +34,15 @@ def install(m):
   const pctText=v=>`${n(v).toFixed(1)}%`;
   const pctClass=v=>n(v)>=80?'v111-pct-good':(n(v)>=65?'v111-pct-warn':'v111-pct-bad');
   const zeroCell=v=>n(v)===0?`<b class="zero-alert">${fmt(v)}</b>`:fmt(v);
+  // El observer también recibe nuestras escrituras: actualizar sólo lo que cambió.
+  const setText=(el,text)=>{if(el && el.textContent!==text)el.textContent=text};
+  function setPercentClass(value,p){
+    const tone=pctClass(p);
+    ['zero-alert','v111-pct-good','v111-pct-warn','v111-pct-bad'].forEach(cls=>{
+      if(cls!==tone && value.classList.contains(cls))value.classList.remove(cls);
+    });
+    if(!value.classList.contains(tone))value.classList.add(tone);
+  }
 
   // Operación Diaria: Acondicionado queda en piezas; Ubicado se muestra sólo como porcentaje.
   operationalDetailTable=function(stores,recovery=[]){
@@ -77,11 +86,10 @@ def install(m):
           card.dataset.v111Pct=String(originalPct);
         }
         const p=Number(card.dataset.v111Pct||0);
-        label.textContent='% ACONDICIONADO';
-        value.textContent=pctText(p);
-        value.classList.remove('zero-alert','v111-pct-good','v111-pct-warn','v111-pct-bad');
-        value.classList.add(pctClass(p));
-        if(sub) sub.textContent=`${card.dataset.v111Pieces} piezas acondicionadas`;
+        setText(label,'% ACONDICIONADO');
+        setText(value,pctText(p));
+        setPercentClass(value,p);
+        setText(sub,`${card.dataset.v111Pieces} piezas acondicionadas`);
       }
 
       if(key==='ubicado' || key==='% ubicado'){
@@ -91,11 +99,10 @@ def install(m):
           card.dataset.v111Pct=String(originalPct);
         }
         const p=Number(card.dataset.v111Pct||0);
-        label.textContent='% UBICADO';
-        value.textContent=pctText(p);
-        value.classList.remove('zero-alert','v111-pct-good','v111-pct-warn','v111-pct-bad');
-        value.classList.add(pctClass(p));
-        if(sub) sub.textContent=`${card.dataset.v111Pieces} piezas ubicadas`;
+        setText(label,'% UBICADO');
+        setText(value,pctText(p));
+        setPercentClass(value,p);
+        setText(sub,`${card.dataset.v111Pieces} piezas ubicadas`);
       }
     });
   }

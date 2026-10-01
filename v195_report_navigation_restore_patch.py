@@ -28,6 +28,7 @@ body.v195-commercial-upload #page-analysis-upload.active{display:block!important
 
   const q=s=>document.querySelector(s);
   let epoch=0;
+  let commercialEpoch=0;
   let desiredOperational='';
   let restoreTimer=0;
   let restoring=false;
@@ -122,7 +123,13 @@ body.v195-commercial-upload #page-analysis-upload.active{display:block!important
   function verifyCommercialButton(btn){
     const sub=String(btn?.dataset?.sub||'');
     if(!sub)return;
+    const my=++commercialEpoch;
     [60,260,700].forEach(ms=>setTimeout(()=>{
+      // Una verificación tardía de la pestaña anterior no debe deshacer
+      // la selección más reciente del usuario.
+      if(my!==commercialEpoch || currentMain()!=='analysis')return;
+      const selected=q('#analysisNav [data-sub].active')?.dataset.sub;
+      if(selected && selected!==sub)return;
       let current='';
       try{current=String(SUB||'')}catch(_){}
       const page=document.getElementById('page-'+sub);

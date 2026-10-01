@@ -16,6 +16,8 @@
     store:'<path d="M3 9l2-5h14l2 5"/><path d="M5 13v8h14v-8M9 21v-6h6v6"/><path d="M3 9c0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0 0 2 3 2 3 0"/>'
   };
 
+  // Las dos capas visuales comparten este catálogo sin exponerlo en window.
+  (() => {
   const icon = (name, cls='or-icon') => {
     const paths = iconPaths[name] || iconPaths.file;
     return `<span class="${cls}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg></span>`;
@@ -460,4 +462,5 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',initV3,{once:true});
   else initV3();
+})();
 })();

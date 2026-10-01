@@ -208,7 +208,7 @@ def install(module) -> None:
       </tr></thead><tbody>${rows.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
       <td><b>#${i+1}</b></td><td><b>${r.store}</b></td>
       <td>${zeroCell(r.dev_pzs)}</td><td>${zeroCell(r.muertos)}</td><td>${zeroCell(r.probador)}</td><td>${zeroCell(r.cajas)}</td>
-      <td>${zeroCell(r.pendiente_anterior||0)}</td><td><b class="${Number(r.total_pzs??r.ingresos||0)===0?'zero-alert':''}">${fmt(r.total_pzs??r.ingresos)}</b></td>
+      <td>${zeroCell(r.pendiente_anterior||0)}</td><td><b class="${Number(r.total_pzs??r.ingresos??0)===0?'zero-alert':''}">${fmt(r.total_pzs??r.ingresos)}</b></td>
       <td>${zeroCell(r.recorridos)}</td><td>${zeroCell(r.acondicionado)}</td><td>${zeroCell(r.ubicado)}</td>
       <td>${normalCell(r.pendiente_acondicionar)}</td><td>${normalCell(r.pendiente_ubicar)}</td>
       </tr>`).join('')}</tbody></table></div>`;

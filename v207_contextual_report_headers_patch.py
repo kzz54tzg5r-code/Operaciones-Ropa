@@ -191,7 +191,9 @@ body[data-v163-module="operativo"] #operativoDynamicSub{
 
   function ensureHorizontal(host){
     if(!host)return;
-    host.classList.add('rt-carousel','v207-icon-tabs');
+    // V213 gobierna estas barras. No reactivar el carrusel ni emitir una
+    // mutación de class en cada refresh del propio observer.
+    if(!host.classList.contains('v207-icon-tabs'))host.classList.add('v207-icon-tabs');
   }
 
   function ensureIcons(host,kind){
@@ -252,8 +254,8 @@ body[data-v163-module="operativo"] #operativoDynamicSub{
     const meta=kind==='operation'?metaForOperation(btn):(kind==='cm'?metaForCm(btn):metaForAnalysis(btn));
     const title=q('.v207-context-title',wrap);
     const sub=q('.v207-context-sub',wrap);
-    if(title)title.textContent=meta[0];
-    if(sub)sub.textContent=meta[1];
+    if(title && title.textContent!==meta[0])title.textContent=meta[0];
+    if(sub && sub.textContent!==meta[1])sub.textContent=meta[1];
   }
 
   function refresh(){

@@ -15,7 +15,7 @@
 <meta name="msapplication-TileColor" content="#082F5C">
 <script defer src="/static/ios_native.js"></script>
 <script defer src="/static/pwa_brand.js"></script>
-<script defer src="/static/design_system.js?v=20260928-mobile-v5"></script>
+<script defer src="/static/design_system.js?v=20261001-stack-fix"></script>
 <script defer src="/static/report_tab_carousel.js?v=20261001-v214"></script>
 <script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8"></script>
 <script defer src="/static/report_tab_icon_rail_v1.js?v=20261001-v214"></script>
@@ -316,7 +316,8 @@ body{max-width:100%;overflow-x:hidden}
   .lingerie-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .lingerie-entry-table{min-width:520px!important}
 }
-</style><link rel="stylesheet" href="/static/design_system.css?v=20260928-mobile-v5">\n</head>
+</style><link rel="stylesheet" href="/static/design_system.css?v=20260928-mobile-v5">
+</head>
 <body>
 
 <section id="loginView" class="login-v15">
@@ -1268,7 +1269,8 @@ function renderDash(d){
   $('#pdfCoverage').textContent=d.source_file?`Fuente: ${d.source_file}`:'Carga el Excel de capacidades';
   const scope=(d.selected_store&&d.selected_store!=='Compañía')?d.selected_store:'Compañía';
   $('#macroTitle').textContent=`Análisis Comercial · Macro ${scope}`;
-  $('#macroRankingTitle').textContent=`Comparativo Compañía`;
+  const rankingTitle=$('#macroRankingTitle');
+  if(rankingTitle)rankingTitle.textContent=`Comparativo Compañía`;
   if($('#macroSectionTableTitle'))$('#macroSectionTableTitle').textContent=`Macro sección · ${scope}`;
 
   // Las tarjetas deben identificar claramente el alcance real. Si se filtra
@@ -1564,6 +1566,9 @@ function renderStoreRanking(rows){
   }).join('');
 }
 function renderBars(){
+  // V198 retira este comparativo de Macro; las demás vistas aún cargan DASH.
+  const bars=$('#bars');
+  if(!bars)return;
   const rows=sortedComparativeRows();
   const numeric=rows.map(metricValue).filter(v=>v!==null);
   const max=Math.max(1,...numeric);
@@ -1577,7 +1582,7 @@ function renderBars(){
     rows.filter(r=>metricValue(r)!==null).forEach((r,i)=>rankByStore[r.store]=i+1);
   }
 
-  $('#bars').innerHTML=rows.map(s=>{
+  bars.innerHTML=rows.map(s=>{
     const v=metricValue(s),rank=rankByStore[s.store];
     const rankText=rank?`<span class="bar-rank">#${rank}</span>`:'';
     if(v===null)return `<div class="bar ${selected!=='Compañía'&&s.store===selected?'compare-selected':''}"><span>${rankText}${s.store}</span><div class="track"></div><b>N/D</b></div>`;
