@@ -485,6 +485,7 @@
 
   function isReportTabContainer(el){
     if(!(el instanceof Element)||isExcluded(el)) return false;
+    if(el.dataset?.v209StaticOrder==='1') return false;
     if(el.id==='operativoNav'||el.id==='analysisNav'||el.classList.contains('v125-tabs')||el.hasAttribute('data-report-tab-carousel')) return true;
     // Para detección genérica exigimos botones semánticos DIRECTOS.
     // Esto evita que main/page/shell se confundan con un carrusel por contener
@@ -719,6 +720,7 @@
   }
 
   function enhance(viewport){
+    if(viewport?.dataset?.v209StaticOrder==='1') return;
     if(!isReportTabContainer(viewport)) return;
     enforceConsolidatedOperationTabs(viewport);
     if(ENHANCED.has(viewport)){
