@@ -1,0 +1,548 @@
+"""V201 · Demo de Operación basado en ventas reales disponibles desde abril.
+
+El demo es de sólo lectura y sólo se construye bajo demanda. No escribe datos
+operativos ni sustituye capturas reales. Usa la venta/piezas disponible como
+escala y genera estimaciones operativas explícitamente etiquetadas como DEMO.
+"""
+from __future__ import annotations
+
+import inspect
+import math
+import threading
+import time
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
+
+from fastapi import Request, HTTPException
+from fastapi.responses import HTMLResponse
+
+MX = ZoneInfo("America/Mexico_City")
+
+
+def install(m):
+    if getattr(m, "_V201_OPERATION_SALES_DEMO", False):
+        return
+
+    sales_endpoint = None
+    for route in list(m.app.router.routes):
+        if getattr(route, "path", None) == "/api/commercial-sales-v176" and "GET" in (getattr(route, "methods", set()) or set()):
+            sales_endpoint = getattr(route, "endpoint", None)
+            break
+
+    cache = {}
+    cache_lock = threading.RLock()
+
+    def _num(value):
+        try:
+            x = float(value or 0)
+            return x if math.isfinite(x) else 0.0
+        except Exception:
+            return 0.0
+
+    def _workdays(start: date, end: date):
+        if end < start:
+            return 1
+        cur = start
+        total = 0
+        while cur <= end:
+            if cur.weekday() < 5:
+                total += 1
+            cur = cur.fromordinal(cur.toordinal() + 1)
+        return max(total, 1)
+
+    def _seed(name: str):
+        return sum((i + 1) * ord(ch) for i, ch in enumerate(str(name or ""))) % 997
+
+    def _canonical_map(rows):
+        return {m.login_key(r.get("store")): dict(r) for r in (rows or []) if str(r.get("store") or "").strip()}
+
+    async def _build_demo(request):
+        if not callable(sales_endpoint):
+            raise HTTPException(503, "La fuente de ventas no está disponible")
+
+        now = datetime.now(MX)
+        year = now.year
+        cache_key = f"{year}-{now.month}"
+        with cache_lock:
+            hit = cache.get(cache_key)
+            if hit and time.monotonic() - hit[0] < 900:
+                return hit[1]
+
+        sales = sales_endpoint(request=request, year=year, month=0, store="Compañía")
+        if inspect.isawaitable(sales):
+            sales = await sales
+        sales = dict(sales or {})
+
+        # La demo usa únicamente meses desde abril con información disponible.
+        month_rows = []
+        for raw in sales.get("months") or []:
+            row = dict(raw or {})
+            mo = int(row.get("month") or 0)
+            loaded = bool(row.get("pdf_loaded"))
+            has_data = _num(row.get("pieces")) > 0 or _num(row.get("current")) > 0
+            if mo >= 4 and mo <= now.month and (loaded or has_data):
+                month_rows.append(row)
+
+        if not month_rows:
+            # Si la fuente no marcó pdf_loaded, conservar abril→mes actual con datos.
+            month_rows = [
+                dict(r or {}) for r in (sales.get("months") or [])
+                if 4 <= int((r or {}).get("month") or 0) <= now.month
+                and (_num((r or {}).get("pieces")) > 0 or _num((r or {}).get("current")) > 0)
+            ]
+
+        total_sales_pieces = sum(_num(r.get("pieces")) for r in month_rows)
+        total_sales_value = sum(_num(r.get("current")) for r in month_rows)
+
+        # Si la fuente de piezas viene vacía, usar sólo para escala demo una
+        # conversión aproximada desde $; se etiqueta en el payload.
+        pieces_fallback = False
+        if total_sales_pieces <= 0 and total_sales_value > 0:
+            total_sales_pieces = total_sales_value / 250.0
+            pieces_fallback = True
+
+        active_stores = list(m.store_names(True) or [])
+        if not active_stores:
+            active_stores = [
+                "Iztapalapa","Vallejo","Ecatepec","Toluca","Arco Norte","Ixtapaluca",
+                "Querétaro","Centro","Olivar","León","Puebla","Puebla Sur",
+                "Aguascalientes","Veracruz","Naucalpan","Miravalle","Atemajac",
+            ]
+
+        source_map = _canonical_map(sales.get("stores") or [])
+        raw_weights = {}
+        positives = []
+        for store in active_stores:
+            src = source_map.get(m.login_key(store), {})
+            w = _num(src.get("pieces"))
+            if w <= 0:
+                w = _num(src.get("current")) / 250.0
+            raw_weights[store] = w
+            if w > 0:
+                positives.append(w)
+
+        fallback_weight = (sorted(positives)[len(positives)//2] * 0.35) if positives else 1.0
+        for store in active_stores:
+            if raw_weights[store] <= 0:
+                raw_weights[store] = fallback_weight
+        weight_total = sum(raw_weights.values()) or 1.0
+
+        period_start = date(year, 4, 1)
+        period_end = now.date()
+        workdays = _workdays(period_start, period_end)
+        goals = m.get_goals() if hasattr(m, "get_goals") else {}
+        productivity_target = _num((goals or {}).get("productividad_diaria")) or 784.0
+
+        stores = []
+        for store in active_stores:
+            share = raw_weights[store] / weight_total
+            sales_pieces = total_sales_pieces * share
+            sales_value = total_sales_value * share
+            s = _seed(store)
+
+            # Estimaciones DEMO: sólo dan escala y variación visual.
+            arrival = sales_pieces * (1.10 + (s % 9) / 100.0)
+            efficiency = 90.0 + (s % 74) / 10.0  # 90.0% – 97.3%
+            processed = arrival * efficiency / 100.0
+            release_rate = 95.0 + ((s // 7) % 30) / 10.0  # 95.0% – 97.9%
+            released = processed * release_rate / 100.0
+            pending = max(arrival - released, 0.0)
+
+            desired_prod = productivity_target * (0.91 + ((s // 11) % 19) / 100.0)
+            collaborators = max(3, int(round(processed / max(desired_prod * workdays, 1))))
+            productivity = processed / max(collaborators * workdays, 1)
+            compliance = productivity / productivity_target * 100.0 if productivity_target else 0.0
+
+            # Distribución por áreas/actividades sólo para visualización demo.
+            colgado = arrival * (0.36 + (s % 5) / 100.0)
+            doblado = arrival * (0.33 + ((s // 3) % 4) / 100.0)
+            jeans = arrival * (0.18 + ((s // 5) % 3) / 100.0)
+            lenceria = max(arrival - colgado - doblado - jeans, 0.0)
+            acondicionado = processed * (0.36 + (s % 4) / 100.0)
+            clasificado = processed * (0.29 + ((s // 4) % 4) / 100.0)
+            ubicado = max(processed - acondicionado - clasificado, 0.0)
+
+            stores.append({
+                "store": store,
+                "sales_pieces": sales_pieces,
+                "sales_value": sales_value,
+                "share": share * 100.0,
+                "arrival": arrival,
+                "processed": processed,
+                "released": released,
+                "pending": pending,
+                "efficiency": efficiency,
+                "productivity": productivity,
+                "compliance": compliance,
+                "collaborators": collaborators,
+                "areas": {
+                    "Colgado": colgado, "Doblado": doblado,
+                    "Jeans": jeans, "Lencería": lenceria,
+                },
+                "activities": {
+                    "Acondicionado": acondicionado,
+                    "Clasificado": clasificado,
+                    "Ubicado": ubicado,
+                },
+            })
+
+        stores.sort(key=lambda r: (-r["sales_pieces"], m.login_key(r["store"])))
+        for idx, row in enumerate(stores, 1):
+            row["rank"] = idx
+
+        company = {
+            "sales_pieces": sum(r["sales_pieces"] for r in stores),
+            "sales_value": sum(r["sales_value"] for r in stores),
+            "arrival": sum(r["arrival"] for r in stores),
+            "processed": sum(r["processed"] for r in stores),
+            "released": sum(r["released"] for r in stores),
+            "pending": sum(r["pending"] for r in stores),
+            "collaborators": sum(r["collaborators"] for r in stores),
+        }
+        company["efficiency"] = company["processed"] / company["arrival"] * 100.0 if company["arrival"] else 0.0
+        company["productivity"] = company["processed"] / max(company["collaborators"] * workdays, 1)
+        company["compliance"] = company["productivity"] / productivity_target * 100.0 if productivity_target else 0.0
+
+        company["areas"] = {
+            area: sum(r["areas"][area] for r in stores)
+            for area in ("Colgado","Doblado","Jeans","Lencería")
+        }
+        company["activities"] = {
+            act: sum(r["activities"][act] for r in stores)
+            for act in ("Acondicionado","Clasificado","Ubicado")
+        }
+
+        month_labels = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
+        trend = []
+        total_month_piece_source = sum(_num(r.get("pieces")) for r in month_rows)
+        for row in month_rows:
+            mo = int(row.get("month") or 0)
+            p = _num(row.get("pieces"))
+            if p <= 0 and _num(row.get("current")) > 0:
+                p = _num(row.get("current")) / 250.0
+            arrival = p * 1.14
+            eff = 93.4 + ((mo * 7) % 18) / 10.0
+            processed = arrival * eff / 100.0
+            trend.append({
+                "month": mo,
+                "label": month_labels[mo-1] if 1 <= mo <= 12 else str(mo),
+                "sales_pieces": p,
+                "arrival": arrival,
+                "processed": processed,
+                "efficiency": eff,
+            })
+
+        period_label = "Abr"
+        if trend:
+            period_label = f"{trend[0]['label']} – {trend[-1]['label']} {year}"
+
+        payload = {
+            "demo": True,
+            "read_only": True,
+            "year": year,
+            "period_label": period_label,
+            "workdays": workdays,
+            "productivity_target": productivity_target,
+            "pieces_fallback": pieces_fallback,
+            "source_label": "Venta real disponible desde abril · Operación estimada DEMO",
+            "sales_source_label": str(sales.get("source_label") or "Ventas"),
+            "sales_cut_date": str(sales.get("cut_date") or ""),
+            "company": company,
+            "stores": stores,
+            "trend": trend,
+            "store_count": len(stores),
+        }
+        with cache_lock:
+            cache[cache_key] = (time.monotonic(), payload)
+        return payload
+
+    @m.app.get("/api/operation-demo-v201")
+    async def operation_demo_v201(request: Request):
+        actor = m.require_user(request)
+        if str(actor.get("role") or "") not in ("superadmin","admin","director","consulta"):
+            raise HTTPException(403, "Demo disponible para perfiles de consulta/administración")
+        return await _build_demo(request)
+
+    css = r'''<style id="v201-operation-demo-css">
+.v201-demo-toolbar{display:none;align-items:center;justify-content:flex-end;gap:7px;margin:-2px 0 7px}
+body[data-v163-module="operation"] .v201-demo-toolbar{display:flex}
+.v201-demo-btn{
+  border:1px solid #8cb7e3;border-radius:999px;background:#eef6ff;color:#0e5fa9;
+  padding:7px 11px;font-size:8px;font-weight:950;cursor:pointer
+}
+.v201-demo-btn.active{background:#0e5fa9;color:#fff;border-color:#0e5fa9}
+.v201-real-btn{border-color:#d6e0ec;background:#fff;color:#49647f}
+.v201-demo-note{
+  display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border-radius:11px;
+  border:1px solid #9fc6ee;background:#eef7ff;color:#174b85;font-size:8.5px;
+  font-weight:750;line-height:1.4;margin:7px 0 10px
+}
+.v201-demo-note b{white-space:nowrap}
+.v201-demo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0 10px}
+.v201-demo-kpi{background:#fff;border:1px solid #d8e3ef;border-radius:12px;padding:11px;min-width:0}
+.v201-demo-kpi small{display:block;color:#667b93;font-size:7px;font-weight:950;text-transform:uppercase}
+.v201-demo-kpi b{display:block;color:#123f73;font-size:22px;line-height:1.05;margin-top:5px}
+.v201-demo-kpi span{display:block;color:#7a899c;font-size:7.5px;margin-top:5px}
+.v201-demo-card{background:#fff;border:1px solid #d8e3ef;border-radius:13px;padding:12px;margin:8px 0}
+.v201-demo-card h3{margin:0;color:#123f73;font-size:14px}.v201-demo-card .sub{color:#73849a;font-size:8px;margin-top:3px}
+.v201-demo-split{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.v201-demo-bars{display:grid;gap:7px;margin-top:10px}
+.v201-demo-bar{display:grid;grid-template-columns:96px 1fr 70px;align-items:center;gap:7px;font-size:8px}
+.v201-demo-bar b{color:#123f73}.v201-demo-track{height:10px;background:#e8eef5;border-radius:8px;overflow:hidden}
+.v201-demo-fill{height:100%;background:#176fe8;border-radius:8px}
+.v201-demo-val{text-align:right;color:#315b84;font-weight:900}
+.v201-demo-tablewrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid #d8e3ef;border-radius:11px;margin-top:9px}
+.v201-demo-table{width:100%;min-width:1050px;border-collapse:collapse;font-size:8px;background:#fff}
+.v201-demo-table th{position:sticky;top:0;background:#0f4a83;color:#fff;padding:8px 7px;text-align:left;white-space:nowrap}
+.v201-demo-table td{padding:7px;border-bottom:1px solid #e7edf4;color:#274d74;white-space:nowrap}
+.v201-demo-table tr:nth-child(even) td{background:#fafcff}
+.v201-demo-table .num{text-align:right}.v201-demo-table .store{font-weight:900;color:#123f73}
+.v201-demo-pill{display:inline-flex;padding:3px 6px;border-radius:999px;background:#eaf5ff;color:#1464ad;font-size:7px;font-weight:950}
+.v201-demo-good{color:#079447!important;font-weight:950}.v201-demo-warn{color:#d97706!important;font-weight:950}
+.v201-demo-demo{color:#d92d20!important;font-weight:950}
+.v201-demo-months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:10px}
+.v201-demo-month{border:1px solid #dae5f0;border-radius:10px;padding:9px;background:#fbfdff}
+.v201-demo-month small{display:block;color:#6b7d92;font-size:7px}.v201-demo-month b{display:block;color:#123f73;font-size:14px;margin-top:4px}
+.v201-demo-month span{font-size:7px;color:#72849a}
+body.v201-demo-mode #operativoPeriodBar,
+body.v201-demo-mode #v161FilterBar{display:none!important}
+@media(max-width:900px){
+ .v201-demo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .v201-demo-split{grid-template-columns:1fr}
+ .v201-demo-kpi b{font-size:20px}
+ .v201-demo-months{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .v201-demo-table{min-width:980px}
+ .v201-demo-bar{grid-template-columns:84px 1fr 60px}
+}
+</style>'''
+
+    js = r'''<script id="v201-operation-demo-js">
+(function(){
+  if(window.__V201_OPERATION_SALES_DEMO)return;
+  window.__V201_OPERATION_SALES_DEMO=true;
+
+  const q=(s,r=document)=>r.querySelector(s);
+  const qa=(s,r=document)=>[...r.querySelectorAll(s)];
+  const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const n=v=>{const x=Number(v||0);return Number.isFinite(x)?x:0};
+  const nf=v=>Math.round(n(v)).toLocaleString('es-MX');
+  const money=v=>'$'+Math.round(n(v)).toLocaleString('es-MX');
+  const pct=v=>n(v).toLocaleString('es-MX',{maximumFractionDigits:1})+'%';
+  let demoMode=false,demoData=null,demoLoading=false,demoTab='summary';
+
+  function isOperation(){
+    return String(document.body.dataset.v163Module||'').toLowerCase()==='operation';
+  }
+  function canDemo(){
+    try{return ['superadmin','admin','director','consulta'].includes(String(USER?.role||''))}
+    catch(_){return false}
+  }
+  async function A(url){
+    if(typeof api==='function')return api(url,{timeoutMs:120000});
+    const r=await fetch(url,{credentials:'same-origin'});
+    const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch(_){}
+    if(!r.ok)throw Error(d.detail||('HTTP '+r.status));return d;
+  }
+  function tone(v){return n(v)>=100?'v201-demo-good':n(v)>=95?'':'v201-demo-warn'}
+
+  function ensureToolbar(){
+    if(!canDemo())return;
+    let bar=q('#v201DemoToolbar');
+    if(!bar){
+      bar=document.createElement('div');bar.id='v201DemoToolbar';bar.className='v201-demo-toolbar';
+      bar.innerHTML='<button id="v201DemoOn" class="v201-demo-btn">DEMO con ventas</button><button id="v201DemoOff" class="v201-demo-btn v201-real-btn">Volver a real</button>';
+      const tabs=q('#v200OperationTabs');
+      tabs?.parentNode?.insertBefore(bar,tabs);
+      q('#v201DemoOn')?.addEventListener('click',()=>openDemo('summary'));
+      q('#v201DemoOff')?.addEventListener('click',closeDemo);
+    }
+    bar.style.display=isOperation()?'flex':'none';
+  }
+
+  function syncTab(){
+    qa('#v200OperationTabs [data-v200-op]').forEach(btn=>{
+      const on=btn.dataset.v200Op===demoTab;
+      btn.classList.toggle('active',on);
+      btn.setAttribute('aria-selected',on?'true':'false');
+    });
+    q('#v201DemoOn')?.classList.toggle('active',demoMode);
+  }
+
+  async function loadDemo(){
+    if(demoData)return demoData;
+    if(demoLoading)return null;
+    demoLoading=true;
+    try{demoData=await A('/api/operation-demo-v201');return demoData}
+    finally{demoLoading=false}
+  }
+
+  function note(d){
+    const fallback=d.pieces_fallback?' · Piezas estimadas desde venta $ por falta de piezas en la fuente':'';
+    return '<div class="v201-demo-note"><b>DEMO</b><span>La venta es la referencia real disponible. Llegada, procesadas, liberadas, eficiencia y productividad son estimaciones para visualizar el reporte lleno; no se guardan como operación real.'+esc(fallback)+'</span></div>';
+  }
+
+  function kpis(d){
+    const s=d.company;
+    const rows=[
+      ['Llegada estimada',nf(s.arrival),'Escala por venta desde abril'],
+      ['Productividad registrada',nf(s.processed),'Estimación DEMO'],
+      ['Mercancía liberada',nf(s.released),'Estimación DEMO'],
+      ['Pendiente',nf(s.pending),'Llegada - liberada'],
+      ['Eficiencia',pct(s.efficiency),'Procesadas / llegada'],
+      ['Prod. promedio',nf(s.productivity),'Pzas / colaborador / día'],
+      ['Cumplimiento',pct(s.compliance),'Vs meta '+nf(d.productivity_target)],
+      ['Colaboradores',nf(s.collaborators),'Estimados por carga'],
+    ];
+    return '<div class="v201-demo-grid">'+rows.map(x=>'<div class="v201-demo-kpi"><small>'+x[0]+'</small><b>'+x[1]+'</b><span>'+x[2]+'</span></div>').join('')+'</div>';
+  }
+
+  function allStoresTable(d,kind){
+    const head=kind==='daily'
+      ?'<th>#</th><th>Tienda</th><th class="num">Llegada día</th><th class="num">Procesadas día</th><th class="num">Liberadas día</th><th class="num">Pendiente día</th><th class="num">Eficiencia</th>'
+      :'<th>#</th><th>Tienda</th><th class="num">Venta pzas base</th><th class="num">Llegada</th><th class="num">Procesadas</th><th class="num">Liberadas</th><th class="num">Pendiente</th><th class="num">Eficiencia</th><th class="num">Prod. diaria</th><th class="num">% Meta</th><th class="num">Colab.</th>';
+    const body=d.stores.map(r=>{
+      if(kind==='daily'){
+        return '<tr><td>'+r.rank+'</td><td class="store">'+esc(r.store)+'</td><td class="num">'+nf(r.arrival/d.workdays)+'</td><td class="num">'+nf(r.processed/d.workdays)+'</td><td class="num">'+nf(r.released/d.workdays)+'</td><td class="num">'+nf(r.pending/d.workdays)+'</td><td class="num '+tone(r.efficiency)+'">'+pct(r.efficiency)+'</td></tr>';
+      }
+      return '<tr><td>'+r.rank+'</td><td class="store">'+esc(r.store)+'</td><td class="num">'+nf(r.sales_pieces)+'</td><td class="num">'+nf(r.arrival)+'</td><td class="num">'+nf(r.processed)+'</td><td class="num">'+nf(r.released)+'</td><td class="num">'+nf(r.pending)+'</td><td class="num '+tone(r.efficiency)+'">'+pct(r.efficiency)+'</td><td class="num">'+nf(r.productivity)+'</td><td class="num '+tone(r.compliance)+'">'+pct(r.compliance)+'</td><td class="num">'+nf(r.collaborators)+'</td></tr>';
+    }).join('');
+    return '<div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+  }
+
+  function areaBars(d){
+    const total=Object.values(d.company.areas||{}).reduce((a,b)=>a+n(b),0)||1;
+    return '<div class="v201-demo-bars">'+Object.entries(d.company.areas||{}).map(([name,val])=>'<div class="v201-demo-bar"><b>'+esc(name)+'</b><div class="v201-demo-track"><div class="v201-demo-fill" style="width:'+Math.min(100,n(val)/total*100)+'%"></div></div><span class="v201-demo-val">'+pct(n(val)/total*100)+'</span></div>').join('')+'</div>';
+  }
+  function activityBars(d){
+    const total=Object.values(d.company.activities||{}).reduce((a,b)=>a+n(b),0)||1;
+    return '<div class="v201-demo-bars">'+Object.entries(d.company.activities||{}).map(([name,val])=>'<div class="v201-demo-bar"><b>'+esc(name)+'</b><div class="v201-demo-track"><div class="v201-demo-fill" style="width:'+Math.min(100,n(val)/total*100)+'%"></div></div><span class="v201-demo-val">'+pct(n(val)/total*100)+'</span></div>').join('')+'</div>';
+  }
+
+  function summary(d){
+    return note(d)+
+      '<div class="v201-demo-card"><h3>Resumen ejecutivo · '+esc(d.period_label)+'</h3><div class="sub">Base de escala: venta real disponible · '+d.store_count+' tiendas</div>'+kpis(d)+'</div>'+
+      '<div class="v201-demo-split"><div class="v201-demo-card"><h3>Participación por área</h3><div class="sub">Distribución operativa DEMO</div>'+areaBars(d)+'</div><div class="v201-demo-card"><h3>Participación por actividad</h3><div class="sub">Acondicionado · Clasificado · Ubicado</div>'+activityBars(d)+'</div></div>'+
+      '<div class="v201-demo-card"><h3>Todas las tiendas</h3><div class="sub">Ordenadas por participación de venta base</div>'+allStoresTable(d,'summary')+'</div>';
+  }
+
+  function daily(d){
+    return note(d)+
+      '<div class="v201-demo-card"><h3>Captura diaria · vista simulada</h3><div class="sub">Promedio diario equivalente del periodo '+esc(d.period_label)+' · '+d.workdays+' días hábiles</div>'+
+      '<div class="v201-demo-grid">'+
+      '<div class="v201-demo-kpi"><small>Llegada día</small><b>'+nf(d.company.arrival/d.workdays)+'</b><span>Compañía</span></div>'+
+      '<div class="v201-demo-kpi"><small>Procesadas día</small><b>'+nf(d.company.processed/d.workdays)+'</b><span>Compañía</span></div>'+
+      '<div class="v201-demo-kpi"><small>Liberadas día</small><b>'+nf(d.company.released/d.workdays)+'</b><span>Compañía</span></div>'+
+      '<div class="v201-demo-kpi"><small>Eficiencia</small><b>'+pct(d.company.efficiency)+'</b><span>DEMO</span></div></div>'+
+      allStoresTable(d,'daily')+'</div>';
+  }
+
+  function capture(d){
+    const acts=['Acondicionado','Clasificado','Ubicado'],areas=['Doblado','Colgado','Jeans','Lencería'];
+    const rows=d.stores.map((r,i)=>{
+      const act=acts[i%acts.length],area=areas[i%areas.length];
+      const pieces=Math.round((r.processed/d.workdays)/(1+(i%4)*.18));
+      const mins=38+(i*7)%54;
+      return '<tr><td class="store">'+esc(r.store)+'</td><td>'+act+'</td><td>'+area+'</td><td class="num">'+nf(pieces)+'</td><td class="num">00:'+(mins<10?'0':'')+mins+':00</td><td><span class="v201-demo-pill">Finalizado</span></td></tr>';
+    }).join('');
+    return note(d)+'<div class="v201-demo-card"><h3>Cargar productividad · ejemplo lleno</h3><div class="sub">Una captura representativa por cada tienda. Sólo visual; no escribe datos.</div><div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr><th>Tienda</th><th>Actividad</th><th>Área</th><th class="num">Piezas</th><th class="num">Tiempo</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+
+  function productivity(d){
+    return note(d)+'<div class="v201-demo-card"><h3>Productividad por tienda · '+esc(d.period_label)+'</h3><div class="sub">Meta configurada: '+nf(d.productivity_target)+' pzas/día · todas las tiendas visibles</div>'+allStoresTable(d,'summary')+'</div>';
+  }
+
+  function standards(d){
+    const areas=[['Colgado',Math.round(d.productivity_target*1.08)],['Doblado',Math.round(d.productivity_target*.96)],['Jeans',Math.round(d.productivity_target*.90)],['Lencería',Math.round(d.productivity_target*.84)]];
+    const acts=[['Acondicionado',Math.round(d.productivity_target)],['Clasificado',Math.round(d.productivity_target*.92)],['Ubicado',Math.round(d.productivity_target*1.04)]];
+    return note(d)+'<div class="v201-demo-split"><div class="v201-demo-card"><h3>Estándares por área · DEMO</h3><div class="sub">Referencia visual, no modifica metas reales.</div><div class="v201-demo-bars">'+areas.map(x=>'<div class="v201-demo-bar"><b>'+x[0]+'</b><div class="v201-demo-track"><div class="v201-demo-fill" style="width:'+Math.min(100,x[1]/(d.productivity_target*1.15)*100)+'%"></div></div><span class="v201-demo-val">'+nf(x[1])+'</span></div>').join('')+'</div></div><div class="v201-demo-card"><h3>Estándares por actividad · DEMO</h3><div class="sub">Meta general actual: '+nf(d.productivity_target)+'</div><div class="v201-demo-bars">'+acts.map(x=>'<div class="v201-demo-bar"><b>'+x[0]+'</b><div class="v201-demo-track"><div class="v201-demo-fill" style="width:'+Math.min(100,x[1]/(d.productivity_target*1.15)*100)+'%"></div></div><span class="v201-demo-val">'+nf(x[1])+'</span></div>').join('')+'</div></div></div>';
+  }
+
+  function trend(d){
+    return '<div class="v201-demo-card"><h3>Base de venta desde abril</h3><div class="sub">Piezas reales usadas para dimensionar el DEMO</div><div class="v201-demo-months">'+(d.trend||[]).map(r=>'<div class="v201-demo-month"><small>'+esc(r.label)+'</small><b>'+nf(r.sales_pieces)+'</b><span>venta pzas · eficiencia demo '+pct(r.efficiency)+'</span></div>').join('')+'</div></div>';
+  }
+
+  function renderDemo(){
+    if(!demoMode||!demoData)return;
+    syncTab();
+    document.body.classList.add('v201-demo-mode');
+    const centro=q('#operativoCentro'),dyn=q('#operativoDynamic');centro?.classList.add('hidden');dyn?.classList.remove('hidden');
+    if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación · DEMO';
+    if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Datos de venta reales como base · operación estimada para visualización';
+    const host=q('#operativoDynamicContent');if(!host)return;
+    const views={summary,daily,capture,productivity,standards};
+    host.innerHTML=trend(demoData)+(views[demoTab]||summary)(demoData);
+  }
+
+  async function openDemo(tab='summary'){
+    if(!isOperation()||!canDemo())return;
+    demoMode=true;demoTab=tab;
+    document.body.classList.add('v201-demo-mode');
+    syncTab();
+    const host=q('#operativoDynamicContent');
+    if(host)host.innerHTML='<div class="infoempty">Preparando DEMO con la venta disponible desde abril…</div>';
+    try{
+      const d=await loadDemo();
+      if(d)renderDemo();
+    }catch(e){
+      if(host)host.innerHTML='<div class="infoempty">No fue posible preparar el DEMO: '+esc(e.message||e)+'</div>';
+    }
+  }
+  async function closeDemo(){
+    demoMode=false;demoData=null;document.body.classList.remove('v201-demo-mode');
+    q('#v201DemoOn')?.classList.remove('active');
+    if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación';
+    if(typeof window.renderOperativoView==='function')await window.renderOperativoView('Operación',true);
+  }
+
+  document.addEventListener('click',e=>{
+    const tab=e.target.closest?.('#v200OperationTabs [data-v200-op]');
+    if(tab&&demoMode){
+      e.preventDefault();e.stopImmediatePropagation();
+      demoTab=tab.dataset.v200Op||'summary';renderDemo();return;
+    }
+    const main=e.target.closest?.('[data-main]');
+    if(main){
+      setTimeout(()=>{
+        ensureToolbar();
+        if(String(main.dataset.main||'')!=='operation'&&demoMode){
+          demoMode=false;document.body.classList.remove('v201-demo-mode');
+        }
+      },100);
+    }
+  },true);
+
+  function setup(){ensureToolbar();if(demoMode&&isOperation())renderDemo()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
+  [250,800,1600].forEach(ms=>setTimeout(setup,ms));
+  console.info('[V201] Demo de Operación basado en ventas reales disponible bajo demanda.');
+})();
+</script>'''
+
+    @m.app.middleware("http")
+    async def v201_html(request, call_next):
+        response = await call_next(request)
+        if request.url.path != "/" or getattr(response, "status_code", 200) != 200:
+            return response
+        try:
+            body = b""
+            async for chunk in response.body_iterator:
+                body += chunk
+            html = body.decode("utf-8", errors="replace")
+            if "v201-operation-demo-css" not in html:
+                html = html.replace("</head>", css + "</head>", 1)
+            if "v201-operation-demo-js" not in html:
+                html = html.replace("</body>", js + "</body>", 1)
+            headers = dict(getattr(response, "headers", {}) or {})
+            headers.pop("content-length", None)
+            headers.update({
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache", "Expires": "0",
+                "X-Operations-UI-Version": "V201",
+            })
+            return HTMLResponse(html, status_code=response.status_code, headers=headers)
+        except Exception as exc:
+            print(f"[V201] HTML warning: {type(exc).__name__}: {exc}", flush=True)
+            return response
+
+    m._V201_OPERATION_SALES_DEMO = True
+    print("[V201] Demo Operación con venta real como base instalado; sin escrituras.", flush=True)
