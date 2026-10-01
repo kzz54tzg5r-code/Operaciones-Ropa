@@ -188,6 +188,7 @@ from v205_store_geofence_patch import install as _install_v205_store_geofence_pa
 from v206_unified_compact_nav_patch import install as _install_v206_unified_compact_nav_patch
 from v207_contextual_report_headers_patch import install as _install_v207_contextual_report_headers_patch
 from v208_mobile_viewport_lock_patch import install as _install_v208_mobile_viewport_lock_patch
+from v209_report_nav_order_filter_patch import install as _install_v209_report_nav_order_filter_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -280,4 +281,5 @@ _install_v205_store_geofence_patch(web_app)
 _install_v206_unified_compact_nav_patch(web_app)
 _install_v207_contextual_report_headers_patch(web_app)
 _install_v208_mobile_viewport_lock_patch(web_app)
+_install_v209_report_nav_order_filter_patch(web_app)
 app = web_app.app
