@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-v14';
+const CACHE_NAME = 'operaciones-ropa-runtime-v15';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
