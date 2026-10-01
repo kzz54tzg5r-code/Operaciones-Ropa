@@ -191,6 +191,7 @@ from v208_mobile_viewport_lock_patch import install as _install_v208_mobile_view
 from v210_operational_standards_tenure_patch import install as _install_v210_operational_standards_tenure_patch
 from v211_report_nav_responsive_fix import install as _install_v211_report_nav_responsive_fix
 from v213_reports_final_stabilization_patch import install as _install_v213_reports_final_stabilization_patch
+from v215_adaptive_responsive_layout_patch import install as _install_v215_adaptive_responsive_layout_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -286,4 +287,5 @@ _install_v208_mobile_viewport_lock_patch(web_app)
 _install_v210_operational_standards_tenure_patch(web_app)
 _install_v211_report_nav_responsive_fix(web_app)
 _install_v213_reports_final_stabilization_patch(web_app)
+_install_v215_adaptive_responsive_layout_patch(web_app)
 app = web_app.app
