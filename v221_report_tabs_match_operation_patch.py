@@ -363,16 +363,39 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
   }
 
   function cleanLegacy(host){
-    // Si alguna sesión alcanzó a crear el shell anterior, se neutraliza sin
-    // mover/recrear los botones ni perder sus listeners.
+    // El carrusel histórico podía envolver cada navegación en un shell.
+    // Lo retiramos por completo: cada reporte conserva su barra original.
     const shell=host.closest('.rt-carousel-shell');
-    if(shell)shell.classList.add('v221-report-shell');
+    if(shell&&shell.parentNode){
+      shell.parentNode.insertBefore(host,shell);
+      shell.remove();
+    }
 
-    host.classList.remove('rt-icon-rail-v1','rt-icon-has-user-selection');
+    host.classList.remove(
+      'rt-carousel','rt-icon-rail-v1','rt-icon-has-user-selection',
+      'rt-mundial-stage','rt-mundial-v6','rt-mundial-v7'
+    );
     host.querySelectorAll(':scope > button.rt-icon-user-active').forEach(b=>b.classList.remove('rt-icon-user-active'));
+    host.style.removeProperty('--rt-edge-pad');
+    host.style.removeProperty('scroll-behavior');
+    host.scrollLeft=0;
+  }
 
-    shell?.querySelectorAll(':scope > .rt-icon-rail-v1-current,:scope > .rt-icon-rail-v1-indicator,:scope > .rt-worldcup-current,:scope > .rt-worldcup-pedestal,:scope > .rt-mundial-current,:scope > .rt-m7-current')
-      .forEach(x=>x.remove());
+  function currentModule(){
+    const active=document.querySelector('.side [data-main].active') ||
+      document.querySelector('#mobileMainNav [data-main].active');
+    const dm=String(active?.dataset?.main||'').toLowerCase();
+    if(['operativo','analysis','operation','users','share'].includes(dm))return dm;
+    const tagged=String(document.body.dataset.v163Module||'').toLowerCase();
+    if(tagged)return tagged;
+    return '';
+  }
+
+  function hideForeignHost(host){
+    if(!host)return;
+    host.style.setProperty('display','none','important');
+    const shell=host.closest('.rt-carousel-shell');
+    if(shell)shell.style.setProperty('display','none','important');
   }
 
   function decorate(host){
@@ -395,10 +418,21 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
 
   function fit(host){
     if(!host||!host.isConnected)return;
-    const mod=String(document.body.dataset.v163Module||'').toLowerCase();
-    if((host.id==='operativoNav'&&mod!=='operativo')||(host.id==='analysisNav'&&mod!=='analysis'))return;
+    const mod=currentModule();
+    const owns=(host.id==='operativoNav'&&mod==='operativo') ||
+      (host.id==='analysisNav'&&mod==='analysis');
+
+    // CRÍTICO: V221 antes sólo hacía return. Como el host conservaba
+    // display:grid!important de la vista previa, las pestañas terminaban
+    // mezclándose entre C&M, Operación y Análisis.
+    if(!owns){
+      hideForeignHost(host);
+      return;
+    }
 
     cleanLegacy(host);
+    host.classList.remove('hidden');
+    host.removeAttribute('hidden');
     decorate(host);
 
     const tabs=qsa(':scope > button',host).filter(visible);
@@ -478,7 +512,8 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
   document.addEventListener('report-tabs-visibility-changed',()=>setTimeout(refresh,20));
   document.addEventListener('click',e=>{
     if(e.target.closest?.('[data-main],#operativoNav>button,#analysisNav>button')){
-      [20,100,260].forEach(ms=>setTimeout(refresh,ms));
+      refresh();
+      [20,100,260,650].forEach(ms=>setTimeout(refresh,ms));
     }
   },true);
   window.addEventListener('resize',refresh,{passive:true});
