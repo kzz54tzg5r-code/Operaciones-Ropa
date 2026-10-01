@@ -293,7 +293,8 @@ def install(m):
   padding:4px 2px;
 }
 #v200OperationTabs::-webkit-scrollbar{display:none}
-body.v200-operation #v200OperationTabs{display:flex!important}
+body.v200-operation #v200OperationTabs,
+body[data-v163-module="operation"] #v200OperationTabs{display:flex!important}
 #v200OperationTabs button{
   flex:0 0 auto;
   min-height:38px;
@@ -314,21 +315,27 @@ body.v200-operation #v200OperationTabs{display:flex!important}
   box-shadow:0 4px 12px rgba(11,58,110,.16);
 }
 
-/* No volver a mostrar tabs internos o el segundo bloque de filtros. */
+/* Operación usa sólo el filtro branded nativo (el segundo bloque de la vista).
+   La fachada V161 de arriba se elimina para evitar filtros duplicados. */
 body.v200-operation #operativoDynamicContent>.v125-tabs,
 body.v200-operation #operativoDynamicContent>.v167-safe-tabs,
 body.v200-operation #operativoDynamicContent .v125-tabs,
-body.v200-operation #operativoDynamicContent .v167-safe-tabs{
+body.v200-operation #operativoDynamicContent .v167-safe-tabs,
+body[data-v163-module="operation"] #operativoDynamicContent>.v125-tabs,
+body[data-v163-module="operation"] #operativoDynamicContent>.v167-safe-tabs{
   display:none!important;
 }
-body.v200-operation #operativoPeriodBar{
+body.v200-operation #v161FilterBar,
+body[data-v163-module="operation"] #v161FilterBar{
   display:none!important;
 }
-body.v200-operation.v200-operation-no-filter #v161FilterBar{
-  display:none!important;
-}
-body.v200-operation.v200-operation-has-filter #v161FilterBar.on{
+body.v200-operation.v200-operation-has-filter #operativoPeriodBar,
+body[data-v163-module="operation"].v200-operation-has-filter #operativoPeriodBar{
   display:block!important;
+}
+body.v200-operation.v200-operation-no-filter #operativoPeriodBar,
+body[data-v163-module="operation"].v200-operation-no-filter #operativoPeriodBar{
+  display:none!important;
 }
 
 /* Captura temporizada de Operación. */
@@ -404,7 +411,13 @@ body.v200-operation.v200-operation-has-filter #v161FilterBar.on{
   let wrappedRenderer=null;
 
   function mainName(){
-    try{return String(MAIN||'')}catch(_){return String(document.body.dataset.v163Module||'')}
+    const tagged=String(document.body.dataset.v163Module||'').toLowerCase();
+    if(tagged)return tagged;
+    try{
+      const w=String(window.MAIN||'').toLowerCase();
+      if(w)return w;
+    }catch(_){}
+    try{return String(MAIN||'').toLowerCase()}catch(_){return ''}
   }
   function isOperation(){return mainName()==='operation'}
   function opTab(){
@@ -423,7 +436,7 @@ body.v200-operation.v200-operation-has-filter #v161FilterBar.on{
       host.id='v200OperationTabs';
       host.setAttribute('role','tablist');
       host.innerHTML=TABS.map(([k,l])=>'<button type="button" data-v200-op="'+k+'">'+l+'</button>').join('');
-      const anchor=q('#v161FilterBar')||q('#operativoDynamic')||q('#operativoPeriodBar')||q('#page-operativo');
+      const anchor=q('#operativoPeriodBar')||q('#operativoDynamic')||q('#page-operativo');
       anchor?.parentNode?.insertBefore(host,anchor);
     }
     host.querySelectorAll('[data-v200-op]').forEach(btn=>{
@@ -461,17 +474,19 @@ body.v200-operation.v200-operation-has-filter #v161FilterBar.on{
       if(on&&center)centerButton(btn);
     });
 
-    // Resumen/Captura diaria/Productividad conservan una sola barra de consulta.
-    // Cargar productividad y Estándares no requieren filtros externos.
+    // Resumen/Captura diaria/Productividad conservan únicamente el filtro
+    // branded nativo (#operativoPeriodBar). La fachada V161 de arriba se oculta.
+    // Cargar productividad y Estándares no necesitan filtro externo.
     const needsFilter=['summary','daily','productivity'].includes(key);
     document.body.classList.toggle('v200-operation-has-filter',needsFilter);
     document.body.classList.toggle('v200-operation-no-filter',!needsFilter);
     const facade=q('#v161FilterBar');
-    if(facade){
-      if(needsFilter) facade.classList.add('on');
-      else facade.classList.remove('on');
+    if(facade)facade.classList.remove('on');
+    const nativeBar=q('#operativoPeriodBar');
+    if(nativeBar){
+      nativeBar.classList.toggle('hidden',!needsFilter);
+      nativeBar.style.display=needsFilter?'block':'none';
     }
-    q('#operativoPeriodBar')?.classList.add('hidden');
 
     // Ocultar pestañas históricas que se renderizan dentro del contenido.
     qa('#operativoDynamicContent .v125-tabs,#operativoDynamicContent .v167-safe-tabs').forEach(x=>x.style.display='none');
