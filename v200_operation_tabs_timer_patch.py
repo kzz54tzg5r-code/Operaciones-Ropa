@@ -68,7 +68,7 @@ def install(m):
 
     def _resolve_store(actor, requested=""):
         profile = _profile(actor)
-        assigned = str(profile.get("store") or "").strip()
+        assigned = str(actor.get("store") or profile.get("store") or "").strip()
         role = str(actor.get("role") or "")
         if role in ("tienda", "colaborador", "colaborador_operativo", "colaborador_lenceria"):
             if not assigned:

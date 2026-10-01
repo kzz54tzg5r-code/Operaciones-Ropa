@@ -430,8 +430,10 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     return String(document.body.dataset.v163Module||'').toLowerCase()==='operation';
   }
   function canDemo(){
-    try{return ['superadmin','admin','director','consulta'].includes(String(USER?.role||''))}
-    catch(_){return false}
+    try{
+      const role=String(USER?.real_role||USER?.role||'').toLowerCase();
+      return ['superadmin','admin','director','consulta'].includes(role)||USER?.can_preview_roles===true;
+    }catch(_){return false}
   }
   async function A(url){
     if(typeof api==='function')return api(url,{timeoutMs:120000});
