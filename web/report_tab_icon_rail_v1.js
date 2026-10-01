@@ -813,7 +813,9 @@
     installStyle();
 
     const viewport=document.getElementById(targetId);
-    if(!(viewport instanceof HTMLElement) || !viewport.classList.contains('rt-carousel')) return;
+    if(!(viewport instanceof HTMLElement)) return;
+    if(viewport.dataset?.v209StaticOrder==='1') return;
+    if(!viewport.classList.contains('rt-carousel')) return;
 
     const shell=viewport.closest('.rt-carousel-shell');
     if(!shell) return;
