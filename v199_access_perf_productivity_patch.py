@@ -25,6 +25,22 @@ def install(m):
     m.REPORT_TABS.setdefault("operations.productivity_capture", "Cargar productividad")
 
     with m.db() as con:
+        # Perfil obligatorio una sola vez: nombre completo + nómina.
+        user_cols={str(r["name"]) for r in con.execute("PRAGMA table_info(users)").fetchall()}
+        if "full_name" not in user_cols:
+            con.execute("ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''")
+        if "employee_no" not in user_cols:
+            con.execute("ALTER TABLE users ADD COLUMN employee_no TEXT DEFAULT ''")
+        if "profile_completed_at" not in user_cols:
+            con.execute("ALTER TABLE users ADD COLUMN profile_completed_at TEXT DEFAULT ''")
+        try:
+            con.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_users_employee_no "
+                "ON users(employee_no) WHERE TRIM(COALESCE(employee_no,''))<>''"
+            )
+        except Exception:
+            pass
+
         con.execute("""CREATE TABLE IF NOT EXISTS cm_productivity_capture(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
@@ -35,6 +51,7 @@ def install(m):
             muertos REAL NOT NULL DEFAULT 0,
             cajas REAL NOT NULL DEFAULT 0,
             probador REAL NOT NULL DEFAULT 0,
+            pieces REAL NOT NULL DEFAULT 0,
             started_at TEXT NOT NULL,
             ended_at TEXT DEFAULT '',
             duration_seconds INTEGER NOT NULL DEFAULT 0,
@@ -42,8 +59,78 @@ def install(m):
             created_by TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )""")
+        prod_cols={str(r["name"]) for r in con.execute("PRAGMA table_info(cm_productivity_capture)").fetchall()}
+        if "pieces" not in prod_cols:
+            con.execute("ALTER TABLE cm_productivity_capture ADD COLUMN pieces REAL NOT NULL DEFAULT 0")
         con.execute("CREATE INDEX IF NOT EXISTS ix_cm_prod_date_store ON cm_productivity_capture(date,store)")
         con.execute("CREATE INDEX IF NOT EXISTS ix_cm_prod_created_by ON cm_productivity_capture(created_by,status)")
+
+    # Añadir perfil a la sesión y permitir ingreso por nómina sin modificar
+    # el usuario/correo que ya existía.
+    _base_current_user=m.current_user
+    def _v199_current_user(request):
+        user=_base_current_user(request)
+        if not user:
+            return user
+        try:
+            with m.db() as con:
+                row=con.execute(
+                    "SELECT full_name,employee_no,profile_completed_at FROM users WHERE id=?",
+                    (user.get("id"),)
+                ).fetchone()
+            full_name=str(row["full_name"] or "").strip() if row else ""
+            employee_no=str(row["employee_no"] or "").strip() if row else ""
+            user["full_name"]=full_name
+            user["employee_no"]=employee_no
+            user["profile_required"]=not bool(full_name and employee_no)
+        except Exception:
+            user["full_name"]=""
+            user["employee_no"]=""
+            user["profile_required"]=True
+        return user
+    m.current_user=_v199_current_user
+
+    _base_find_login_user=m.find_login_user
+    def _v199_find_login_user(identifier):
+        key=m.login_key(identifier)
+        if key:
+            try:
+                with m.db() as con:
+                    rows=con.execute(
+                        "SELECT * FROM users WHERE active=1 AND TRIM(COALESCE(employee_no,''))<>''"
+                    ).fetchall()
+                for row in rows:
+                    if m.login_key(row["employee_no"])==key:
+                        return row
+            except Exception:
+                pass
+        return _base_find_login_user(identifier)
+    m.find_login_user=_v199_find_login_user
+
+    @m.app.post("/api/me/profile-onboarding")
+    async def v199_profile_onboarding(request: Request):
+        actor=m.require_user(request)
+        body=await request.json()
+        full_name=" ".join(str(body.get("full_name") or "").strip().split())
+        employee_no=str(body.get("employee_no") or "").strip()
+        if len(full_name)<3:
+            raise HTTPException(400,"Escribe tu nombre completo")
+        if len(employee_no)<2 or len(employee_no)>40:
+            raise HTTPException(400,"Escribe una nómina válida")
+        key=m.login_key(employee_no)
+        with m.db() as con:
+            rows=con.execute(
+                "SELECT id,employee_no FROM users WHERE active=1 AND id<>?",
+                (actor.get("id"),)
+            ).fetchall()
+            if any(m.login_key(r["employee_no"])==key for r in rows if str(r["employee_no"] or "").strip()):
+                raise HTTPException(409,"Esa nómina ya está registrada en otro usuario")
+            now=datetime.now(MX).isoformat(timespec="seconds")
+            con.execute(
+                "UPDATE users SET full_name=?,employee_no=?,profile_completed_at=?,updated_at=? WHERE id=?",
+                (full_name,employee_no,now,now,actor.get("id"))
+            )
+        return {"ok":True,"user":m.current_user(request)}
 
     def _scope_store(actor, requested):
         role=str(actor.get("role") or "")
@@ -74,8 +161,11 @@ def install(m):
             "stores":m.store_names(True),
             "user":{
                 "username":str(actor.get("username") or ""),
+                "full_name":str(actor.get("full_name") or actor.get("username") or ""),
+                "employee_no":str(actor.get("employee_no") or ""),
                 "store":str(actor.get("store") or ""),
                 "role":str(actor.get("role") or ""),
+                "profile_required":bool(actor.get("profile_required")),
             },
             "activities":["Recolección","Acondicionado","Ubicado","Clasificado","Recorridos","Otro"],
         }
@@ -94,17 +184,13 @@ def install(m):
     async def cm_productivity_start(request: Request):
         actor=m.require_user(request,("superadmin","admin","tienda","colaborador_operativo"))
         body=await request.json()
-        day=str(body.get("date") or datetime.now(MX).date().isoformat())[:10]
-        try:
-            datetime.strptime(day,"%Y-%m-%d")
-        except Exception:
-            raise HTTPException(400,"Fecha inválida")
+        if actor.get("profile_required"):
+            raise HTTPException(409,"Completa tu nombre y nómina antes de registrar productividad")
+        day=datetime.now(MX).date().isoformat()
         store=_scope_store(actor,body.get("store"))
-        employee_name=str(body.get("employee_name") or actor.get("username") or "").strip()
-        employee_no=str(body.get("employee_no") or "").strip()[:40]
+        employee_name=str(actor.get("full_name") or actor.get("username") or "").strip()
+        employee_no=str(actor.get("employee_no") or "").strip()[:40]
         activity=str(body.get("activity") or "").strip()
-        if not employee_name:
-            raise HTTPException(400,"Escribe el colaborador")
         if not activity:
             raise HTTPException(400,"Selecciona la actividad realizada")
         now=datetime.now(MX).isoformat(timespec="seconds")
@@ -119,12 +205,15 @@ def install(m):
             cur=con.execute(
                 """INSERT INTO cm_productivity_capture(
                     date,store,employee_name,employee_no,activity,
-                    muertos,cajas,probador,started_at,status,created_by,updated_at
-                ) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)""",
-                (day,store,employee_name,employee_no,activity,0,0,0,now,created_by,now)
+                    muertos,cajas,probador,pieces,started_at,status,created_by,updated_at
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,'active',?,?)""",
+                (day,store,employee_name,employee_no,activity,0,0,0,0,now,created_by,now)
             )
             rid=int(cur.lastrowid)
-        return {"ok":True,"id":rid,"started_at":now,"message":"Tiempo iniciado"}
+        return {
+            "ok":True,"id":rid,"started_at":now,"message":"Tiempo iniciado",
+            "date":day,"store":store,"employee_name":employee_name,"employee_no":employee_no
+        }
 
     @m.app.post("/api/cm-productivity/{record_id}/finish")
     async def cm_productivity_finish(record_id: int, request: Request):
@@ -133,7 +222,6 @@ def install(m):
         def qty(name):
             try:return max(float(body.get(name) or 0),0)
             except Exception:raise HTTPException(400,f"{name.title()} debe ser un número válido")
-        muertos,cajas,probador=qty("muertos"),qty("cajas"),qty("probador")
         now_dt=datetime.now(MX); now=now_dt.isoformat(timespec="seconds")
         with m.db() as con:
             row=con.execute("SELECT * FROM cm_productivity_capture WHERE id=?",(record_id,)).fetchone()
@@ -144,17 +232,24 @@ def install(m):
                 raise HTTPException(403,"No puedes finalizar este registro")
             if str(row["status"] or "")!="active":
                 raise HTTPException(409,"El registro ya fue finalizado")
+            is_collection=m.login_key(row["activity"])==m.login_key("Recolección")
+            if is_collection:
+                muertos,cajas,probador=qty("muertos"),qty("cajas"),qty("probador")
+                pieces=muertos+cajas+probador
+            else:
+                muertos=cajas=probador=0.0
+                pieces=qty("pieces")
             start=_dt(row["started_at"])
             duration=max(int((now_dt-start).total_seconds()),0) if start else 0
             con.execute(
                 """UPDATE cm_productivity_capture SET
-                   muertos=?,cajas=?,probador=?,ended_at=?,duration_seconds=?,
+                   muertos=?,cajas=?,probador=?,pieces=?,ended_at=?,duration_seconds=?,
                    status='finished',updated_at=? WHERE id=?""",
-                (muertos,cajas,probador,now,duration,now,record_id)
+                (muertos,cajas,probador,pieces,now,duration,now,record_id)
             )
         return {
             "ok":True,"message":"Tiempo finalizado y productividad guardada",
-            "pieces":muertos+cajas+probador,"duration_seconds":duration
+            "pieces":pieces,"duration_seconds":duration
         }
 
     @m.app.get("/api/cm-productivity/history")
@@ -227,7 +322,10 @@ def install(m):
             })
             for k in ("muertos","cajas","probador"):
                 p[k]+=float(r.get(k) or 0)
-            p["pieces"]+=float(r.get("muertos") or 0)+float(r.get("cajas") or 0)+float(r.get("probador") or 0)
+            row_pieces=float(r.get("pieces") or 0)
+            if row_pieces<=0:
+                row_pieces=float(r.get("muertos") or 0)+float(r.get("cajas") or 0)+float(r.get("probador") or 0)
+            p["pieces"]+=row_pieces
             p["days"].add(str(r.get("date") or ""))
             p["duration_seconds"]+=int(r.get("duration_seconds") or 0)
             if r.get("activity"):p["activities"].add(str(r.get("activity")))
@@ -509,6 +607,16 @@ def install(m):
 .v199-start:disabled,.v199-finish:disabled{opacity:.45;cursor:not-allowed}
 .v199-source-note{font-size:8.5px;color:#667085;margin-top:8px}
 .v199-digital-badge{display:inline-flex;padding:4px 7px;border-radius:999px;background:#dcfce7;color:#166534;font-size:7.5px;font-weight:950}
+.v199-auto-note{font-size:8.5px;color:#667085;margin:8px 0 2px}
+.v199-profile-overlay{position:fixed;inset:0;z-index:99999;background:rgba(5,25,48,.64);display:grid;place-items:center;padding:18px}
+.v199-profile-card{width:min(430px,100%);background:#fff;border-radius:18px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.v199-profile-card h2{margin:0 0 7px;color:#123b73;font-size:20px}.v199-profile-card p{margin:0 0 16px;color:#667085;font-size:11px;line-height:1.45}
+.v199-profile-card label{display:block;font-size:8px;font-weight:950;color:#667085;text-transform:uppercase;margin:10px 0 5px}
+.v199-profile-card input{width:100%;min-height:48px;border:1px solid #ccd6e2;border-radius:10px;padding:10px 12px;font-size:14px;color:#123b73}
+.v199-profile-save{width:100%;margin-top:14px;min-height:48px;border:0;border-radius:10px;background:#1769e8;color:#fff;font-weight:950}
+.v199-profile-msg{min-height:18px;margin-top:8px;font-size:9px;color:#dc2626}
+.v199-single-pieces{margin-top:12px}
+.v199-single-pieces .v199-motive{max-width:260px}
 @media(max-width:900px){
  #loginView .login-v15-card{padding:24px 18px 22px!important}
  .v199-form-grid{grid-template-columns:1fr}.v199-motives{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -575,6 +683,47 @@ function setupLogin(){
   }
 }
 
+let profileOnboardingPromise=null;
+function installProfileOnboarding(){
+  if(typeof window.enter!=='function'||window.enter.__v199Profile)return;
+  const base=window.enter;
+  const wrapped=async function(user){
+    if(user?.profile_required)user=await requireProfile(user);
+    const result=await base.call(this,user);
+    const name=q('#profileName');if(name)name.textContent=user?.full_name||user?.username||'';
+    return result;
+  };
+  wrapped.__v199Profile=true;
+  try{window.enter=wrapped;enter=wrapped}catch(_){window.enter=wrapped}
+}
+function requireProfile(user){
+  if(!user?.profile_required)return Promise.resolve(user);
+  if(profileOnboardingPromise)return profileOnboardingPromise;
+  profileOnboardingPromise=new Promise(resolve=>{
+    let overlay=q('#v199ProfileOverlay');
+    if(!overlay){
+      overlay=document.createElement('div');overlay.id='v199ProfileOverlay';overlay.className='v199-profile-overlay';
+      overlay.innerHTML='<div class="v199-profile-card"><h2>Completa tu perfil</h2><p>Esto se solicita una sola vez. Después podrás iniciar sesión también con tu número de nómina.</p>'+
+        '<label>Nombre completo</label><input id="v199ProfileName" autocomplete="name" placeholder="Nombre y apellidos">'+
+        '<label>Nómina</label><input id="v199ProfileNo" inputmode="numeric" autocomplete="off" placeholder="Número de nómina">'+
+        '<button id="v199ProfileSave" class="v199-profile-save">Guardar y continuar</button><div id="v199ProfileMsg" class="v199-profile-msg"></div></div>';
+      document.body.appendChild(overlay);
+    }
+    overlay.style.display='grid';
+    const name=q('#v199ProfileName'),no=q('#v199ProfileNo'),btn=q('#v199ProfileSave'),msg=q('#v199ProfileMsg');
+    name.value=user?.full_name||user?.username||'';no.value=user?.employee_no||'';
+    btn.onclick=async()=>{
+      btn.disabled=true;msg.textContent='Guardando…';
+      try{
+        const r=await capApi('/api/me/profile-onboarding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name:name.value,employee_no:no.value})});
+        overlay.style.display='none';msg.textContent='';profileOnboardingPromise=null;resolve(r.user);
+      }catch(e){msg.textContent=e.message||String(e);btn.disabled=false}
+    };
+    setTimeout(()=>name.focus(),100);
+  });
+  return profileOnboardingPromise;
+}
+
 let retryCount=0;
 function setupServerRetry(){
   const msg=q('#serverMsg');if(!msg||msg.__v199)return;msg.__v199=true;
@@ -622,47 +771,60 @@ async function renderCapture(){
   const centro=q('#operativoCentro'),dyn=q('#operativoDynamic');centro?.classList.add('hidden');dyn?.classList.remove('hidden');
   q('#operativoPeriodBar')?.classList.add('hidden');
   if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Cargar productividad';
-  if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Cambios y Muertos · actividad, motivos, piezas y tiempo real';
+  if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Cambios y Muertos · piezas y tiempo real';
   const host=q('#operativoDynamicContent');if(!host)return;
   host.innerHTML='<div class="infoempty">Preparando captura…</div>';
   let meta,act,hist;
   try{
     [meta,act]=await Promise.all([capApi('/api/cm-productivity/meta'),capApi('/api/cm-productivity/active')]);
+    if(meta.user?.profile_required){
+      const updated=await requireProfile(meta.user);
+      meta.user=updated;
+    }
     activeRecord=act.item||null;
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const selected=(meta.user?.store||currentStore()||meta.stores?.[0]||'');
     hist=await capApi('/api/cm-productivity/history?date='+encodeURIComponent(today)+'&store='+encodeURIComponent(selected));
-    const restricted=['tienda','colaborador_operativo','colaborador_lenceria'].includes(meta.user?.role);
-    const storeHtml=restricted
-      ?'<input id="v199Store" value="'+esc(meta.user?.store||'')+'" disabled>'
-      :'<select id="v199Store">'+(meta.stores||[]).map(s=>'<option'+(s===selected?' selected':'')+'>'+esc(s)+'</option>').join('')+'</select>';
     const a=activeRecord;
+    const activity=a?.activity||'Recolección';
+    const isCollection=String(activity).toLowerCase()==='recolección';
+    const rowTotal=r=>{
+      const p=num(r.pieces);return p>0?p:num(r.muertos)+num(r.cajas)+num(r.probador);
+    };
+    const detail=r=>String(r.activity||'').toLowerCase()==='recolección'
+      ?('Muertos '+fmt(r.muertos)+' · Cajas '+fmt(r.cajas)+' · Probador '+fmt(r.probador))
+      :'—';
+
     host.innerHTML='<div class="v199-prod-panel">'+
-      '<div class="v199-prod-head"><div><h3>Registro de productividad</h3><div class="v199-source-note">Inicio y Fin guardan el tiempo real. Las piezas se separan por motivo de ingreso.</div></div><div id="v199Timer" class="v199-timer">00:00:00</div></div>'+
-      '<div class="v199-form-grid">'+
-        '<div class="v199-field"><label>Fecha</label><input id="v199Date" type="date" value="'+esc(a?.date||today)+'" '+(a?'disabled':'')+'></div>'+
-        '<div class="v199-field"><label>Tienda</label>'+storeHtml+'</div>'+
-        '<div class="v199-field"><label>Colaborador</label><input id="v199Employee" value="'+esc(a?.employee_name||meta.user?.username||'')+'" '+(a?'disabled':'')+'></div>'+
-        '<div class="v199-field"><label>Nómina (opcional)</label><input id="v199EmployeeNo" value="'+esc(a?.employee_no||'')+'" '+(a?'disabled':'')+'></div>'+
-        '<div class="v199-field" style="grid-column:1/-1"><label>Actividad realizada</label><select id="v199Activity" '+(a?'disabled':'')+'>'+((meta.activities||[]).map(x=>'<option'+(a?.activity===x?' selected':'')+'>'+esc(x)+'</option>').join(''))+'</select></div>'+
-      '</div>'+
-      '<div class="v199-motives">'+
+      '<div class="v199-prod-head"><div><h3>Registro de productividad</h3><div class="v199-source-note">Fecha, tienda, nombre y nómina se asignan automáticamente desde tu sesión.</div></div><div id="v199Timer" class="v199-timer">00:00:00</div></div>'+
+      '<div class="v199-form-grid"><div class="v199-field" style="grid-column:1/-1"><label>Actividad realizada</label><select id="v199Activity" '+(a?'disabled':'')+'>'+
+        ((meta.activities||[]).map(x=>'<option'+(activity===x?' selected':'')+'>'+esc(x)+'</option>').join(''))+'</select></div></div>'+
+      '<div id="v199CollectionFields" class="v199-motives '+(isCollection?'':'hidden')+'">'+
         '<div class="v199-motive"><b>Muertos · piezas</b><input id="v199Muertos" type="number" min="0" inputmode="numeric" value="'+num(a?.muertos)+'"></div>'+
         '<div class="v199-motive"><b>Cajas · piezas</b><input id="v199Cajas" type="number" min="0" inputmode="numeric" value="'+num(a?.cajas)+'"></div>'+
         '<div class="v199-motive"><b>Probador · piezas</b><input id="v199Probador" type="number" min="0" inputmode="numeric" value="'+num(a?.probador)+'"></div>'+
       '</div>'+
+      '<div id="v199SinglePieces" class="v199-single-pieces '+(isCollection?'hidden':'')+'"><div class="v199-motive"><b>Piezas</b><input id="v199Pieces" type="number" min="0" inputmode="numeric" value="'+num(a?.pieces)+'"></div></div>'+
       '<div class="v199-prod-actions"><button id="v199Start" class="v199-start" '+(a?'disabled':'')+'>▶ Inicio</button><button id="v199Finish" class="v199-finish" '+(!a?'disabled':'')+'>■ Fin</button></div>'+
       '<div id="v199Msg" class="v199-source-note"></div></div>'+
-      '<div class="v199-prod-panel"><h3 style="margin-top:0">Capturas de hoy</h3><div class="tablewrap"><table class="table"><thead><tr><th>Colaborador</th><th>Actividad</th><th>Muertos</th><th>Cajas</th><th>Probador</th><th>Total</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
-      ((hist.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td>'+fmt(r.muertos)+'</td><td>'+fmt(r.cajas)+'</td><td>'+fmt(r.probador)+'</td><td><b>'+fmt(num(r.muertos)+num(r.cajas)+num(r.probador))+'</b></td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||'<tr><td colspan="8">Sin capturas de hoy.</td></tr>')+
+      '<div class="v199-prod-panel"><h3 style="margin-top:0">Capturas de hoy</h3><div class="tablewrap"><table class="table"><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle recolección</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
+      ((hist.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+fmt(rowTotal(r))+'</b></td><td>'+esc(detail(r))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||'<tr><td colspan="6">Sin capturas de hoy.</td></tr>')+
       '</tbody></table></div></div>';
+
+    const syncPiecesMode=()=>{
+      const collection=String(q('#v199Activity')?.value||'').toLowerCase()==='recolección';
+      q('#v199CollectionFields')?.classList.toggle('hidden',!collection);
+      q('#v199SinglePieces')?.classList.toggle('hidden',collection);
+    };
+    q('#v199Activity')?.addEventListener('change',syncPiecesMode);
+    syncPiecesMode();
+
     if(a)startTimer();else{clearInterval(timerId);activeRecord=null;updateTimer()}
     q('#v199Start')?.addEventListener('click',async()=>{
       const msg=q('#v199Msg');msg.textContent='Iniciando…';
       try{
         const r=await capApi('/api/cm-productivity/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-          date:q('#v199Date').value,store:q('#v199Store').value,employee_name:q('#v199Employee').value,
-          employee_no:q('#v199EmployeeNo').value,activity:q('#v199Activity').value
+          store:selected,activity:q('#v199Activity').value
         })});
         msg.textContent=r.message;await renderCapture();
       }catch(e){msg.textContent=e.message}
@@ -671,9 +833,11 @@ async function renderCapture(){
       if(!activeRecord)return;
       const msg=q('#v199Msg');msg.textContent='Finalizando…';
       try{
-        const r=await capApi('/api/cm-productivity/'+activeRecord.id+'/finish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-          muertos:num(q('#v199Muertos').value),cajas:num(q('#v199Cajas').value),probador:num(q('#v199Probador').value)
-        })});
+        const collection=String(activeRecord.activity||'').toLowerCase()==='recolección';
+        const payload=collection
+          ?{muertos:num(q('#v199Muertos')?.value),cajas:num(q('#v199Cajas')?.value),probador:num(q('#v199Probador')?.value)}
+          :{pieces:num(q('#v199Pieces')?.value)};
+        const r=await capApi('/api/cm-productivity/'+activeRecord.id+'/finish',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         msg.textContent=r.message;activeRecord=null;clearInterval(timerId);await renderCapture();
       }catch(e){msg.textContent=e.message}
     });
@@ -713,7 +877,7 @@ function installRenderer(){
 }
 
 function setup(){
-  setupLogin();setupServerRetry();fixBrand();ensureCaptureTab();installRenderer();
+  setupLogin();setupServerRetry();fixBrand();installProfileOnboarding();ensureCaptureTab();installRenderer();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 [100,400,1000,2200].forEach(ms=>setTimeout(setup,ms));
