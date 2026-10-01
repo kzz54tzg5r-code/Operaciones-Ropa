@@ -719,6 +719,9 @@
   }
 
   function enhance(viewport){
+    // V221: C&M y Análisis usan el mismo dock dinámico de Operación.
+    // No envolverlos ni registrar gestos/reordenamientos del carrusel histórico.
+    if(viewport?.id==='operativoNav'||viewport?.id==='analysisNav') return;
     if(!isReportTabContainer(viewport)) return;
     enforceConsolidatedOperationTabs(viewport);
     if(ENHANCED.has(viewport)){

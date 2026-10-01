@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-v21-tabs-fit';
+const CACHE_NAME = 'operaciones-ropa-runtime-v22-report-dock';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
