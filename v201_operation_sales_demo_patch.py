@@ -190,6 +190,100 @@ def install(m):
         for idx, row in enumerate(stores, 1):
             row["rank"] = idx
 
+        # Ranking DEMO por colaborador. Se reutilizan nombres/nóminas reales ya
+        # registrados cuando existen; las tiendas sin plantilla suficiente se
+        # completan con colaboradores DEMO para poder visualizar el reporte.
+        roster = {}
+        def add_person(store_name, employee_no, employee_name):
+            st = str(store_name or "").strip()
+            name = " ".join(str(employee_name or "").strip().split())
+            no = str(employee_no or "").strip()
+            if not st or not name:
+                return
+            key = m.login_key(st)
+            bucket = roster.setdefault(key, [])
+            dedup = (m.login_key(no), m.login_key(name))
+            if any((m.login_key(x.get("employee_no")), m.login_key(x.get("name"))) == dedup for x in bucket):
+                return
+            bucket.append({"store": st, "employee_no": no, "name": name, "synthetic": False})
+
+        try:
+            with m.db() as con:
+                try:
+                    rows = con.execute(
+                        """SELECT store,employee_no,
+                                  COALESCE(NULLIF(TRIM(full_name),''),username) AS employee_name
+                           FROM users
+                           WHERE active=1 AND TRIM(COALESCE(store,''))<>''"""
+                    ).fetchall()
+                    for r in rows:
+                        add_person(r["store"], r["employee_no"], r["employee_name"])
+                except Exception:
+                    pass
+                try:
+                    rows = con.execute(
+                        """SELECT DISTINCT store,employee_no,employee_name
+                           FROM operation_productivity
+                           WHERE TRIM(COALESCE(store,''))<>'' AND TRIM(COALESCE(employee_name,''))<>''"""
+                    ).fetchall()
+                    for r in rows:
+                        add_person(r["store"], r["employee_no"], r["employee_name"])
+                except Exception:
+                    pass
+                try:
+                    rows = con.execute(
+                        """SELECT DISTINCT store,employee_no,employee_name
+                           FROM operation_productivity_timer
+                           WHERE TRIM(COALESCE(store,''))<>'' AND TRIM(COALESCE(employee_name,''))<>''"""
+                    ).fetchall()
+                    for r in rows:
+                        add_person(r["store"], r["employee_no"], r["employee_name"])
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        collaborator_rows = []
+        areas = ("Doblado","Colgado","Jeans","Lencería")
+        activities = ("Acondicionado","Clasificado","Ubicado")
+        store_lookup = {m.login_key(r["store"]): r for r in stores}
+        for store in active_stores:
+            skey = m.login_key(store)
+            base_store = store_lookup.get(skey) or {}
+            people = list(roster.get(skey) or [])
+            wanted = max(3, min(8, int(base_store.get("collaborators") or 3)))
+            while len(people) < wanted:
+                pos = len(people) + 1
+                people.append({
+                    "store": store,
+                    "employee_no": f"DEMO-{(active_stores.index(store)+1):02d}-{pos:02d}",
+                    "name": f"Colaborador Demo {pos:02d}",
+                    "synthetic": True,
+                })
+            people = people[:max(wanted, len(roster.get(skey) or []))]
+            base_prod = _num(base_store.get("productivity")) or productivity_target
+            for pos, person in enumerate(people, 1):
+                ps = _seed(f"{store}|{person.get('employee_no')}|{person.get('name')}|{pos}")
+                factor = 0.84 + (ps % 35) / 100.0
+                daily_productivity = base_prod * factor
+                area = areas[ps % len(areas)]
+                activity = activities[(ps // 5) % len(activities)]
+                collaborator_rows.append({
+                    "store": store,
+                    "employee_no": str(person.get("employee_no") or ""),
+                    "name": str(person.get("name") or ""),
+                    "synthetic": bool(person.get("synthetic")),
+                    "area": area,
+                    "activity": activity,
+                    "daily_productivity": daily_productivity,
+                    "pieces": daily_productivity * workdays,
+                    "compliance": daily_productivity / productivity_target * 100.0 if productivity_target else 0.0,
+                })
+
+        collaborator_rows.sort(key=lambda r: (-r["daily_productivity"], m.login_key(r["name"])))
+        for idx, row in enumerate(collaborator_rows, 1):
+            row["global_rank"] = idx
+
         company = {
             "sales_pieces": sum(r["sales_pieces"] for r in stores),
             "sales_value": sum(r["sales_value"] for r in stores),
@@ -249,6 +343,7 @@ def install(m):
             "sales_cut_date": str(sales.get("cut_date") or ""),
             "company": company,
             "stores": stores,
+            "collaborators": collaborator_rows,
             "trend": trend,
             "store_count": len(stores),
         }
@@ -304,8 +399,9 @@ body[data-v163-module="operation"] .v201-demo-toolbar{display:flex}
 .v201-demo-month{border:1px solid #dae5f0;border-radius:10px;padding:9px;background:#fbfdff}
 .v201-demo-month small{display:block;color:#6b7d92;font-size:7px}.v201-demo-month b{display:block;color:#123f73;font-size:14px;margin-top:4px}
 .v201-demo-month span{font-size:7px;color:#72849a}
-body.v201-demo-mode #operativoPeriodBar,
 body.v201-demo-mode #v161FilterBar{display:none!important}
+body.v201-demo-mode.v201-demo-filtered #operativoPeriodBar{display:block!important}
+body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!important}
 @media(max-width:900px){
  .v201-demo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .v201-demo-split{grid-template-columns:1fr}
@@ -447,8 +543,42 @@ body.v201-demo-mode #v161FilterBar{display:none!important}
     return note(d)+'<div class="v201-demo-card"><h3>Cargar productividad · ejemplo lleno</h3><div class="sub">Una captura representativa por cada tienda. Sólo visual; no escribe datos.</div><div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr><th>Tienda</th><th>Actividad</th><th>Área</th><th class="num">Piezas</th><th class="num">Tiempo</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
+  function demoFilterState(){
+    return {
+      period:String(q('#operPeriodSelect')?.value||'').trim(),
+      store:String(q('#operStoreSelect')?.value||'Compañía').trim()||'Compañía',
+      area:String(q('#operAreaSelect')?.value||'Todas').trim()||'Todas',
+      activity:String(q('#operActivitySelect')?.value||'Todas').trim()||'Todas'
+    };
+  }
+  function demoPeriodDays(d,period){
+    const v=String(period||'');
+    if(/^\d{4}-\d{2}-\d{2}$/.test(v))return 1;
+    if(/^\d{4}-W\d{2}$/.test(v))return 5;
+    if(/^\d{4}-\d{2}$/.test(v))return 22;
+    if(/^\d{4}$/.test(v))return Math.max(1,n(d.workdays));
+    return Math.max(1,n(d.workdays));
+  }
   function productivity(d){
-    return note(d)+'<div class="v201-demo-card"><h3>Productividad por tienda · '+esc(d.period_label)+'</h3><div class="sub">Meta configurada: '+nf(d.productivity_target)+' pzas/día · todas las tiendas visibles</div>'+allStoresTable(d,'summary')+'</div>';
+    const f=demoFilterState();
+    const days=demoPeriodDays(d,f.period);
+    let rows=[...(d.collaborators||[])];
+    if(f.store&&f.store!=='Compañía')rows=rows.filter(r=>String(r.store||'')===f.store);
+    if(f.area&&f.area!=='Todas')rows=rows.filter(r=>String(r.area||'')===f.area);
+    if(f.activity&&f.activity!=='Todas')rows=rows.filter(r=>String(r.activity||'')===f.activity);
+    rows.sort((a,b)=>n(b.daily_productivity)-n(a.daily_productivity)||String(a.name||'').localeCompare(String(b.name||''),'es'));
+    const title=f.store==='Compañía'?'Ranking global por colaborador':'Ranking por colaborador · '+f.store;
+    const scope=[f.store,f.area!=='Todas'?f.area:'',f.activity!=='Todas'?f.activity:''].filter(Boolean).join(' · ');
+    const body=rows.map((r,i)=>{
+      const periodPieces=n(r.daily_productivity)*days;
+      return '<tr><td class="num"><b>#'+(i+1)+'</b></td><td class="store">'+esc(r.name)+(r.synthetic?' <span class="v201-demo-pill">DEMO</span>':'')+'</td><td>'+esc(r.employee_no||'—')+'</td><td>'+esc(r.store)+'</td><td>'+esc(r.area)+'</td><td>'+esc(r.activity)+'</td><td class="num"><b>'+nf(periodPieces)+'</b></td><td class="num">'+nf(r.daily_productivity)+'</td><td class="num '+tone(r.compliance)+'">'+pct(r.compliance)+'</td></tr>';
+    }).join('');
+    return note(d)+
+      '<div class="v201-demo-card"><h3>'+esc(title)+'</h3>'+
+      '<div class="sub">'+esc(scope)+' · Meta '+nf(d.productivity_target)+' pzas/día · '+rows.length+' colaboradores</div>'+
+      '<div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr><th class="num">Ranking</th><th>Colaborador</th><th>Nómina</th><th>Tienda</th><th>Área</th><th>Actividad</th><th class="num">Piezas periodo</th><th class="num">Pzas/día</th><th class="num">% Meta</th></tr></thead><tbody>'+
+      (body||'<tr><td colspan="9">Sin colaboradores para los filtros seleccionados.</td></tr>')+
+      '</tbody></table></div></div>';
   }
 
   function standards(d){
@@ -470,7 +600,14 @@ body.v201-demo-mode #v161FilterBar{display:none!important}
     if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Datos de venta reales como base · operación estimada para visualización';
     const host=q('#operativoDynamicContent');if(!host)return;
     const views={summary,daily,capture,productivity,standards};
-    host.innerHTML=trend(demoData)+(views[demoTab]||summary)(demoData);
+    const needsFilter=['summary','productivity'].includes(demoTab);
+    document.body.classList.toggle('v201-demo-filtered',needsFilter);
+    const nativeBar=q('#operativoPeriodBar');
+    if(nativeBar){
+      nativeBar.classList.toggle('hidden',!needsFilter);
+      nativeBar.style.display=needsFilter?'block':'none';
+    }
+    host.innerHTML=(demoTab==='summary'?trend(demoData):'')+(views[demoTab]||summary)(demoData);
   }
 
   async function openDemo(tab='summary'){
@@ -488,13 +625,18 @@ body.v201-demo-mode #v161FilterBar{display:none!important}
     }
   }
   async function closeDemo(){
-    demoMode=false;demoData=null;document.body.classList.remove('v201-demo-mode');
+    demoMode=false;demoData=null;document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
     q('#v201DemoOn')?.classList.remove('active');
     if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación';
     if(typeof window.renderOperativoView==='function')await window.renderOperativoView('Operación',true);
   }
 
   document.addEventListener('click',e=>{
+    const consult=e.target.closest?.('#operPeriodApply');
+    if(consult&&demoMode){
+      e.preventDefault();e.stopImmediatePropagation();
+      renderDemo();return;
+    }
     const tab=e.target.closest?.('#v200OperationTabs [data-v200-op]');
     if(tab&&demoMode){
       e.preventDefault();e.stopImmediatePropagation();
@@ -505,13 +647,20 @@ body.v201-demo-mode #v161FilterBar{display:none!important}
       setTimeout(()=>{
         ensureToolbar();
         if(String(main.dataset.main||'')!=='operation'&&demoMode){
-          demoMode=false;document.body.classList.remove('v201-demo-mode');
+          demoMode=false;document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
         }
       },100);
     }
   },true);
 
-  function setup(){ensureToolbar();if(demoMode&&isOperation())renderDemo()}
+  function bindDemoFilters(){
+    ['#operStoreSelect','#operAreaSelect','#operActivitySelect','#operPeriodSelect'].forEach(sel=>{
+      const el=q(sel);if(!el||el.dataset.v201Bound==='1')return;
+      el.dataset.v201Bound='1';
+      el.addEventListener('change',()=>{if(demoMode&&demoTab==='productivity')renderDemo()});
+    });
+  }
+  function setup(){ensureToolbar();bindDemoFilters();if(demoMode&&isOperation())renderDemo()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
   [250,800,1600].forEach(ms=>setTimeout(setup,ms));
   console.info('[V201] Demo de Operación basado en ventas reales disponible bajo demanda.');
@@ -537,7 +686,7 @@ body.v201-demo-mode #v161FilterBar{display:none!important}
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V201",
+                "X-Operations-UI-Version": "V202",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
@@ -545,4 +694,4 @@ body.v201-demo-mode #v161FilterBar{display:none!important}
             return response
 
     m._V201_OPERATION_SALES_DEMO = True
-    print("[V201] Demo Operación con venta real como base instalado; sin escrituras.", flush=True)
+    print("[V202] Demo Operación: base sólo en Resumen + ranking global/tienda por colaborador.", flush=True)
