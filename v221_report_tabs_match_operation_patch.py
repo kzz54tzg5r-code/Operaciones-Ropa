@@ -269,6 +269,51 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
 .rt-icon-rail-v1-indicator{
   display:none!important;
 }
+
+/* V221.2 · ningún decorador anterior puede agregar un segundo icono. */
+body[data-v163-module] :is(#operativoNav,#analysisNav) :is(.v164-tab-icon,.v166-tab-icon,.v206-tab-icon,.v217-tab-icon){
+  display:none!important;
+}
+
+/* Cuando no caben con un tamaño legible, una sola fila desplazable con el dedo. */
+body[data-v163-module] :is(#operativoNav,#analysisNav)[data-v221-scroll="1"]{
+  display:flex!important;
+  grid-template-columns:none!important;
+  grid-auto-flow:unset!important;
+  flex-wrap:nowrap!important;
+  justify-content:flex-start!important;
+  align-items:stretch!important;
+  gap:var(--v221-gap,7px)!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  overscroll-behavior-x:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  scroll-snap-type:x proximity!important;
+  scroll-padding-inline:8px!important;
+  touch-action:pan-x pan-y!important;
+  padding-left:2px!important;
+  padding-right:2px!important;
+  scrollbar-width:none!important;
+}
+body[data-v163-module] :is(#operativoNav,#analysisNav)[data-v221-scroll="1"]::-webkit-scrollbar{
+  display:none!important;
+}
+body[data-v163-module] :is(#operativoNav,#analysisNav)[data-v221-scroll="1"]>button{
+  flex:0 0 var(--v221-card-w,88px)!important;
+  width:var(--v221-card-w,88px)!important;
+  min-width:var(--v221-card-w,88px)!important;
+  max-width:var(--v221-card-w,88px)!important;
+  scroll-snap-align:center!important;
+}
+
+/* Nunca permitir que una tarjeta invada a la siguiente. */
+body[data-v163-module] :is(#operativoNav,#analysisNav)>button{
+  box-sizing:border-box!important;
+  isolation:isolate!important;
+}
+body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
+  max-width:100%!important;
+}
 </style>"""
 
     js = r"""<script id="v221-report-tabs-match-operation-js">
@@ -406,6 +451,7 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
       const currentIcon=btn.dataset.v221Icon;
       if(currentLabel===label&&currentIcon===icon)return;
       btn.dataset.v221Decorating='1';
+      btn.querySelectorAll(':scope > .v164-tab-icon,:scope > .v166-tab-icon,:scope > .v206-tab-icon,:scope > .v217-tab-icon').forEach(x=>x.remove());
       btn.dataset.v221Icon=icon;
       btn.dataset.rtLabel=label;
       btn.title=label;
@@ -438,36 +484,58 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
     const tabs=qsa(':scope > button',host).filter(visible);
     const count=Math.max(1,tabs.length);
     const width=Math.max(280,host.parentElement?.clientWidth||host.clientWidth||window.innerWidth-24);
-    const gap=count<=5?4:count<=7?3:count<=10?2:1;
+    const gap=count<=5?4:count<=7?6:7;
     const cell=Math.max(18,(width-gap*(count-1))/count);
 
-    // Misma lógica de V220, extendida a reportes con más pestañas.
-    const icon=clamp(12.5,cell*.38,30);
-    const font=clamp(4.8,cell*.115,8.8);
-    const height=clamp(49,cell*.88,68);
-    const radius=clamp(8,cell*.18,14);
-    const lines=count>=9?3:2;
+    // No comprimir hasta volver ilegibles las tarjetas. Si no caben,
+    // mantener una sola línea y habilitar swipe horizontal.
+    const shouldScroll=count>5 && cell<78;
+    const cardWidth=shouldScroll?clamp(82,width*.235,96):cell;
+    const visualCell=shouldScroll?cardWidth:cell;
 
+    const icon=clamp(22,visualCell*.36,30);
+    const font=clamp(7.1,visualCell*.102,8.8);
+    const height=clamp(58,visualCell*.78,68);
+    const radius=clamp(11,visualCell*.16,14);
+    const lines=2;
+
+    host.dataset.v221Scroll=shouldScroll?'1':'0';
     host.style.setProperty('--v221-count',String(count));
     host.style.setProperty('--v221-gap',gap+'px');
+    host.style.setProperty('--v221-card-w',cardWidth.toFixed(1)+'px');
     host.style.setProperty('--v221-icon',icon.toFixed(1)+'px');
     host.style.setProperty('--v221-font',font.toFixed(2)+'px');
     host.style.setProperty('--v221-tab-h',height.toFixed(1)+'px');
     host.style.setProperty('--v221-radius',radius.toFixed(1)+'px');
     host.style.setProperty('--v221-lines',String(lines));
-
-    // Gana contra inline !important del carrusel histórico.
-    host.style.setProperty('display','grid','important');
-    host.style.setProperty('grid-template-columns','repeat('+count+',minmax(0,1fr))','important');
-    host.style.setProperty('grid-auto-flow','column','important');
-    host.style.setProperty('flex-wrap','nowrap','important');
-    host.style.setProperty('overflow','visible','important');
-    host.style.setProperty('overflow-x','visible','important');
-    host.style.setProperty('overflow-y','visible','important');
     host.style.setProperty('width','100%','important');
     host.style.setProperty('max-width','100%','important');
-    host.style.setProperty('scroll-snap-type','none','important');
-    host.scrollLeft=0;
+
+    if(shouldScroll){
+      host.style.setProperty('display','flex','important');
+      host.style.removeProperty('grid-template-columns');
+      host.style.removeProperty('grid-auto-flow');
+      host.style.setProperty('flex-wrap','nowrap','important');
+      host.style.setProperty('overflow-x','auto','important');
+      host.style.setProperty('overflow-y','visible','important');
+      host.style.setProperty('scroll-snap-type','x proximity','important');
+      const active=tabs.find(b=>b.classList.contains('active')||b.getAttribute('aria-selected')==='true');
+      if(active){
+        requestAnimationFrame(()=>{
+          try{active.scrollIntoView({behavior:'auto',block:'nearest',inline:'center'})}catch(_){}
+        });
+      }
+    }else{
+      host.style.setProperty('display','grid','important');
+      host.style.setProperty('grid-template-columns','repeat('+count+',minmax(0,1fr))','important');
+      host.style.setProperty('grid-auto-flow','column','important');
+      host.style.setProperty('flex-wrap','nowrap','important');
+      host.style.setProperty('overflow','visible','important');
+      host.style.setProperty('overflow-x','visible','important');
+      host.style.setProperty('overflow-y','visible','important');
+      host.style.setProperty('scroll-snap-type','none','important');
+      host.scrollLeft=0;
+    }
   }
 
   let raf=0;
@@ -544,7 +612,7 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
                 "Cache-Control":"no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma":"no-cache",
                 "Expires":"0",
-                "X-Operations-UI-Version":"V221-REPORT-DOCK",
+                "X-Operations-UI-Version":"V221.2-REPORT-DOCK-SWIPE",
             })
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
@@ -552,4 +620,4 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
             return response
 
     m._V221_REPORT_TABS_MATCH_OPERATION=True
-    print("[V221] C&M + Análisis · pestañas reemplazadas por dock de Operación.",flush=True)
+    print("[V221.2] C&M + Análisis · tarjetas sin encimar y swipe horizontal cuando no caben.",flush=True)
