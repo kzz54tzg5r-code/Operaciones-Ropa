@@ -64,7 +64,6 @@ body[data-v213-module] :is(.title,.subtitle,.note,.lab,.rk-label,.rk-sub,.v213-f
    ========================================================== */
 body[data-v213-module] :is(#operativoNav,#analysisNav,#v200OperationTabs){
   --v215-gap:7px;
-  display:flex!important;
   flex-direction:row!important;
   flex-wrap:nowrap!important;
   align-items:stretch!important;
@@ -88,6 +87,22 @@ body[data-v213-module] :is(#operativoNav,#analysisNav,#v200OperationTabs){
 }
 body[data-v213-module] :is(#operativoNav,#analysisNav,#v200OperationTabs)::-webkit-scrollbar{
   display:none!important;
+}
+
+/* V216: aislamiento duro de navegación.
+   El bug del video era que V215 volvía display:flex los TRES menús:
+   Cambios y Muertos + Análisis Comercial + Operación al mismo tiempo. */
+body[data-v213-module="operativo"] :is(#analysisNav,#v200OperationTabs),
+body[data-v213-module="analysis"] :is(#operativoNav,#v200OperationTabs),
+body[data-v213-module="operation"] :is(#operativoNav,#analysisNav),
+body[data-v213-module="users"] :is(#operativoNav,#analysisNav,#v200OperationTabs),
+body[data-v213-module="share"] :is(#operativoNav,#analysisNav,#v200OperationTabs){
+  display:none!important;
+}
+body[data-v213-module="operativo"] #operativoNav:not(.hidden):not([hidden]),
+body[data-v213-module="analysis"] #analysisNav:not(.hidden):not([hidden]),
+body[data-v213-module="operation"] #v200OperationTabs:not(.hidden):not([hidden]){
+  display:flex!important;
 }
 
 /* En modo FIT todos los botones se reparten TODO el ancho disponible. */
@@ -364,6 +379,14 @@ body[data-v213-module] #v213ReportContext h2{
   body[data-v213-module] :is(.kpis,.report-kpis,.v149-kpis,.v121-grid,.v125-grid,.v200-op-grid){
     grid-template-columns:repeat(auto-fit,minmax(min(145px,100%),1fr))!important;
   }
+}
+/* Defensa final: ningún breakpoint puede reactivar un menú ajeno al módulo. */
+body[data-v213-module="operativo"] :is(#analysisNav,#v200OperationTabs),
+body[data-v213-module="analysis"] :is(#operativoNav,#v200OperationTabs),
+body[data-v213-module="operation"] :is(#operativoNav,#analysisNav),
+body[data-v213-module="users"] :is(#operativoNav,#analysisNav,#v200OperationTabs),
+body[data-v213-module="share"] :is(#operativoNav,#analysisNav,#v200OperationTabs){
+  display:none!important;
 }
 </style>"""
 
