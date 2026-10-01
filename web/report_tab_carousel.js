@@ -485,9 +485,6 @@
 
   function isReportTabContainer(el){
     if(!(el instanceof Element)||isExcluded(el)) return false;
-    /* V214: navegación principal gobernada por V213. No envolver ni
-       reemplazar el contenido de sus botones. */
-    if(el.id==='operativoNav'||el.id==='analysisNav'||el.id==='v200OperationTabs') return false;
     if(el.id==='operativoNav'||el.id==='analysisNav'||el.classList.contains('v125-tabs')||el.hasAttribute('data-report-tab-carousel')) return true;
     // Para detección genérica exigimos botones semánticos DIRECTOS.
     // Esto evita que main/page/shell se confundan con un carrusel por contener
