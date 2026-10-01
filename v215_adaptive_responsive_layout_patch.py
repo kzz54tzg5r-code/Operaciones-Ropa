@@ -167,6 +167,12 @@ body[data-v213-module="operation"] #v200OperationTabs .v203-tab-label{
 body[data-v213-module] :is(#operativoNav,#analysisNav)>button>.v166-tab-icon{
   display:none!important;
 }
+body[data-v213-module] :is(#operativoNav,#analysisNav)>button:has(>.v206-tab-icon):is(:has(>.rt-tab-icon),:has(>.rt-tab-label))>.rt-tab-icon,
+body[data-v213-module] :is(#operativoNav,#analysisNav)>button:has(>.v206-tab-label):is(:has(>.rt-tab-icon),:has(>.rt-tab-label))>.rt-tab-label,
+body[data-v213-module="operation"] #v200OperationTabs>button:has(>.v203-tab-icon)>.rt-tab-icon,
+body[data-v213-module="operation"] #v200OperationTabs>button:has(>.v203-tab-label)>.rt-tab-label{
+  display:none!important;
+}
 
 /* ==========================================================
    CONTENIDO RESPONSIVO: KPI, TARJETAS, PANELES Y FILTROS
@@ -373,8 +379,36 @@ body[data-v213-module] #v213ReportContext h2{
     return cs.display!=='none'&&cs.visibility!=='hidden';
   };
 
+  function normalizeHost(host){
+    const all=[...host.children].filter(x=>x instanceof HTMLButtonElement);
+    if(host.id!=='v200OperationTabs'&&!host.dataset.v215Canonicalized){
+      host.dataset.v215Canonicalized='1';
+      all.forEach(btn=>{
+        // Fuerza una única reconstrucción de V206 para eliminar decoración
+        // heredada y aplicar el icono correcto de la pestaña actual.
+        if(btn.querySelector(':scope > .v206-tab-icon,:scope > .rt-tab-icon')){
+          btn.dataset.v206Decorated='';
+        }
+      });
+      // Un cambio de clase dispara el observer de V206 una sola vez.
+      host.classList.add('v215-canonicalizing');
+      requestAnimationFrame(()=>host.classList.remove('v215-canonicalizing'));
+    }
+    all.forEach(btn=>{
+      const v206Icon=btn.querySelector(':scope > .v206-tab-icon');
+      const v206Label=btn.querySelector(':scope > .v206-tab-label');
+      const v203Icon=btn.querySelector(':scope > .v203-tab-icon');
+      const v203Label=btn.querySelector(':scope > .v203-tab-label');
+      if((v206Icon&&v206Label)||(v203Icon&&v203Label)){
+        btn.querySelectorAll(':scope > .rt-tab-icon,:scope > .rt-tab-label,:scope > .v166-tab-icon')
+          .forEach(x=>x.remove());
+      }
+    });
+  }
+
   function fitHost(host){
     if(!host||!host.isConnected)return;
+    normalizeHost(host);
     const buttons=[...host.children].filter(x=>x instanceof HTMLButtonElement&&visible(x));
     if(!buttons.length)return;
 
