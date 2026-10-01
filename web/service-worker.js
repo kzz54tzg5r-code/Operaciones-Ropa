@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-v10';
+const CACHE_NAME = 'operaciones-ropa-runtime-v11';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -23,28 +23,52 @@ const putInCache = async (request, response) => {
   await cache.put(request, response.clone());
 };
 
+const cachedFallback = async (request, fallbackUrl = null) => {
+  const cached = await caches.match(request, { ignoreSearch: true });
+  if (cached) return cached;
+  if (fallbackUrl) {
+    const fallback = await caches.match(fallbackUrl, { ignoreSearch: true });
+    if (fallback) return fallback;
+  }
+  return null;
+};
+
 const networkFirst = async (request, fallbackUrl = null) => {
   try {
     const response = await fetch(request, { cache: 'no-store' });
+
+    // Render puede devolver 502/503/504 durante el relevo entre deploys.
+    // No mostramos esa pantalla al usuario: conservamos el shell que ya tenía
+    // funcionando y la app vuelve a consultar el backend cuando éste regresa.
+    if ([502, 503, 504].includes(response.status)) {
+      const fallback = await cachedFallback(request, fallbackUrl);
+      if (fallback) return fallback;
+    }
+
     await putInCache(request, response);
     return response;
   } catch (error) {
-    const cached = await caches.match(request, { ignoreSearch: true });
-    if (cached) return cached;
-    if (fallbackUrl) {
-      const fallback = await caches.match(fallbackUrl, { ignoreSearch: true });
-      if (fallback) return fallback;
-    }
+    const fallback = await cachedFallback(request, fallbackUrl);
+    if (fallback) return fallback;
     throw error;
   }
 };
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(STATIC_ASSETS);
+
+    // Guardar un shell de la aplicación sin hacer fallar la instalación si
+    // justo coincide con un despliegue de Render.
+    try {
+      const shellRequest = new Request('/', { cache: 'no-store', credentials: 'same-origin' });
+      const shellResponse = await fetch(shellRequest);
+      if (shellResponse.ok) await cache.put('/', shellResponse.clone());
+    } catch (_) {}
+
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -85,7 +109,25 @@ self.addEventListener('fetch', event => {
 
   // La navegación siempre intenta el servidor primero.
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, '/static/offline.html'));
+    event.respondWith((async () => {
+      try {
+        const response = await networkFirst(request, '/');
+        if ([502,503,504].includes(response.status)) {
+          const offline = await caches.match('/static/offline.html');
+          if (offline) return offline;
+        }
+        return response;
+      } catch (_) {
+        const shell = await caches.match('/');
+        if (shell) return shell;
+        const offline = await caches.match('/static/offline.html');
+        if (offline) return offline;
+        return new Response('Operaciones Ropa está reconectando…', {
+          status: 503,
+          headers: {'Content-Type':'text/plain; charset=utf-8','Retry-After':'5'}
+        });
+      }
+    })());
     return;
   }
 
