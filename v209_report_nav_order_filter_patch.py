@@ -517,11 +517,12 @@ body[data-v163-module="operativo"] #v207Context-cm{
 
   function structuralHide(btn){
     if(!btn)return;
-    btn.classList.add('v209-structural-hidden');
-    btn.setAttribute('hidden','');
-    btn.setAttribute('aria-hidden','true');
-    btn.setAttribute('aria-selected','false');
-    btn.classList.remove('active','rt-icon-user-active');
+    if(!btn.classList.contains('v209-structural-hidden'))btn.classList.add('v209-structural-hidden');
+    if(!btn.hidden)btn.hidden=true;
+    if(btn.getAttribute('aria-hidden')!=='true')btn.setAttribute('aria-hidden','true');
+    if(btn.getAttribute('aria-selected')!=='false')btn.setAttribute('aria-selected','false');
+    if(btn.classList.contains('active'))btn.classList.remove('active');
+    if(btn.classList.contains('rt-icon-user-active'))btn.classList.remove('rt-icon-user-active');
   }
 
   function enforceOrder(nav,defs){
@@ -539,10 +540,14 @@ body[data-v163-module="operativo"] #v207Context-cm{
       if(!keep.includes(btn))structuralHide(btn);
     });
 
-    const frag=document.createDocumentFragment();
-    keep.forEach(btn=>frag.appendChild(btn));
-    qa(':scope > button',nav).filter(btn=>!keep.includes(btn)).forEach(btn=>frag.appendChild(btn));
-    nav.appendChild(frag);
+    const currentAllowed=qa(':scope > button',nav).filter(btn=>keep.includes(btn));
+    const sameOrder=currentAllowed.length===keep.length && currentAllowed.every((btn,i)=>btn===keep[i]);
+    if(!sameOrder){
+      const frag=document.createDocumentFragment();
+      keep.forEach(btn=>frag.appendChild(btn));
+      qa(':scope > button',nav).filter(btn=>!keep.includes(btn)).forEach(btn=>frag.appendChild(btn));
+      nav.appendChild(frag);
+    }
     return keep;
   }
 
@@ -564,10 +569,12 @@ body[data-v163-module="operativo"] #v207Context-cm{
     if(!nav||!btn)return;
     qa(':scope > button',nav).forEach(x=>{
       const on=x===btn;
-      x.classList.toggle('active',on);
-      x.classList.remove('rt-icon-user-active');
-      x.setAttribute('aria-selected',on?'true':'false');
-      x.tabIndex=on?0:-1;
+      if(x.classList.contains('active')!==on)x.classList.toggle('active',on);
+      if(x.classList.contains('rt-icon-user-active'))x.classList.remove('rt-icon-user-active');
+      const aria=on?'true':'false';
+      if(x.getAttribute('aria-selected')!==aria)x.setAttribute('aria-selected',aria);
+      const ti=on?0:-1;
+      if(x.tabIndex!==ti)x.tabIndex=ti;
     });
     center(btn);
   }
@@ -621,8 +628,8 @@ body[data-v163-module="operativo"] #v207Context-cm{
     const wrap=document.getElementById(kind==='cm'?'v207Context-cm':'v207Context-analysis');
     if(!wrap||!meta)return;
     const t=q('.v207-context-title',wrap),s=q('.v207-context-sub',wrap);
-    if(t)t.textContent=meta[0];
-    if(s)s.textContent=meta[1];
+    if(t&&t.textContent!==meta[0])t.textContent=meta[0];
+    if(s&&s.textContent!==meta[1])s.textContent=meta[1];
   }
 
   function syncActive(){
