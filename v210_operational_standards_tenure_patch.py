@@ -907,7 +907,7 @@ def install(m):
  }
 
  async function checkHireDate(force=false){
-   const u=window.USER; if(!u)return;
+   let u=null;try{u=USER}catch(_){u=window.USER} if(!u)return;
    const real=String(u.real_role||u.role||'');
    if(!staffRoles.has(real))return;
    const key=String(u.id||u.username||real);
