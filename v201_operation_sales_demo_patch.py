@@ -561,26 +561,87 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
   }
   function productivity(d){
     const f=demoFilterState();
+    const userRole=(()=>{try{return String(USER?.role||'').toLowerCase()}catch(_){return ''}})();
+    const restricted=['tienda','colaborador','colaborador_operativo','colaborador_lenceria'].includes(userRole);
+    const assigned=(()=>{try{return String(USER?.store||'')}catch(_){return ''}})();
+    if(restricted&&assigned)f.store=assigned;
     const days=demoPeriodDays(d,f.period);
-    let rows=[...(d.collaborators||[])];
-    if(f.store&&f.store!=='Compañía')rows=rows.filter(r=>String(r.store||'')===f.store);
-    if(f.area&&f.area!=='Todas')rows=rows.filter(r=>String(r.area||'')===f.area);
-    if(f.activity&&f.activity!=='Todas')rows=rows.filter(r=>String(r.activity||'')===f.activity);
-    rows.sort((a,b)=>n(b.daily_productivity)-n(a.daily_productivity)||String(a.name||'').localeCompare(String(b.name||''),'es'));
-    const title=f.store==='Compañía'?'Ranking global por colaborador':'Ranking por colaborador · '+f.store;
-    const scope=[f.store,f.area!=='Todas'?f.area:'',f.activity!=='Todas'?f.activity:''].filter(Boolean).join(' · ');
-    const body=rows.map((r,i)=>{
-      const periodPieces=n(r.daily_productivity)*days;
-      return '<tr><td class="num"><b>#'+(i+1)+'</b></td><td class="store">'+esc(r.name)+(r.synthetic?' <span class="v201-demo-pill">DEMO</span>':'')+'</td><td>'+esc(r.employee_no||'—')+'</td><td>'+esc(r.store)+'</td><td>'+esc(r.area)+'</td><td>'+esc(r.activity)+'</td><td class="num"><b>'+nf(periodPieces)+'</b></td><td class="num">'+nf(r.daily_productivity)+'</td><td class="num '+tone(r.compliance)+'">'+pct(r.compliance)+'</td></tr>';
-    }).join('');
-    return note(d)+
-      '<div class="v201-demo-card"><h3>'+esc(title)+'</h3>'+
-      '<div class="sub">'+esc(scope)+' · Meta '+nf(d.productivity_target)+' pzas/día · '+rows.length+' colaboradores</div>'+
-      '<div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr><th class="num">Ranking</th><th>Colaborador</th><th>Nómina</th><th>Tienda</th><th>Área</th><th>Actividad</th><th class="num">Piezas periodo</th><th class="num">Pzas/día</th><th class="num">% Meta</th></tr></thead><tbody>'+
-      (body||'<tr><td colspan="9">Sin colaboradores para los filtros seleccionados.</td></tr>')+
-      '</tbody></table></div></div>';
-  }
+    let people=[...(d.collaborators||[])];
+    if(f.store&&f.store!=='Compañía')people=people.filter(r=>String(r.store||'')===f.store);
+    if(f.area&&f.area!=='Todas')people=people.filter(r=>String(r.area||'')===f.area);
+    if(f.activity&&f.activity!=='Todas')people=people.filter(r=>String(r.activity||'')===f.activity);
 
+    // Store ranking is calculated from the filtered collaborator set so Area
+    // and Activity affect both ranking levels in the same way.
+    const storeMap=new Map();
+    people.forEach(r=>{
+      const st=String(r.store||'');
+      const g=storeMap.get(st)||{store:st,pieces:0,collaborators:new Set(),days:0};
+      const key=String(r.employee_no||r.name||'');
+      g.collaborators.add(key);
+      g.pieces+=n(r.daily_productivity)*days;
+      g.days+=Math.max(1,days);
+      storeMap.set(st,g);
+    });
+    let storeRows=[...storeMap.values()].map(g=>{
+      const daily=g.days?g.pieces/g.days:0;
+      return {store:g.store,pieces:g.pieces,collaborators:g.collaborators.size,daily,compliance:d.productivity_target?daily/d.productivity_target*100:0};
+    });
+    if(!restricted&&f.store==='Compañía'){
+      (d.stores||[]).forEach(s=>{
+        if(!storeMap.has(String(s.store||'')))storeRows.push({store:String(s.store||''),pieces:0,collaborators:0,daily:0,compliance:0});
+      });
+    }
+    storeRows.sort((a,b)=>n(b.daily)-n(a.daily)||n(b.pieces)-n(a.pieces)||String(a.store).localeCompare(String(b.store),'es'));
+    const storeRank=new Map();
+    storeRows.forEach((r,i)=>{r.rank=i+1;storeRank.set(r.store,i+1)});
+
+    const grouped=[];
+    storeRows.forEach(sr=>{
+      const local=people.filter(r=>String(r.store||'')===sr.store)
+        .sort((a,b)=>n(b.daily_productivity)-n(a.daily_productivity)||String(a.name||'').localeCompare(String(b.name||''),'es'));
+      local.forEach((r,i)=>grouped.push({...r,store_rank:sr.rank,local_rank:i+1}));
+    });
+
+    const kpiPieces=grouped.reduce((a,r)=>a+n(r.daily_productivity)*days,0);
+    const avg=grouped.length?grouped.reduce((a,r)=>a+n(r.daily_productivity),0)/grouped.length:0;
+    const avgPct=grouped.length?grouped.reduce((a,r)=>a+n(r.compliance),0)/grouped.length:0;
+
+    const storeTable='<div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr><th>#</th><th>Tienda</th><th class="num">Piezas</th><th class="num">Colaboradores</th><th class="num">Pzas/día</th><th class="num">% Meta</th></tr></thead><tbody>'+
+      storeRows.map(r=>'<tr><td><b>#'+r.rank+'</b></td><td class="store">'+esc(r.store)+'</td><td class="num">'+nf(r.pieces)+'</td><td class="num">'+nf(r.collaborators)+'</td><td class="num"><b>'+nf(r.daily)+'</b></td><td class="num '+tone(r.compliance)+'">'+pct(r.compliance)+'</td></tr>').join('')+
+      (!storeRows.length?'<tr><td colspan="6">Sin tiendas con productividad para los filtros seleccionados.</td></tr>':'')+
+      '</tbody></table></div>';
+
+    let last='';
+    const collaboratorBody=grouped.map(r=>{
+      let header='';
+      if(!restricted&&String(r.store||'')!==last){
+        last=String(r.store||'');
+        header='<tr><td colspan="9" style="background:#edf6ff;color:#0e4c83;font-weight:950">#'+r.store_rank+' · '+esc(r.store)+'</td></tr>';
+      }
+      const periodPieces=n(r.daily_productivity)*days;
+      return header+'<tr><td><b>#'+r.local_rank+'</b></td><td class="store">'+esc(r.name)+(r.synthetic?' <span class="v201-demo-pill">DEMO</span>':'')+'</td><td>'+esc(r.employee_no||'—')+'</td><td>'+esc(r.store)+'</td><td>'+esc(r.area)+'</td><td>'+esc(r.activity)+'</td><td class="num"><b>'+nf(periodPieces)+'</b></td><td class="num">'+nf(r.daily_productivity)+'</td><td class="num '+tone(r.compliance)+'">'+pct(r.compliance)+'</td></tr>';
+    }).join('');
+    const collaboratorTable='<div class="v201-demo-tablewrap"><table class="v201-demo-table"><thead><tr><th>Ranking</th><th>Colaborador</th><th>Nómina</th><th>Tienda</th><th>Área</th><th>Actividad</th><th class="num">Piezas periodo</th><th class="num">Pzas/día</th><th class="num">% Meta</th></tr></thead><tbody>'+
+      (collaboratorBody||'<tr><td colspan="9">Sin colaboradores para los filtros seleccionados.</td></tr>')+
+      '</tbody></table></div>';
+
+    const scope=restricted?('Sólo '+(assigned||f.store)):(f.store==='Compañía'?'Todas las tiendas':f.store);
+    let html=note(d)+
+      '<div class="v201-demo-grid">'+
+        '<div class="v201-demo-kpi"><small>Piezas</small><b>'+nf(kpiPieces)+'</b><span>'+esc(scope)+'</span></div>'+
+        '<div class="v201-demo-kpi"><small>Colaboradores</small><b>'+nf(grouped.length)+'</b><span>Con productividad</span></div>'+
+        '<div class="v201-demo-kpi"><small>Prod. diaria prom.</small><b>'+nf(avg)+'</b><span>Pzas/día</span></div>'+
+        '<div class="v201-demo-kpi"><small>Cumplimiento prom.</small><b>'+pct(avgPct)+'</b><span>Vs meta '+nf(d.productivity_target)+'</span></div>'+
+      '</div>';
+    if(!restricted){
+      html+='<div class="v201-demo-card"><h3>Ranking de tiendas</h3><div class="sub">Primero se ordenan las tiendas por productividad promedio diaria.</div>'+storeTable+'</div>';
+    }
+    html+='<div class="v201-demo-card"><h3>'+(restricted?'Ranking de colaboradores · '+esc(assigned||f.store):'Detalle de colaboradores por ranking de tienda')+'</h3>'+
+      '<div class="sub">'+(restricted?'Este perfil sólo puede consultar colaboradores de su tienda.':'La tienda aparece por posición y debajo se ordenan sus colaboradores.')+'</div>'+
+      collaboratorTable+'</div>';
+    return html;
+  }
   function standards(d){
     const areas=[['Colgado',Math.round(d.productivity_target*1.08)],['Doblado',Math.round(d.productivity_target*.96)],['Jeans',Math.round(d.productivity_target*.90)],['Lencería',Math.round(d.productivity_target*.84)]];
     const acts=[['Acondicionado',Math.round(d.productivity_target)],['Clasificado',Math.round(d.productivity_target*.92)],['Ubicado',Math.round(d.productivity_target*1.04)]];
@@ -686,7 +747,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V202",
+                "X-Operations-UI-Version": "V204",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
@@ -694,4 +755,4 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
             return response
 
     m._V201_OPERATION_SALES_DEMO = True
-    print("[V202] Demo Operación: base sólo en Resumen + ranking global/tienda por colaborador.", flush=True)
+    print("[V204] Demo Operación: ranking de tiendas + colaboradores por rol.", flush=True)

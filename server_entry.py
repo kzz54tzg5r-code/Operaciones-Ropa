@@ -183,6 +183,7 @@ from v199_access_perf_productivity_patch import install as _install_v199_access_
 from v200_operation_tabs_timer_patch import install as _install_v200_operation_tabs_timer_patch
 from v201_operation_sales_demo_patch import install as _install_v201_operation_sales_demo_patch
 from v203_operation_option7_ui_patch import install as _install_v203_operation_option7_ui_patch
+from v204_operation_productivity_ranking_patch import install as _install_v204_operation_productivity_ranking_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -270,4 +271,5 @@ _install_v199_access_perf_productivity_patch(web_app)
 _install_v200_operation_tabs_timer_patch(web_app)
 _install_v201_operation_sales_demo_patch(web_app)
 _install_v203_operation_option7_ui_patch(web_app)
+_install_v204_operation_productivity_ranking_patch(web_app)
 app = web_app.app
