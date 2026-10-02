@@ -1182,7 +1182,11 @@ let OP_VIEW='Centro Ejecutivo';
 let OP_RENDER_SEQ=0;
 $$('[data-opview]').forEach(b=>b.onclick=async()=>{
   OP_VIEW=b.dataset.opview;
-  $$('[data-opview]').forEach(x=>x.classList.toggle('active',x===b));
+  $('[data-opview]').forEach(x=>{
+    const on=x===b;
+    x.classList.toggle('active',on);
+    x.setAttribute('aria-selected',on?'true':'false');
+  });
   OPER_PERIOD={type:'all',value:''};
 
   // Cambiar el contenido visual inmediatamente, antes de consultar datos.
