@@ -804,20 +804,29 @@ body.v238-module-operativo #operPeriodMode{
     if(!matrixRoot){
       matrixRoot=document.createElement('div');matrixRoot.id='v166RoutesMatrix';host.prepend(matrixRoot);
     }
-    matrixRoot.innerHTML=matrixMarkup(data.matrix);
+    if(matrixRoot.dataset.v240Sig!==sig||!q('.v240-matrix-wrap',matrixRoot)){
+      matrixRoot.innerHTML=matrixMarkup(data.matrix);
+      matrixRoot.dataset.v240Sig=sig;
+    }
     q('#v167MatrixVisual')?.remove();
 
     let cal=findRouteBox('calendar');
     if(!cal){
       cal=document.createElement('div');cal.className='chart-box v240-calendar-box';host.append(cal);
     }
-    cal.innerHTML=calendarMarkup(data.calendar);
+    if(cal.dataset.v240Sig!==sig||!q('.v240-route-calendar',cal)){
+      cal.innerHTML=calendarMarkup(data.calendar);
+      cal.dataset.v240Sig=sig;
+    }
 
     let trend=findRouteBox('trend');
     if(!trend){
       trend=document.createElement('div');trend.className='chart-box v240-trend-box';host.append(trend);
     }
-    trend.innerHTML=trendMarkup(data.trend);
+    if(trend.dataset.v240Sig!==sig||!q('.v240-week-cards',trend)){
+      trend.innerHTML=trendMarkup(data.trend);
+      trend.dataset.v240Sig=sig;
+    }
 
     // Retirar cualquier visual heredado que V167 pueda haber vuelto a insertar.
     removeDistribution();
