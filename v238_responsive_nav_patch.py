@@ -294,7 +294,7 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
       if(t==='operacion'||t.startsWith('operacion '))return['Operación','Operación','gear'];
       if(key==='operations.conversion'||op.includes('convers')||t.includes('conversion'))return['Conversión','Conversión','repeat'];
       if(key==='operations.recovery'||op.includes('recuperacion economica')||t.includes('recuperacion $')||t.includes('recuperaciones'))return['Recuperación $',phone?'Recup.\n$':'Recuperación\n$','dollar'];
-      if(key==='operations.recovery_store'||op.includes('recuperacion por tienda')||t.includes('recuperacion por tienda'))return['Recuperación por Tienda',phone?'Recup.\nTienda':'Recuperac.\npor Tienda','store'];
+      if(key==='operations.recovery_store'||op.includes('recuperacion por tienda')||t.includes('tasa de recuperacion')||t.includes('recuperacion por tienda'))return['Tasa de recuperación',phone?'Tasa\nrecup.':'Tasa de\nrecuperación','store'];
       if(t.includes('cargar productividad'))return['Cargar productividad',phone?'Cargar\nProd.':'Cargar\nProductividad','truck'];
       if(key==='operations.productivity'||op.includes('productividad')||t==='productividad')return['Productividad',phone?'Productiv.':'Productividad','chart'];
       if(key==='operations.routes'||op.includes('recorridos')||t.includes('recorridos'))return['Recorridos',phone&&tiny?'Recorrid.':'Recorridos','route'];
