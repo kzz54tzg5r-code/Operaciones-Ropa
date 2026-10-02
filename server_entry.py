@@ -196,6 +196,7 @@ from v229_mobile_tabs_final_patch import install as _install_v229_mobile_tabs_fi
 from v234_exact_mobile_tabs_patch import install as _install_v234_exact_mobile_tabs_patch
 from v237_final_ui_patch import install as _install_v237_final_ui_patch
 from v238_responsive_nav_patch import install as _install_v238_responsive_nav_patch
+from v239_functional_close_patch import install as _install_v239_functional_close_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -303,4 +304,6 @@ _install_v229_mobile_tabs_final_patch(web_app)
 _install_v237_final_ui_patch(web_app)
 # V238 es la capa autoritativa de navegación para PC, tablet, iOS y Android.
 _install_v238_responsive_nav_patch(web_app)
+# V239 queda al final: Centro Operativo, administración de pestañas y Cargar productividad.
+_install_v239_functional_close_patch(web_app)
 app = web_app.app
