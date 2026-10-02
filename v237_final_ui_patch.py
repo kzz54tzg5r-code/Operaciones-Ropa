@@ -356,6 +356,11 @@ def install(m):
       if(typeof setPeriodSelector==='function'){
         setPeriodSelector(view,(typeof OPSDATA!=='undefined'&&OPSDATA)||{available_dates:[],available_weeks:[],available_months:[],available_years:[]});
       }
+      if(typeof resolveOpsPeriod==='function'){
+        Promise.resolve(resolveOpsPeriod(OPER_PERIOD.type)).then(()=>{
+          syncActiveOpsV246(view);
+        }).catch(err=>console.warn('[V246] no se pudo resolver periodo',err));
+      }
     };
 
     const consult=q('#operativoPeriodBar .primary');
