@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-v24-tabs-swipe';
+const CACHE_NAME = 'operaciones-ropa-runtime-v25-v222';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
