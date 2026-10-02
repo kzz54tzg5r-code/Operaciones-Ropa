@@ -605,7 +605,16 @@ body[data-v163-module="operation"] #v222CaptureCard .v222-area-table td{
     fetchDeleted();
     const box=q('#tabVisibilityOptions');
     if(box)decorateVisibilityAdmin();
-    observer.observe(document.body,{subtree:true,childList:true});
+    if(!document.body.dataset.v239Observer){
+      document.body.dataset.v239Observer='1';
+      observer.observe(document.body,{subtree:true,childList:true});
+    }
+    // V237 puede intentar abrir Mensual durante el arranque. V239 reafirma
+    // la última vista elegida después de que terminen los listeners heredados.
+    setTimeout(()=>{
+      const center=q('#operativoNav [data-opview="Centro Ejecutivo"]');
+      if(center?.classList.contains('active'))renderCenterV239(currentSavedMode(),false);
+    },180);
     [120,400,900,1800].forEach(ms=>setTimeout(()=>{
       removeLegacyCenterTabs();applyDeleted();decorateVisibilityAdmin();fixOperationTabs();
       bindCenterControls();removeRecoveryCharts();normalizeStandardsText();
