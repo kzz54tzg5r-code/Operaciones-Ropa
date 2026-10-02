@@ -191,6 +191,7 @@ from v220_operation_tabs_single_line_patch import install as _install_v220_opera
 from v221_report_tabs_match_operation_patch import install as _install_v221_report_tabs_match_operation_patch
 from v222_operation_capture_nav_admin_patch import install as _install_v222_operation_capture_nav_admin_patch
 from v225_final_mobile_tab_rail_patch import install as _install_v225_final_mobile_tab_rail_patch
+from v226_single_mobile_tab_rail_patch import install as _install_v226_single_mobile_tab_rail_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -287,4 +288,5 @@ _install_v220_operation_tabs_single_line_patch(web_app)
 _install_v221_report_tabs_match_operation_patch(web_app)
 _install_v222_operation_capture_nav_admin_patch(web_app)
 _install_v225_final_mobile_tab_rail_patch(web_app)
+_install_v226_single_mobile_tab_rail_patch(web_app)
 app = web_app.app

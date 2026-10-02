@@ -362,8 +362,8 @@
 
     // Mover el contenedor completo de navegación. V222 envuelve las barras
     // con flechas; extraer sólo el host deja etapas huérfanas y duplica flechas.
-    const opNode = opNav.closest('.v222-tab-stage') || opNav.closest('.rt-carousel-shell') || opNav;
-    const analysisNode = analysisNav.closest('.v222-tab-stage') || analysisNav.closest('.rt-carousel-shell') || analysisNav;
+    const opNode = opNav.closest('.v226-tab-shell') || opNav.closest('.v222-tab-stage') || opNav.closest('.rt-carousel-shell') || opNav;
+    const analysisNode = analysisNav.closest('.v226-tab-shell') || analysisNav.closest('.v222-tab-stage') || analysisNav.closest('.rt-carousel-shell') || analysisNav;
 
     if (hero.nextElementSibling !== opNode) hero.after(opNode);
     if (opNode.nextElementSibling !== analysisNode) opNode.after(analysisNode);

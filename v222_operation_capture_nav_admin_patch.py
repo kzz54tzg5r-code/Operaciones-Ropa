@@ -706,6 +706,7 @@ def install(m):
 
   function stageFor(host){
     if(!host)return null;
+    if(window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900))return null;
     cleanupStages();
     let stage=host.parentElement?.classList?.contains('v222-tab-stage')?host.parentElement:null;
     if(stage){
@@ -735,6 +736,7 @@ def install(m):
   }
 
   function bindSwipe(host){
+    if(window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900))return;
     if(!host||host.dataset.v222SwipeBound==='1')return;
     host.dataset.v222SwipeBound='1';
     let sx=0,sy=0,start=0,mode='idle',dragged=false;

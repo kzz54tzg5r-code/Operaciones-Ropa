@@ -174,6 +174,10 @@ def install(m):
 (function(){
   if(window.__V225_FINAL_MOBILE_TAB_RAIL)return;
   window.__V225_FINAL_MOBILE_TAB_RAIL=true;
+  if(window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900)){
+    console.info('[V225] móvil delegado a V226.');
+    return;
+  }
 
   const ids=['operativoNav','analysisNav','v200OperationTabs'];
   const q=id=>document.getElementById(id);
