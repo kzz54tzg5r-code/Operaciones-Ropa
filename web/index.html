@@ -1797,26 +1797,90 @@ function monthlyCrossTable(mt,showOpening=false){
 
   return `
     <style>
-      .monthly-cross-table{min-width:980px;font-size:17px}
+      /* V242 · Opción 8: dashboard + tabla continua */
+      .monthly-cross-table{
+        min-width:980px;
+        font-size:16px;
+        border-collapse:separate;
+        border-spacing:0;
+      }
       .monthly-cross-mobile{display:none}
+      .mct-kpi-grid{
+        display:grid;
+        grid-template-columns:repeat(6,minmax(0,1fr));
+        gap:9px;
+        width:100%;
+        margin:0 0 12px;
+      }
+      .mct-kpi{
+        min-width:0;
+        min-height:84px;
+        padding:11px 12px 10px;
+        border:1px solid #d8e0eb;
+        border-radius:12px;
+        box-sizing:border-box;
+        box-shadow:0 2px 8px rgba(23,59,115,.06);
+      }
+      .mct-kpi.operation{background:#ECFDF5;color:#047857}
+      .mct-kpi.pending{background:#FFF2E8;color:#C2410C}
+      .mct-kpi.general{background:#EAF3FF;color:#173B73}
+      .mct-kpi.progress{background:#F3EAFF;color:#6D28D9}
+      .mct-kpi-label{
+        min-height:22px;
+        font-size:10px;
+        line-height:1.08;
+        font-weight:950;
+        letter-spacing:.025em;
+        text-transform:uppercase;
+      }
+      .mct-kpi-value{
+        margin-top:4px;
+        font-size:22px;
+        line-height:1;
+        font-weight:950;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      .mct-kpi-sub{
+        margin-top:5px;
+        font-size:9px;
+        line-height:1.05;
+        font-weight:800;
+        opacity:.82;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      .monthly-cross-desktop{
+        border:1px solid #d8e0eb;
+        border-radius:12px;
+        overflow:auto;
+        background:#fff;
+      }
       .monthly-cross-table thead th{
-        font-size:17px!important;
-        font-weight:800!important;
-        padding:10px 14px!important;
+        position:sticky;
+        top:0;
+        z-index:2;
+      }
+      .monthly-cross-table thead th{
+        font-size:15px!important;
+        font-weight:850!important;
+        padding:9px 12px!important;
         line-height:1.05!important;
       }
       .monthly-cross-table tbody td{
-        font-size:17px!important;
-        padding:7px 14px!important;
+        font-size:15px!important;
+        padding:6px 12px!important;
         line-height:1.05!important;
         height:auto!important;
       }
       .monthly-cross-table tbody td b{
-        font-size:18px!important;
-        font-weight:800!important;
+        font-size:16px!important;
+        font-weight:850!important;
       }
       .monthly-cross-table .monthly-cat{
-        font-size:19px!important;
+        font-size:17px!important;
         font-weight:900!important;
         line-height:1.05!important;
       }
@@ -1824,7 +1888,23 @@ function monthlyCrossTable(mt,showOpening=false){
         font-size:13px!important;
         font-weight:800!important;
       }
+      @media (max-width:1180px){
+        .mct-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+      }
       @media (max-width:700px){
+        .mct-kpi-grid{
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:7px;
+          margin-bottom:9px;
+        }
+        .mct-kpi{
+          min-height:72px;
+          padding:9px 10px 8px;
+          border-radius:10px;
+        }
+        .mct-kpi-label{min-height:18px;font-size:8px}
+        .mct-kpi-value{font-size:17px}
+        .mct-kpi-sub{font-size:8px}
         .monthly-cross-desktop{display:none!important}
         .monthly-cross-mobile{
           display:block;
@@ -1925,6 +2005,38 @@ function monthlyCrossTable(mt,showOpening=false){
         .mct-mobile-row.mct-general .mct-mobile-value b{font-size:11px}
       }
     </style>
+    <div class="mct-kpi-grid" aria-label="Resumen ejecutivo operativo">
+      <div class="mct-kpi operation">
+        <div class="mct-kpi-label">TOTAL OPERACIÓN</div>
+        <div class="mct-kpi-value">${fmt(totalOperacion)}</div>
+        <div class="mct-kpi-sub">Piezas</div>
+      </div>
+      <div class="mct-kpi pending">
+        <div class="mct-kpi-label">TOTAL PENDIENTES</div>
+        <div class="mct-kpi-value">${fmt(totalPend)}</div>
+        <div class="mct-kpi-sub">Acondicionar + ubicar</div>
+      </div>
+      <div class="mct-kpi general">
+        <div class="mct-kpi-label">TOTAL GENERAL · TOTAL PZS</div>
+        <div class="mct-kpi-value">${fmt(totalPzs)}</div>
+        <div class="mct-kpi-sub">Piezas</div>
+      </div>
+      <div class="mct-kpi progress">
+        <div class="mct-kpi-label">RECORRIDOS REALIZADOS</div>
+        <div class="mct-kpi-value">${fmt(recorridos)} / ${fmt(metaRecorridos)}</div>
+        <div class="mct-kpi-sub">${pct(pctRec)} cumplimiento</div>
+      </div>
+      <div class="mct-kpi progress">
+        <div class="mct-kpi-label">% ACONDICIONADO</div>
+        <div class="mct-kpi-value">${pct(pctAcond)}</div>
+        <div class="mct-kpi-sub">${fmt(acondicionado)} piezas</div>
+      </div>
+      <div class="mct-kpi progress">
+        <div class="mct-kpi-label">% UBICADO</div>
+        <div class="mct-kpi-value">${pct(pctUbicado)}</div>
+        <div class="mct-kpi-sub">${fmt(ubicado)} piezas</div>
+      </div>
+    </div>
     <div class="tablewrap monthly-cross-desktop" style="margin-bottom:12px">
     <table class="table monthly-cross-table">
       <thead>
