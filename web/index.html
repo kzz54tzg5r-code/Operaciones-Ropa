@@ -2270,12 +2270,13 @@ function fixedPeriodTypeForView(name){
   if(name==='Operación Diaria'||name==='Indicadores Diarios')return 'day';
   if(name==='Reporte Semanal')return 'week';
   if(name==='Reporte Mensual')return 'month';
+  if(name==='Recuperación por Tienda')return 'recovery';
   if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'period';
   return 'flex';
 }
 function currentPeriodTypeForView(name){
   const fixed=fixedPeriodTypeForView(name);
-  if(fixed==='flex' || fixed==='period') return $('#operPeriodMode')?.value || 'month';
+  if(fixed==='flex' || fixed==='period' || fixed==='recovery') return $('#operPeriodMode')?.value || (fixed==='recovery'?'week':'month');
   return fixed;
 }
 function setPeriodSelector(name,d){
@@ -2290,6 +2291,7 @@ function setPeriodSelector(name,d){
   if(modeWrap && modeSel){
     let opts=[];
     if(fixed==='flex') opts=[['week','Semanal'],['month','Mensual']];
+    else if(fixed==='recovery') opts=[['day','Diario'],['week','Semanal'],['month','Mensual'],['year','Anual']];
     else if(fixed==='period') opts=[['week','Semanal'],['month','Mensual'],['day','Diario']];
     if(opts.length){
       modeWrap.classList.remove('hidden');
@@ -2303,8 +2305,8 @@ function setPeriodSelector(name,d){
   }
   const t=currentPeriodTypeForView(name);
   OPER_PERIOD.type=t;
-  const list=t==='day'?(d.available_dates||[]):t==='week'?(d.available_weeks||[]):(d.available_months||[]);
-  lab.textContent=t==='day'?'Fecha':t==='week'?'Semana ISO':'Mes';
+  const list=t==='day'?(d.available_dates||[]):t==='week'?(d.available_weeks||[]):t==='year'?((d.available_years||[]).length?(d.available_years||[]):[...new Set((d.available_months||[]).map(x=>String(x).slice(0,4)).filter(Boolean))]):(d.available_months||[]);
+  lab.textContent=t==='day'?'Fecha':t==='week'?'Semana ISO':t==='year'?'Año':'Mes';
   const current=OPER_PERIOD.value&&list.includes(OPER_PERIOD.value)?OPER_PERIOD.value:(list.at(-1)||'');
   sel.innerHTML=list.map(v=>`<option value="${v}">${v}</option>`).join('');
   sel.value=current;OPER_PERIOD.value=current;
@@ -2325,7 +2327,7 @@ async function resolveOpsPeriod(type){
   let value=String(OPER_PERIOD.value||$('#operPeriodSelect')?.value||'').trim();
   if(value)return value;
   const meta=OPSDATA||{};
-  const list=type==='day'?(meta.available_dates||[]):type==='week'?(meta.available_weeks||[]):type==='month'?(meta.available_months||[]):[];
+  const list=type==='day'?(meta.available_dates||[]):type==='week'?(meta.available_weeks||[]):type==='month'?(meta.available_months||[]):type==='year'?((meta.available_years||[]).length?(meta.available_years||[]):[...new Set((meta.available_months||[]).map(x=>String(x).slice(0,4)).filter(Boolean))]):[];
   value=[...list].filter(Boolean).sort().at(-1)||'';
   if(!value && ['day','week','month'].includes(type)){
     try{
@@ -2333,6 +2335,7 @@ async function resolveOpsPeriod(type){
       const rawDate=String(cov.max_date||cov.raw?.raw_operational_max||cov.raw?.raw_monthly_max||'').slice(0,10);
       if(type==='day')value=rawDate;
       else if(type==='month')value=String(cov.max_month||rawDate.slice(0,7)||'');
+      else if(type==='year')value=String((cov.max_month||rawDate||'').slice(0,4)||'');
       else value=String(cov.max_week||isoWeekFromDateText(rawDate)||'');
     }catch(e){console.warn('[OPS] No fue posible resolver último periodo',e)}
   }
@@ -2358,6 +2361,16 @@ function mergeOpsMetaFromResult(d){
   };
 }
 async function fetchOpsForView(name){
+  /* V243_RECOVERY_RATE_FETCH */
+  if(name==='Recuperación por Tienda'){
+    const type=currentPeriodTypeForView(name);
+    const value=await resolveOpsPeriod(type);
+    const store=$('#operStoreSelect')?.value||'Compañía';
+    const url='/api/operations/recovery-rate?store='+encodeURIComponent(store)+'&period_type='+encodeURIComponent(type)+'&period_value='+encodeURIComponent(value);
+    const d=await api(url,{timeoutMs:120000});
+    if(d?.status==='ready')mergeOpsMetaFromResult(d);
+    return d;
+  }
   const type=currentPeriodTypeForView(name);
   const value=await resolveOpsPeriod(type);
   const store=$('#operStoreSelect')?.value||'Compañía';
@@ -2683,11 +2696,29 @@ async function renderOperativoView(name,force=false){
   $('#operativoDynamicContent').innerHTML=out;
 }
 
-const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=()=>{ setPeriodSelector(OP_VIEW||'Centro Ejecutivo',OPSDATA||{available_dates:[],available_weeks:[],available_months:[]}); }; }
+function activeOperationalView(){
+  const btn=$('#operativoNav [data-opview].active')||$('#operativoNav [data-opview][aria-selected="true"]');
+  return btn?.dataset?.opview||OP_VIEW||'Centro Ejecutivo';
+}
+const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=()=>{
+  const view=activeOperationalView();
+  OP_VIEW=view;
+  OPER_PERIOD.type=currentPeriodTypeForView(view);
+  OPER_PERIOD.value='';
+  setPeriodSelector(view,OPSDATA||{available_dates:[],available_weeks:[],available_months:[],available_years:[]});
+}; }
 
 $('#operPeriodApply').onclick=async()=>{
+  const view=activeOperationalView();
+  OP_VIEW=view;
+  OPER_PERIOD.type=currentPeriodTypeForView(view);
   OPER_PERIOD.value=$('#operPeriodSelect').value||'';
-  await renderOperativoView(OP_VIEW||'Centro Ejecutivo');
+  $('[data-opview]').forEach(x=>{
+    const on=x.dataset.opview===view;
+    x.classList.toggle('active',on);
+    x.setAttribute('aria-selected',on?'true':'false');
+  });
+  await renderOperativoView(view);
 };
 
 
