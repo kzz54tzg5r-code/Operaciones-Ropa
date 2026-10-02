@@ -1,12 +1,16 @@
-"""V229 · Navegación móvil final, única y sin duplicados.
+"""V230 · Pestañas móviles definitivas: una fila, un icono, sin duplicados.
 
-Un solo dueño visual para las pestañas móviles de:
+Esta capa es la única responsable de la presentación móvil de:
 - Cambios y Muertos
 - Análisis Comercial
 - Operación
 
-No crea botones nuevos. Reutiliza los botones existentes, elimina wrappers/flechas
-heredados y fuerza una sola fila con tamaño dinámico según las pestañas visibles.
+Reglas:
+- reutiliza los botones existentes; no clona navegación;
+- una sola fila, sin scroll obligatorio;
+- un solo icono por pestaña;
+- neutraliza indicadores, wrappers e iconos heredados;
+- conserva listeners, permisos, orden y visibilidad de los botones originales.
 """
 from __future__ import annotations
 
@@ -17,60 +21,81 @@ def install(m):
     if getattr(m, "_V229_MOBILE_TABS_FINAL", False):
         return
 
-    css = r'''<style id="v229-mobile-tabs-final-css">
+    css = r'''<style id="v230-mobile-tabs-final-css">
 @media(max-width:900px){
-  /* Neutraliza wrappers históricos sin duplicar navegación. */
+  /* Wrappers/indicadores históricos: no deben participar visualmente. */
   body .v222-tab-stage,
   body .v226-tab-shell{
     display:block!important;
     width:100%!important;
     max-width:100%!important;
     min-width:0!important;
-    margin:0 0 8px!important;
+    height:auto!important;
+    margin:0!important;
     padding:0!important;
-    overflow:hidden!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow:visible!important;
   }
-  body .v222-tab-stage>.v222-tab-arrow,
-  body .v226-tab-shell>.v226-tab-arrow,
-  body .v222-tab-arrow,
-  body .v226-tab-arrow{
+
+  body :is(
+    .v222-tab-arrow,.v226-tab-arrow,
+    .rt-icon-rail-v1-current,.rt-icon-rail-v1-indicator,
+    .rt-worldcup-current,.rt-worldcup-pedestal,
+    .rt-mundial-current,.rt-m7-current,
+    .rt-carousel-arrow
+  ){
     display:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs{
+  /* Un único rail limpio; quita el gran contenedor redondeado heredado. */
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs.rt-carousel,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs.rt-icon-rail-v1{
     display:grid!important;
-    grid-template-columns:repeat(var(--v229-count,5),minmax(0,1fr))!important;
-    grid-template-rows:var(--v229-h,64px)!important;
+    grid-template-columns:repeat(var(--v230-count,5),minmax(0,1fr))!important;
+    grid-template-rows:var(--v230-h,62px)!important;
     grid-auto-flow:row!important;
     grid-auto-rows:0!important;
     align-items:stretch!important;
     justify-items:stretch!important;
-    column-gap:var(--v229-gap,3px)!important;
+    column-gap:var(--v230-gap,3px)!important;
     row-gap:0!important;
     width:100%!important;
     max-width:100%!important;
     min-width:0!important;
-    height:var(--v229-h,64px)!important;
-    min-height:var(--v229-h,64px)!important;
-    max-height:var(--v229-h,64px)!important;
-    margin:2px 0 10px!important;
+    height:var(--v230-h,62px)!important;
+    min-height:var(--v230-h,62px)!important;
+    max-height:var(--v230-h,62px)!important;
+    margin:7px 0 11px!important;
     padding:0 2px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
     overflow:hidden!important;
     overflow-x:hidden!important;
     overflow-y:hidden!important;
     white-space:normal!important;
     touch-action:auto!important;
     scroll-snap-type:none!important;
+    scroll-padding:0!important;
+    scrollbar-width:none!important;
     box-sizing:border-box!important;
     position:relative!important;
     inset:auto!important;
     transform:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.active,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button[aria-selected="true"],
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.rt-icon-user-active{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs::-webkit-scrollbar{
+    display:none!important;
+  }
+
+  /* Cada pestaña ocupa exactamente una columna. */
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>.switch{
     position:relative!important;
     inset:auto!important;
     float:none!important;
@@ -79,85 +104,106 @@ def install(m):
     flex-direction:column!important;
     align-items:center!important;
     justify-content:center!important;
-    gap:var(--v229-inner-gap,2px)!important;
+    gap:var(--v230-inner-gap,2px)!important;
+    grid-row:1!important;
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
-    height:var(--v229-h,64px)!important;
-    min-height:var(--v229-h,64px)!important;
-    max-height:var(--v229-h,64px)!important;
+    height:var(--v230-h,62px)!important;
+    min-height:var(--v230-h,62px)!important;
+    max-height:var(--v230-h,62px)!important;
     margin:0!important;
-    padding:4px 1px 5px!important;
+    padding:4px 1px 4px!important;
     overflow:hidden!important;
     white-space:normal!important;
     text-align:center!important;
     box-sizing:border-box!important;
     border:1px solid #d5e2ef!important;
-    border-radius:var(--v229-radius,12px)!important;
-    background:rgba(255,255,255,.98)!important;
-    color:#436586!important;
-    box-shadow:0 3px 10px rgba(25,72,118,.055)!important;
+    border-radius:var(--v230-radius,11px)!important;
+    background:#fff!important;
+    color:#466887!important;
     opacity:1!important;
+    box-shadow:0 3px 10px rgba(25,72,118,.055)!important;
     transform:none!important;
     scroll-snap-align:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.active,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button[aria-selected="true"],
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.rt-icon-user-active{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button.active,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button[aria-selected="true"],
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button.rt-icon-user-active{
     color:#fff!important;
     border-color:#0a5da7!important;
     background:linear-gradient(145deg,#0d4f8b 0%,#0878df 100%)!important;
-    box-shadow:0 6px 16px rgba(13,79,139,.18)!important;
+    box-shadow:0 7px 17px rgba(13,79,139,.19)!important;
     transform:none!important;
   }
 
-  /* Quita subrayados/indicadores heredados: la selección es la tarjeta azul. */
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button::after,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button::before{
+  /* No subrayados, círculos ni pseudo-iconos heredados. */
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button::before,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button::after{
     display:none!important;
     content:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs .v229-tab-icon{
+  /* Sólo V230 puede mostrar el icono directo del botón. */
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button>
+  :is(.or-tab-icon,.v164-tab-icon,.v166-tab-icon,.v206-tab-icon,.v217-tab-icon,.rt-tab-icon,.v203-tab-icon):not(.v230-tab-icon),
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button>svg{
+    display:none!important;
+  }
+
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs .v230-tab-icon{
     display:grid!important;
     place-items:center!important;
-    flex:0 0 var(--v229-icon,18px)!important;
-    width:var(--v229-icon,18px)!important;
-    min-width:var(--v229-icon,18px)!important;
-    max-width:var(--v229-icon,18px)!important;
-    height:var(--v229-icon,18px)!important;
-    min-height:var(--v229-icon,18px)!important;
-    max-height:var(--v229-icon,18px)!important;
+    flex:0 0 var(--v230-icon,17px)!important;
+    width:var(--v230-icon,17px)!important;
+    min-width:var(--v230-icon,17px)!important;
+    max-width:var(--v230-icon,17px)!important;
+    height:var(--v230-icon,17px)!important;
+    min-height:var(--v230-icon,17px)!important;
+    max-height:var(--v230-icon,17px)!important;
     margin:0!important;
     padding:0!important;
     border:1px solid #dce9f5!important;
-    border-radius:calc(var(--v229-radius,12px) - 4px)!important;
+    border-radius:calc(var(--v230-radius,11px) - 4px)!important;
     background:#edf5fd!important;
-    color:#496f93!important;
+    color:#4b7195!important;
     box-shadow:none!important;
+    opacity:1!important;
+    visibility:visible!important;
+    transform:none!important;
     pointer-events:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs .v229-tab-icon svg{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs .v230-tab-icon svg{
     display:block!important;
     width:58%!important;
     height:58%!important;
+    min-width:0!important;
+    min-height:0!important;
     max-width:58%!important;
     max-height:58%!important;
     stroke:currentColor!important;
     fill:none!important;
+    opacity:1!important;
+    visibility:visible!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.active .v229-tab-icon,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button[aria-selected="true"] .v229-tab-icon,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.rt-icon-user-active .v229-tab-icon{
-    background:rgba(255,255,255,.14)!important;
-    border-color:rgba(255,255,255,.22)!important;
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button.active .v230-tab-icon,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button[aria-selected="true"] .v230-tab-icon,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button.rt-icon-user-active .v230-tab-icon{
     color:#fff!important;
+    background:rgba(255,255,255,.14)!important;
+    border-color:rgba(255,255,255,.23)!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs .v229-tab-label{
+  /* Sólo una etiqueta visible por botón. */
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button>
+  :is(.rt-tab-label,.v203-tab-label):not(.v230-tab-label){
+    display:none!important;
+  }
+
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs .v230-tab-label{
     position:static!important;
     display:-webkit-box!important;
     -webkit-box-orient:vertical!important;
@@ -170,27 +216,31 @@ def install(m):
     margin:0!important;
     padding:0!important;
     overflow:hidden!important;
+    clip:auto!important;
+    clip-path:none!important;
     color:inherit!important;
-    font-size:var(--v229-font,6px)!important;
+    font-size:var(--v230-font,6px)!important;
     line-height:1.02!important;
     font-weight:850!important;
-    letter-spacing:-.04px!important;
+    letter-spacing:-.05px!important;
     white-space:pre-line!important;
     text-align:center!important;
     text-overflow:clip!important;
     overflow-wrap:anywhere!important;
     word-break:normal!important;
     hyphens:auto!important;
+    opacity:1!important;
+    visibility:visible!important;
     pointer-events:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button.hidden,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button[hidden],
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v229-mobile-tabs>button[aria-hidden="true"]{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button.hidden,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button[hidden],
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v230-mobile-tabs>button[aria-hidden="true"]{
     display:none!important;
   }
 
-  /* Nunca mostrar más de un navegador de reportes a la vez. */
+  /* Sólo el navegador del módulo actual puede mostrarse. */
   body[data-v163-module="operativo"] :is(#analysisNav,#v200OperationTabs),
   body[data-v163-module="analysis"] :is(#operativoNav,#v200OperationTabs),
   body[data-v163-module="operation"] :is(#operativoNav,#analysisNav),
@@ -201,12 +251,13 @@ def install(m):
 }
 </style>'''
 
-    js = r'''<script id="v229-mobile-tabs-final-js">
+    js = r'''<script id="v230-mobile-tabs-final-js">
 (function(){
-  if(window.__V229_MOBILE_TABS_FINAL)return;
-  window.__V229_MOBILE_TABS_FINAL=true;
+  if(window.__V230_MOBILE_TABS_FINAL)return;
+  window.__V230_MOBILE_TABS_FINAL=true;
 
   const IDS=['operativoNav','analysisNav','v200OperationTabs'];
+  const LEGACY_INDICATORS='.v222-tab-arrow,.v226-tab-arrow,.rt-icon-rail-v1-current,.rt-icon-rail-v1-indicator,.rt-worldcup-current,.rt-worldcup-pedestal,.rt-mundial-current,.rt-m7-current,.rt-carousel-arrow';
   const mobile=()=>window.matchMedia?.('(max-width:900px)')?.matches ?? window.innerWidth<=900;
   const clamp=(min,v,max)=>Math.max(min,Math.min(max,v));
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
@@ -253,6 +304,7 @@ def install(m):
     if(btn.dataset.tabKey)return'tab:'+btn.dataset.tabKey;
     if(btn.dataset.sub)return'sub:'+btn.dataset.sub;
     if(btn.dataset.opview)return'op:'+btn.dataset.opview;
+    if(btn.dataset.v200Op)return'v200:'+btn.dataset.v200Op;
     if(btn.dataset.operationTab)return'operation:'+btn.dataset.operationTab;
     if(btn.id)return'id:'+btn.id;
     return'';
@@ -263,18 +315,22 @@ def install(m):
     [...host.children].filter(x=>x.tagName==='BUTTON').forEach(btn=>{
       const key=stableKey(btn);
       if(!key)return;
-      if(seen.has(key)){btn.remove();return;}
+      if(seen.has(key)){
+        btn.remove();
+        return;
+      }
       seen.add(key);
     });
   }
 
   function originalLabel(btn){
-    if(btn.dataset.v229Original)return btn.dataset.v229Original;
+    if(btn.dataset.v230Original)return btn.dataset.v230Original;
+    const previous=String(btn.dataset.v229Original||'').trim();
     const dataLabel=String(btn.dataset.rtLabel||btn.dataset.v203Label||'').trim();
-    const current=String(btn.textContent||'').replace(/\s+/g,' ').trim();
     const title=String(btn.title||'').trim();
-    const value=dataLabel||title||current||'Reporte';
-    btn.dataset.v229Original=value;
+    const current=String(btn.textContent||'').replace(/\s+/g,' ').trim();
+    const value=previous||dataLabel||title||current||'Reporte';
+    btn.dataset.v230Original=value;
     return value;
   }
 
@@ -288,10 +344,10 @@ def install(m):
     if(key==='operations.center'||t.includes('centro operativo')||t.includes('centro ejecutivo'))return['Centro Operativo','Centro\nOperativo','dashboard'];
     if(t==='operacion'||t.startsWith('operacion '))return['Operación','Operación','gear'];
     if(key==='operations.conversion'||op.includes('convers')||t.includes('conversion'))return['Conversión','Conversión','repeat'];
-    if(key==='operations.recovery'||op.includes('recuperacion economica')||t.includes('recuperacion $')||t==='recuperaciones')return['Recuperación $','Recuperac.\n$','dollar'];
-    if(key==='operations.recovery_store'||op.includes('recuperacion por tienda')||t.includes('recuperacion por tienda'))return['Recuperación por Tienda','Recuperac.\npor Tienda','store'];
-    if(t.includes('cargar productividad'))return['Cargar productividad','Cargar\nProductiv.','truck'];
-    if(key==='operations.productivity'||op.includes('productividad')||t==='productividad')return['Productividad','Producti-\nvidad','chart'];
+    if(key==='operations.recovery'||op.includes('recuperacion economica')||t.includes('recuperacion $')||t==='recuperaciones')return['Recuperación $','Recup.\n$','dollar'];
+    if(key==='operations.recovery_store'||op.includes('recuperacion por tienda')||t.includes('recuperacion por tienda'))return['Recuperación por Tienda','Recup.\nTienda','store'];
+    if(t.includes('cargar productividad'))return['Cargar productividad','Cargar\nProd.','truck'];
+    if(key==='operations.productivity'||op.includes('productividad')||t==='productividad')return['Productividad','Productiv.','chart'];
     if(key==='operations.routes'||op.includes('recorridos')||t.includes('recorridos'))return['Recorridos','Recorridos','route'];
     if(btn.id==='openGoalsBtn'||t.includes('metas y tiendas')||t==='metas')return['Metas y tiendas','Metas y\ntiendas','target'];
     if(op.includes('carga de datos')||sub==='analysis-upload'||t.includes('carga de datos'))return['Carga de datos','Carga de\ndatos','database'];
@@ -310,16 +366,37 @@ def install(m):
     return[raw,raw,'chart'];
   }
 
-  function decorate(btn){
+  function cleanButton(btn){
+    btn.querySelectorAll(':scope>.or-tab-icon,:scope>.v164-tab-icon,:scope>.v166-tab-icon,:scope>.v206-tab-icon,:scope>.v217-tab-icon,:scope>svg').forEach(x=>x.remove());
+    btn.querySelectorAll(':scope>.rt-tab-icon,:scope>.v203-tab-icon').forEach(x=>{
+      if(!x.classList.contains('v230-tab-icon'))x.remove();
+    });
+    btn.querySelectorAll(':scope>.rt-tab-label,:scope>.v203-tab-label').forEach(x=>{
+      if(!x.classList.contains('v230-tab-label'))x.remove();
+    });
+  }
+
+  function decorate(host,btn){
     const [full,label,icon]=meta(btn);
-    const sig=full+'|'+label+'|'+icon;
-    if(btn.dataset.v229Signature===sig&&btn.querySelector(':scope>.v229-tab-label'))return;
-    btn.dataset.v229Signature=sig;
-    btn.dataset.rtLabel=full;
-    btn.title=full;
-    btn.innerHTML='<span class="v229-tab-icon">'+svg(icon)+'</span><span class="v229-tab-label"></span>';
-    const lab=btn.querySelector(':scope>.v229-tab-label');
-    if(lab)lab.textContent=label;
+    const operation=host.id==='v200OperationTabs';
+    const iconCompat=operation?'v203-tab-icon':'rt-tab-icon';
+    const labelCompat=operation?'v203-tab-label':'rt-tab-label';
+    const sig=full+'|'+label+'|'+icon+'|'+iconCompat;
+
+    cleanButton(btn);
+    const goodIcon=btn.querySelector(':scope>.v230-tab-icon');
+    const goodLabel=btn.querySelector(':scope>.v230-tab-label');
+
+    if(btn.dataset.v230Signature!==sig||!goodIcon||!goodLabel){
+      btn.dataset.v230Signature=sig;
+      btn.dataset.rtLabel=full;
+      btn.title=full;
+      btn.innerHTML=
+        '<span class="'+iconCompat+' v230-tab-icon">'+svg(icon)+'</span>'+
+        '<span class="'+labelCompat+' v230-tab-label"></span>';
+      const lab=btn.querySelector(':scope>.v230-tab-label');
+      if(lab)lab.textContent=label;
+    }
   }
 
   function unwrapLegacy(){
@@ -330,7 +407,7 @@ def install(m):
         stage.remove();
       }
     });
-    document.querySelectorAll('.v222-tab-arrow,.v226-tab-arrow').forEach(x=>x.remove());
+    document.querySelectorAll(LEGACY_INDICATORS).forEach(x=>x.remove());
   }
 
   function buttonVisible(btn){
@@ -341,11 +418,17 @@ def install(m):
   }
 
   function styleHost(host){
-    host.classList.add('v229-mobile-tabs');
+    host.classList.add('v230-mobile-tabs');
+    host.classList.remove('v225-mobile-rail','v226-mobile-rail');
+    /* Las clases pueden seguir existiendo por funcionalidad, pero V230 neutraliza su aspecto. */
     host.style.setProperty('display','grid','important');
     host.style.setProperty('width','100%','important');
     host.style.setProperty('max-width','100%','important');
     host.style.setProperty('min-width','0','important');
+    host.style.setProperty('border','0','important');
+    host.style.setProperty('border-radius','0','important');
+    host.style.setProperty('background','transparent','important');
+    host.style.setProperty('box-shadow','none','important');
 
     dedupe(host);
     const tabs=[...host.children].filter(buttonVisible);
@@ -354,20 +437,22 @@ def install(m):
     const parentWidth=host.parentElement?.getBoundingClientRect?.().width||0;
     const ownWidth=host.getBoundingClientRect?.().width||0;
     const width=Math.max(280,parentWidth,ownWidth,window.innerWidth-24);
-    const gap=count<=6?4:count<=8?3:count<=10?2:1;
+    const gap=count<=5?4:count<=7?3:count<=10?2:1;
     const cell=Math.max(24,(width-4-gap*(count-1))/count);
-    const icon=clamp(13,cell*.42,26);
-    const font=clamp(5.2,cell*.16,8.6);
-    const height=count>=9?62:64;
-    const radius=clamp(8,cell*.20,13);
 
-    host.style.setProperty('--v229-count',String(count));
-    host.style.setProperty('--v229-gap',gap+'px');
-    host.style.setProperty('--v229-icon',icon.toFixed(1)+'px');
-    host.style.setProperty('--v229-font',font.toFixed(2)+'px');
-    host.style.setProperty('--v229-h',height+'px');
-    host.style.setProperty('--v229-radius',radius.toFixed(1)+'px');
-    host.style.setProperty('--v229-inner-gap',count>=9?'1px':'2px');
+    const icon=count>=9?14:count>=7?17:clamp(19,cell*.34,24);
+    const font=count>=9?5.8:count>=7?6.8:clamp(7.3,cell*.105,8.8);
+    const height=count>=9?60:62;
+    const radius=count>=9?8:count>=7?10:12;
+    const innerGap=count>=9?1:2;
+
+    host.style.setProperty('--v230-count',String(count));
+    host.style.setProperty('--v230-gap',gap+'px');
+    host.style.setProperty('--v230-icon',icon+'px');
+    host.style.setProperty('--v230-font',font+'px');
+    host.style.setProperty('--v230-h',height+'px');
+    host.style.setProperty('--v230-radius',radius+'px');
+    host.style.setProperty('--v230-inner-gap',innerGap+'px');
 
     host.style.setProperty('grid-template-columns','repeat('+count+',minmax(0,1fr))','important');
     host.style.setProperty('grid-template-rows',height+'px','important');
@@ -382,7 +467,7 @@ def install(m):
     host.scrollLeft=0;
 
     tabs.forEach(btn=>{
-      decorate(btn);
+      decorate(host,btn);
       btn.style.setProperty('grid-row','1','important');
       btn.style.setProperty('width','100%','important');
       btn.style.setProperty('min-width','0','important');
@@ -391,9 +476,14 @@ def install(m):
       btn.style.setProperty('min-height',height+'px','important');
       btn.style.setProperty('max-height',height+'px','important');
       btn.style.setProperty('margin','0','important');
-      btn.style.setProperty('transform','none','important');
+      btn.style.setProperty('padding','4px 1px 4px','important');
       btn.style.setProperty('overflow','hidden','important');
+      btn.style.setProperty('transform','none','important');
+      btn.style.setProperty('opacity','1','important');
     });
+
+    /* Limpieza final por si otra capa insertó algo durante el mismo frame. */
+    tabs.forEach(cleanButton);
   }
 
   function syncHero(){
@@ -414,30 +504,36 @@ def install(m):
   }
 
   let raf=0;
+  let applying=false;
   function apply(){
-    if(!mobile())return;
+    if(!mobile()||applying)return;
     cancelAnimationFrame(raf);
     raf=requestAnimationFrame(()=>{
-      unwrapLegacy();
-      const activeId=activeHostId();
-      IDS.forEach(id=>{
-        const host=document.getElementById(id);
-        if(!host)return;
-        if(id!==activeId){
-          host.style.setProperty('display','none','important');
-          return;
-        }
-        host.classList.remove('hidden');
-        host.removeAttribute('hidden');
-        host.style.removeProperty('display');
-        styleHost(host);
-      });
-      syncHero();
+      applying=true;
+      try{
+        unwrapLegacy();
+        const activeId=activeHostId();
+        IDS.forEach(id=>{
+          const host=document.getElementById(id);
+          if(!host)return;
+          if(id!==activeId){
+            host.style.setProperty('display','none','important');
+            return;
+          }
+          host.classList.remove('hidden');
+          host.removeAttribute('hidden');
+          host.style.removeProperty('display');
+          styleHost(host);
+        });
+        syncHero();
+      }finally{
+        applying=false;
+      }
     });
   }
 
   const observer=new MutationObserver(mutations=>{
-    if(!mobile())return;
+    if(!mobile()||applying)return;
     if(mutations.some(m=>m.type==='childList'||(m.type==='attributes'&&['class','hidden','aria-hidden'].includes(m.attributeName)))){
       setTimeout(apply,0);
     }
@@ -445,8 +541,8 @@ def install(m):
 
   function init(){
     if(!mobile())return;
-    if(!document.body.dataset.v229Observer){
-      document.body.dataset.v229Observer='1';
+    if(!document.body.dataset.v230Observer){
+      document.body.dataset.v230Observer='1';
       observer.observe(document.body,{
         subtree:true,
         childList:true,
@@ -463,7 +559,7 @@ def install(m):
 
   document.addEventListener('click',e=>{
     if(e.target.closest?.('[data-main],#operativoNav>button,#analysisNav>button,#v200OperationTabs>button')){
-      [0,50,140,320].forEach(ms=>setTimeout(apply,ms));
+      [0,40,120,300].forEach(ms=>setTimeout(apply,ms));
     }
   },true);
   document.addEventListener('report-tabs-visibility-changed',()=>setTimeout(apply,30));
@@ -471,7 +567,7 @@ def install(m):
   window.addEventListener('orientationchange',()=>setTimeout(apply,150),{passive:true});
   window.addEventListener('pageshow',()=>setTimeout(init,70),{passive:true});
 
-  console.info('[V229] navegación móvil única, una fila y sin duplicados.');
+  console.info('[V230] pestañas móviles: una fila, un icono, sin duplicados.');
 })();
 </script>'''
 
@@ -485,9 +581,9 @@ def install(m):
             async for chunk in response.body_iterator:
                 body += chunk
             html = body.decode("utf-8", errors="replace")
-            if "v229-mobile-tabs-final-css" not in html:
+            if "v230-mobile-tabs-final-css" not in html:
                 html = html.replace("</head>", css + "</head>", 1)
-            if "v229-mobile-tabs-final-js" not in html:
+            if "v230-mobile-tabs-final-js" not in html:
                 html = html.replace("</body>", js + "</body>", 1)
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
@@ -495,12 +591,12 @@ def install(m):
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "X-Operations-UI-Version": "V229",
+                "X-Operations-UI-Version": "V230",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
-            print(f"[V229] HTML warning: {type(exc).__name__}: {exc}", flush=True)
+            print(f"[V230] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V229_MOBILE_TABS_FINAL = True
-    print("[V229] navegación móvil final instalada.", flush=True)
+    print("[V230] pestañas móviles definitivas instaladas.", flush=True)
