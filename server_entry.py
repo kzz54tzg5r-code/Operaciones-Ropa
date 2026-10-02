@@ -199,6 +199,7 @@ from v238_responsive_nav_patch import install as _install_v238_responsive_nav_pa
 from v239_functional_close_patch import install as _install_v239_functional_close_patch
 from v240_center_routes_calendar_patch import install as _install_v240_center_routes_calendar_patch
 from v241_cm_capture_authoritative_patch import install as _install_v241_cm_capture_authoritative_patch
+from v243_recovery_rate_patch import install as _install_v243_recovery_rate_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -312,4 +313,6 @@ _install_v239_functional_close_patch(web_app)
 _install_v240_center_routes_calendar_patch(web_app)
 # V241 queda al final: Cargar productividad C&M autoritativo y limpieza inmediata de Recorridos.
 _install_v241_cm_capture_authoritative_patch(web_app)
+# V243 reemplaza Recuperación por Tienda por Tasa de recuperación / Sell-Through Neto.
+_install_v243_recovery_rate_patch(web_app)
 app = web_app.app
