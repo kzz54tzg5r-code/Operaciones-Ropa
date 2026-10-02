@@ -496,6 +496,9 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     host.removeAttribute('hidden');
     decorate(host);
 
+    const mobile=window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900);
+    if(mobile){host.dataset.v221Scroll='1';return;}
+
     const tabs=qsa(':scope > button',host).filter(visible);
     const count=Math.max(1,tabs.length);
     const width=Math.max(280,host.clientWidth||host.getBoundingClientRect().width||window.innerWidth-24);

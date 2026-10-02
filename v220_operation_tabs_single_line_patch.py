@@ -190,6 +190,7 @@ body[data-v163-module="operation"] #v200OperationTabs.v220-many .v203-tab-label{
     const width=Math.max(280,h.clientWidth||h.getBoundingClientRect().width||window.innerWidth-24);
 
     const mobile=window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900);
+    if(mobile){h.dataset.v220Scroll='1';return;}
     const gap=mobile?6:(count<=5?4:count<=7?3:2);
     const cell=Math.max(20,(width-gap*(count-1))/count);
     // En móvil cada tarjeta conserva ancho legible y el host se desplaza.
