@@ -231,7 +231,25 @@ def install(m):
                 raise ValueError("Semana ISO inválida. Usa YYYY-W##")
             end = start + timedelta(days=6)
             return start, end, period_value
-        raise ValueError("El reporte Tasa de recuperación admite periodo Diario o Semana ISO")
+        if period_type == "month":
+            try:
+                start = datetime.strptime(period_value, "%Y-%m").date().replace(day=1)
+            except Exception:
+                raise ValueError("Mes inválido. Usa YYYY-MM")
+            if start.month == 12:
+                next_month = date(start.year + 1, 1, 1)
+            else:
+                next_month = date(start.year, start.month + 1, 1)
+            end = next_month - timedelta(days=1)
+            return start, end, period_value
+        if period_type == "year":
+            try:
+                year = int(period_value)
+                start = date(year, 1, 1)
+            except Exception:
+                raise ValueError("Año inválido. Usa YYYY")
+            return start, date(start.year, 12, 31), str(start.year)
+        raise ValueError("El reporte Tasa de recuperación admite Diario, Semana ISO, Mensual o Anual")
 
     def capacity_entry_for_start(start: date):
         try:
@@ -299,7 +317,9 @@ def install(m):
     def available_periods(con):
         dates = [str(r[0]) for r in con.execute("SELECT DISTINCT date FROM daily ORDER BY date") if r[0]]
         weeks = [f"{int(y)}-W{int(w):02d}" for y, w in con.execute("SELECT DISTINCT year_iso,week_iso FROM daily ORDER BY year_iso,week_iso")]
-        return dates, weeks
+        months = [str(r[0]) for r in con.execute("SELECT DISTINCT substr(date,1,7) FROM daily WHERE length(date)>=7 ORDER BY 1") if r[0]]
+        years = [str(r[0]) for r in con.execute("SELECT DISTINCT substr(date,1,4) FROM daily WHERE length(date)>=4 ORDER BY 1") if r[0]]
+        return dates, weeks, months, years
 
     def loading_payload(status="building"):
         try:
@@ -313,6 +333,7 @@ def install(m):
             "available_dates": meta.get("available_dates") or [],
             "available_weeks": meta.get("available_weeks") or [],
             "available_months": meta.get("available_months") or [],
+            "available_years": sorted({str(x)[:4] for x in (meta.get("available_months") or []) if str(x)[:4].isdigit()}),
             "rows": [],
             "trend": [],
             "metrics": {},
@@ -339,7 +360,16 @@ def install(m):
 
         if not period_value:
             meta = m.load_operations_meta()
-            values = meta.get("available_dates") if period_type == "day" else meta.get("available_weeks")
+            if period_type == "day":
+                values = meta.get("available_dates") or []
+            elif period_type == "week":
+                values = meta.get("available_weeks") or []
+            elif period_type == "month":
+                values = meta.get("available_months") or []
+            elif period_type == "year":
+                values = sorted({str(x)[:4] for x in (meta.get("available_months") or []) if str(x)[:4].isdigit()})
+            else:
+                values = []
             period_value = (values or [""])[-1]
         try:
             start, end, period_label = parse_period(period_type, period_value)
@@ -366,7 +396,7 @@ def install(m):
                 """,
                 (start.isoformat(), end.isoformat()),
             )]
-            available_dates, available_weeks = available_periods(con)
+            available_dates, available_weeks, available_months, available_years = available_periods(con)
         finally:
             con.close()
 
@@ -480,16 +510,22 @@ def install(m):
             cumulative_dev += num(values.get("dev"))
             enabled_to_date = total_initial + cumulative_dev
             iso = cursor.isocalendar()
-            trend.append({
-                "date": cursor.isoformat(),
-                "label": cursor.strftime("%d/%m"),
-                "week_iso": f"{iso.year}-W{iso.week:02d}",
-                "sales_pzs": cumulative_sales,
-                "dev_pzs": cumulative_dev,
-                "inv_total_pzs": enabled_to_date if rows else None,
-                "sell_through_pct": (cumulative_sales / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete else None,
-                "impact_dev_pct": (cumulative_dev / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete else None,
-            })
+            include_point = (
+                period_type != "year"
+                or cursor == end
+                or (cursor + timedelta(days=1)).month != cursor.month
+            )
+            if include_point:
+                trend.append({
+                    "date": cursor.isoformat(),
+                    "label": cursor.strftime("%b").capitalize() if period_type == "year" else cursor.strftime("%d/%m"),
+                    "week_iso": f"{iso.year}-W{iso.week:02d}",
+                    "sales_pzs": cumulative_sales,
+                    "dev_pzs": cumulative_dev,
+                    "inv_total_pzs": enabled_to_date if rows else None,
+                    "sell_through_pct": (cumulative_sales / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete else None,
+                    "impact_dev_pct": (cumulative_dev / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete else None,
+                })
             cursor += timedelta(days=1)
 
         rows.sort(key=lambda x: str(x.get("store") or ""))
@@ -508,7 +544,8 @@ def install(m):
             "warnings": warnings,
             "available_dates": available_dates,
             "available_weeks": available_weeks,
-            "available_months": [],
+            "available_months": available_months,
+            "available_years": available_years,
             "definition": "Sell-Through Neto = Piezas Vendidas / (Stock Inicial + Piezas Devueltas) × 100",
         }
 
