@@ -198,6 +198,7 @@ from v237_final_ui_patch import install as _install_v237_final_ui_patch
 from v238_responsive_nav_patch import install as _install_v238_responsive_nav_patch
 from v239_functional_close_patch import install as _install_v239_functional_close_patch
 from v240_center_routes_calendar_patch import install as _install_v240_center_routes_calendar_patch
+from v241_cm_capture_authoritative_patch import install as _install_v241_cm_capture_authoritative_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -309,4 +310,6 @@ _install_v238_responsive_nav_patch(web_app)
 _install_v239_functional_close_patch(web_app)
 # V240 es la capa final para Centro Operativo y Recorridos.
 _install_v240_center_routes_calendar_patch(web_app)
+# V241 queda al final: Cargar productividad C&M autoritativo y limpieza inmediata de Recorridos.
+_install_v241_cm_capture_authoritative_patch(web_app)
 app = web_app.app
