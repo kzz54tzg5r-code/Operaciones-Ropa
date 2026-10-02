@@ -271,7 +271,7 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
 }
 
 /* V221.2 · ningún decorador anterior puede agregar un segundo icono. */
-body[data-v163-module] :is(#operativoNav,#analysisNav) :is(.v164-tab-icon,.v166-tab-icon,.v206-tab-icon,.v217-tab-icon){
+body[data-v163-module] :is(#operativoNav,#analysisNav) :is(.or-tab-icon,.v164-tab-icon,.v166-tab-icon,.v206-tab-icon,.v217-tab-icon){
   display:none!important;
 }
 
@@ -451,7 +451,7 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
       const currentIcon=btn.dataset.v221Icon;
       if(currentLabel===label&&currentIcon===icon)return;
       btn.dataset.v221Decorating='1';
-      btn.querySelectorAll(':scope > .v164-tab-icon,:scope > .v166-tab-icon,:scope > .v206-tab-icon,:scope > .v217-tab-icon').forEach(x=>x.remove());
+      btn.querySelectorAll(':scope > .or-tab-icon,:scope > .v164-tab-icon,:scope > .v166-tab-icon,:scope > .v206-tab-icon,:scope > .v217-tab-icon').forEach(x=>x.remove());
       btn.dataset.v221Icon=icon;
       btn.dataset.rtLabel=label;
       btn.title=label;

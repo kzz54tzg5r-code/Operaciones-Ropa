@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-v25-v222';
+const CACHE_NAME = 'operaciones-ropa-runtime-v26-v223';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -10,9 +10,7 @@ const STATIC_ASSETS = [
   '/static/pwa_brand.js',
   '/static/design_system.css',
   '/static/design_system.js',
-  '/static/report_tab_carousel.js',
   '/static/report_tab_mundial_v7.js',
-  '/static/report_tab_icon_rail_v1.js',
   '/static/pwa_install.js',
   '/static/ios_native.js'
 ];

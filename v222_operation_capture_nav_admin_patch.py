@@ -409,6 +409,40 @@ def install(m):
 #page-users.v219-users .v222-vis-group input[type="checkbox"][data-tab-setting]:checked::after{transform:translateX(14px)!important}
 
 @media(max-width:900px){
+ body .shell,
+ body .shell.sidebar-collapsed{
+   display:block!important;
+   grid-template-columns:none!important;
+   width:100%!important;
+   max-width:100vw!important;
+   min-width:0!important;
+ }
+ body .main{
+   width:100%!important;
+   max-width:100vw!important;
+   min-width:0!important;
+   margin-left:0!important;
+   margin-right:0!important;
+ }
+ body[data-v163-module] .v222-tab-stage{
+   width:100%!important;
+   max-width:100%!important;
+   min-width:0!important;
+ }
+ body[data-v163-module] .v222-tab-stage>:is(#operativoNav,#analysisNav,#v200OperationTabs){
+   width:100%!important;
+   max-width:100%!important;
+   min-width:0!important;
+   margin-left:0!important;
+   margin-right:0!important;
+ }
+ body[data-v163-module="operation"] :is(#operativoDynamic,#operativoDynamicContent,#page-operativo){
+   width:100%!important;
+   max-width:100%!important;
+   min-width:0!important;
+   margin-left:0!important;
+   margin-right:0!important;
+ }
  .v222-capture-card{padding:11px}
  .v222-timer{font-size:23px;min-width:130px}
  .v222-choice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -632,13 +666,13 @@ def install(m):
   /* ---------- navegación / iconos ---------- */
   function cleanDuplicateIcons(){
     qa('#v200OperationTabs>button').forEach(btn=>{
-      btn.querySelectorAll(':scope>.rt-tab-icon,:scope>.v164-tab-icon,:scope>.v166-tab-icon,:scope>.v206-tab-icon,:scope>.v217-tab-icon').forEach(x=>x.remove());
+      btn.querySelectorAll(':scope>.or-tab-icon,:scope>.rt-tab-icon,:scope>.v164-tab-icon,:scope>.v166-tab-icon,:scope>.v206-tab-icon,:scope>.v217-tab-icon').forEach(x=>x.remove());
       const icons=qa(':scope>.v203-tab-icon',btn);icons.slice(1).forEach(x=>x.remove());
       const labels=qa(':scope>.v203-tab-label',btn);labels.slice(1).forEach(x=>x.remove());
       qa(':scope>svg',btn).forEach(x=>x.remove());
     });
     qa('#operativoNav>button,#analysisNav>button').forEach(btn=>{
-      btn.querySelectorAll(':scope>.v164-tab-icon,:scope>.v166-tab-icon,:scope>.v203-tab-icon,:scope>.v206-tab-icon,:scope>.v217-tab-icon').forEach(x=>x.remove());
+      btn.querySelectorAll(':scope>.or-tab-icon,:scope>.v164-tab-icon,:scope>.v166-tab-icon,:scope>.v203-tab-icon,:scope>.v206-tab-icon,:scope>.v217-tab-icon').forEach(x=>x.remove());
       const icons=qa(':scope>.rt-tab-icon',btn);icons.slice(1).forEach(x=>x.remove());
       const labels=qa(':scope>.rt-tab-label',btn);labels.slice(1).forEach(x=>x.remove());
       qa(':scope>svg',btn).forEach(x=>x.remove());
@@ -652,10 +686,35 @@ def install(m):
     });
   }
 
+  const V222_NAV_IDS=new Set(['operativoNav','analysisNav','v200OperationTabs']);
+
+  function cleanupStages(){
+    qa('.v222-tab-stage').forEach(stage=>{
+      const direct=[...stage.children].find(x=>V222_NAV_IDS.has(x.id));
+      const expected=String(stage.dataset.host||'');
+      // Una etapa sin su host es el residuo que producía las columnas
+      // interminables de flechas. Se elimina completa.
+      if(!direct || (expected && expected!==direct.id)){
+        stage.remove();
+        return;
+      }
+      stage.dataset.host=direct.id;
+      const arrows=[...stage.children].filter(x=>x.classList?.contains('v222-tab-arrow'));
+      arrows.slice(2).forEach(x=>x.remove());
+    });
+  }
+
   function stageFor(host){
     if(!host)return null;
+    cleanupStages();
     let stage=host.parentElement?.classList?.contains('v222-tab-stage')?host.parentElement:null;
-    if(stage)return stage;
+    if(stage){
+      stage.dataset.host=host.id;
+      return stage;
+    }
+    // Si quedó algún wrapper huérfano del mismo host, retirarlo antes de crear
+    // uno nuevo. Nunca debe existir más de una pareja de flechas por barra.
+    qa('.v222-tab-stage').filter(x=>x.dataset.host===host.id).forEach(x=>x.remove());
     stage=document.createElement('div');
     stage.className='v222-tab-stage';
     stage.dataset.host=host.id;
@@ -681,12 +740,13 @@ def install(m):
     if(!owns)return;
     const overflow=host.scrollWidth>host.clientWidth+4;
     stage.classList.toggle('v222-no-scroll',!overflow);
-    const buttons=qa('.v222-tab-arrow',stage);
+    const buttons=[...stage.children].filter(x=>x.classList?.contains('v222-tab-arrow'));
     if(buttons[0])buttons[0].disabled=!overflow||host.scrollLeft<=2;
     if(buttons[1])buttons[1].disabled=!overflow||host.scrollLeft+host.clientWidth>=host.scrollWidth-3;
   }
 
   function refreshNav(){
+    cleanupStages();
     operationTabKeys();
     cleanDuplicateIcons();
     ['operativoNav','analysisNav','v200OperationTabs'].forEach(id=>{
