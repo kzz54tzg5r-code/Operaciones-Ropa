@@ -74,7 +74,7 @@ def install(m):
         ss, es = start.isoformat(), end.isoformat(); ph = ",".join("?" for _ in stores); stset = set(stores); std = standards()
         with m.db() as con:
             caps = [dict(r) for r in con.execute(f"SELECT date,store,arrival,released FROM operation_daily_capture WHERE origin='Origen' AND date<=? AND store IN ({ph})", (es,*stores)).fetchall()]
-            prod = [dict(r) for r in con.execute(f"SELECT date,store,user_id,employee_no,employee_name,origin,pieces FROM operation_productivity WHERE origin IN ('Colgado','Doblado') AND date<=? AND store IN ({ph})", (es,*stores)).fetchall()]
+            prod = [dict(r) for r in con.execute(f"SELECT date,store,user_id,employee_no,employee_name,origin,pieces FROM operation_productivity WHERE origin IN ('Colgado','Doblado','Jeans','Lencería') AND date<=? AND store IN ({ph})", (es,*stores)).fetchall()]
         cm=[]
         try:
             for r in (m.load_ops() or {}).get("rows",[]):
@@ -100,8 +100,9 @@ def install(m):
         for r in pp:
             name=str(r.get("employee_name") or "Sin nombre").strip(); eno=str(r.get("employee_no") or "").strip(); st=str(r["store"]); org=str(r.get("origin") or "")
             key=(eno or name.casefold(),st); g=people.setdefault(key,{"name":name,"store":st,"pieces":0.0,"days":set(),"target":0.0}); g["pieces"]+=n(r["pieces"]); g["days"].add(str(r["date"]))
-            tk=(key,str(r["date"]),org)
-            if tk not in seen_target: seen_target.add(tk); g["target"]+=n(std.get(org))
+            family="Colgado" if org in ("Colgado","Lencería") else ("Doblado" if org in ("Doblado","Jeans") else org)
+            tk=(key,str(r["date"]),family)
+            if tk not in seen_target: seen_target.add(tk); g["target"]+=n(std.get(family))
         for r in cc:
             name=str(r.get("name") or "").strip(); pcs=n(r.get("pieces"))
             if not name or pcs<=0: continue
