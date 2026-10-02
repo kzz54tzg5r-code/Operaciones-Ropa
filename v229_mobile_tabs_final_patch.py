@@ -1,4 +1,4 @@
-"""V231 · Pestañas móviles compactas y centradas, sin espacios vacíos.
+"""V232 · Pestañas móviles fieles al mockup aprobado.
 
 Esta capa es la única responsable de la presentación móvil de:
 - Cambios y Muertos
@@ -21,7 +21,7 @@ def install(m):
     if getattr(m, "_V229_MOBILE_TABS_FINAL", False):
         return
 
-    css = r'''<style id="v231-mobile-tabs-final-css">
+    css = r'''<style id="v232-mobile-tabs-final-css">
 @media(max-width:900px){
   /* Wrappers/indicadores históricos: no deben participar visualmente. */
   body .v222-tab-stage,
@@ -51,25 +51,25 @@ def install(m):
   }
 
   /* Un único rail limpio; quita el gran contenedor redondeado heredado. */
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs.rt-carousel,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs.rt-icon-rail-v1{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs.rt-carousel,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs.rt-icon-rail-v1{
     display:grid!important;
-    grid-template-columns:repeat(var(--v231-count,5),minmax(0,1fr))!important;
-    grid-template-rows:var(--v231-h,62px)!important;
+    grid-template-columns:repeat(var(--v232-count,5),minmax(0,1fr))!important;
+    grid-template-rows:var(--v232-h,62px)!important;
     grid-auto-flow:row!important;
     grid-auto-rows:0!important;
     align-items:stretch!important;
     justify-items:stretch!important;
-    column-gap:var(--v231-gap,3px)!important;
+    column-gap:var(--v232-gap,3px)!important;
     row-gap:0!important;
     width:100%!important;
     max-width:100%!important;
     min-width:0!important;
-    height:var(--v231-h,62px)!important;
-    min-height:var(--v231-h,62px)!important;
-    max-height:var(--v231-h,62px)!important;
-    margin:7px 0 11px!important;
+    height:var(--v232-h,62px)!important;
+    min-height:var(--v232-h,62px)!important;
+    max-height:var(--v232-h,62px)!important;
+    margin:5px 0 10px!important;
     padding:0 2px!important;
     border:0!important;
     border-radius:0!important;
@@ -89,39 +89,37 @@ def install(m):
     transform:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs::-webkit-scrollbar{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs::-webkit-scrollbar{
     display:none!important;
   }
 
   /* Cada pestaña ocupa exactamente una columna. */
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>.switch{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>.switch{
     position:relative!important;
     inset:auto!important;
     float:none!important;
-    display:grid!important;
+    display:flex!important;
     flex:none!important;
-    grid-template-columns:minmax(0,1fr)!important;
-    grid-template-rows:auto var(--v231-label-h,14px)!important;
-    place-items:center!important;
-    align-content:center!important;
-    justify-content:stretch!important;
-    gap:var(--v231-inner-gap,2px)!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:var(--v232-inner-gap,3px)!important;
     grid-row:1!important;
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
-    height:var(--v231-h,62px)!important;
-    min-height:var(--v231-h,62px)!important;
-    max-height:var(--v231-h,62px)!important;
+    height:var(--v232-h,62px)!important;
+    min-height:var(--v232-h,62px)!important;
+    max-height:var(--v232-h,62px)!important;
     margin:0!important;
-    padding:var(--v231-pad-y,4px) 1px!important;
+    padding:5px 1px 6px!important;
     overflow:hidden!important;
     white-space:normal!important;
     text-align:center!important;
     box-sizing:border-box!important;
     border:1px solid #d5e2ef!important;
-    border-radius:var(--v231-radius,11px)!important;
+    border-radius:var(--v232-radius,11px)!important;
     background:#fff!important;
     color:#466887!important;
     opacity:1!important;
@@ -130,9 +128,9 @@ def install(m):
     scroll-snap-align:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button.active,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button[aria-selected="true"],
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button.rt-icon-user-active{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button.active,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button[aria-selected="true"],
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button.rt-icon-user-active{
     color:#fff!important;
     border-color:#0a5da7!important;
     background:linear-gradient(145deg,#0d4f8b 0%,#0878df 100%)!important;
@@ -141,33 +139,33 @@ def install(m):
   }
 
   /* No subrayados, círculos ni pseudo-iconos heredados. */
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button::before,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button::after{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button::before,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button::after{
     display:none!important;
     content:none!important;
   }
 
-  /* Sólo V231 puede mostrar el icono directo del botón. */
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button>
-  :is(.or-tab-icon,.v164-tab-icon,.v166-tab-icon,.v206-tab-icon,.v217-tab-icon,.rt-tab-icon,.v203-tab-icon):not(.v231-tab-icon),
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button>svg{
+  /* Sólo V232 puede mostrar el icono directo del botón. */
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button>
+  :is(.or-tab-icon,.v164-tab-icon,.v166-tab-icon,.v206-tab-icon,.v217-tab-icon,.rt-tab-icon,.v203-tab-icon):not(.v232-tab-icon),
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button>svg{
     display:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs .v231-tab-icon{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs .v232-tab-icon{
     display:grid!important;
     place-items:center!important;
-    flex:0 0 var(--v231-icon,17px)!important;
-    width:var(--v231-icon,17px)!important;
-    min-width:var(--v231-icon,17px)!important;
-    max-width:var(--v231-icon,17px)!important;
-    height:var(--v231-icon,17px)!important;
-    min-height:var(--v231-icon,17px)!important;
-    max-height:var(--v231-icon,17px)!important;
+    flex:0 0 var(--v232-icon,17px)!important;
+    width:var(--v232-icon,17px)!important;
+    min-width:var(--v232-icon,17px)!important;
+    max-width:var(--v232-icon,17px)!important;
+    height:var(--v232-icon,17px)!important;
+    min-height:var(--v232-icon,17px)!important;
+    max-height:var(--v232-icon,17px)!important;
     margin:0!important;
     padding:0!important;
     border:1px solid #dce9f5!important;
-    border-radius:calc(var(--v231-radius,11px) - 4px)!important;
+    border-radius:calc(var(--v232-radius,11px) - 4px)!important;
     background:#edf5fd!important;
     color:#4b7195!important;
     box-shadow:none!important;
@@ -177,7 +175,7 @@ def install(m):
     pointer-events:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs .v231-tab-icon svg{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs .v232-tab-icon svg{
     display:block!important;
     width:58%!important;
     height:58%!important;
@@ -191,55 +189,55 @@ def install(m):
     visibility:visible!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button.active .v231-tab-icon,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button[aria-selected="true"] .v231-tab-icon,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button.rt-icon-user-active .v231-tab-icon{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button.active .v232-tab-icon,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button[aria-selected="true"] .v232-tab-icon,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button.rt-icon-user-active .v232-tab-icon{
     color:#fff!important;
     background:rgba(255,255,255,.14)!important;
     border-color:rgba(255,255,255,.23)!important;
   }
 
   /* Sólo una etiqueta visible por botón. */
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button>
-  :is(.rt-tab-label,.v203-tab-label):not(.v231-tab-label){
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button>
+  :is(.rt-tab-label,.v203-tab-label):not(.v232-tab-label){
     display:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs .v231-tab-label{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs .v232-tab-label{
     position:static!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
+    display:-webkit-box!important;
+    -webkit-box-orient:vertical!important;
+    -webkit-line-clamp:3!important;
     width:100%!important;
     max-width:100%!important;
     min-width:0!important;
-    height:var(--v231-label-h,14px)!important;
-    min-height:var(--v231-label-h,14px)!important;
-    max-height:var(--v231-label-h,14px)!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
     margin:0!important;
     padding:0!important;
     overflow:hidden!important;
     clip:auto!important;
     clip-path:none!important;
     color:inherit!important;
-    font-size:var(--v231-font,6px)!important;
-    line-height:1.05!important;
+    font-size:var(--v232-font,6px)!important;
+    line-height:1.04!important;
     font-weight:850!important;
     letter-spacing:-.05px!important;
     white-space:pre-line!important;
     text-align:center!important;
     text-overflow:clip!important;
-    overflow-wrap:normal!important;
+    overflow-wrap:anywhere!important;
     word-break:normal!important;
-    hyphens:none!important;
+    hyphens:auto!important;
     opacity:1!important;
     visibility:visible!important;
     pointer-events:none!important;
   }
 
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button.hidden,
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button[hidden],
-  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v231-mobile-tabs>button[aria-hidden="true"]{
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button.hidden,
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button[hidden],
+  body[data-v163-module] :is(#operativoNav,#analysisNav,#v200OperationTabs).v232-mobile-tabs>button[aria-hidden="true"]{
     display:none!important;
   }
 
@@ -254,10 +252,10 @@ def install(m):
 }
 </style>'''
 
-    js = r'''<script id="v231-mobile-tabs-final-js">
+    js = r'''<script id="v232-mobile-tabs-final-js">
 (function(){
-  if(window.__V231_MOBILE_TABS_FINAL)return;
-  window.__V231_MOBILE_TABS_FINAL=true;
+  if(window.__V232_MOBILE_TABS_FINAL)return;
+  window.__V232_MOBILE_TABS_FINAL=true;
 
   const IDS=['operativoNav','analysisNav','v200OperationTabs'];
   const LEGACY_INDICATORS='.v222-tab-arrow,.v226-tab-arrow,.rt-icon-rail-v1-current,.rt-icon-rail-v1-indicator,.rt-worldcup-current,.rt-worldcup-pedestal,.rt-mundial-current,.rt-m7-current,.rt-carousel-arrow';
@@ -327,13 +325,13 @@ def install(m):
   }
 
   function originalLabel(btn){
-    if(btn.dataset.v231Original)return btn.dataset.v231Original;
+    if(btn.dataset.v232Original)return btn.dataset.v232Original;
     const previous=String(btn.dataset.v229Original||'').trim();
     const dataLabel=String(btn.dataset.rtLabel||btn.dataset.v203Label||'').trim();
     const title=String(btn.title||'').trim();
     const current=String(btn.textContent||'').replace(/\s+/g,' ').trim();
     const value=previous||dataLabel||title||current||'Reporte';
-    btn.dataset.v231Original=value;
+    btn.dataset.v232Original=value;
     return value;
   }
 
@@ -349,8 +347,8 @@ def install(m):
     if(key==='operations.conversion'||op.includes('convers')||t.includes('conversion'))return['Conversión','Conversión','repeat'];
     if(key==='operations.recovery'||op.includes('recuperacion economica')||t.includes('recuperacion $')||t==='recuperaciones')return['Recuperación $','Recup.\n$','dollar'];
     if(key==='operations.recovery_store'||op.includes('recuperacion por tienda')||t.includes('recuperacion por tienda'))return['Recuperación por Tienda','Recup.\nTienda','store'];
-    if(t.includes('cargar productividad'))return['Cargar productividad','Cargar\nProd.','truck'];
-    if(key==='operations.productivity'||op.includes('productividad')||t==='productividad')return['Productividad','Productiv.','chart'];
+    if(t.includes('cargar productividad'))return['Cargar productividad','Cargar\nProductividad','truck'];
+    if(key==='operations.productivity'||op.includes('productividad')||t==='productividad')return['Productividad','Producti-\nvidad','chart'];
     if(key==='operations.routes'||op.includes('recorridos')||t.includes('recorridos'))return['Recorridos','Recorridos','route'];
     if(btn.id==='openGoalsBtn'||t.includes('metas y tiendas')||t==='metas')return['Metas y tiendas','Metas y\ntiendas','target'];
     if(op.includes('carga de datos')||sub==='analysis-upload'||t.includes('carga de datos'))return['Carga de datos','Carga de\ndatos','database'];
@@ -372,33 +370,33 @@ def install(m):
   function cleanButton(btn){
     btn.querySelectorAll(':scope>.or-tab-icon,:scope>.v164-tab-icon,:scope>.v166-tab-icon,:scope>.v206-tab-icon,:scope>.v217-tab-icon,:scope>svg').forEach(x=>x.remove());
     btn.querySelectorAll(':scope>.rt-tab-icon,:scope>.v203-tab-icon').forEach(x=>{
-      if(!x.classList.contains('v231-tab-icon'))x.remove();
+      if(!x.classList.contains('v232-tab-icon'))x.remove();
     });
     btn.querySelectorAll(':scope>.rt-tab-label,:scope>.v203-tab-label').forEach(x=>{
-      if(!x.classList.contains('v231-tab-label'))x.remove();
+      if(!x.classList.contains('v232-tab-label'))x.remove();
     });
   }
 
   function decorate(host,btn,compact){
     const [full,shortLabel,icon]=meta(btn);
-    const shownLabel=compact?shortLabel:full;
+    const shownLabel=(host.id==='analysisNav'||host.id==='v200OperationTabs')?full:(compact?shortLabel:full);
     const operation=host.id==='v200OperationTabs';
     const iconCompat=operation?'v203-tab-icon':'rt-tab-icon';
     const labelCompat=operation?'v203-tab-label':'rt-tab-label';
     const sig=full+'|'+shownLabel+'|'+icon+'|'+iconCompat;
 
     cleanButton(btn);
-    const goodIcon=btn.querySelector(':scope>.v231-tab-icon');
-    const goodLabel=btn.querySelector(':scope>.v231-tab-label');
+    const goodIcon=btn.querySelector(':scope>.v232-tab-icon');
+    const goodLabel=btn.querySelector(':scope>.v232-tab-label');
 
-    if(btn.dataset.v231Signature!==sig||!goodIcon||!goodLabel){
-      btn.dataset.v231Signature=sig;
+    if(btn.dataset.v232Signature!==sig||!goodIcon||!goodLabel){
+      btn.dataset.v232Signature=sig;
       btn.dataset.rtLabel=full;
       btn.title=full;
       btn.innerHTML=
-        '<span class="'+iconCompat+' v231-tab-icon">'+svg(icon)+'</span>'+
-        '<span class="'+labelCompat+' v231-tab-label"></span>';
-      const lab=btn.querySelector(':scope>.v231-tab-label');
+        '<span class="'+iconCompat+' v232-tab-icon">'+svg(icon)+'</span>'+
+        '<span class="'+labelCompat+' v232-tab-label"></span>';
+      const lab=btn.querySelector(':scope>.v232-tab-label');
       if(lab)lab.textContent=shownLabel;
     }
   }
@@ -423,9 +421,9 @@ def install(m):
   }
 
   function styleHost(host){
-    host.classList.add('v231-mobile-tabs');
+    host.classList.add('v232-mobile-tabs');
     host.classList.remove('v225-mobile-rail','v226-mobile-rail');
-    /* Las clases pueden seguir existiendo por funcionalidad, pero V231 neutraliza su aspecto. */
+    /* Las clases pueden seguir existiendo por funcionalidad, pero V232 neutraliza su aspecto. */
     host.style.setProperty('display','grid','important');
     host.style.setProperty('width','100%','important');
     host.style.setProperty('max-width','100%','important');
@@ -445,26 +443,42 @@ def install(m):
     const gap=count<=5?4:count<=7?3:count<=10?2:1;
     const cell=Math.max(24,(width-4-gap*(count-1))/count);
 
-    // Sólo abreviamos cuando realmente hace falta espacio.
-    const compact=cell<58||count>=7;
-    const icon=compact?(count>=9?14:16):clamp(19,cell*.30,23);
-    const font=compact?(count>=9?5.9:6.7):clamp(7.4,cell*.105,8.6);
-    const innerGap=compact?1:2;
-    const padY=compact?3:4;
-    const labelHeight=Math.ceil(font*1.05*2);
-    // Alto calculado por contenido: elimina aire sobrante sin apretar icono/texto.
-    const height=clamp(44,Math.ceil(icon+labelHeight+innerGap+(padY*2)+2),56);
-    const radius=compact?(count>=9?8:10):12;
+    // Replica la proporción del mockup aprobado: tarjetas legibles, sin aplastar contenido.
+    const compact=host.id==='operativoNav' && (cell<54||count>=9);
+    let icon,font,height,radius,innerGap;
+    if(host.id==='analysisNav'){
+      icon=clamp(21,cell*.40,25);
+      font=clamp(7.6,cell*.135,8.6);
+      height=64;
+      radius=13;
+      innerGap=3;
+    }else if(host.id==='v200OperationTabs'){
+      icon=clamp(22,cell*.38,26);
+      font=clamp(8.0,cell*.13,9.0);
+      height=64;
+      radius=13;
+      innerGap=3;
+    }else if(count>=9){
+      icon=18;
+      font=6.8;
+      height=60;
+      radius=10;
+      innerGap=2;
+    }else{
+      icon=clamp(20,cell*.42,25);
+      font=clamp(7.2,cell*.13,8.6);
+      height=62;
+      radius=12;
+      innerGap=3;
+    }
 
-    host.style.setProperty('--v231-count',String(count));
-    host.style.setProperty('--v231-gap',gap+'px');
-    host.style.setProperty('--v231-icon',icon+'px');
-    host.style.setProperty('--v231-font',font+'px');
-    host.style.setProperty('--v231-h',height+'px');
-    host.style.setProperty('--v231-radius',radius+'px');
-    host.style.setProperty('--v231-inner-gap',innerGap+'px');
-    host.style.setProperty('--v231-label-h',labelHeight+'px');
-    host.style.setProperty('--v231-pad-y',padY+'px');
+    host.style.setProperty('--v232-count',String(count));
+    host.style.setProperty('--v232-gap',gap+'px');
+    host.style.setProperty('--v232-icon',icon+'px');
+    host.style.setProperty('--v232-font',font+'px');
+    host.style.setProperty('--v232-h',height+'px');
+    host.style.setProperty('--v232-radius',radius+'px');
+    host.style.setProperty('--v232-inner-gap',innerGap+'px');
 
     host.style.setProperty('grid-template-columns','repeat('+count+',minmax(0,1fr))','important');
     host.style.setProperty('grid-template-rows',height+'px','important');
@@ -488,7 +502,7 @@ def install(m):
       btn.style.setProperty('min-height',height+'px','important');
       btn.style.setProperty('max-height',height+'px','important');
       btn.style.setProperty('margin','0','important');
-      btn.style.setProperty('padding',padY+'px 1px','important');
+      btn.style.setProperty('padding','5px 1px 6px','important');
       btn.style.setProperty('overflow','hidden','important');
       btn.style.setProperty('transform','none','important');
       btn.style.setProperty('opacity','1','important');
@@ -553,8 +567,8 @@ def install(m):
 
   function init(){
     if(!mobile())return;
-    if(!document.body.dataset.v231Observer){
-      document.body.dataset.v231Observer='1';
+    if(!document.body.dataset.v232Observer){
+      document.body.dataset.v232Observer='1';
       observer.observe(document.body,{
         subtree:true,
         childList:true,
@@ -579,7 +593,7 @@ def install(m):
   window.addEventListener('orientationchange',()=>setTimeout(apply,150),{passive:true});
   window.addEventListener('pageshow',()=>setTimeout(init,70),{passive:true});
 
-  console.info('[V231] pestañas móviles compactas, centradas y sin espacios vacíos.');
+  console.info('[V232] pestañas móviles fieles al mockup: legibles, centradas y uniformes.');
 })();
 </script>'''
 
@@ -593,9 +607,9 @@ def install(m):
             async for chunk in response.body_iterator:
                 body += chunk
             html = body.decode("utf-8", errors="replace")
-            if "v231-mobile-tabs-final-css" not in html:
+            if "v232-mobile-tabs-final-css" not in html:
                 html = html.replace("</head>", css + "</head>", 1)
-            if "v231-mobile-tabs-final-js" not in html:
+            if "v232-mobile-tabs-final-js" not in html:
                 html = html.replace("</body>", js + "</body>", 1)
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
@@ -603,12 +617,12 @@ def install(m):
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "X-Operations-UI-Version": "V231",
+                "X-Operations-UI-Version": "V232",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
-            print(f"[V231] HTML warning: {type(exc).__name__}: {exc}", flush=True)
+            print(f"[V232] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V229_MOBILE_TABS_FINAL = True
-    print("[V231] pestañas móviles compactas y centradas instaladas.", flush=True)
+    print("[V232] pestañas móviles fieles al mockup instaladas.", flush=True)
