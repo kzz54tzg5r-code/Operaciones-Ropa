@@ -321,17 +321,60 @@ def install(m):
     return await dashPromise;
   };
 
+  function activeOpsViewV246(){
+    const btn=q('#operativoNav>button[data-opview].active')||q('#operativoNav>button[data-opview][aria-selected="true"]');
+    return btn?.dataset?.opview||((typeof OP_VIEW!=='undefined'&&OP_VIEW)||CENTER);
+  }
+  function syncActiveOpsV246(view){
+    const btn=q('#operativoNav>button[data-opview="'+String(view||'').replace(/"/g,'\\\"')+'"]');
+    if(!btn)return;
+    qa('#operativoNav>button[data-opview]').forEach(x=>{
+      const on=x===btn;
+      x.classList.toggle('active',on);
+      x.setAttribute('aria-selected',on?'true':'false');
+    });
+    try{OP_VIEW=view}catch(_e){}
+  }
   function bind(){
     const center=q('#operativoNav [data-opview="Centro Ejecutivo"]');
     if(center)center.onclick=e=>{if(e)e.preventDefault();renderCenter({resetPeriod:false});};
+
     const mode=q('#operPeriodMode');
-    if(mode)mode.onchange=()=>{setupCenterPeriod((typeof OPSDATA!=='undefined'&&OPSDATA)||{},false);renderCenter({resetPeriod:false});};
+    if(mode)mode.onchange=()=>{
+      const view=activeOpsViewV246();
+      if(view===CENTER){
+        setupCenterPeriod((typeof OPSDATA!=='undefined'&&OPSDATA)||{},false);
+        renderCenter({resetPeriod:false});
+        return;
+      }
+      // El filtro Vista pertenece a la pestaña activa; nunca manda al Centro Operativo.
+      syncActiveOpsV246(view);
+      try{
+        OPER_PERIOD.type=typeof currentPeriodTypeForView==='function'?currentPeriodTypeForView(view):(mode.value||'month');
+        OPER_PERIOD.value='';
+      }catch(_e){}
+      if(typeof setPeriodSelector==='function'){
+        setPeriodSelector(view,(typeof OPSDATA!=='undefined'&&OPSDATA)||{available_dates:[],available_weeks:[],available_months:[],available_years:[]});
+      }
+    };
+
     const consult=q('#operativoPeriodBar .primary');
     if(consult)consult.onclick=e=>{
-      const centerBtn=q('#operativoNav [data-opview="Centro Ejecutivo"]');
-      if(!centerBtn||!centerBtn.classList.contains('active'))return;
+      const view=activeOpsViewV246();
       if(e)e.preventDefault();
-      renderCenter({resetPeriod:false});
+      if(view===CENTER){
+        renderCenter({resetPeriod:false});
+        return;
+      }
+      // Consultar re-renderiza exclusivamente la pestaña visible.
+      syncActiveOpsV246(view);
+      try{
+        OPER_PERIOD.type=typeof currentPeriodTypeForView==='function'?currentPeriodTypeForView(view):((q('#operPeriodMode')&&q('#operPeriodMode').value)||'month');
+        OPER_PERIOD.value=(q('#operPeriodSelect')&&q('#operPeriodSelect').value)||'';
+      }catch(_e){}
+      if(typeof renderOperativoView==='function'){
+        Promise.resolve(renderOperativoView(view,false)).catch(err=>console.error('[V246] consultar '+view,err));
+      }
     };
     fitCmTabs();
   }
