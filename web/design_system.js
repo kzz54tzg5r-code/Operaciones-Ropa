@@ -360,10 +360,10 @@
     const globalFilters = document.getElementById('globalFilters');
     if (!main || !hero || !opNav || !analysisNav || !globalFilters) return;
 
-    // Si las pestañas ya fueron mejoradas por ReportTabCarousel, mover el shell
-    // completo y no extraer el viewport del componente.
-    const opNode = opNav.closest('.rt-carousel-shell') || opNav;
-    const analysisNode = analysisNav.closest('.rt-carousel-shell') || analysisNav;
+    // Mover el contenedor completo de navegación. V222 envuelve las barras
+    // con flechas; extraer sólo el host deja etapas huérfanas y duplica flechas.
+    const opNode = opNav.closest('.v222-tab-stage') || opNav.closest('.rt-carousel-shell') || opNav;
+    const analysisNode = analysisNav.closest('.v222-tab-stage') || analysisNav.closest('.rt-carousel-shell') || analysisNav;
 
     if (hero.nextElementSibling !== opNode) hero.after(opNode);
     if (opNode.nextElementSibling !== analysisNode) opNode.after(analysisNode);
@@ -408,6 +408,12 @@
 
   const enhanceSubnavIcons = () => {
     document.querySelectorAll('#operativoNav .switch,#analysisNav .switch').forEach(btn => {
+      // V221 usa .rt-tab-icon como iconografía autoritativa. Si ya existe,
+      // retirar cualquier icono heredado para no mostrar dos iconos por pestaña.
+      if (btn.querySelector('.rt-tab-icon,.v203-tab-icon')) {
+        btn.querySelectorAll(':scope > .or-tab-icon').forEach(x => x.remove());
+        return;
+      }
       if (btn.querySelector('.or-tab-icon')) return;
       const key = btn.dataset.tabKey || '';
       let path = tabIconPaths[key];
