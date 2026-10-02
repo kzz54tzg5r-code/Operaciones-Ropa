@@ -1,24 +1,24 @@
-"""V234 · Ajuste visual exacto de pestañas móviles contra el mockup aprobado."""
+"""V235 · Ajuste final de proporción, iconos y etiquetas móviles."""
 from __future__ import annotations
 
 from fastapi.responses import HTMLResponse
 
 
 def install(m):
-    if getattr(m, "_V234_EXACT_MOBILE_TABS", False):
+    if getattr(m, "_V235_EXACT_MOBILE_TABS", False):
         return
 
-    css = r'''<style id="v234-exact-mobile-tabs-css">
+    css = r'''<style id="v235-exact-mobile-tabs-css">
 @media(max-width:900px){
   body[data-v163-module="operativo"] #operativoNav.v232-mobile-tabs{
-    --v234-h:72px;
-    --v234-gap:3px;
+    --v235-h:70px;
+    --v235-gap:3px;
     display:grid!important;
-    grid-template-rows:var(--v234-h)!important;
-    height:var(--v234-h)!important;
-    min-height:var(--v234-h)!important;
-    max-height:var(--v234-h)!important;
-    column-gap:var(--v234-gap)!important;
+    grid-template-rows:var(--v235-h)!important;
+    height:var(--v235-h)!important;
+    min-height:var(--v235-h)!important;
+    max-height:var(--v235-h)!important;
+    column-gap:var(--v235-gap)!important;
     margin:5px 0 12px!important;
     padding:0 3px!important;
     overflow:hidden!important;
@@ -28,10 +28,10 @@ def install(m):
     flex-direction:column!important;
     align-items:center!important;
     justify-content:center!important;
-    gap:4px!important;
-    height:var(--v234-h)!important;
-    min-height:var(--v234-h)!important;
-    max-height:var(--v234-h)!important;
+    gap:3px!important;
+    height:var(--v235-h)!important;
+    min-height:var(--v235-h)!important;
+    max-height:var(--v235-h)!important;
     padding:5px 1px 6px!important;
     border-radius:11px!important;
     overflow:hidden!important;
@@ -39,13 +39,13 @@ def install(m):
   body[data-v163-module="operativo"] #operativoNav.v232-mobile-tabs .v232-tab-icon{
     display:grid!important;
     place-items:center!important;
-    width:23px!important;
-    min-width:23px!important;
-    max-width:23px!important;
-    height:23px!important;
-    min-height:23px!important;
-    max-height:23px!important;
-    flex:0 0 23px!important;
+    width:19px!important;
+    min-width:19px!important;
+    max-width:19px!important;
+    height:19px!important;
+    min-height:19px!important;
+    max-height:19px!important;
+    flex:0 0 19px!important;
     margin:0!important;
     padding:0!important;
     border:0!important;
@@ -71,7 +71,7 @@ def install(m):
     width:100%!important;
     height:auto!important;
     min-height:0!important;
-    max-height:34px!important;
+    max-height:30px!important;
     margin:0!important;
     padding:0!important;
     overflow:hidden!important;
@@ -80,19 +80,19 @@ def install(m):
     word-break:normal!important;
     hyphens:none!important;
     text-align:center!important;
-    font-size:7.5px!important;
-    line-height:1.06!important;
+    font-size:6.35px!important;
+    line-height:1.04!important;
     font-weight:900!important;
     letter-spacing:0!important;
   }
 
   body[data-v163-module="analysis"] #analysisNav.v232-mobile-tabs{
-    --v234-analysis-h:72px;
+    --v235-analysis-h:72px;
     display:grid!important;
-    grid-template-rows:var(--v234-analysis-h)!important;
-    height:var(--v234-analysis-h)!important;
-    min-height:var(--v234-analysis-h)!important;
-    max-height:var(--v234-analysis-h)!important;
+    grid-template-rows:var(--v235-analysis-h)!important;
+    height:var(--v235-analysis-h)!important;
+    min-height:var(--v235-analysis-h)!important;
+    max-height:var(--v235-analysis-h)!important;
     column-gap:4px!important;
     margin:5px 0 12px!important;
     padding:0 3px!important;
@@ -103,25 +103,52 @@ def install(m):
     flex-direction:column!important;
     align-items:center!important;
     justify-content:center!important;
-    gap:0!important;
-    height:var(--v234-analysis-h)!important;
-    min-height:var(--v234-analysis-h)!important;
-    max-height:var(--v234-analysis-h)!important;
-    padding:7px 4px!important;
+    gap:3px!important;
+    height:var(--v235-analysis-h)!important;
+    min-height:var(--v235-analysis-h)!important;
+    max-height:var(--v235-analysis-h)!important;
+    padding:5px 3px!important;
     border-radius:13px!important;
     overflow:hidden!important;
   }
   body[data-v163-module="analysis"] #analysisNav.v232-mobile-tabs .v232-tab-icon{
-    display:none!important;
+    display:grid!important;
+    place-items:center!important;
+    width:19px!important;
+    min-width:19px!important;
+    max-width:19px!important;
+    height:19px!important;
+    min-height:19px!important;
+    max-height:19px!important;
+    flex:0 0 19px!important;
+    margin:0!important;
+    padding:0!important;
+    border:1px solid #dce9f5!important;
+    border-radius:7px!important;
+    background:#edf5fd!important;
+    color:#4b7195!important;
+    box-shadow:none!important;
+  }
+  body[data-v163-module="analysis"] #analysisNav.v232-mobile-tabs .v232-tab-icon svg{
+    width:58%!important;
+    height:58%!important;
+    max-width:58%!important;
+    max-height:58%!important;
+  }
+  body[data-v163-module="analysis"] #analysisNav.v232-mobile-tabs>button.active .v232-tab-icon,
+  body[data-v163-module="analysis"] #analysisNav.v232-mobile-tabs>button[aria-selected="true"] .v232-tab-icon{
+    color:#fff!important;
+    background:rgba(255,255,255,.14)!important;
+    border-color:rgba(255,255,255,.24)!important;
   }
   body[data-v163-module="analysis"] #analysisNav.v232-mobile-tabs .v232-tab-label{
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
     width:100%!important;
-    height:100%!important;
-    min-height:100%!important;
-    max-height:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:30px!important;
     margin:0!important;
     padding:0!important;
     overflow:hidden!important;
@@ -130,8 +157,8 @@ def install(m):
     word-break:normal!important;
     hyphens:none!important;
     text-align:center!important;
-    font-size:8.8px!important;
-    line-height:1.12!important;
+    font-size:7.3px!important;
+    line-height:1.08!important;
     font-weight:900!important;
     letter-spacing:0!important;
   }
@@ -144,10 +171,10 @@ def install(m):
 }
 </style>'''
 
-    js = r'''<script id="v234-exact-mobile-tabs-js">
+    js = r'''<script id="v235-exact-mobile-tabs-js">
 (function(){
-  if(window.__V234_EXACT_MOBILE_TABS)return;
-  window.__V234_EXACT_MOBILE_TABS=true;
+  if(window.__V235_EXACT_MOBILE_TABS)return;
+  window.__V235_EXACT_MOBILE_TABS=true;
   const mobile=()=>window.matchMedia?.('(max-width:900px)')?.matches ?? window.innerWidth<=900;
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
 
@@ -220,8 +247,8 @@ def install(m):
 
   function init(){
     if(!mobile())return;
-    if(!document.body.dataset.v234Observer){
-      document.body.dataset.v234Observer='1';
+    if(!document.body.dataset.v235Observer){
+      document.body.dataset.v235Observer='1';
       observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','aria-hidden']});
     }
     fix();
@@ -237,12 +264,12 @@ def install(m):
   window.addEventListener('resize',()=>setTimeout(fix,80),{passive:true});
   window.addEventListener('orientationchange',()=>setTimeout(fix,150),{passive:true});
   window.addEventListener('pageshow',()=>setTimeout(init,80),{passive:true});
-  console.info('[V234] ajuste exacto de pestañas móviles aplicado.');
+  console.info('[V235] pestañas móviles: iconos centrados y etiquetas legibles.');
 })();
 </script>'''
 
     @m.app.middleware("http")
-    async def v234_html(request, call_next):
+    async def v235_html(request, call_next):
         response = await call_next(request)
         if request.url.path != "/" or getattr(response, "status_code", 200) != 200:
             return response
@@ -251,9 +278,9 @@ def install(m):
             async for chunk in response.body_iterator:
                 body += chunk
             html = body.decode("utf-8", errors="replace")
-            if "v234-exact-mobile-tabs-css" not in html:
+            if "v235-exact-mobile-tabs-css" not in html:
                 html = html.replace("</head>", css + "</head>", 1)
-            if "v234-exact-mobile-tabs-js" not in html:
+            if "v235-exact-mobile-tabs-js" not in html:
                 html = html.replace("</body>", js + "</body>", 1)
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
@@ -261,12 +288,12 @@ def install(m):
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache",
                 "Expires": "0",
-                "X-Operations-UI-Version": "V234-EXACT-TABS",
+                "X-Operations-UI-Version": "V235-EXACT-TABS",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
-            print(f"[V234] HTML warning: {type(exc).__name__}: {exc}", flush=True)
+            print(f"[V235] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
-    m._V234_EXACT_MOBILE_TABS = True
-    print("[V234] ajuste exacto de pestañas móviles instalado.", flush=True)
+    m._V235_EXACT_MOBILE_TABS = True
+    print("[V235] pestañas móviles con iconos centrados y etiquetas legibles instaladas.", flush=True)
