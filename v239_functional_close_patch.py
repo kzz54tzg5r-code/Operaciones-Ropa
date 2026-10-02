@@ -55,13 +55,6 @@ def install(m):
         group = str((payload or {}).get("group") or "").strip()
         if not key:
             raise m.HTTPException(400, "Pestaña inválida")
-        protected = {
-            "operations.center",
-            "operation.capture",
-            "commercial.macro",
-        }
-        if key in protected:
-            raise m.HTTPException(400, "Esta pestaña base no se puede eliminar; puedes ocultarla sólo cuando exista otra entrada válida.")
         with m.db() as con:
             con.execute(
                 "INSERT INTO report_tab_deleted_v239(tab_key,label,report_group,deleted_at,deleted_by) "
