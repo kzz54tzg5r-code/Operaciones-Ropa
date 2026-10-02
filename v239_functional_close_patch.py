@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from fastapi import Request
 from fastapi.responses import HTMLResponse
 
 MX = ZoneInfo("America/Mexico_City")
@@ -38,7 +39,7 @@ def install(m):
         return actor
 
     @m.app.get("/api/settings/report-tabs-v239/deleted")
-    def deleted_tabs_v239(request: m.Request):
+    def deleted_tabs_v239(request: Request):
         m.require_user(request)
         with m.db() as con:
             rows = con.execute(
@@ -48,7 +49,7 @@ def install(m):
         return {"items": [dict(r) for r in rows]}
 
     @m.app.post("/api/settings/report-tabs-v239/delete")
-    def delete_tab_v239(request: m.Request, payload: dict):
+    def delete_tab_v239(request: Request, payload: dict):
         actor = _owner(request)
         key = str((payload or {}).get("key") or "").strip()
         label = str((payload or {}).get("label") or key).strip()
@@ -72,7 +73,7 @@ def install(m):
         return {"ok": True, "key": key}
 
     @m.app.post("/api/settings/report-tabs-v239/restore")
-    def restore_tab_v239(request: m.Request, payload: dict):
+    def restore_tab_v239(request: Request, payload: dict):
         _owner(request)
         key = str((payload or {}).get("key") or "").strip()
         if not key:
