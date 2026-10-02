@@ -483,7 +483,7 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
 
     const tabs=qsa(':scope > button',host).filter(visible);
     const count=Math.max(1,tabs.length);
-    const width=Math.max(280,host.parentElement?.clientWidth||host.clientWidth||window.innerWidth-24);
+    const width=Math.max(280,host.clientWidth||host.getBoundingClientRect().width||window.innerWidth-24);
     const gap=count<=5?4:count<=7?6:7;
     const cell=Math.max(18,(width-gap*(count-1))/count);
 
