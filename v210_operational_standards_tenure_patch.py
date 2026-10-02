@@ -23,9 +23,9 @@ from fastapi.responses import HTMLResponse
 MX = ZoneInfo("America/Mexico_City")
 STAFF_ROLES = ("colaborador_operativo", "colaborador_lenceria", "colaborador")
 LEVELS = ("Nuevo ingreso", "Intermedio", "Experto")
-STANDARD_AREAS = ("Doblado", "Frontal")
-RANKING_AREAS = ("Doblado", "Frontal", "Colgado", "Jeans", "Lencería")
-RANKING_ACTIVITIES = ("Acondicionado", "Clasificado", "Ubicado")
+STANDARD_AREAS = ("Doblado", "Colgado")
+RANKING_AREAS = ("Doblado", "Colgado", "Jeans", "Lencería")
+RANKING_ACTIVITIES = ("Clasificado", "Acondicionado", "Ubicado", "Pizca")
 PRIVILEGED = ("superadmin", "admin", "director", "consulta")
 
 
@@ -64,6 +64,15 @@ def install(m):
             "(effective_from,new_cutoff_months,expert_cutoff_months,updated_at,updated_by)"
             " VALUES('2000-01-01',3,12,?,?)",
             (now, "system"),
+        )
+        # V222: Frontal deja de ser modalidad. Conservamos cualquier estándar
+        # histórico configurado copiándolo a Colgado cuando aún no exista.
+        con.execute(
+            """INSERT OR IGNORE INTO operation_level_standards(
+                   effective_from,area,level,pieces_per_day,updated_at,updated_by
+               )
+               SELECT effective_from,'Colgado',level,pieces_per_day,updated_at,updated_by
+               FROM operation_level_standards WHERE area='Frontal'"""
         )
 
         for table in ("operation_productivity_timer", "operation_productivity"):
@@ -165,17 +174,26 @@ def install(m):
             return "Intermedio", cfg
         return "Experto", cfg
 
+    def _standard_family(area):
+        value = str(area or "").strip()
+        if value in ("Colgado", "Lencería", "Frontal"):
+            return "Colgado"
+        if value in ("Doblado", "Jeans"):
+            return "Doblado"
+        return value
+
     def _standard_for(area, level, for_day):
         fallback = _fallback_target()
         if level not in LEVELS:
             return fallback, "", "Meta general"
         ds = for_day.isoformat()
+        family = _standard_family(area)
         with m.db() as con:
             row = con.execute(
                 "SELECT pieces_per_day,effective_from FROM operation_level_standards "
                 "WHERE area=? AND level=? AND effective_from<=? "
                 "ORDER BY effective_from DESC,id DESC LIMIT 1",
-                (str(area or ""), level, ds),
+                (family, level, ds),
             ).fetchone()
         if row and _num(row["pieces_per_day"]) > 0:
             return _num(row["pieces_per_day"]), str(row["effective_from"] or ""), "Estándar operativo"
@@ -603,6 +621,11 @@ def install(m):
             scope_stores = [selected_store]
 
         rows = _read_rows(start, end, scope_stores)
+        # Frontal histórico se reporta como Colgado. Jeans comparte estándar
+        # de Doblado y Lencería comparte estándar de Colgado.
+        for r in rows:
+            if str(r.get("area") or "") == "Frontal":
+                r["area"] = "Colgado"
         rows = [
             r for r in rows
             if str(r.get("area") or "") in RANKING_AREAS
@@ -661,7 +684,7 @@ def install(m):
             if r.get("activity"):
                 g["activities"].add(str(r.get("activity")))
             g["duration_seconds"] += int(_num(r.get("duration_seconds")))
-            key = (str(r.get("date") or ""), str(r.get("area") or ""))
+            key = (str(r.get("date") or ""), _standard_family(r.get("area")))
             if key not in g["target_keys"]:
                 g["target_keys"][key] = {
                     "value": standard,
@@ -859,7 +882,7 @@ def install(m):
    q('#operativoCentro')?.classList.add('hidden');q('#operativoDynamic')?.classList.remove('hidden');
    const title=q('#operativoDynamicTitle'),sub=q('#operativoDynamicSub');
    if(title)title.textContent='Estándares Operativos';
-   if(sub)sub.textContent='Niveles por antigüedad · Doblado y Frontal';
+   if(sub)sub.textContent='Niveles por antigüedad · Doblado y Colgado';
    q('#operativoPeriodBar')?.classList.add('hidden');
    if(q('#operativoPeriodBar'))q('#operativoPeriodBar').style.display='none';
    host.innerHTML='<div class="infoempty">Cargando Estándares Operativos…</div>';
@@ -870,7 +893,7 @@ def install(m):
      const save=editable?'<div class="v210-actions"><button class="primary" id="v210SaveStandards">Guardar cambios</button><span class="v210-msg" id="v210StdMsg"></span></div>':'';
      host.innerHTML='<div class="v210-std-panel"><div class="v210-std-head"><div><h3>Estándares Operativos</h3><div class="v210-note">Tres niveles automáticos según fecha de ingreso. Los rangos no están fijos en código.</div></div><span class="v210-badge">Vigente desde '+esc(r.effective_from||'')+'</span></div>'+
        rangesHtml(d)+config+
-       '<h3 style="margin:16px 0 0;color:#123f73">Productividad por nivel</h3><div class="v210-note">Configura las piezas por día para Doblado y Frontal. Un campo vacío conserva como respaldo la meta general actual de '+nf(d.fallback_target)+' pzas.</div>'+
+       '<h3 style="margin:16px 0 0;color:#123f73">Productividad por nivel</h3><div class="v210-note">Configura las piezas por día para Doblado y Colgado. Jeans usa el estándar de Doblado; Lencería usa el estándar de Colgado. Un campo vacío conserva como respaldo la meta general actual de '+nf(d.fallback_target)+' pzas.</div>'+
        matrixHtml(d)+save+'</div>'+
        (editable?'<div class="v210-std-panel"><h3>Fechas de ingreso de colaboradores</h3><div class="v210-note">El colaborador la captura una sola vez. Administrador y Super Administrador pueden corregirla aquí; cada cambio queda auditado.</div><div id="v210Staff"><div class="infoempty">Cargando colaboradores…</div></div></div>':'');
      if(editable)loadStaff();
@@ -958,6 +981,24 @@ def install(m):
         match = re.fullmatch(r"/api/operation-productivity-timer/(\d+)/finish", path)
         if match and request.method.upper() == "POST" and getattr(response, "status_code", 500) < 400:
             _snapshot_record(int(match.group(1)))
+
+        match_v222 = re.fullmatch(r"/api/operation-capture-v222/(\d+)/finish", path)
+        if match_v222 and request.method.upper() == "POST" and getattr(response, "status_code", 500) < 400:
+            root_id = int(match_v222.group(1))
+            ids = [root_id]
+            try:
+                with m.db() as con:
+                    row = con.execute("SELECT capture_group FROM operation_productivity_timer WHERE id=?", (root_id,)).fetchone()
+                    group_id = str(row["capture_group"] or "") if row else ""
+                    if group_id:
+                        ids = [int(r["id"]) for r in con.execute(
+                            "SELECT id FROM operation_productivity_timer WHERE capture_group=? AND status='finished'",
+                            (group_id,),
+                        ).fetchall()]
+            except Exception:
+                ids = [root_id]
+            for rid in ids:
+                _snapshot_record(rid)
 
         if path != "/" or getattr(response, "status_code", 200) != 200:
             return response
