@@ -203,7 +203,7 @@ def install(m):
     if(mySeq!==seq)return;
     const content=$q('#operativoDynamicContent'),title=$q('#operativoDynamicTitle'),sub=$q('#operativoDynamicSub');if(!content)return;
     if(title)title.textContent=`Centro Operativo · ${LABEL[p.type]||''}`;
-    const projectCount=Number(d?.v153_project_store_count??d?.v151_project_store_count??(d?.project_stores||[]).length||0);
+    const projectRaw=d?.v153_project_store_count ?? d?.v151_project_store_count ?? (d?.project_stores||[]).length;\n    const projectCount=Number(projectRaw||0);
     if(sub)sub.textContent=(SUB[p.type]||'')+(projectCount?` · KPIs: ${projectCount} tiendas Proyecto`:'');
     if(!d?.available){content.innerHTML='<div class="infoempty">No hay una Base de datos Muertos y Cambios procesada. Cárgala desde la pestaña Carga de datos.</div>';return;}
     try{
