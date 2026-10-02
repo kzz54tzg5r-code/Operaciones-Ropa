@@ -552,12 +552,25 @@ body[data-v163-module="operation"] #v222CaptureCard .v222-area-table td{
     });
   }
   function openCapture(){
+    // V222 determina el módulo a partir del menú lateral antes que del body.
+    // Sincronizar ambos evita que un estado heredado mande la captura al renderer viejo.
+    qa('[data-main]').forEach(x=>{
+      if(x.closest('#analysisNav,#operativoNav,#v200OperationTabs'))return;
+      x.classList.toggle('active',String(x.dataset.main||'')==='operation');
+    });
+    document.body.dataset.v163Module='operation';
+    document.body.classList.add('v238-module-operation');
+    document.body.classList.remove('v238-module-operativo','v238-module-analysis');
+    try{window.MAIN='operation'}catch(_e){}
     try{window.V149_OPERATION_TAB='capture';window.V125_OPERATION_TAB='capture'}catch(_e){}
     qa('#v200OperationTabs>button[data-v200-op]').forEach(btn=>{
       const on=btn.dataset.v200Op==='capture';btn.classList.toggle('active',on);btn.setAttribute('aria-selected',on?'true':'false');
     });
     if(typeof window.V222_renderOperationCapture==='function'){
-      return window.V222_renderOperationCapture();
+      const out=window.V222_renderOperationCapture();
+      // Algunas capas heredadas intentan repintar unos ms después: reafirmar la captura V222.
+      setTimeout(()=>{if(typeof window.V222_renderOperationCapture==='function')window.V222_renderOperationCapture()},80);
+      return out;
     }
   }
   document.addEventListener('click',e=>{
