@@ -285,8 +285,15 @@ body[data-v163-module="operation"] #v222CaptureCard .v222-area-table td{
           method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})
         });
         DELETED.delete(key);
+        // La eliminación aplica display:none!important en línea; retirarlo antes
+        // de volver a aplicar la configuración normal de visibilidad.
+        qa('[data-tab-key="'+CSS.escape(key)+'"]').forEach(el=>el.style.removeProperty('display'));
         if(typeof loadTabVisibility==='function')await loadTabVisibility();
-        setTimeout(()=>{decorateVisibilityAdmin();if(typeof applyTabVisibility==='function')applyTabVisibility();},60);
+        setTimeout(()=>{
+          qa('[data-tab-key="'+CSS.escape(key)+'"]').forEach(el=>el.style.removeProperty('display'));
+          decorateVisibilityAdmin();
+          if(typeof applyTabVisibility==='function')applyTabVisibility();
+        },60);
       }catch(e){alert('No fue posible restaurar: '+(e.message||e));btn.disabled=false}
     });
   }
