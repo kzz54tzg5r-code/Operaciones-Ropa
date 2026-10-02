@@ -115,14 +115,19 @@ body.v241-cm-capture #v166MissingProductivity{
   function startClock(){
     clearInterval(timer);updateClock();timer=setInterval(updateClock,1000);
   }
+  function syncNavSelection(target){
+    qa('#operativoNav>button[data-opview]').forEach(btn=>{
+      const on=btn===target;
+      btn.classList.toggle('active',on);
+      btn.classList.remove('rt-icon-user-active');
+      btn.setAttribute('aria-selected',on?'true':'false');
+    });
+  }
   function markCapture(){
     document.body.classList.add('v241-cm-capture');
     try{window.OP_VIEW=C;OP_VIEW=C}catch(_){}
-    qa('#operativoNav>button[data-opview]').forEach(btn=>{
-      const on=btn.dataset.opview===C||btn.dataset.tabKey==='operations.productivity_capture';
-      btn.classList.toggle('active',on);
-      btn.setAttribute('aria-selected',on?'true':'false');
-    });
+    const target=q('#operativoNav [data-tab-key="operations.productivity_capture"],#operativoNav [data-opview="Cargar productividad"]');
+    syncNavSelection(target);
     q('#operativoCentro')?.classList.add('hidden');
     q('#operativoDynamic')?.classList.remove('hidden');
     const title=q('#operativoDynamicTitle'),sub=q('#operativoDynamicSub');
@@ -131,9 +136,21 @@ body.v241-cm-capture #v166MissingProductivity{
     q('#operativoPeriodBar')?.classList.add('hidden');
     const facade=q('#v161FilterBar');if(facade)facade.classList.remove('on');
   }
-  function leaveCapture(){
+  function leaveCapture(nextButton=null){
+    // Invalida cualquier respuesta asíncrona de captura que siga en vuelo.
+    seq++;
     document.body.classList.remove('v241-cm-capture');
     clearInterval(timer);
+    active=null;
+    if(nextButton){
+      syncNavSelection(nextButton);
+    }else{
+      const capture=q('#operativoNav [data-tab-key="operations.productivity_capture"],#operativoNav [data-opview="Cargar productividad"]');
+      if(capture){
+        capture.classList.remove('active','rt-icon-user-active');
+        capture.setAttribute('aria-selected','false');
+      }
+    }
   }
   function selectedStore(meta){
     const assigned=String(meta?.user?.store||'').trim();
@@ -281,7 +298,9 @@ body.v241-cm-capture #v166MissingProductivity{
     }
     const other=e.target.closest?.('#operativoNav [data-opview]');
     if(other&&other.dataset.opview!==C){
-      leaveCapture();
+      // V238 pinta como activo tanto .active como aria-selected=true.
+      // Al salir de Cargar productividad dejamos una sola pestaña seleccionada.
+      leaveCapture(other);
       if(String(other.dataset.tabKey||'')==='operations.routes'||String(other.dataset.opview||'').toLowerCase().includes('recorridos')){
         setTimeout(cleanRouteLegacyNow,0);
         setTimeout(cleanRouteLegacyNow,80);
@@ -295,6 +314,10 @@ body.v241-cm-capture #v166MissingProductivity{
       capture.dataset.v241='1';
       capture.title=C;
     }
+    // Normaliza estados heredados: nunca deben existir dos pestañas azules.
+    const current=q('#operativoNav>button[data-opview].active')||
+      q('#operativoNav>button[data-opview][aria-selected="true"]');
+    if(current)syncNavSelection(current);
     cleanRouteLegacyNow();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
