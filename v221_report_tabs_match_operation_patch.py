@@ -242,25 +242,41 @@ body[data-v163-module] :is(#operativoNav,#analysisNav).rt-icon-rail-v1{
   box-shadow:none!important;
 }
 
-/* En cualquier orientación o dispositivo sigue siendo una sola línea. */
+/* En móvil todas las barras usan el mismo carrusel horizontal legible. */
 @media(max-width:900px){
   body[data-v163-module="operativo"] #operativoNav:not(.hidden),
   body[data-v163-module="analysis"] #analysisNav:not(.hidden){
-    display:grid!important;
-    grid-template-columns:repeat(var(--v221-count),minmax(0,1fr))!important;
-    grid-auto-flow:column!important;
-    gap:var(--v221-gap)!important;
+    display:flex!important;
+    grid-template-columns:none!important;
+    grid-auto-flow:unset!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-start!important;
+    align-items:stretch!important;
+    gap:var(--v221-gap,6px)!important;
     width:100%!important;
     max-width:100%!important;
+    min-width:0!important;
     margin-left:0!important;
     margin-right:0!important;
-    padding-left:0!important;
-    padding-right:0!important;
-    overflow:visible!important;
-    overflow-x:visible!important;
-    overflow-y:visible!important;
-    scroll-snap-type:none!important;
-    scroll-padding-inline:0!important;
+    padding:5px 2px 10px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    overscroll-behavior-x:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    scroll-snap-type:x mandatory!important;
+    scroll-padding-inline:6px!important;
+    touch-action:pan-x pan-y!important;
+    scrollbar-width:none!important;
+  }
+  body[data-v163-module="operativo"] #operativoNav:not(.hidden)::-webkit-scrollbar,
+  body[data-v163-module="analysis"] #analysisNav:not(.hidden)::-webkit-scrollbar{display:none!important}
+  body[data-v163-module] :is(#operativoNav,#analysisNav)>button{
+    flex:0 0 var(--v221-card-w,94px)!important;
+    width:var(--v221-card-w,94px)!important;
+    min-width:var(--v221-card-w,94px)!important;
+    max-width:var(--v221-card-w,94px)!important;
+    scroll-snap-align:center!important;
+    scroll-snap-stop:always!important;
   }
 }
 
@@ -423,7 +439,6 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     host.querySelectorAll(':scope > button.rt-icon-user-active').forEach(b=>b.classList.remove('rt-icon-user-active'));
     host.style.removeProperty('--rt-edge-pad');
     host.style.removeProperty('scroll-behavior');
-    host.scrollLeft=0;
   }
 
   function currentModule(){
@@ -487,10 +502,10 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     const gap=count<=5?4:count<=7?6:7;
     const cell=Math.max(18,(width-gap*(count-1))/count);
 
-    // No comprimir hasta volver ilegibles las tarjetas. Si no caben,
-    // mantener una sola línea y habilitar swipe horizontal.
-    const shouldScroll=count>5 && cell<78;
-    const cardWidth=shouldScroll?clamp(82,width*.235,96):cell;
+    // En móvil nunca comprimimos las tarjetas: siempre se navega horizontalmente.
+    const mobile=window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900);
+    const shouldScroll=mobile || (count>5 && cell<78);
+    const cardWidth=mobile?clamp(88,width*.27,102):(shouldScroll?clamp(82,width*.235,96):cell);
     const visualCell=shouldScroll?cardWidth:cell;
 
     const icon=clamp(22,visualCell*.36,30);
@@ -517,8 +532,9 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
       host.style.removeProperty('grid-auto-flow');
       host.style.setProperty('flex-wrap','nowrap','important');
       host.style.setProperty('overflow-x','auto','important');
-      host.style.setProperty('overflow-y','visible','important');
-      host.style.setProperty('scroll-snap-type','x proximity','important');
+      host.style.setProperty('overflow-y','hidden','important');
+      host.style.setProperty('scroll-snap-type','x mandatory','important');
+      host.style.setProperty('touch-action','pan-x pan-y','important');
       const active=tabs.find(b=>b.classList.contains('active')||b.getAttribute('aria-selected')==='true');
       if(active){
         requestAnimationFrame(()=>{

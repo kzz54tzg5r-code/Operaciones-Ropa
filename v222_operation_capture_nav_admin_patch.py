@@ -389,7 +389,7 @@ def install(m):
 .v222-history td{padding:8px;border-bottom:1px solid #e8eef5;color:#294b70;font-size:8px;white-space:nowrap}
 
 /* ---------- Flechas de navegación ---------- */
-.v222-tab-stage{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;align-items:center;gap:5px;width:100%;min-width:0}
+.v222-tab-stage{display:grid;grid-template-columns:30px minmax(0,1fr) 30px;align-items:center;gap:5px;width:100%;min-width:0;overflow:hidden}
 .v222-tab-stage.v222-stage-hidden{display:none!important}
 .v222-tab-arrow{width:30px;height:42px;border:1px solid #d7e3ef;border-radius:12px;background:#fff;color:#0b67bd;display:grid;place-items:center;font-size:22px;font-weight:900;box-shadow:0 4px 12px rgba(25,72,118,.06);cursor:pointer}
 .v222-tab-arrow:disabled{opacity:.18;cursor:default}
@@ -722,10 +722,57 @@ def install(m):
     const right=document.createElement('button');right.type='button';right.className='v222-tab-arrow';right.setAttribute('aria-label','Pestañas siguientes');right.textContent='›';
     host.parentNode.insertBefore(stage,host);
     stage.append(left,host,right);
-    left.addEventListener('click',()=>host.scrollBy({left:-Math.max(160,host.clientWidth*.72),behavior:'smooth'}));
-    right.addEventListener('click',()=>host.scrollBy({left:Math.max(160,host.clientWidth*.72),behavior:'smooth'}));
+    const step=()=>{
+      const first=[...host.children].find(x=>x.tagName==='BUTTON'&&!x.hidden&&!x.classList.contains('hidden'));
+      const gap=parseFloat(getComputedStyle(host).gap||'6')||6;
+      return Math.max(72,(first?.getBoundingClientRect().width||92)+gap);
+    };
+    left.addEventListener('click',()=>host.scrollBy({left:-step(),behavior:'smooth'}));
+    right.addEventListener('click',()=>host.scrollBy({left:step(),behavior:'smooth'}));
     host.addEventListener('scroll',()=>updateStage(stage,host),{passive:true});
+    bindSwipe(host);
     return stage;
+  }
+
+  function bindSwipe(host){
+    if(!host||host.dataset.v222SwipeBound==='1')return;
+    host.dataset.v222SwipeBound='1';
+    let sx=0,sy=0,start=0,mode='idle',dragged=false;
+    host.addEventListener('touchstart',e=>{
+      if(!e.touches||e.touches.length!==1)return;
+      const t=e.touches[0];
+      sx=t.clientX;sy=t.clientY;start=host.scrollLeft;mode='pending';dragged=false;
+    },{passive:true});
+    host.addEventListener('touchmove',e=>{
+      if(!e.touches||e.touches.length!==1||mode==='idle')return;
+      const t=e.touches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+      if(mode==='pending'){
+        if(Math.abs(dx)<5&&Math.abs(dy)<5)return;
+        if(Math.abs(dx)>Math.abs(dy)*1.05)mode='horizontal';
+        else {mode='vertical';return;}
+      }
+      if(mode==='horizontal'){
+        dragged=dragged||Math.abs(dx)>7;
+        e.preventDefault();
+        host.scrollLeft=start-dx;
+        const stage=host.parentElement?.classList?.contains('v222-tab-stage')?host.parentElement:null;
+        if(stage)updateStage(stage,host);
+      }
+    },{passive:false});
+    const finish=()=>{
+      if(mode==='horizontal'&&dragged){
+        const visible=[...host.children].filter(x=>x.tagName==='BUTTON'&&!x.hidden&&!x.classList.contains('hidden'));
+        if(visible.length){
+          const hr=host.getBoundingClientRect(),cx=hr.left+hr.width/2;
+          let best=visible[0],dist=Infinity;
+          visible.forEach(b=>{const r=b.getBoundingClientRect(),d=Math.abs((r.left+r.width/2)-cx);if(d<dist){dist=d;best=b}});
+          try{best.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'})}catch(_){}
+        }
+      }
+      mode='idle';
+    };
+    host.addEventListener('touchend',finish,{passive:true});
+    host.addEventListener('touchcancel',finish,{passive:true});
   }
 
   function ownsHost(host){
@@ -752,6 +799,7 @@ def install(m):
     ['operativoNav','analysisNav','v200OperationTabs'].forEach(id=>{
       const host=q('#'+id);if(!host)return;
       const stage=stageFor(host);
+      bindSwipe(host);
       requestAnimationFrame(()=>updateStage(stage,host));
     });
   }

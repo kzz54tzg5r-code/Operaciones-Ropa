@@ -118,35 +118,47 @@ body[data-v163-module="operation"] #v200OperationTabs button.active:after{
   height:3px!important;
 }
 
-/* Cualquier regla móvil anterior queda anulada aquí. */
+/* En móvil las pestañas NO se comprimen: una sola fila desplazable. */
 @media(max-width:900px){
   body[data-v163-module="operation"] #v200OperationTabs{
-    display:grid!important;
-    grid-template-columns:repeat(var(--v220-count),minmax(0,1fr))!important;
-    gap:var(--v220-gap)!important;
+    display:flex!important;
+    grid-template-columns:none!important;
+    grid-auto-flow:unset!important;
+    flex-wrap:nowrap!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    gap:var(--v220-gap,6px)!important;
     width:100%!important;
     max-width:100%!important;
+    min-width:0!important;
     margin-left:0!important;
     margin-right:0!important;
-    padding-left:0!important;
-    padding-right:0!important;
-    overflow:visible!important;
-    scroll-snap-type:none!important;
-    scroll-padding-inline:0!important;
+    padding:5px 2px 10px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    overscroll-behavior-x:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    scroll-snap-type:x mandatory!important;
+    scroll-padding-inline:6px!important;
+    touch-action:pan-x pan-y!important;
+    scrollbar-width:none!important;
   }
+  body[data-v163-module="operation"] #v200OperationTabs::-webkit-scrollbar{display:none!important}
   body[data-v163-module="operation"] #v200OperationTabs button,
   body[data-v163-module="operation"] #v200OperationTabs button.active{
-    flex:initial!important;
-    flex-basis:auto!important;
-    width:100%!important;
-    min-width:0!important;
-    max-width:100%!important;
+    flex:0 0 var(--v220-card-w,94px)!important;
+    flex-basis:var(--v220-card-w,94px)!important;
+    width:var(--v220-card-w,94px)!important;
+    min-width:var(--v220-card-w,94px)!important;
+    max-width:var(--v220-card-w,94px)!important;
     min-height:var(--v220-tab-h)!important;
     height:var(--v220-tab-h)!important;
     max-height:var(--v220-tab-h)!important;
     border-radius:var(--v220-radius)!important;
-    padding:4px 2px 6px!important;
+    padding:4px 3px 6px!important;
     font-size:var(--v220-font)!important;
+    scroll-snap-align:center!important;
+    scroll-snap-stop:always!important;
   }
 }
 
@@ -177,25 +189,43 @@ body[data-v163-module="operation"] #v200OperationTabs.v220-many .v203-tab-label{
     const count=tabs.length||1;
     const width=Math.max(280,h.clientWidth||h.getBoundingClientRect().width||window.innerWidth-24);
 
-    // Reduce separación según aumenta el número de pestañas.
-    const gap=count<=5?4:count<=7?3:2;
+    const mobile=window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900);
+    const gap=mobile?6:(count<=5?4:count<=7?3:2);
     const cell=Math.max(20,(width-gap*(count-1))/count);
+    // En móvil cada tarjeta conserva ancho legible y el host se desplaza.
+    const cardWidth=mobile?clamp(88,width*.27,102):cell;
+    const visualCell=mobile?cardWidth:cell;
+    const icon=clamp(22,visualCell*.34,30);
+    const font=clamp(7.1,visualCell*.10,8.8);
+    const height=clamp(60,visualCell*.72,68);
+    const radius=clamp(11,visualCell*.15,14);
 
-    // Escala proporcional. En 5 pestañas móviles queda aprox. 70px por tab;
-    // si aparecen más, icono/texto/alto se reducen automáticamente.
-    const icon=clamp(15,cell*.38,30);
-    const font=clamp(5.4,cell*.115,8.8);
-    const height=clamp(52,cell*.88,68);
-    const radius=clamp(9,cell*.18,14);
-
+    h.dataset.v220Scroll=mobile?'1':'0';
     h.style.setProperty('--v220-count',String(count));
     h.style.setProperty('--v220-gap',gap+'px');
+    h.style.setProperty('--v220-card-w',cardWidth.toFixed(1)+'px');
     h.style.setProperty('--v220-icon',icon.toFixed(1)+'px');
     h.style.setProperty('--v220-font',font.toFixed(2)+'px');
     h.style.setProperty('--v220-tab-h',height.toFixed(1)+'px');
     h.style.setProperty('--v220-radius',radius.toFixed(1)+'px');
-    h.style.setProperty('--v220-lines',count>=8?'3':'2');
+    h.style.setProperty('--v220-lines','2');
     h.classList.toggle('v220-many',count>=8);
+
+    if(mobile){
+      h.style.setProperty('display','flex','important');
+      h.style.setProperty('grid-template-columns','none','important');
+      h.style.setProperty('flex-wrap','nowrap','important');
+      h.style.setProperty('overflow-x','auto','important');
+      h.style.setProperty('overflow-y','hidden','important');
+      h.style.setProperty('touch-action','pan-x pan-y','important');
+      h.style.setProperty('scroll-snap-type','x mandatory','important');
+    }else{
+      h.style.setProperty('display','grid','important');
+      h.style.setProperty('grid-template-columns','repeat('+count+',minmax(0,1fr))','important');
+      h.style.setProperty('overflow','visible','important');
+      h.style.setProperty('scroll-snap-type','none','important');
+      h.scrollLeft=0;
+    }
   }
 
   let raf=0;
@@ -216,7 +246,7 @@ body[data-v163-module="operation"] #v200OperationTabs.v220-many .v203-tab-label{
         childList:true,
         subtree:true,
         attributes:true,
-        attributeFilter:['class','hidden','aria-hidden','style']
+        attributeFilter:['class','hidden','aria-hidden']
       });
     }
     fit();
