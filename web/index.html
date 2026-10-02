@@ -2329,7 +2329,7 @@ async function resolveOpsPeriod(type){
   const meta=OPSDATA||{};
   const list=type==='day'?(meta.available_dates||[]):type==='week'?(meta.available_weeks||[]):type==='month'?(meta.available_months||[]):type==='year'?((meta.available_years||[]).length?(meta.available_years||[]):[...new Set((meta.available_months||[]).map(x=>String(x).slice(0,4)).filter(Boolean))]):[];
   value=[...list].filter(Boolean).sort().at(-1)||'';
-  if(!value && ['day','week','month'].includes(type)){
+  if(!value && ['day','week','month','year'].includes(type)){
     try{
       const cov=await api('/api/operations/coverage-v169',{timeoutMs:15000});
       const rawDate=String(cov.max_date||cov.raw?.raw_operational_max||cov.raw?.raw_monthly_max||'').slice(0,10);
@@ -2355,6 +2355,7 @@ function mergeOpsMetaFromResult(d){
     available_dates:d.available_dates||OPSDATA?.available_dates||[],
     available_weeks:d.available_weeks||OPSDATA?.available_weeks||[],
     available_months:d.available_months||OPSDATA?.available_months||[],
+    available_years:d.available_years||OPSDATA?.available_years||[],
     areas_available:d.areas_available||OPSDATA?.areas_available||[],
     activities_available:d.activities_available||OPSDATA?.activities_available||[],
     stores_available:d.stores_available||OPSDATA?.stores_available||[]
@@ -2700,12 +2701,14 @@ function activeOperationalView(){
   const btn=$('#operativoNav [data-opview].active')||$('#operativoNav [data-opview][aria-selected="true"]');
   return btn?.dataset?.opview||OP_VIEW||'Centro Ejecutivo';
 }
-const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=()=>{
+const _operMode=$('#operPeriodMode'); if(_operMode){_operMode.onchange=async()=>{
   const view=activeOperationalView();
   OP_VIEW=view;
   OPER_PERIOD.type=currentPeriodTypeForView(view);
   OPER_PERIOD.value='';
   setPeriodSelector(view,OPSDATA||{available_dates:[],available_weeks:[],available_months:[],available_years:[]});
+  // Si la metadata local aún no trae ese periodo, resolverlo y mostrarlo sin cambiar de pestaña.
+  await resolveOpsPeriod(OPER_PERIOD.type);
 }; }
 
 $('#operPeriodApply').onclick=async()=>{
