@@ -2197,14 +2197,83 @@ function setPeriodSelector(name,d){
   sel.innerHTML=list.map(v=>`<option value="${v}">${v}</option>`).join('');
   sel.value=current;OPER_PERIOD.value=current;
 }
+const OPS_VIEW_CACHE=new Map();
+const OPS_VIEW_INFLIGHT=new Map();
+function isoWeekFromDateText(ds){
+  try{
+    const d=new Date(String(ds).slice(0,10)+'T12:00:00Z');
+    const day=d.getUTCDay()||7;
+    d.setUTCDate(d.getUTCDate()+4-day);
+    const y0=new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    const w=Math.ceil((((d-y0)/86400000)+1)/7);
+    return d.getUTCFullYear()+'-W'+String(w).padStart(2,'0');
+  }catch(_){return ''}
+}
+async function resolveOpsPeriod(type){
+  let value=String(OPER_PERIOD.value||$('#operPeriodSelect')?.value||'').trim();
+  if(value)return value;
+  const meta=OPSDATA||{};
+  const list=type==='day'?(meta.available_dates||[]):type==='week'?(meta.available_weeks||[]):type==='month'?(meta.available_months||[]):[];
+  value=[...list].filter(Boolean).sort().at(-1)||'';
+  if(!value && ['day','week','month'].includes(type)){
+    try{
+      const cov=await api('/api/operations/coverage-v169',{timeoutMs:15000});
+      const rawDate=String(cov.max_date||cov.raw?.raw_operational_max||cov.raw?.raw_monthly_max||'').slice(0,10);
+      if(type==='day')value=rawDate;
+      else if(type==='month')value=String(cov.max_month||rawDate.slice(0,7)||'');
+      else value=String(cov.max_week||isoWeekFromDateText(rawDate)||'');
+    }catch(e){console.warn('[OPS] No fue posible resolver último periodo',e)}
+  }
+  if(value){
+    OPER_PERIOD.value=value;
+    const sel=$('#operPeriodSelect');
+    if(sel){
+      if(![...sel.options].some(o=>o.value===value))sel.add(new Option(value,value));
+      sel.value=value;
+    }
+  }
+  return value;
+}
+function mergeOpsMetaFromResult(d){
+  if(!d)return;
+  OPSDATA={...(OPSDATA||{}),
+    available_dates:d.available_dates||OPSDATA?.available_dates||[],
+    available_weeks:d.available_weeks||OPSDATA?.available_weeks||[],
+    available_months:d.available_months||OPSDATA?.available_months||[],
+    areas_available:d.areas_available||OPSDATA?.areas_available||[],
+    activities_available:d.activities_available||OPSDATA?.activities_available||[],
+    stores_available:d.stores_available||OPSDATA?.stores_available||[]
+  };
+}
 async function fetchOpsForView(name){
   const type=currentPeriodTypeForView(name);
-  const value=OPER_PERIOD.value||'';
+  const value=await resolveOpsPeriod(type);
   const store=$('#operStoreSelect')?.value||'Compañía';
   const area=$('#operAreaSelect')?.value||'';
   const activity=$('#operActivitySelect')?.value||'';
   const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
-  return await api(`/api/operations?store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&compact=true&project_only=${projectOnly?'true':'false'}`,{timeoutMs:180000});
+  const url=`/api/operations?store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&compact=true&project_only=${projectOnly?'true':'false'}`;
+  const now=Date.now(), cached=OPS_VIEW_CACHE.get(url);
+  if(cached && now-cached.at<45000)return cached.data;
+  if(OPS_VIEW_INFLIGHT.has(url))return await OPS_VIEW_INFLIGHT.get(url);
+  const task=(async()=>{
+    try{
+      let d;
+      try{d=await api(url,{timeoutMs:240000})}
+      catch(e){
+        if(!/tardó demasiado|tiempo de respuesta/i.test(String(e?.message||e)))throw e;
+        await new Promise(r=>setTimeout(r,1200));
+        d=await api(url,{timeoutMs:300000});
+      }
+      mergeOpsMetaFromResult(d);
+      OPS_VIEW_CACHE.set(url,{at:Date.now(),data:d});
+      return d;
+    }finally{
+      OPS_VIEW_INFLIGHT.delete(url);
+    }
+  })();
+  OPS_VIEW_INFLIGHT.set(url,task);
+  return await task;
 }
 async function refreshOperativoMeta(){
   const d=await api('/api/operations/meta',{timeoutMs:30000});

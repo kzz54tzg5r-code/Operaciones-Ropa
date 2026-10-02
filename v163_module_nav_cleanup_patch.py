@@ -134,8 +134,12 @@ body[data-v163-module="share"] .v125-tabs{
       window.OP_VIEW='Operación';
       window.V149_OPERATION_TAB='summary';
       window.V125_OPERATION_TAB='summary';
-      if(typeof window.renderOperativoView==='function'){
-        await window.renderOperativoView('Operación',true);
+      const title=String(document.querySelector('#operativoDynamicTitle')?.textContent||'').trim();
+      const content=document.querySelector('#operativoDynamicContent');
+      if(title!=='Operación' && !content?.querySelector?.('.v149-summary,.v222-capture-card,.v204-ranking')){
+        if(typeof window.renderOperativoView==='function'){
+          await window.renderOperativoView('Operación',true);
+        }
       }
     }catch(err){
       console.warn('[V163] No fue posible restablecer Resumen de Operación',err);

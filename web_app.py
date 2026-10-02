@@ -5083,6 +5083,32 @@ def operations(
         if r.get("date") and len(str(r.get("date")))>=7
     })
 
+    try:
+        pending_meta=load_operations_meta()
+        if pending_meta.get("metadata_pending"):
+            fresh_meta=dict(pending_meta)
+            fresh_meta.update({
+                "available":bool(op_all or recovery_fifo or co_all),
+                "available_dates":all_dates,
+                "available_weeks":all_weeks,
+                "available_months":all_months,
+                "areas_available":sorted({str(r.get("area") or "").strip() for r in op_all if str(r.get("area") or "").strip()}),
+                "activities_available":sorted({str(r.get("activity") or "").strip() for r in op_all if str(r.get("activity") or "").strip()}),
+                "stores_detected":sorted({str(r.get("store") or "").strip() for r in op_all if str(r.get("store") or "").strip()}),
+                "valid_records":len(op_all),
+                "parser_version":int(data.get("parser_version") or 0),
+                "source_stamp":source_stamp,
+            })
+            fresh_meta.pop("metadata_pending",None)
+            _OPS_META_CACHE["stamp"]=source_stamp
+            _OPS_META_CACHE["data"]=fresh_meta
+            try:
+                OPS_META_CACHE_FILE.write_text(_safe_json_dump(fresh_meta),encoding="utf-8")
+            except Exception:
+                pass
+    except Exception as exc:
+        print(f"[OPS-META-INDEX] warning: {type(exc).__name__}: {exc}",flush=True)
+
     def in_period(r):
         if period_type=="all" or not period_value:
             return True

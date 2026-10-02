@@ -31,6 +31,13 @@ def install(m):
 (function(){
   const OP='Operación';
   const subtitle='Control diario, productividad por colaborador y eficiencia de mercancía';
+  window.__OR_NAV_EPOCH=Number(window.__OR_NAV_EPOCH||0);
+  document.addEventListener('click',ev=>{
+    const main=ev.target.closest?.('[data-main]');
+    if(!main)return;
+    window.__OR_NAV_EPOCH=Number(window.__OR_NAV_EPOCH||0)+1;
+    window.__OR_NAV_TARGET=String(main.dataset.main||'').toLowerCase();
+  },true);
 
   function ensureMainEntries(){
     const cm=document.querySelector('.side .nav[data-main="operativo"]');
@@ -58,8 +65,10 @@ def install(m):
   }
 
   async function openOperationMain(){
+    const navEpoch=Number(window.__OR_NAV_EPOCH||0);
     try{
       MAIN='operation';
+      document.body.dataset.v163Module='operation';
       markMainActive('operation');
       document.querySelector('#analysisNav')?.classList.add('hidden');
       document.querySelector('#operativoNav')?.classList.add('hidden');
@@ -73,6 +82,8 @@ def install(m):
       OPER_PERIOD={type:'day',value:''};
       if(typeof window.renderOperativoView==='function') await window.renderOperativoView(OP,true);
       else if(typeof renderOperativoView==='function') await renderOperativoView(OP,true);
+      let stillOperation=false;try{stillOperation=String(MAIN||'').toLowerCase()==='operation'}catch(_){}
+      if(Number(window.__OR_NAV_EPOCH||0)!==navEpoch || !stillOperation)return;
       if(heroTitle) heroTitle.textContent='Operación';
       if(heroSub) heroSub.textContent=subtitle;
     }catch(err){
