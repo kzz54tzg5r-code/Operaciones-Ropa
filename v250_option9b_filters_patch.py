@@ -590,6 +590,14 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   }
 
   function ensureQuickMode(){
+    /* V258 es el único controlador visual de Vista operativa.
+       Cuando está activo, V250 conserva estilos/base pero deja de reconstruir
+       su selector rápido heredado. */
+    if(window.__V258_UNIVERSAL_FILTER){
+      const legacy=q('#operativoPeriodBar .v250-quick-period');
+      if(legacy)legacy.classList.add('hidden');
+      return;
+    }
     const bar=q('#operativoPeriodBar');
     const grid=q(':scope > .or-report-filter-grid',bar);
     const mode=q('#operPeriodMode');
