@@ -593,7 +593,7 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     /* V258 es el único controlador visual de Vista operativa.
        Cuando está activo, V250 conserva estilos/base pero deja de reconstruir
        su selector rápido heredado. */
-    if(window.__V258_UNIVERSAL_FILTER){
+    if(window.__V258_UNIVERSAL_FILTER||window.__V259_STABLE_FILTER){
       const legacy=q('#operativoPeriodBar .v250-quick-period');
       if(legacy)legacy.classList.add('hidden');
       return;
