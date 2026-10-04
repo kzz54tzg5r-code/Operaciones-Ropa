@@ -237,30 +237,41 @@ def install(m):
                 raise HTTPException(403,"No puedes finalizar este registro")
             if str(row["status"] or "")!="active":
                 raise HTTPException(409,"El registro ya fue finalizado")
-            # V247: el flujo actual captura piezas por área para cualquier actividad.
-            area_payload=body.get("pieces_by_area")
-            if isinstance(area_payload,dict):
-                def area_qty(*names):
-                    for name in names:
-                        if name in area_payload:
-                            try:return max(float(area_payload.get(name) or 0),0)
-                            except Exception:raise HTTPException(400,f"{name} debe ser un número válido")
-                    return 0.0
-                colgado=area_qty("Colgado","colgado")
-                doblado=area_qty("Doblado","doblado")
-                jeans=area_qty("Jeans","jeans")
-                lenceria=area_qty("Lencería","Lenceria","lenceria")
-                pieces=colgado+doblado+jeans+lenceria
-                muertos=cajas=probador=0.0
-            else:
-                # Compatibilidad para una captura antigua que estuviera en curso.
-                colgado=doblado=jeans=lenceria=0.0
-                is_collection=m.login_key(row["activity"])==m.login_key("Recolección")
-                if is_collection and any(k in body for k in ("muertos","cajas","probador")):
-                    muertos,cajas,probador=qty("muertos"),qty("cajas"),qty("probador")
-                    pieces=muertos+cajas+probador
+            # V248: Recolección se captura por origen (Muertos/Cajas/Probador).
+            # El resto de actividades se captura por área (Colgado/Doblado/Jeans/Lencería).
+            is_collection=m.login_key(row["activity"])==m.login_key("Recolección")
+            colgado=doblado=jeans=lenceria=0.0
+            if is_collection:
+                collection_payload=body.get("collection")
+                if isinstance(collection_payload,dict):
+                    def collection_qty(*names):
+                        for name in names:
+                            if name in collection_payload:
+                                try:return max(float(collection_payload.get(name) or 0),0)
+                                except Exception:raise HTTPException(400,f"{name} debe ser un número válido")
+                        return 0.0
+                    muertos=collection_qty("Muertos","muertos")
+                    cajas=collection_qty("Cajas","cajas")
+                    probador=collection_qty("Probador","probador")
                 else:
-                    muertos=cajas=probador=0.0
+                    muertos,cajas,probador=qty("muertos"),qty("cajas"),qty("probador")
+                pieces=muertos+cajas+probador
+            else:
+                muertos=cajas=probador=0.0
+                area_payload=body.get("pieces_by_area")
+                if isinstance(area_payload,dict):
+                    def area_qty(*names):
+                        for name in names:
+                            if name in area_payload:
+                                try:return max(float(area_payload.get(name) or 0),0)
+                                except Exception:raise HTTPException(400,f"{name} debe ser un número válido")
+                        return 0.0
+                    colgado=area_qty("Colgado","colgado")
+                    doblado=area_qty("Doblado","doblado")
+                    jeans=area_qty("Jeans","jeans")
+                    lenceria=area_qty("Lencería","Lenceria","lenceria")
+                    pieces=colgado+doblado+jeans+lenceria
+                else:
                     pieces=qty("pieces")
             start=_dt(row["started_at"])
             duration=max(int((now_dt-start).total_seconds()),0) if start else 0
