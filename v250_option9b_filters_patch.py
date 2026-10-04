@@ -162,6 +162,10 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   box-shadow:0 1px 0 rgba(255,255,255,.72) inset!important;
 }
 #operativoPeriodBar.v250-option9b .v250-quick-btn{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
   min-width:0!important;
   min-height:48px!important;
   height:48px!important;
@@ -233,7 +237,9 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
 }
 #operativoPeriodBar.v250-option9b .or-fcontrol label,
 #globalFilters.v250-option9b .filter label{
-  display:block!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
   margin:0 0 5px!important;
   color:#294b70!important;
   font-size:9px!important;
@@ -242,7 +248,45 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   text-transform:uppercase!important;
   letter-spacing:.025em!important;
 }
-#operativoPeriodBar.v250-option9b .or-fcontrol-icon{display:none!important}
+#operativoPeriodBar.v250-option9b .or-fcontrol-icon{
+  display:inline-grid!important;
+  place-items:center!important;
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  color:#1769d8!important;
+}
+#operativoPeriodBar.v250-option9b .or-fcontrol-icon svg{
+  width:15px!important;
+  height:15px!important;
+}
+#operativoPeriodBar.v250-option9b .v254-mode-icon{
+  display:inline-grid!important;
+  place-items:center!important;
+  width:15px!important;
+  height:15px!important;
+  min-width:15px!important;
+}
+#operativoPeriodBar.v250-option9b .v254-mode-icon svg{
+  width:15px!important;
+  height:15px!important;
+}
+#operativoPeriodBar.v250-option9b .v250-quick-title{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+}
+#operativoPeriodBar.v250-option9b #operPeriodApply{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+}
+#operativoPeriodBar.v250-option9b #operPeriodApply .or-filter-apply-icon{
+  display:inline-grid!important;
+  place-items:center!important;
+  flex:0 0 18px!important;
+}
 
 #operativoPeriodBar.v250-option9b select,
 #operativoPeriodBar.v250-option9b input,
@@ -528,6 +572,16 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     qa('.v250-quick-btn',quick).forEach(btn=>btn.classList.toggle('active',btn.dataset.mode===sel.value));
   }
 
+  function v254ModeIcon(v){
+    const icons={
+      day:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h3"/></svg>',
+      week:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M7 14h2M11 14h2M15 14h2"/></svg>',
+      month:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M7 14h3M12 14h3M7 17h3M12 17h3"/></svg>',
+      year:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M7 2v4M17 2v4M3 9h18"/><path d="M8 13h8M8 17h5"/></svg>'
+    };
+    return '<span class="v254-mode-icon">'+(icons[v]||icons.month)+'</span>';
+  }
+
   function ensureQuickMode(){
     const bar=q('#operativoPeriodBar');
     const grid=q(':scope > .or-report-filter-grid',bar);
@@ -559,8 +613,8 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     const signature=opts.map(o=>o.value+'='+o.text).join('|');
     if(quick.dataset.signature!==signature){
       quick.dataset.signature=signature;
-      quick.innerHTML='<div class="v250-quick-title">Vista operativa</div><div class="v250-quick-buttons">'+
-        opts.map(o=>'<button type="button" class="v250-quick-btn" data-mode="'+o.value+'">'+o.text+'</button>').join('')+
+      quick.innerHTML='<div class="v250-quick-title"><span class="or-fcontrol-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span>Vista operativa</div><div class="v250-quick-buttons">'+
+        opts.map(o=>'<button type="button" class="v250-quick-btn" data-mode="'+o.value+'">'+v254ModeIcon(o.value)+'<span>'+o.text+'</span></button>').join('')+
         '</div>';
       qa('.v250-quick-btn',quick).forEach(btn=>btn.addEventListener('click',()=>{
         if(mode.value===btn.dataset.mode)return;
