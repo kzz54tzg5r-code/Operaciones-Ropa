@@ -101,73 +101,128 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   height:22px!important;
 }
 
-/* ===== Vista rápida: Día / Semanal / Mensual / Anual ===== */
+/* ===== Opción 9B real: TODO en una sola línea ===== */
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid{
+  display:flex!important;
+  flex-wrap:nowrap!important;
+  align-items:flex-end!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  padding:0 0 2px!important;
+  scrollbar-width:thin;
+  -webkit-overflow-scrolling:touch;
+}
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid::-webkit-scrollbar{
+  height:5px;
+}
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid::-webkit-scrollbar-thumb{
+  background:#b9d3ee;
+  border-radius:999px;
+}
+
 #operativoPeriodBar.v250-option9b .v250-quick-period{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  width:100%;
-  margin:0 0 13px;
-  padding:0 0 13px;
-  border-bottom:1px solid rgba(112,154,199,.28);
+  order:-2!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-end!important;
+  flex:1.65 1 330px!important;
+  min-width:300px!important;
+  width:auto!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
 }
 #operativoPeriodBar.v250-option9b .v250-quick-period.hidden{display:none!important}
 #operativoPeriodBar.v250-option9b .v250-quick-title{
-  flex:0 0 122px;
-  color:#415a77;
-  font-size:10px;
-  font-weight:950;
-  text-transform:uppercase;
-  letter-spacing:.025em;
+  flex:none!important;
+  margin:0 0 5px!important;
+  color:#294b70!important;
+  font-size:9px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  letter-spacing:.025em!important;
 }
 #operativoPeriodBar.v250-option9b .v250-quick-buttons{
-  flex:1;
-  min-width:0;
-  display:grid;
-  grid-template-columns:repeat(var(--v250-quick-count,4),minmax(0,1fr));
-  border:1px solid #bfd2e7;
-  border-radius:13px;
-  overflow:hidden;
-  background:rgba(255,255,255,.58);
+  flex:none!important;
+  min-width:0!important;
+  height:48px!important;
+  display:grid!important;
+  grid-template-columns:repeat(var(--v250-quick-count,4),minmax(0,1fr))!important;
+  border:1px solid #bcd0e5!important;
+  border-radius:11px!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.88)!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset!important;
 }
 #operativoPeriodBar.v250-option9b .v250-quick-btn{
-  min-width:0;
-  min-height:44px;
-  border:0;
-  border-right:1px solid #c9daeb;
-  border-radius:0;
-  background:transparent;
-  color:#153f70;
-  font-size:11px;
-  font-weight:900;
-  cursor:pointer;
+  min-width:0!important;
+  min-height:48px!important;
+  height:48px!important;
+  padding:0 9px!important;
+  border:0!important;
+  border-right:1px solid #c9daeb!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#153f70!important;
+  font-size:10.5px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
 }
-#operativoPeriodBar.v250-option9b .v250-quick-btn:last-child{border-right:0}
+#operativoPeriodBar.v250-option9b .v250-quick-btn:last-child{border-right:0!important}
 #operativoPeriodBar.v250-option9b .v250-quick-btn.active{
-  color:#fff;
-  background:linear-gradient(100deg,#0d67d8,#1689ff);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
+  color:#fff!important;
+  background:linear-gradient(100deg,#0d67d8,#1689ff)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.15)!important;
 }
 #operativoPeriodBar.v250-option9b #operPeriodModeWrap.v250-mode-source{
   display:none!important;
 }
 
-/* ===== Fila de controles ===== */
-#operativoPeriodBar.v250-option9b > .or-report-filter-grid{
-  display:grid!important;
-  grid-template-columns:repeat(var(--v250-control-count,4),minmax(0,1fr))!important;
-  align-items:end!important;
-  gap:12px!important;
-  width:100%!important;
-  margin:0!important;
+/* Los selects, filtros particulares y Consultar comparten ESA MISMA fila. */
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid > .or-fcontrol:not(.hidden):not(.v249-hidden){
+  flex:1 1 185px!important;
+  min-width:155px!important;
 }
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operPeriodSelectWrap{
+  flex:1 1 190px!important;
+}
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operStoreWrap{
+  flex:1.15 1 205px!important;
+}
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operActivityWrap,
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operAreaWrap{
+  flex:1 1 185px!important;
+}
+#operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operPeriodApply{
+  order:20!important;
+  flex:.72 1 145px!important;
+  min-width:130px!important;
+}
+
+/* Análisis Comercial: encabezado arriba y TODOS los filtros en una sola línea. */
 #globalFilters.v250-option9b{
   display:grid!important;
   grid-template-columns:repeat(var(--v250-commercial-count,5),minmax(0,1fr))!important;
   align-items:end!important;
-  gap:12px!important;
+  gap:10px!important;
 }
 #globalFilters.v250-option9b.hidden{display:none!important}
+#globalFilters.v250-option9b > .v250-filter-brand{
+  grid-column:1/-1!important;
+}
+#globalFilters.v250-option9b > .filter,
+#globalFilters.v250-option9b > #refresh{
+  min-width:0!important;
+}
 
 #operativoPeriodBar.v250-option9b .or-fcontrol,
 #globalFilters.v250-option9b .filter{
@@ -253,19 +308,42 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
 
 /* ===== Tablet ===== */
 @media(max-width:1050px){
-  #operativoPeriodBar.v250-option9b > .or-report-filter-grid,
-  #globalFilters.v250-option9b{
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  }
-  #operativoPeriodBar.v250-option9b #operPeriodApply,
-  #globalFilters.v250-option9b #refresh{
-    grid-column:1/-1!important;
+  /* Se conserva en línea; si no cabe, se recorre horizontalmente. */
+  #operativoPeriodBar.v250-option9b > .or-report-filter-grid{
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
   }
   #operativoPeriodBar.v250-option9b .v250-quick-period{
-    align-items:stretch;
-    flex-direction:column;
+    flex:0 0 310px!important;
+    min-width:310px!important;
   }
-  #operativoPeriodBar.v250-option9b .v250-quick-title{flex:none}
+  #operativoPeriodBar.v250-option9b > .or-report-filter-grid > .or-fcontrol:not(.hidden):not(.v249-hidden){
+    flex:0 0 175px!important;
+    min-width:175px!important;
+  }
+  #operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operPeriodApply{
+    flex:0 0 145px!important;
+    min-width:145px!important;
+  }
+  #globalFilters.v250-option9b{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:flex-end!important;
+    overflow-x:auto!important;
+    gap:8px!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  #globalFilters.v250-option9b > .v250-filter-brand{
+    display:none!important;
+  }
+  #globalFilters.v250-option9b > .filter{
+    flex:0 0 180px!important;
+    min-width:180px!important;
+  }
+  #globalFilters.v250-option9b > #refresh{
+    flex:0 0 145px!important;
+    min-width:145px!important;
+  }
 }
 
 /* ===== Móvil ===== */
@@ -278,24 +356,53 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   #operativoPeriodBar.v250-option9b > .or-report-filter-brand,
   #globalFilters.v250-option9b > .v250-filter-brand{
     width:calc(100% + 16px)!important;
-    min-height:54px!important;
-    margin:0 -8px 9px!important;
-    padding:9px 10px!important;
+    min-height:50px!important;
+    margin:0 -8px 8px!important;
+    padding:8px 10px!important;
   }
-  #operativoPeriodBar.v250-option9b > .or-report-filter-grid,
-  #globalFilters.v250-option9b{
-    grid-template-columns:1fr!important;
+  #operativoPeriodBar.v250-option9b > .or-report-filter-grid{
+    display:flex!important;
+    flex-wrap:nowrap!important;
     gap:7px!important;
+    overflow-x:auto!important;
+    padding-bottom:4px!important;
+  }
+  #operativoPeriodBar.v250-option9b .v250-quick-period{
+    flex:0 0 275px!important;
+    min-width:275px!important;
   }
   #operativoPeriodBar.v250-option9b .v250-quick-buttons{
-    overflow-x:auto;
-    display:flex;
-    -webkit-overflow-scrolling:touch;
+    height:42px!important;
   }
   #operativoPeriodBar.v250-option9b .v250-quick-btn{
-    flex:1 0 82px;
-    min-height:38px;
-    font-size:9px;
+    min-height:42px!important;
+    height:42px!important;
+    padding:0 7px!important;
+    font-size:8.5px!important;
+  }
+  #operativoPeriodBar.v250-option9b > .or-report-filter-grid > .or-fcontrol:not(.hidden):not(.v249-hidden){
+    flex:0 0 155px!important;
+    min-width:155px!important;
+  }
+  #operativoPeriodBar.v250-option9b > .or-report-filter-grid > #operPeriodApply{
+    flex:0 0 125px!important;
+    min-width:125px!important;
+  }
+  #globalFilters.v250-option9b{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    overflow-x:auto!important;
+    gap:7px!important;
+    padding:8px!important;
+  }
+  #globalFilters.v250-option9b > .v250-filter-brand{display:none!important}
+  #globalFilters.v250-option9b > .filter{
+    flex:0 0 155px!important;
+    min-width:155px!important;
+  }
+  #globalFilters.v250-option9b > #refresh{
+    flex:0 0 125px!important;
+    min-width:125px!important;
   }
   #operativoPeriodBar.v250-option9b select,
   #operativoPeriodBar.v250-option9b input,
@@ -308,7 +415,8 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     font-size:10px!important;
   }
   #operativoPeriodBar.v250-option9b .or-fcontrol label,
-  #globalFilters.v250-option9b .filter label{
+  #globalFilters.v250-option9b .filter label,
+  #operativoPeriodBar.v250-option9b .v250-quick-title{
     font-size:7.5px!important;
   }
 }
@@ -368,11 +476,13 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     const wrap=q('#operPeriodModeWrap');
     if(!bar||!grid||!mode||!wrap)return;
 
-    let quick=q(':scope > .v250-quick-period',bar);
+    let quick=q('.v250-quick-period',bar);
     if(!quick){
       quick=document.createElement('div');
       quick.className='v250-quick-period hidden';
-      grid.before(quick);
+    }
+    if(quick.parentElement!==grid){
+      grid.insertBefore(quick,grid.firstElementChild||null);
     }
 
     const canShow=modeWrapVisible() && mode.options.length>1;
@@ -420,13 +530,13 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
 
     const grid=q(':scope > .or-report-filter-grid',bar);
     if(!grid)return;
-    const controls=qa(':scope > .or-fcontrol, :scope > button',grid).filter(el=>{
+    const controls=qa(':scope > .or-fcontrol, :scope > button, :scope > .v250-quick-period',grid).filter(el=>{
       if(el.id==='operPeriodModeWrap' && el.classList.contains('v250-mode-source'))return false;
       if(el.classList.contains('hidden')||el.classList.contains('v249-hidden'))return false;
       if(el.style.display==='none')return false;
       return true;
     });
-    grid.style.setProperty('--v250-control-count',String(Math.max(1,Math.min(controls.length,6))));
+    grid.style.setProperty('--v250-control-count',String(Math.max(1,Math.min(controls.length,7))));
   }
 
   function apply(){
@@ -456,7 +566,7 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 
-  console.info('[V250] Opción 9B aplicada a filtros de Cambios y Muertos, Operación y Análisis Comercial.');
+  console.info('[V251] Opción 9B corregida: filtros en una sola línea a todo lo ancho.');
 })();
 </script>'''
 
@@ -488,4 +598,4 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
             return response
 
     m._V250_OPTION9B_FILTERS = True
-    print("[V250] Opción 9B global de filtros instalada.",flush=True)
+    print("[V251] Opción 9B horizontal global instalada.",flush=True)
