@@ -202,7 +202,7 @@ from v241_cm_capture_authoritative_patch import install as _install_v241_cm_capt
 from v243_recovery_rate_patch import install as _install_v243_recovery_rate_patch
 from v249_operational_filter_profiles_patch import install as _install_v249_operational_filter_profiles_patch
 from v250_option9b_filters_patch import install as _install_v250_option9b_filters_patch
-from v253_filters_per_tab_patch import install as _install_v253_filters_per_tab_patch
+from v254_filters_final_patch import install as _install_v254_filters_final_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -322,6 +322,6 @@ _install_v243_recovery_rate_patch(web_app)
 # _install_v249_operational_filter_profiles_patch(web_app)
 # V252/V250 es la capa final autoritativa para filtros por pestaña y Opción 9B.
 _install_v250_option9b_filters_patch(web_app)
-# V253 queda al final: iconos, Restablecer y filtros independientes por pestaña.
-_install_v253_filters_per_tab_patch(web_app)
+# V254 queda al final: filtros 9B definitivos por pestaña.
+_install_v254_filters_final_patch(web_app)
 app = web_app.app
