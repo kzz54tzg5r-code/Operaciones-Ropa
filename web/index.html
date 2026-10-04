@@ -391,7 +391,7 @@ body{max-width:100%;overflow-x:hidden}
   <button class="switch" data-opview="Índice Integral" data-tab-key="operations.score">Score</button>
   <button class="switch" data-opview="Alertas Inteligentes" data-tab-key="operations.alerts">Alertas</button>
   <button class="switch adminOnly" data-opview="Carga de datos">Carga de datos</button>
-  <button class="switch" id="openGoalsBtn">Metas y tiendas</button>
+  <button class="switch" id="openGoalsBtn" data-opview="Metas y tiendas" data-tab-key="operations.goals">Metas y tiendas</button>
 </div>
 <div id="analysisNav" class="hidden" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;flex-wrap:wrap">
   <button class="switch active" data-sub="macro" data-tab-key="commercial.macro">Macro compañía</button>
@@ -1210,7 +1210,16 @@ $$('[data-opview]').forEach(b=>b.onclick=async()=>{
     }
   }
 });
-$('#openGoalsBtn').onclick=async()=>{await renderGoalsConfig()};
+$('#openGoalsBtn').onclick=async()=>{
+  OP_VIEW='Metas y tiendas';
+  $('[data-opview]').forEach(x=>{
+    const on=x.id==='openGoalsBtn';
+    x.classList.toggle('active',on);
+    x.setAttribute('aria-selected',on?'true':'false');
+  });
+  OPER_PERIOD={type:'all',value:''};
+  await renderGoalsConfig();
+};
 
 
 
@@ -2270,17 +2279,17 @@ function metricClass(v,good=90,warn=70){return Number(v)>=good?'metric-good':Num
 let OPER_PERIOD={type:'all',value:''};
 
 function fixedPeriodTypeForView(name){
-  if(name==='Carga de datos')return 'all';
+  if(name==='Carga de datos'||name==='Metas y tiendas')return 'all';
   if(name==='Operación Diaria'||name==='Indicadores Diarios')return 'day';
   if(name==='Reporte Semanal')return 'week';
   if(name==='Reporte Mensual')return 'month';
-  if(name==='Recuperación por Tienda')return 'recovery';
-  if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'period';
+  if(['Centro Ejecutivo','Conversión','Recuperación Económica','Recuperación por Tienda','Cumplimiento de Recorridos','Índice Integral'].includes(name))return 'fullperiod';
+  if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'productivityperiod';
   return 'flex';
 }
 function currentPeriodTypeForView(name){
   const fixed=fixedPeriodTypeForView(name);
-  if(fixed==='flex' || fixed==='period' || fixed==='recovery') return $('#operPeriodMode')?.value || (fixed==='recovery'?'week':'month');
+  if(['flex','fullperiod','productivityperiod'].includes(fixed)) return $('#operPeriodMode')?.value || 'month';
   return fixed;
 }
 function setPeriodSelector(name,d){
@@ -2295,8 +2304,8 @@ function setPeriodSelector(name,d){
   if(modeWrap && modeSel){
     let opts=[];
     if(fixed==='flex') opts=[['week','Semanal'],['month','Mensual']];
-    else if(fixed==='recovery') opts=[['day','Diario'],['week','Semanal'],['month','Mensual'],['year','Anual']];
-    else if(fixed==='period') opts=[['week','Semanal'],['month','Mensual'],['day','Diario']];
+    else if(fixed==='fullperiod') opts=[['day','Día'],['week','Semanal'],['month','Mensual'],['year','Anual']];
+    else if(fixed==='productivityperiod') opts=[['day','Día'],['week','Semanal'],['month','Mensual']];
     if(opts.length){
       modeWrap.classList.remove('hidden');
       const current=(opts.some(o=>o[0]===modeSel.value)?modeSel.value:(OPER_PERIOD.type||opts[0][0]));
@@ -2312,7 +2321,18 @@ function setPeriodSelector(name,d){
   const list=t==='day'?(d.available_dates||[]):t==='week'?(d.available_weeks||[]):t==='year'?((d.available_years||[]).length?(d.available_years||[]):[...new Set((d.available_months||[]).map(x=>String(x).slice(0,4)).filter(Boolean))]):(d.available_months||[]);
   lab.textContent=t==='day'?'Fecha':t==='week'?'Semana ISO':t==='year'?'Año':'Mes';
   const current=OPER_PERIOD.value&&list.includes(OPER_PERIOD.value)?OPER_PERIOD.value:(list.at(-1)||'');
-  sel.innerHTML=list.map(v=>`<option value="${v}">${v}</option>`).join('');
+  const monthNames=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const periodText=v=>{
+    if(t==='month'){
+      const m=String(v||'').match(/^(\d{4})-(\d{2})$/);
+      if(m){
+        const ix=Number(m[2])-1;
+        return (monthNames[ix]||m[2])+' '+m[1];
+      }
+    }
+    return String(v||'');
+  };
+  sel.innerHTML=list.map(v=>`<option value="${v}">${periodText(v)}</option>`).join('');
   sel.value=current;OPER_PERIOD.value=current;
 }
 const OPS_VIEW_CACHE=new Map();
@@ -2379,8 +2399,9 @@ async function fetchOpsForView(name){
   const type=currentPeriodTypeForView(name);
   const value=await resolveOpsPeriod(type);
   const store=$('#operStoreSelect')?.value||'Compañía';
-  const area=$('#operAreaSelect')?.value||'';
-  const activity=$('#operActivitySelect')?.value||'';
+  const compactFilterViews=['Centro Ejecutivo','Conversión','Recuperación Económica','Productividad por Colaborador','Ranking de Colaboradores','Cumplimiento de Recorridos','Índice Integral'];
+  const area=compactFilterViews.includes(name)?'':($('#operAreaSelect')?.value||'');
+  const activity=compactFilterViews.includes(name)?'':($('#operActivitySelect')?.value||'');
   const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
   const url=`/api/operations?store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&compact=true&project_only=${projectOnly?'true':'false'}`;
   const now=Date.now(), cached=OPS_VIEW_CACHE.get(url);
@@ -2474,6 +2495,11 @@ async function renderOperativoView(name,force=false){
   if($('#operativoDynamicTitle')) $('#operativoDynamicTitle').textContent=name;
   if($('#operativoDynamicSub')) $('#operativoDynamicSub').textContent='Cargando información...';
   if($('#operativoDynamicContent')) $('#operativoDynamicContent').innerHTML='<div class="infoempty">Cargando reporte...</div>';
+
+  if(name==='Metas y tiendas'){
+    await renderGoalsConfig();
+    return;
+  }
 
   // Carga de datos debe abrir de inmediato: no consulta ni recalcula el Excel.
   if(name==='Carga de datos'){
