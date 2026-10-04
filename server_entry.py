@@ -204,6 +204,7 @@ from v249_operational_filter_profiles_patch import install as _install_v249_oper
 from v250_option9b_filters_patch import install as _install_v250_option9b_filters_patch
 from v254_filters_final_patch import install as _install_v254_filters_final_patch
 from v256_center_quick_view_restore_patch import install as _install_v256_center_quick_view_restore_patch
+from v257_universal_period_filter_patch import install as _install_v257_universal_period_filter_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -327,4 +328,6 @@ _install_v250_option9b_filters_patch(web_app)
 _install_v254_filters_final_patch(web_app)
 # V256 restaura Vista operativa del Centro y delega Día/Semanal/Mensual/Anual a V240.
 _install_v256_center_quick_view_restore_patch(web_app)
+# V257 unifica Vista operativa en todos los reportes que soportan periodo variable y alinea Restablecer.
+_install_v257_universal_period_filter_patch(web_app)
 app = web_app.app
