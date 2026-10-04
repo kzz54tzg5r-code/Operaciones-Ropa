@@ -2454,8 +2454,9 @@ async function downloadCurrentReport(format,name,button){
   const type=currentPeriodTypeForView(name);
   const value=OPER_PERIOD.value||'';
   const store=$('#operStoreSelect')?.value||'Compañía';
-  const area=$('#operAreaSelect')?.value||'';
-  const activity=$('#operActivitySelect')?.value||'';
+  const compactFilterViews=['Centro Ejecutivo','Conversión','Recuperación Económica','Productividad por Colaborador','Ranking de Colaboradores','Cumplimiento de Recorridos','Índice Integral'];
+  const area=compactFilterViews.includes(name)?'':($('#operAreaSelect')?.value||'');
+  const activity=compactFilterViews.includes(name)?'':($('#operActivitySelect')?.value||'');
   const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
   const url=`/api/export/operations?format=${encodeURIComponent(format)}&report=${encodeURIComponent(name)}&store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&project_only=${projectOnly?'true':'false'}`;
   const old=button?.textContent||'Descargar';
