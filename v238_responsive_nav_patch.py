@@ -298,6 +298,8 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
       if(t.includes('cargar productividad'))return['Cargar productividad',phone?'Cargar\nProd.':'Cargar\nProductividad','truck'];
       if(key==='operations.productivity'||op.includes('productividad')||t==='productividad')return['Productividad',phone?'Productiv.':'Productividad','chart'];
       if(key==='operations.routes'||op.includes('recorridos')||t.includes('recorridos'))return['Recorridos',phone&&tiny?'Recorrid.':'Recorridos','route'];
+      if(key==='operations.score'||op.includes('indice integral')||t==='score')return['Score','Score','chart'];
+      if(key==='operations.alerts'||op.includes('alertas')||t.includes('alertas'))return['Alertas','Alertas','target'];
       if(op.includes('carga de datos')||t.includes('carga de datos'))return['Carga de datos','Carga de\ndatos','database'];
       if(btn.id==='openGoalsBtn'||t.includes('metas y tiendas')||t==='metas')return['Metas y tiendas','Metas y\ntiendas','target'];
     }
@@ -349,7 +351,13 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
   function sizeHost(host,kind){
     const tabs=Array.from(host.children).filter(buttonVisible);
     const count=Math.max(1,tabs.length);
-    const width=Math.max(280,host.parentElement&&host.parentElement.getBoundingClientRect().width||0,host.getBoundingClientRect().width||0,window.innerWidth-24);
+    // V247: medir el espacio REAL de contenido. Usar window.innerWidth hacía
+    // que la barra fuera más ancha que .main cuando existía sidebar y cortaba
+    // las últimas pestañas.
+    const main=host.closest('.main');
+    const parent=host.parentElement;
+    const measured=Number(main?.clientWidth||parent?.clientWidth||host.clientWidth||0);
+    const width=Math.max(280,measured||Math.max(280,window.innerWidth-24));
     const gap=window.innerWidth<=600?2:window.innerWidth<=1024?4:6;
     const cell=Math.max(24,(width-gap*(count-1)-4)/count);
 
@@ -386,6 +394,9 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
     host.style.setProperty('--v238-inner-gap',innerGap+'px');
     host.style.setProperty('--v238-pad-y',padY+'px');
     host.style.setProperty('display','grid','important');
+    host.style.setProperty('width','100%','important');
+    host.style.setProperty('max-width','100%','important');
+    host.style.setProperty('box-sizing','border-box','important');
     host.style.setProperty('grid-template-columns','repeat('+count+',minmax(0,1fr))','important');
     host.style.setProperty('grid-template-rows',h+'px','important');
     host.style.setProperty('height',h+'px','important');
@@ -460,7 +471,7 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
   window.addEventListener('orientationchange',()=>setTimeout(apply,160),{passive:true});
   window.addEventListener('pageshow',()=>setTimeout(init,80),{passive:true});
 
-  console.info('[V238] navegación responsive PC/tablet/iOS/Android activa.');
+  console.info('[V247] navegación responsive ajustada al ancho real; todas las pestañas visibles.');
 })();
 </script>'''
 
