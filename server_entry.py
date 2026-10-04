@@ -317,8 +317,8 @@ _install_v240_center_routes_calendar_patch(web_app)
 _install_v241_cm_capture_authoritative_patch(web_app)
 # V243 reemplaza Recuperación por Tienda por Tasa de recuperación / Sell-Through Neto.
 _install_v243_recovery_rate_patch(web_app)
-# V249 queda al final: perfiles de filtros por pestaña y acceso estable a Metas y tiendas.
-_install_v249_operational_filter_profiles_patch(web_app)
-# V250 queda al final para unificar visualmente todos los filtros con Opción 9B.
+# V249 queda fuera: su grid compacto entra en conflicto con la Opción 9B horizontal.
+# _install_v249_operational_filter_profiles_patch(web_app)
+# V252/V250 es la capa final autoritativa para filtros por pestaña y Opción 9B.
 _install_v250_option9b_filters_patch(web_app)
 app = web_app.app
