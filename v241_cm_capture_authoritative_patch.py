@@ -173,18 +173,20 @@ body.v241-cm-capture #v166MissingProductivity{
     if(current&&current!=='Compañía')return current;
     return String(meta?.stores?.[0]||'');
   }
+  function isCollectionActivity(activity){
+    return String(activity||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()==='recoleccion';
+  }
   function historyDetail(r){
+    if(isCollectionActivity(r.activity)){
+      return 'Muertos '+nf(r.muertos)+' · Cajas '+nf(r.cajas)+' · Probador '+nf(r.probador);
+    }
     const area=[
       ['Colgado',n(r.pieces_colgado)],
       ['Doblado',n(r.pieces_doblado)],
       ['Jeans',n(r.pieces_jeans)],
       ['Lencería',n(r.pieces_lenceria)]
     ];
-    if(area.some(x=>x[1]>0))return area.map(x=>x[0]+' '+nf(x[1])).join(' · ');
-    if(String(r.activity||'').toLowerCase().includes('recolec')&&(n(r.muertos)+n(r.cajas)+n(r.probador)>0)){
-      return 'Legacy · Muertos '+nf(r.muertos)+' · Cajas '+nf(r.cajas)+' · Probador '+nf(r.probador);
-    }
-    return '—';
+    return area.some(x=>x[1]>0)?area.map(x=>x[0]+' '+nf(x[1])).join(' · '):'—';
   }
   function areaValue(item,area){
     const key={
@@ -197,22 +199,40 @@ body.v241-cm-capture #v166MissingProductivity{
   }
   function areaInputs(activity,item){
     return '<div class="v241-area-capture">'+
-      '<div class="v241-area-title"><b id="v241AreaTitle">Piezas · '+esc(activity)+'</b><span>Captura las piezas realizadas por área.</span></div>'+
+      '<div class="v241-area-title"><b>Piezas · '+esc(activity)+'</b><span>Captura las piezas realizadas por área.</span></div>'+
       '<div class="v241-area-grid">'+AREAS.map(a=>
-        '<div class="v241-area-box"><label data-v241-area-label="'+esc(a)+'">'+esc(activity)+' · '+esc(a)+'</label>'+
+        '<div class="v241-area-box"><label>'+esc(activity)+' · '+esc(a)+'</label>'+
         '<input data-v241-area="'+esc(a)+'" type="number" min="0" step="1" inputmode="numeric" value="'+areaValue(item,a)+'"></div>'
       ).join('')+'</div></div>';
   }
-  function syncAreaActivity(activity){
-    const name=String(activity||ALLOWED[0]);
-    const title=q('#v241AreaTitle');if(title)title.textContent='Piezas · '+name;
-    qa('[data-v241-area-label]').forEach(label=>{
-      label.textContent=name+' · '+String(label.dataset.v241AreaLabel||'');
-    });
+  function collectionInputs(item){
+    const items=[
+      ['Muertos','muertos'],
+      ['Cajas','cajas'],
+      ['Probador','probador']
+    ];
+    return '<div class="v241-area-capture">'+
+      '<div class="v241-area-title"><b>Piezas · Recolección</b><span>Captura el origen de las piezas recolectadas.</span></div>'+
+      '<div class="v241-area-grid v241-collection-grid">'+items.map(x=>
+        '<div class="v241-area-box"><label>Recolección · '+x[0]+'</label>'+
+        '<input data-v241-collection="'+x[1]+'" type="number" min="0" step="1" inputmode="numeric" value="'+n(item?.[x[1]])+'"></div>'
+      ).join('')+'</div></div>';
+  }
+  function captureInputs(activity,item){
+    return isCollectionActivity(activity)?collectionInputs(item):areaInputs(activity,item);
+  }
+  function refreshCaptureInputs(activity){
+    const host=q('#v241PieceCaptureHost');
+    if(host)host.innerHTML=captureInputs(activity,null);
   }
   function readAreas(){
     const out={};
     qa('[data-v241-area]').forEach(inp=>out[inp.dataset.v241Area]=n(inp.value));
+    return out;
+  }
+  function readCollection(){
+    const out={};
+    qa('[data-v241-collection]').forEach(inp=>out[inp.dataset.v241Collection]=n(inp.value));
     return out;
   }
   function rowPieces(r){
@@ -253,7 +273,7 @@ body.v241-cm-capture #v166MissingProductivity{
           '<div class="v241-capture-meta"><span>'+esc(mxToday())+'</span><span>'+esc(store||'Sin tienda')+'</span>'+
             '<span>'+esc(meta?.user?.full_name||meta?.user?.username||'')+'</span><span>Nómina '+esc(meta?.user?.employee_no||'—')+'</span></div>'+
           '<div class="v241-field"><label>Actividad realizada</label><select id="v241Activity" '+(active?'disabled':'')+'>'+options+'</select></div>'+
-          areaInputs(activity,active)+
+          '<div id="v241PieceCaptureHost">'+captureInputs(activity,active)+'</div>'+
           '<div class="v241-actions"><button id="v241Start" class="v241-start" '+(active?'disabled':'')+'>▶ Inicio</button>'+
             '<button id="v241Finish" class="v241-finish" '+(!active?'disabled':'')+'>■ Fin</button><span id="v241Msg" class="v241-msg"></span></div>'+
         '</div>'+
@@ -265,8 +285,7 @@ body.v241-cm-capture #v166MissingProductivity{
           '</tbody></table></div></div>';
 
       if(active)startClock();else{clearInterval(timer);updateClock()}
-      q('#v241Activity')?.addEventListener('change',e=>syncAreaActivity(e.target.value));
-      syncAreaActivity(activity);
+      q('#v241Activity')?.addEventListener('change',e=>refreshCaptureInputs(e.target.value));
 
       q('#v241Start')?.addEventListener('click',async()=>{
         const msg=q('#v241Msg');if(msg)msg.textContent='Iniciando…';
@@ -286,7 +305,9 @@ body.v241-cm-capture #v166MissingProductivity{
         if(!active)return;
         const msg=q('#v241Msg');if(msg)msg.textContent='Finalizando…';
         try{
-          const payload={pieces_by_area:readAreas()};
+          const payload=isCollectionActivity(active.activity)
+            ?{collection:readCollection()}
+            :{pieces_by_area:readAreas()};
           const r=await A('/api/cm-productivity/'+encodeURIComponent(active.id)+'/finish',{
             method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
           });
