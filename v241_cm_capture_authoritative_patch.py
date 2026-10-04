@@ -57,6 +57,7 @@ body.v241-cm-capture #v166MissingProductivity{
 .v241-area-title b{font-size:13px;font-weight:950}
 .v241-area-title span{font-size:8px;font-weight:800;color:#71849a}
 .v241-area-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.v241-collection-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .v241-area-box{min-width:0}
 .v241-area-box label{display:block;margin:0 0 5px;color:#123f73;font-size:9px;font-weight:900;text-transform:none;letter-spacing:0}
 .v241-area-box input{width:100%;min-height:44px;border:1px solid #ccd9e7;border-radius:9px;padding:8px 10px;background:#fff;color:#123f73;font-size:13px;font-weight:900;box-sizing:border-box}
@@ -75,12 +76,12 @@ body.v241-cm-capture #v166MissingProductivity{
 @media(max-width:600px){
   .v241-capture-panel{padding:10px;border-radius:13px}
   .v241-timer{min-width:118px;font-size:22px}
-  .v241-area-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .v241-area-grid,.v241-collection-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .v241-area-title{align-items:flex-start;flex-direction:column}
   .v241-legacy-grid{grid-template-columns:1fr}
 }
 @media(max-width:380px){
-  .v241-area-grid{grid-template-columns:1fr}
+  .v241-area-grid,.v241-collection-grid{grid-template-columns:1fr}
 }
 </style>'''
 
@@ -278,7 +279,7 @@ body.v241-cm-capture #v166MissingProductivity{
             '<button id="v241Finish" class="v241-finish" '+(!active?'disabled':'')+'>■ Fin</button><span id="v241Msg" class="v241-msg"></span></div>'+
         '</div>'+
         '<div class="v241-capture-panel"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3>'+
-          '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle por área</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
+          '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle de piezas</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
           ((hist?.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+nf(rowPieces(r))+'</b></td>'+
             '<td>'+esc(historyDetail(r))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||
             '<tr><td colspan="6">Sin capturas de hoy.</td></tr>')+
