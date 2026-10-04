@@ -3190,7 +3190,7 @@ function bindOperationalUpload(hasCurrent=false){
       input.value='';
       OPSDATA=null;
       OP_VIEW='Centro Ejecutivo';
-      $$$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
+      $$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
       if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros · listo`;
       setTimeout(async()=>{
         try{
