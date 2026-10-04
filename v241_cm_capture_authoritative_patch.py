@@ -3,8 +3,8 @@
 Corrige el cruce visible en video del 2026-10-02:
 - Cargar productividad (Cambios y Muertos) ya no puede mostrar el ranking de Productividad.
 - Mantiene captura con temporizador y Capturas de hoy.
-- Nuevas capturas usan únicamente Clasificado, Acondicionado, Ubicado y Pizca.
-- Si existe una captura legacy en curso (por ejemplo Recolección), permite terminarla.
+- Nuevas capturas usan Clasificado, Acondicionado, Ubicado, Recolección y Planchado.
+- Todas las actividades capturan piezas por área: Colgado, Doblado, Jeans y Lencería.
 - Al entrar a Recorridos se ocultan de inmediato los gráficos heredados mientras V240 carga
   la matriz/calendario/resumen, evitando que se vea por unos instantes "Recorridos por día".
 """
@@ -52,6 +52,14 @@ body.v241-cm-capture #v166MissingProductivity{
   padding:8px 10px;background:#fff;color:#123f73;font-size:13px;font-weight:850
 }
 .v241-pieces{max-width:310px}
+.v241-area-capture{margin-top:11px;border:1px solid #cfe0f0;border-radius:13px;padding:10px;background:#fbfdff}
+.v241-area-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:#123f73}
+.v241-area-title b{font-size:13px;font-weight:950}
+.v241-area-title span{font-size:8px;font-weight:800;color:#71849a}
+.v241-area-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.v241-area-box{min-width:0}
+.v241-area-box label{display:block;margin:0 0 5px;color:#123f73;font-size:9px;font-weight:900;text-transform:none;letter-spacing:0}
+.v241-area-box input{width:100%;min-height:44px;border:1px solid #ccd9e7;border-radius:9px;padding:8px 10px;background:#fff;color:#123f73;font-size:13px;font-weight:900;box-sizing:border-box}
 .v241-legacy-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
 .v241-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
 .v241-actions button{
@@ -67,7 +75,12 @@ body.v241-cm-capture #v166MissingProductivity{
 @media(max-width:600px){
   .v241-capture-panel{padding:10px;border-radius:13px}
   .v241-timer{min-width:118px;font-size:22px}
+  .v241-area-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .v241-area-title{align-items:flex-start;flex-direction:column}
   .v241-legacy-grid{grid-template-columns:1fr}
+}
+@media(max-width:380px){
+  .v241-area-grid{grid-template-columns:1fr}
 }
 </style>'''
 
@@ -77,7 +90,8 @@ body.v241-cm-capture #v166MissingProductivity{
   window.__V241_CM_CAPTURE=true;
 
   const C='Cargar productividad';
-  const ALLOWED=['Clasificado','Acondicionado','Ubicado','Pizca'];
+  const ALLOWED=['Clasificado','Acondicionado','Ubicado','Recolección','Planchado'];
+  const AREAS=['Colgado','Doblado','Jeans','Lencería'];
   const q=(s,r=document)=>r.querySelector(s);
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -160,10 +174,46 @@ body.v241-cm-capture #v166MissingProductivity{
     return String(meta?.stores?.[0]||'');
   }
   function historyDetail(r){
-    if(String(r.activity||'').toLowerCase().includes('recolec')){
-      return 'Muertos '+nf(r.muertos)+' · Cajas '+nf(r.cajas)+' · Probador '+nf(r.probador);
+    const area=[
+      ['Colgado',n(r.pieces_colgado)],
+      ['Doblado',n(r.pieces_doblado)],
+      ['Jeans',n(r.pieces_jeans)],
+      ['Lencería',n(r.pieces_lenceria)]
+    ];
+    if(area.some(x=>x[1]>0))return area.map(x=>x[0]+' '+nf(x[1])).join(' · ');
+    if(String(r.activity||'').toLowerCase().includes('recolec')&&(n(r.muertos)+n(r.cajas)+n(r.probador)>0)){
+      return 'Legacy · Muertos '+nf(r.muertos)+' · Cajas '+nf(r.cajas)+' · Probador '+nf(r.probador);
     }
     return '—';
+  }
+  function areaValue(item,area){
+    const key={
+      'Colgado':'pieces_colgado',
+      'Doblado':'pieces_doblado',
+      'Jeans':'pieces_jeans',
+      'Lencería':'pieces_lenceria'
+    }[area];
+    return n(item?.[key]);
+  }
+  function areaInputs(activity,item){
+    return '<div class="v241-area-capture">'+
+      '<div class="v241-area-title"><b id="v241AreaTitle">Piezas · '+esc(activity)+'</b><span>Captura las piezas realizadas por área.</span></div>'+
+      '<div class="v241-area-grid">'+AREAS.map(a=>
+        '<div class="v241-area-box"><label data-v241-area-label="'+esc(a)+'">'+esc(activity)+' · '+esc(a)+'</label>'+
+        '<input data-v241-area="'+esc(a)+'" type="number" min="0" step="1" inputmode="numeric" value="'+areaValue(item,a)+'"></div>'
+      ).join('')+'</div></div>';
+  }
+  function syncAreaActivity(activity){
+    const name=String(activity||ALLOWED[0]);
+    const title=q('#v241AreaTitle');if(title)title.textContent='Piezas · '+name;
+    qa('[data-v241-area-label]').forEach(label=>{
+      label.textContent=name+' · '+String(label.dataset.v241AreaLabel||'');
+    });
+  }
+  function readAreas(){
+    const out={};
+    qa('[data-v241-area]').forEach(inp=>out[inp.dataset.v241Area]=n(inp.value));
+    return out;
   }
   function rowPieces(r){
     const pieces=n(r.pieces);
@@ -191,7 +241,6 @@ body.v241-cm-capture #v166MissingProductivity{
       const hist=await A('/api/cm-productivity/history?date='+encodeURIComponent(mxToday())+'&store='+encodeURIComponent(store));
       if(mine!==seq)return;
 
-      const legacyCollection=!!active&&String(active.activity||'').toLowerCase().includes('recolec');
       const activity=active?.activity||ALLOWED[0];
       const options=(active&&!ALLOWED.includes(activity)?[activity,...ALLOWED]:ALLOWED)
         .map(x=>'<option value="'+esc(x)+'" '+(x===activity?'selected':'')+'>'+esc(x)+'</option>').join('');
@@ -204,24 +253,20 @@ body.v241-cm-capture #v166MissingProductivity{
           '<div class="v241-capture-meta"><span>'+esc(mxToday())+'</span><span>'+esc(store||'Sin tienda')+'</span>'+
             '<span>'+esc(meta?.user?.full_name||meta?.user?.username||'')+'</span><span>Nómina '+esc(meta?.user?.employee_no||'—')+'</span></div>'+
           '<div class="v241-field"><label>Actividad realizada</label><select id="v241Activity" '+(active?'disabled':'')+'>'+options+'</select></div>'+
-          (legacyCollection
-            ?'<div class="v241-legacy-grid">'+
-               '<div class="v241-field"><label>Muertos · piezas</label><input id="v241Muertos" type="number" min="0" inputmode="numeric" value="'+n(active?.muertos)+'"></div>'+
-               '<div class="v241-field"><label>Cajas · piezas</label><input id="v241Cajas" type="number" min="0" inputmode="numeric" value="'+n(active?.cajas)+'"></div>'+
-               '<div class="v241-field"><label>Probador · piezas</label><input id="v241Probador" type="number" min="0" inputmode="numeric" value="'+n(active?.probador)+'"></div>'+
-             '</div>'
-            :'<div class="v241-field v241-pieces"><label>Piezas</label><input id="v241Pieces" type="number" min="0" inputmode="numeric" value="'+n(active?.pieces)+'"></div>')+
+          areaInputs(activity,active)+
           '<div class="v241-actions"><button id="v241Start" class="v241-start" '+(active?'disabled':'')+'>▶ Inicio</button>'+
             '<button id="v241Finish" class="v241-finish" '+(!active?'disabled':'')+'>■ Fin</button><span id="v241Msg" class="v241-msg"></span></div>'+
         '</div>'+
         '<div class="v241-capture-panel"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3>'+
-          '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle recolección</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
+          '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle por área</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
           ((hist?.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+nf(rowPieces(r))+'</b></td>'+
             '<td>'+esc(historyDetail(r))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||
             '<tr><td colspan="6">Sin capturas de hoy.</td></tr>')+
           '</tbody></table></div></div>';
 
       if(active)startClock();else{clearInterval(timer);updateClock()}
+      q('#v241Activity')?.addEventListener('change',e=>syncAreaActivity(e.target.value));
+      syncAreaActivity(activity);
 
       q('#v241Start')?.addEventListener('click',async()=>{
         const msg=q('#v241Msg');if(msg)msg.textContent='Iniciando…';
@@ -241,9 +286,7 @@ body.v241-cm-capture #v166MissingProductivity{
         if(!active)return;
         const msg=q('#v241Msg');if(msg)msg.textContent='Finalizando…';
         try{
-          const payload=legacyCollection
-            ?{muertos:n(q('#v241Muertos')?.value),cajas:n(q('#v241Cajas')?.value),probador:n(q('#v241Probador')?.value)}
-            :{pieces:n(q('#v241Pieces')?.value)};
+          const payload={pieces_by_area:readAreas()};
           const r=await A('/api/cm-productivity/'+encodeURIComponent(active.id)+'/finish',{
             method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
           });
