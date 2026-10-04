@@ -431,6 +431,65 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
 
   const filterIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v5l-4 2v-7L3 5Z"/></svg>';
+  const FULL_KEYS=new Set(['operations.center','operations.conversion','operations.recovery','operations.recovery_store','operations.routes','operations.score']);
+  const PRODUCTIVITY_KEY='operations.productivity';
+  const ROUTES_KEY='operations.routes';
+
+  function activeOpButton(){
+    return q('#operativoNav>button.active[data-opview]')||
+      q('#operativoNav>button[aria-selected="true"][data-opview]')||
+      q('#operativoNav>button[data-opview="Centro Ejecutivo"]');
+  }
+  function showOp(el,on){
+    if(!el)return;
+    el.classList.toggle('hidden',!on);
+    el.classList.toggle('v249-hidden',!on);
+    if(on){
+      el.removeAttribute('hidden');
+      el.style.removeProperty('display');
+    }
+  }
+  function setRouteTypes(){
+    const sel=q('#operActivitySelect');
+    const wrap=q('#operActivityWrap');
+    if(!sel||!wrap)return;
+    const current=['','Muertos','Cambios','Probador'].includes(sel.value)?sel.value:'';
+    const values=[['','Todos'],['Muertos','Muertos'],['Cambios','Cambios'],['Probador','Probador']];
+    const html=values.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('');
+    if(sel.innerHTML!==html)sel.innerHTML=html;
+    sel.value=current;
+    const label=q('label span:last-child',wrap);
+    if(label)label.textContent='Tipo de recolección';
+  }
+  function applyOperationalProfile(){
+    const bar=q('#operativoPeriodBar');
+    const btn=activeOpButton();
+    if(!bar||!btn)return;
+    const key=String(btn.dataset.tabKey||'');
+    const view=String(btn.dataset.opview||'');
+    const target=FULL_KEYS.has(key)||key===PRODUCTIVITY_KEY;
+
+    if(view==='Metas y tiendas'||view==='Carga de datos'){
+      bar.classList.add('hidden');
+      return;
+    }
+    if(!target)return;
+
+    bar.classList.remove('hidden','v249-compact');
+    showOp(q('#operPeriodModeWrap'),true);
+    showOp(q('#operPeriodSelectWrap'),true);
+    showOp(q('#operStoreWrap'),true);
+    showOp(q('#operStartWrap'),false);
+    showOp(q('#operEndWrap'),false);
+    showOp(q('#operAreaWrap'),false);
+
+    if(key===ROUTES_KEY){
+      showOp(q('#operActivityWrap'),true);
+      setRouteTypes();
+    }else{
+      showOp(q('#operActivityWrap'),false);
+    }
+  }
 
   function ensureCommercialBrand(){
     const bar=q('#globalFilters');
@@ -516,7 +575,15 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   function ensureOperational(){
     const bar=q('#operativoPeriodBar');
     if(!bar)return;
+
+    applyOperationalProfile();
     bar.classList.add('v250-option9b');
+    bar.classList.remove('v249-compact');
+    bar.style.setProperty('width','100%','important');
+    bar.style.setProperty('max-width','100%','important');
+    bar.style.setProperty('min-width','0','important');
+    bar.style.setProperty('margin-left','0','important');
+    bar.style.setProperty('margin-right','0','important');
 
     const brand=q(':scope > .or-report-filter-brand',bar);
     if(brand){
@@ -530,6 +597,47 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
 
     const grid=q(':scope > .or-report-filter-grid',bar);
     if(!grid)return;
+    grid.style.setProperty('display','flex','important');
+    grid.style.setProperty('flex-wrap','nowrap','important');
+    grid.style.setProperty('align-items','flex-end','important');
+    grid.style.setProperty('gap','10px','important');
+    grid.style.setProperty('width','100%','important');
+    grid.style.setProperty('max-width','100%','important');
+    grid.style.setProperty('min-width','0','important');
+    grid.style.setProperty('overflow-x','auto','important');
+    grid.style.setProperty('overflow-y','hidden','important');
+    grid.style.setProperty('grid-template-columns','none','important');
+    grid.style.setProperty('grid-auto-flow','unset','important');
+
+    const quick=q(':scope > .v250-quick-period',grid);
+    if(quick&&!quick.classList.contains('hidden')){
+      quick.style.setProperty('flex','1.6 1 340px','important');
+      quick.style.setProperty('min-width','300px','important');
+      quick.style.setProperty('width','auto','important');
+    }
+
+    const sizing={
+      operPeriodSelectWrap:'1 1 190px',
+      operStoreWrap:'1.15 1 210px',
+      operAreaWrap:'1 1 180px',
+      operActivityWrap:'1 1 190px'
+    };
+    qa(':scope > .or-fcontrol',grid).forEach(el=>{
+      if(el.id==='operPeriodModeWrap'&&el.classList.contains('v250-mode-source'))return;
+      if(el.classList.contains('hidden')||el.classList.contains('v249-hidden'))return;
+      el.style.setProperty('flex',sizing[el.id]||'1 1 180px','important');
+      el.style.setProperty('min-width','150px','important');
+      el.style.setProperty('width','auto','important');
+      el.style.setProperty('max-width','none','important');
+    });
+    const applyBtn=q('#operPeriodApply',grid);
+    if(applyBtn){
+      applyBtn.style.setProperty('flex','.72 1 150px','important');
+      applyBtn.style.setProperty('min-width','135px','important');
+      applyBtn.style.setProperty('width','auto','important');
+      applyBtn.style.setProperty('grid-column','auto','important');
+    }
+
     const controls=qa(':scope > .or-fcontrol, :scope > button, :scope > .v250-quick-period',grid).filter(el=>{
       if(el.id==='operPeriodModeWrap' && el.classList.contains('v250-mode-source'))return false;
       if(el.classList.contains('hidden')||el.classList.contains('v249-hidden'))return false;
@@ -544,7 +652,26 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     ensureCommercialBrand();
   }
 
-  document.addEventListener('click',e=>{
+  document.addEventListener('click',async e=>{
+    const goals=e.target.closest?.('#openGoalsBtn');
+    if(goals){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      try{
+        window.OP_VIEW='Metas y tiendas';
+      }catch(_e){}
+      qa('#operativoNav>button').forEach(b=>{
+        const on=b===goals;
+        b.classList.toggle('active',on);
+        b.setAttribute('aria-selected',on?'true':'false');
+      });
+      const bar=q('#operativoPeriodBar');
+      if(bar)bar.classList.add('hidden');
+      if(typeof renderGoalsConfig==='function'){
+        await renderGoalsConfig();
+      }
+      return;
+    }
     if(e.target.closest?.('#operativoNav>button,#analysisNav>button,[data-main]')){
       [0,40,140,400].forEach(ms=>setTimeout(apply,ms));
     }
@@ -566,7 +693,7 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 
-  console.info('[V251] Opción 9B corregida: filtros en una sola línea a todo lo ancho.');
+  console.info('[V252] Opción 9B autoritativa: una sola línea horizontal y Metas reparada.');
 })();
 </script>'''
 
@@ -598,4 +725,4 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
             return response
 
     m._V250_OPTION9B_FILTERS = True
-    print("[V251] Opción 9B horizontal global instalada.",flush=True)
+    print("[V252] Opción 9B horizontal autoritativa instalada.",flush=True)
