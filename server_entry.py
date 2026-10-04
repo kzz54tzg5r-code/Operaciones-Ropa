@@ -207,6 +207,7 @@ from v256_center_quick_view_restore_patch import install as _install_v256_center
 from v257_universal_period_filter_patch import install as _install_v257_universal_period_filter_patch
 from v258_universal_filter_controller_patch import install as _install_v258_universal_filter_controller_patch
 from v259_stable_report_filter_patch import install as _install_v259_stable_report_filter_patch
+from v260_responsive_layout_patch import install as _install_v260_responsive_layout_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -333,4 +334,6 @@ _install_v254_filters_final_patch(web_app)
 # _install_v257_universal_period_filter_patch(web_app)
 # _install_v258_universal_filter_controller_patch(web_app)
 _install_v259_stable_report_filter_patch(web_app)
+# V260 es sólo CSS/layout y se instala al final para envolver visualmente toda la interfaz.
+_install_v260_responsive_layout_patch(web_app)
 app = web_app.app
