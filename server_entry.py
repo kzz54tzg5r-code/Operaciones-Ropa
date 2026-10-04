@@ -203,6 +203,7 @@ from v243_recovery_rate_patch import install as _install_v243_recovery_rate_patc
 from v249_operational_filter_profiles_patch import install as _install_v249_operational_filter_profiles_patch
 from v250_option9b_filters_patch import install as _install_v250_option9b_filters_patch
 from v254_filters_final_patch import install as _install_v254_filters_final_patch
+from v256_center_quick_view_restore_patch import install as _install_v256_center_quick_view_restore_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -324,4 +325,6 @@ _install_v243_recovery_rate_patch(web_app)
 _install_v250_option9b_filters_patch(web_app)
 # V254 queda al final: filtros 9B definitivos por pestaña.
 _install_v254_filters_final_patch(web_app)
+# V256 restaura Vista operativa del Centro y delega Día/Semanal/Mensual/Anual a V240.
+_install_v256_center_quick_view_restore_patch(web_app)
 app = web_app.app
