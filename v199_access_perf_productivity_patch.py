@@ -62,6 +62,10 @@ def install(m):
         prod_cols={str(r["name"]) for r in con.execute("PRAGMA table_info(cm_productivity_capture)").fetchall()}
         if "pieces" not in prod_cols:
             con.execute("ALTER TABLE cm_productivity_capture ADD COLUMN pieces REAL NOT NULL DEFAULT 0")
+        # V247 · desglose de productividad por área para cualquier actividad.
+        for col in ("pieces_colgado","pieces_doblado","pieces_jeans","pieces_lenceria"):
+            if col not in prod_cols:
+                con.execute(f"ALTER TABLE cm_productivity_capture ADD COLUMN {col} REAL NOT NULL DEFAULT 0")
         con.execute("CREATE INDEX IF NOT EXISTS ix_cm_prod_date_store ON cm_productivity_capture(date,store)")
         con.execute("CREATE INDEX IF NOT EXISTS ix_cm_prod_created_by ON cm_productivity_capture(created_by,status)")
 
@@ -167,7 +171,7 @@ def install(m):
                 "role":str(actor.get("role") or ""),
                 "profile_required":bool(actor.get("profile_required")),
             },
-            "activities":["Recolección","Acondicionado","Ubicado","Clasificado","Recorridos","Otro"],
+            "activities":["Clasificado","Acondicionado","Ubicado","Recolección","Planchado"],
         }
 
     @m.app.get("/api/cm-productivity/active")
@@ -191,8 +195,9 @@ def install(m):
         employee_name=str(actor.get("full_name") or actor.get("username") or "").strip()
         employee_no=str(actor.get("employee_no") or "").strip()[:40]
         activity=str(body.get("activity") or "").strip()
-        if not activity:
-            raise HTTPException(400,"Selecciona la actividad realizada")
+        allowed_activities=("Clasificado","Acondicionado","Ubicado","Recolección","Planchado")
+        if activity not in allowed_activities:
+            raise HTTPException(400,"Selecciona una actividad válida")
         now=datetime.now(MX).isoformat(timespec="seconds")
         created_by=str(actor.get("username") or "")
         with m.db() as con:
@@ -232,20 +237,39 @@ def install(m):
                 raise HTTPException(403,"No puedes finalizar este registro")
             if str(row["status"] or "")!="active":
                 raise HTTPException(409,"El registro ya fue finalizado")
-            is_collection=m.login_key(row["activity"])==m.login_key("Recolección")
-            if is_collection:
-                muertos,cajas,probador=qty("muertos"),qty("cajas"),qty("probador")
-                pieces=muertos+cajas+probador
-            else:
+            # V247: el flujo actual captura piezas por área para cualquier actividad.
+            area_payload=body.get("pieces_by_area")
+            if isinstance(area_payload,dict):
+                def area_qty(*names):
+                    for name in names:
+                        if name in area_payload:
+                            try:return max(float(area_payload.get(name) or 0),0)
+                            except Exception:raise HTTPException(400,f"{name} debe ser un número válido")
+                    return 0.0
+                colgado=area_qty("Colgado","colgado")
+                doblado=area_qty("Doblado","doblado")
+                jeans=area_qty("Jeans","jeans")
+                lenceria=area_qty("Lencería","Lenceria","lenceria")
+                pieces=colgado+doblado+jeans+lenceria
                 muertos=cajas=probador=0.0
-                pieces=qty("pieces")
+            else:
+                # Compatibilidad para una captura antigua que estuviera en curso.
+                colgado=doblado=jeans=lenceria=0.0
+                is_collection=m.login_key(row["activity"])==m.login_key("Recolección")
+                if is_collection and any(k in body for k in ("muertos","cajas","probador")):
+                    muertos,cajas,probador=qty("muertos"),qty("cajas"),qty("probador")
+                    pieces=muertos+cajas+probador
+                else:
+                    muertos=cajas=probador=0.0
+                    pieces=qty("pieces")
             start=_dt(row["started_at"])
             duration=max(int((now_dt-start).total_seconds()),0) if start else 0
             con.execute(
                 """UPDATE cm_productivity_capture SET
-                   muertos=?,cajas=?,probador=?,pieces=?,ended_at=?,duration_seconds=?,
-                   status='finished',updated_at=? WHERE id=?""",
-                (muertos,cajas,probador,pieces,now,duration,now,record_id)
+                   muertos=?,cajas=?,probador=?,pieces=?,
+                   pieces_colgado=?,pieces_doblado=?,pieces_jeans=?,pieces_lenceria=?,
+                   ended_at=?,duration_seconds=?,status='finished',updated_at=? WHERE id=?""",
+                (muertos,cajas,probador,pieces,colgado,doblado,jeans,lenceria,now,duration,now,record_id)
             )
         return {
             "ok":True,"message":"Tiempo finalizado y productividad guardada",
