@@ -5082,6 +5082,10 @@ def operations(
         str(r.get("date"))[:7] for r in period_rows
         if r.get("date") and len(str(r.get("date")))>=7
     })
+    all_years=sorted({
+        str(r.get("date"))[:4] for r in period_rows
+        if r.get("date") and len(str(r.get("date")))>=4 and str(r.get("date"))[:4].isdigit()
+    })
 
     try:
         pending_meta=load_operations_meta()
@@ -5092,6 +5096,7 @@ def operations(
                 "available_dates":all_dates,
                 "available_weeks":all_weeks,
                 "available_months":all_months,
+                "available_years":all_years,
                 "areas_available":sorted({str(r.get("area") or "").strip() for r in op_all if str(r.get("area") or "").strip()}),
                 "activities_available":sorted({str(r.get("activity") or "").strip() for r in op_all if str(r.get("activity") or "").strip()}),
                 "stores_detected":sorted({str(r.get("store") or "").strip() for r in op_all if str(r.get("store") or "").strip()}),
@@ -5117,6 +5122,8 @@ def operations(
             return date_txt==period_value
         if period_type=="month":
             return date_txt.startswith(period_value)
+        if period_type=="year":
+            return date_txt.startswith(str(period_value)[:4])
         if period_type=="week":
             try:
                 y,w=period_value.split("-W",1)
@@ -5431,7 +5438,7 @@ def operations(
         "data_issues":data.get("data_issues",[])[:200],"duplicate_rows_removed":data.get("duplicate_rows_removed",0),
         "missing_columns_by_sheet":data.get("missing_columns_by_sheet",{}),
         "period_type":period_type,"period_value":period_value,"area":area,"activity":activity,"start_date":start_date,"end_date":end_date,
-        "available_dates":all_dates,"available_weeks":all_weeks,"available_months":all_months,
+        "available_dates":all_dates,"available_weeks":all_weeks,"available_months":all_months,"available_years":all_years,
         "areas_available":sorted({str(r.get("area") or "") for r in op_all if str(r.get("area") or "").strip()}),
         "activities_available":sorted({str(r.get("activity") or "") for r in op_all if str(r.get("activity") or "").strip()}),
         "stores_available":allowed_stores,
