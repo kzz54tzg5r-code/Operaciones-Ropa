@@ -137,12 +137,13 @@ def install(m):
         store: str = "Compañía",
         area: str = "Todas",
         activity: str = "Todas",
+        collection_type: str = "",
     ):
         actor = m.require_user(request)
         start, end = bounds(period_type, period_value)
         selected = selected_store(actor, store)
-        grouped = defaultdict(lambda: {"muertos": 0.0, "cajas": 0.0, "probador": 0.0})
-        totals = {"muertos": 0.0, "cajas": 0.0, "probador": 0.0}
+        grouped = defaultdict(lambda: {"muertos": 0.0, "cambios": 0.0, "probador": 0.0})
+        totals = {"muertos": 0.0, "cambios": 0.0, "probador": 0.0}
         stores = set()
 
         for row in list((m.load_ops() or {}).get("rows") or []):
@@ -150,9 +151,16 @@ def install(m):
             if d is None:
                 continue
             muertos = num(row.get("muertos"))
-            cajas = num(row.get("cajas"))
+            cambios = num(row.get("sistema_devoluciones"))
             probador = num(row.get("probador"))
-            if muertos <= 0 and cajas <= 0 and probador <= 0:
+            wanted = norm(collection_type)
+            if wanted == "muertos":
+                cambios = probador = 0.0
+            elif wanted == "cambios":
+                muertos = probador = 0.0
+            elif wanted == "probador":
+                muertos = cambios = 0.0
+            if muertos <= 0 and cambios <= 0 and probador <= 0:
                 continue
             h = hour_of(row.get("start_time"))
             # Regla operativa solicitada: después de las 09:00 y hasta 19:00.
@@ -160,10 +168,10 @@ def install(m):
                 continue
             cell = grouped[(h, d.weekday())]
             cell["muertos"] += muertos
-            cell["cajas"] += cajas
+            cell["cambios"] += cambios
             cell["probador"] += probador
             totals["muertos"] += muertos
-            totals["cajas"] += cajas
+            totals["cambios"] += cambios
             totals["probador"] += probador
             st = str(row.get("store") or "").strip()
             if st:
@@ -174,12 +182,12 @@ def install(m):
             cells = []
             for dno in range(7):
                 cell = grouped[(h, dno)]
-                total = cell["muertos"] + cell["cajas"] + cell["probador"]
+                total = cell["muertos"] + cell["cambios"] + cell["probador"]
                 cells.append({
                     "day": DAY_FULL[dno],
                     "total": total,
                     "muertos": cell["muertos"],
-                    "cajas": cell["cajas"],
+                    "cambios": cell["cambios"],
                     "probador": cell["probador"],
                 })
             hours.append({
@@ -308,6 +316,7 @@ def install(m):
         store: str = "Compañía",
         area: str = "Todas",
         activity: str = "Todas",
+        collection_type: str = "",
     ):
         actor = m.require_user(request)
         _start, end = bounds(period_type, period_value)
@@ -325,15 +334,24 @@ def install(m):
 
         values = []
         for ws, we in windows:
-            totals = {"muertos": 0.0, "cajas": 0.0, "probador": 0.0}
+            totals = {"muertos": 0.0, "cambios": 0.0, "probador": 0.0}
             for row in source:
                 d = accepted(row, selected, area, activity, ws, we)
                 if d is None:
                     continue
-                totals["muertos"] += num(row.get("muertos"))
-                totals["cajas"] += num(row.get("cajas"))
-                totals["probador"] += num(row.get("probador"))
-            total = totals["muertos"] + totals["cajas"] + totals["probador"]
+                vals = {
+                    "muertos": num(row.get("muertos")),
+                    "cambios": num(row.get("sistema_devoluciones")),
+                    "probador": num(row.get("probador")),
+                }
+                wanted = norm(collection_type)
+                if wanted in vals:
+                    for key in list(vals):
+                        if key != wanted:
+                            vals[key] = 0.0
+                for key in totals:
+                    totals[key] += vals[key]
+            total = totals["muertos"] + totals["cambios"] + totals["probador"]
             iso = ws.isocalendar()
             values.append({
                 "key": f"{iso.year}-W{iso.week:02d}",
@@ -353,7 +371,7 @@ def install(m):
             cur["previous_label"] = prev["label"]
             cur["total_pct"] = percent_change(cur["total"], prev["total"])
             cur["muertos_pct"] = percent_change(cur["muertos"], prev["muertos"])
-            cur["cajas_pct"] = percent_change(cur["cajas"], prev["cajas"])
+            cur["cambios_pct"] = percent_change(cur["cambios"], prev["cambios"])
             cur["probador_pct"] = percent_change(cur["probador"], prev["probador"])
             cards.append(cur)
 
@@ -513,7 +531,7 @@ body.v238-module-operativo #operPeriodMode{
     month:'Mes seleccionado · operación y desempeño consolidado',
     year:'Acumulado anual · operación y desempeño consolidado'
   };
-  const ACTIVITIES=['Clasificado','Acondicionado','Ubicado','Pizca'];
+  const COLLECTION_TYPES=[['','Todos'],['Muertos','Muertos'],['Cambios','Cambios'],['Probador','Probador']];
   let centerSeq=0;
   let centerMode='';
   const periodByMode={};
@@ -579,14 +597,24 @@ body.v238-module-operativo #operPeriodMode{
     }
     if([...el.options].some(o=>o.value===current))el.value=current;
   }
+  function routesActive(){
+    const active=q('#operativoNav>button.active,#operativoNav>button[aria-selected="true"]');
+    return String(active?.dataset.tabKey||'')==='operations.routes'||norm(active?.dataset.opview||active?.textContent||'').includes('recorridos');
+  }
   function setAllowedActivities(){
     if(!isCm())return;
     const el=q('#operActivitySelect');
-    if(!el)return;
-    const current=ACTIVITIES.includes(el.value)?el.value:'';
-    const values=[['','Todas'],...ACTIVITIES.map(x=>[x,x])];
-    setOptions(el,values,current);
-    el.value=current;
+    const wrap=q('#operActivityWrap');
+    if(!el||!wrap)return;
+    const label=q('label span:last-child',wrap);
+    if(routesActive()){
+      const current=COLLECTION_TYPES.some(x=>x[0]===el.value)?el.value:'';
+      setOptions(el,COLLECTION_TYPES,current);
+      el.value=current;
+      if(label)label.textContent='Tipo de recolección';
+    }else{
+      if(label)label.textContent='Actividad';
+    }
   }
   function removeDuplicateOperation(){
     qa('#operativoNav>button').forEach(btn=>{
@@ -625,7 +653,14 @@ body.v238-module-operativo #operPeriodMode{
       try{if(OPER_PERIOD.type===mode)desired=String(OPER_PERIOD.value||'')}catch(_){}
     }
     if(!list.includes(desired))desired=list.at(-1)||'';
-    setOptions(ps,list,desired);
+    const MONTH_NAMES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const displayList=list.map(v=>{
+      if(mode!=='month')return [v,v];
+      const mt=String(v).match(/^(\d{4})-(\d{2})$/);
+      if(!mt)return [v,v];
+      return [v,(MONTH_NAMES[Number(mt[2])-1]||mt[2])+' '+mt[1]];
+    });
+    setOptions(ps,displayList,desired);
     if(desired)ps.value=desired;
     lab.textContent=mode==='day'?'Fecha':mode==='week'?'Semana ISO':mode==='month'?'Mes':'Año';
     periodByMode[mode]=desired;
@@ -655,8 +690,8 @@ body.v238-module-operativo #operPeriodMode{
   }
   async function fetchCenter(mode,value){
     const store=q('#operStoreSelect')?.value||'Compañía';
-    const area=q('#operAreaSelect')?.value||'';
-    const activity=q('#operActivitySelect')?.value||'';
+    const area='';
+    const activity='';
     if(mode==='year'){
       return await api('/api/operations/year?year='+encodeURIComponent(value)+'&store='+encodeURIComponent(store)+'&area='+encodeURIComponent(area)+'&activity='+encodeURIComponent(activity)+'&compact=true&project_only=false',{timeoutMs:180000});
     }
@@ -717,8 +752,9 @@ body.v238-module-operativo #operPeriodMode{
       period_type:type,
       period_value:q('#operPeriodSelect')?.value||window.OPER_PERIOD?.value||'',
       store:q('#operStoreSelect')?.value||'Compañía',
-      area:q('#operAreaSelect')?.value||'Todas',
-      activity:q('#operActivitySelect')?.value||'Todas'
+      area:'Todas',
+      activity:'Todas',
+      collection_type:q('#operActivitySelect')?.value||''
     };
   }
   function queryString(p){
@@ -727,7 +763,7 @@ body.v238-module-operativo #operPeriodMode{
   function matrixMarkup(d){
     const body=(d.hours||[]).map(r=>'<tr><td><b>'+esc(r.label)+'</b></td>'+
       (r.cells||[]).map(c=>'<td><div class="v166-matrix-cell"><b class="'+(Number(c.total||0)===0?'v166-zero':'')+'">'+nf(c.total)+'</b>'+
-        (Number(c.total||0)>0?'<small>M '+nf(c.muertos)+' · C '+nf(c.cajas)+' · P '+nf(c.probador)+'</small>':'<small>—</small>')+
+        (Number(c.total||0)>0?'<small>M '+nf(c.muertos)+' · C '+nf(c.cambios)+' · P '+nf(c.probador)+'</small>':'<small>—</small>')+
       '</div></td>').join('')+'<td><b>'+nf(r.total)+'</b></td></tr>').join('');
     return '<div class="panel"><div class="v166-matrix-head"><div><h3>Matriz de recolección · día y hora</h3>'+
       '<p>Lunes a domingo · horario operativo de 10:00 a 19:00.</p></div><b style="color:#103f7d">'+nf(d.summary?.pieces)+' pzas</b></div>'+
@@ -765,7 +801,7 @@ body.v238-module-operativo #operPeriodMode{
         '<div class="v240-week-total">'+nf(card.total)+' <small>pzas</small></div>'+
         '<div class="v240-delta '+pctClass(card.total_pct)+'">'+pctText(card.total_pct)+' vs '+esc(card.previous_label)+'</div>'+
         '<div class="v240-week-detail">'+
-          [['Muertos','muertos','muertos_pct'],['Cajas','cajas','cajas_pct'],['Probador','probador','probador_pct']].map(x=>
+          [['Muertos','muertos','muertos_pct'],['Cambios','cambios','cambios_pct'],['Probador','probador','probador_pct']].map(x=>
             '<div class="v240-week-detail-row"><span>'+x[0]+'</span><b>'+nf(card[x[1]])+'</b><em class="'+pctClass(card[x[2]])+'">'+pctText(card[x[2]])+'</em></div>'
           ).join('')+
         '</div></div>'
