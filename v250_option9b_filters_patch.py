@@ -511,27 +511,34 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
     if(!bar||!btn)return;
     const key=String(btn.dataset.tabKey||'');
     const view=String(btn.dataset.opview||'');
-    const target=FULL_KEYS.has(key)||key===PRODUCTIVITY_KEY;
 
+    /* V255: cada pestaña define explícitamente sus controles.
+       Antes las pestañas fuera de FULL_KEYS hacían return y heredaban
+       hidden/v249-hidden de la pestaña anterior. */
     if(view==='Metas y tiendas'||view==='Carga de datos'){
       bar.classList.add('hidden');
       return;
     }
-    if(!target)return;
 
     bar.classList.remove('hidden','v249-compact');
-    showOp(q('#operPeriodModeWrap'),true);
+
+    let fixed='flex';
+    try{
+      if(typeof fixedPeriodTypeForView==='function')fixed=fixedPeriodTypeForView(view);
+    }catch(_){}
+    const variablePeriod=['flex','fullperiod','productivityperiod'].includes(String(fixed||''));
+
+    showOp(q('#operPeriodModeWrap'),variablePeriod);
     showOp(q('#operPeriodSelectWrap'),true);
     showOp(q('#operStoreWrap'),true);
     showOp(q('#operStartWrap'),false);
     showOp(q('#operEndWrap'),false);
     showOp(q('#operAreaWrap'),false);
+    showOp(q('#operActivityWrap'),false);
 
     if(key===ROUTES_KEY){
       showOp(q('#operActivityWrap'),true);
       setRouteTypes();
-    }else{
-      showOp(q('#operActivityWrap'),false);
     }
   }
 
