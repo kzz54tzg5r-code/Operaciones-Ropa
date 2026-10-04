@@ -1180,9 +1180,9 @@ $$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));
 
 let OP_VIEW='Centro Ejecutivo';
 let OP_RENDER_SEQ=0;
-$('[data-opview]').forEach(b=>b.onclick=async()=>{
+$$('[data-opview]').forEach(b=>b.onclick=async()=>{
   OP_VIEW=b.dataset.opview;
-  $('[data-opview]').forEach(x=>{
+  $$('[data-opview]').forEach(x=>{
     const on=x===b;
     x.classList.toggle('active',on);
     x.setAttribute('aria-selected',on?'true':'false');
@@ -2720,7 +2720,7 @@ $('#operPeriodApply').onclick=async()=>{
   OP_VIEW=view;
   OPER_PERIOD.type=currentPeriodTypeForView(view);
   OPER_PERIOD.value=$('#operPeriodSelect').value||'';
-  $('[data-opview]').forEach(x=>{
+  $$('[data-opview]').forEach(x=>{
     const on=x.dataset.opview===view;
     x.classList.toggle('active',on);
     x.setAttribute('aria-selected',on?'true':'false');
@@ -3190,7 +3190,7 @@ function bindOperationalUpload(hasCurrent=false){
       input.value='';
       OPSDATA=null;
       OP_VIEW='Centro Ejecutivo';
-      $$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
+      $$$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
       if(msg)msg.textContent=`${r.message} · ${fmt(r.rows||0)} registros · listo`;
       setTimeout(async()=>{
         try{
