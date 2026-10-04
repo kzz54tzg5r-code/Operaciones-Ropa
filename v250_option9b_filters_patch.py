@@ -450,7 +450,7 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
   const observer=new MutationObserver(()=>setTimeout(apply,0));
   function start(){
     const op=q('#operativoPeriodBar'),commercial=q('#globalFilters'),nav=q('#operativoNav'),anav=q('#analysisNav');
-    [op,commercial,nav,anav].filter(Boolean).forEach(el=>observer.observe(el,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','hidden','aria-selected']}));
+    [op,commercial,nav,anav].filter(Boolean).forEach(el=>observer.observe(el,{subtree:true,childList:true}));
     apply();
     [120,400,900,1800].forEach(ms=>setTimeout(apply,ms));
   }
