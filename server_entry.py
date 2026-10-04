@@ -212,6 +212,7 @@ from v261_option9_commercial_auto_operational_filters_patch import install as _i
 from v262_hide_filter_actions_patch import install as _install_v262_hide_filter_actions_patch
 from v263_laptop_mobile_density_patch import install as _install_v263_laptop_mobile_density_patch
 from v264_uniform_responsive_patch import install as _install_v264_uniform_responsive_patch
+from v265_desktop_matrix_mobile_patch import install as _install_v265_desktop_matrix_mobile_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -346,6 +347,8 @@ _install_v261_option9_commercial_auto_operational_filters_patch(web_app)
 _install_v262_hide_filter_actions_patch(web_app)
 # V263: capa visual base; móvil conserva estructura tipo laptop con mayor densidad.
 _install_v263_laptop_mobile_density_patch(web_app)
-# V264: autoridad final responsive; misma composición de laptop ajustada a tablet/móvil.
+# V264: base responsive general.
 _install_v264_uniform_responsive_patch(web_app)
+# V265: autoridad final; conserva la matriz real de laptop en móvil/tablet y sólo la compacta.
+_install_v265_desktop_matrix_mobile_patch(web_app)
 app = web_app.app
