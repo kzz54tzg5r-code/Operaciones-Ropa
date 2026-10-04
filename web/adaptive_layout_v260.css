@@ -1,0 +1,413 @@
+/*
+ * Operaciones Ropa · Adaptive Layout V260
+ * Capa exclusivamente visual.
+ * NO modifica datos, cálculos, endpoints, indicadores, filtros ni eventos.
+ */
+
+:root{
+  --or-fluid-gap:clamp(.45rem,.35rem + .45vw,.9rem);
+  --or-fluid-page-x:clamp(.5rem,.15rem + 1.8vw,1.75rem);
+  --or-fluid-radius:clamp(.65rem,.55rem + .25vw,.9rem);
+  --or-font-xs:clamp(.68rem,.63rem + .15vw,.8rem);
+  --or-font-sm:clamp(.76rem,.69rem + .2vw,.92rem);
+  --or-font-md:clamp(.88rem,.78rem + .3vw,1.06rem);
+  --or-font-lg:clamp(1.05rem,.88rem + .55vw,1.45rem);
+  --or-font-xl:clamp(1.35rem,1.05rem + .95vw,2rem);
+}
+
+/* ---------- Base cross-browser ---------- */
+html{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+body{
+  width:100%;
+  max-width:100%;
+  margin:0;
+  overflow-x:hidden;
+  overscroll-behavior-x:none;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+*,*::before,*::after{box-sizing:border-box}
+img,video,canvas,svg{max-width:100%}
+img,video{height:auto}
+button,input,select,textarea{font:inherit}
+#appView,.shell,.main,.page,
+#operativoDynamic,#operativoDynamicContent,
+.panel,.card,.filters,.tablewrap,.chart-scroll{
+  min-width:0;
+  max-width:100%;
+}
+.main{
+  width:100%!important;
+  min-width:0!important;
+  max-width:1680px!important;
+  margin-inline:auto!important;
+  padding-left:var(--or-fluid-page-x)!important;
+  padding-right:var(--or-fluid-page-x)!important;
+}
+.page{overflow:visible}
+
+/* ---------- Fluid typography ---------- */
+.hero h1{
+  font-size:var(--or-font-xl)!important;
+  line-height:1.08!important;
+  overflow-wrap:anywhere;
+}
+.title{
+  font-size:var(--or-font-lg)!important;
+  line-height:1.18!important;
+  overflow-wrap:anywhere;
+}
+.subtitle,.hero p{
+  font-size:var(--or-font-sm)!important;
+  overflow-wrap:anywhere;
+}
+.lab,.report-kpi .rk-label{
+  font-size:var(--or-font-xs)!important;
+  line-height:1.15!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.val,.report-kpi .rk-value{
+  font-size:clamp(1.2rem,.95rem + 1vw,1.9rem)!important;
+  line-height:1.04!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.note,.report-kpi .rk-sub,.card small{
+  font-size:var(--or-font-xs)!important;
+}
+
+/* ---------- KPI architecture ---------- */
+.kpis,.report-kpis,.lingerie-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:var(--or-fluid-gap)!important;
+  align-items:stretch!important;
+  width:100%!important;
+}
+.kpis>.kpi,
+.report-kpis>.report-kpi,
+.lingerie-kpis>.kpi{
+  width:100%!important;
+  min-width:0!important;
+  height:100%!important;
+  overflow:hidden!important;
+}
+.kpis.or-kpi-matrix{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+
+/* ---------- Cards and content grids ---------- */
+.cards{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:var(--or-fluid-gap)!important;
+}
+.grid,.uploadgrid,.usergrid,.lingerie-grid{
+  min-width:0;
+  max-width:100%;
+}
+.card,.panel,.drop,.useritem{
+  min-width:0!important;
+  overflow-wrap:anywhere;
+}
+
+/* ---------- Tables: scroll, never squeeze ---------- */
+.tablewrap,
+.model-sticky-table,
+.table-scroll-35,
+.model-scroll-30{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  touch-action:pan-x pan-y;
+  scrollbar-width:thin;
+}
+.tablewrap>.table,
+.model-sticky-table>.table{
+  min-width:100%;
+}
+.table{
+  font-variant-numeric:tabular-nums;
+}
+.table th{
+  white-space:nowrap;
+}
+.table td{
+  overflow-wrap:normal;
+}
+[data-testid="stDataFrame"],
+[data-testid="stDataEditor"]{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* ---------- Charts / SVG / future Plotly or Vega ---------- */
+.chart-box,.chart-scroll,
+[data-testid="stPlotlyChart"],
+[data-testid="stVegaLiteChart"],
+.js-plotly-plot,.plot-container,.svg-container{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+.chart-box svg,
+.chart-scroll svg,
+.combo-svg,.recovery-svg{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+}
+.chart-scroll{
+  overflow-x:hidden!important;
+}
+canvas,iframe{
+  max-width:100%!important;
+}
+
+/* ---------- Filters keep their current functionality ---------- */
+.filters,
+#globalFilters,
+#operativoPeriodBar{
+  width:100%!important;
+  max-width:100%!important;
+}
+#operativoPeriodBar>.or-report-filter-grid{
+  min-width:0!important;
+  max-width:100%!important;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-x pan-y;
+  overscroll-behavior-x:contain;
+}
+#operativoPeriodBar select,
+#operativoPeriodBar input,
+#globalFilters select,
+#globalFilters input{
+  max-width:100%!important;
+  min-width:0;
+}
+
+/* ---------- Navigation: no viewport overflow ---------- */
+#operativoNav,#analysisNav,#v200OperationTabs{
+  max-width:100%!important;
+  min-width:0!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+}
+
+/* ---------- Desktop / laptop ---------- */
+@media (min-width:1200px){
+  .kpis,.report-kpis,.lingerie-kpis,
+  .kpis.or-kpi-matrix{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  .main{
+    padding-left:clamp(1rem,1.5vw,1.75rem)!important;
+    padding-right:clamp(1rem,1.5vw,1.75rem)!important;
+  }
+}
+
+/* ---------- Tablet / iPad ---------- */
+@media (min-width:768px) and (max-width:1199px){
+  .kpis,.report-kpis,.lingerie-kpis,
+  .kpis.or-kpi-matrix{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .cards{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .usergrid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .grid,.lingerie-grid{
+    grid-template-columns:1fr!important;
+  }
+  .main{
+    padding-left:clamp(.7rem,2vw,1.2rem)!important;
+    padding-right:clamp(.7rem,2vw,1.2rem)!important;
+  }
+  .tablewrap>.table,
+  .model-sticky-table>.table{
+    min-width:max(760px,100%);
+  }
+}
+@media (min-width:768px) and (max-width:1199px) and (orientation:portrait){
+  .main{
+    padding-left:clamp(.6rem,2.2vw,1rem)!important;
+    padding-right:clamp(.6rem,2.2vw,1rem)!important;
+  }
+}
+@media (min-width:768px) and (max-width:1199px) and (orientation:landscape){
+  .main{
+    padding-left:clamp(.9rem,2vw,1.4rem)!important;
+    padding-right:clamp(.9rem,2vw,1.4rem)!important;
+  }
+}
+
+/* ---------- Phones ---------- */
+@media (max-width:767px){
+  :root{
+    --or-fluid-page-x:clamp(.38rem,2.4vw,.7rem);
+    --or-fluid-gap:.5rem;
+  }
+
+  body{
+    min-height:100vh;
+    min-height:100dvh;
+  }
+  .main{
+    width:100%!important;
+    max-width:100vw!important;
+    padding-left:var(--or-fluid-page-x)!important;
+    padding-right:var(--or-fluid-page-x)!important;
+    overflow-x:hidden!important;
+  }
+
+  .hero{
+    width:100%!important;
+    max-width:100%!important;
+  }
+  .hero h1{
+    font-size:clamp(1.15rem,5.6vw,1.55rem)!important;
+  }
+  .title{
+    font-size:clamp(1.05rem,5vw,1.35rem)!important;
+  }
+
+  /* User-requested mobile KPI stack */
+  .kpis,.report-kpis,.lingerie-kpis,
+  .kpis.or-kpi-matrix{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:.5rem!important;
+  }
+  .kpi,.report-kpi{
+    min-height:0!important;
+    width:100%!important;
+    padding:clamp(.65rem,3vw,.85rem)!important;
+  }
+  .val,.report-kpi .rk-value{
+    font-size:clamp(1.2rem,6.2vw,1.65rem)!important;
+  }
+
+  .cards{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .grid,.uploadgrid,.usergrid,.lingerie-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+
+  /* Tables keep natural column widths and pan horizontally */
+  .tablewrap,
+  .model-sticky-table,
+  .table-scroll-35,
+  .model-scroll-30{
+    overflow-x:auto!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-x pan-y!important;
+  }
+  .tablewrap>.table,
+  .model-sticky-table>.table,
+  .monthly-cross-table,
+  .lingerie-entry-table{
+    min-width:720px!important;
+    width:max-content!important;
+  }
+  .table th,.table td{
+    white-space:nowrap!important;
+  }
+
+  /* Charts reflow instead of forcing page width */
+  .chart-scroll{
+    overflow-x:hidden!important;
+  }
+  .combo-svg,.recovery-svg,
+  .chart-box svg,.chart-scroll svg{
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+  }
+
+  /* Keep option-9B style filter line, scroll it instead of compressing */
+  #operativoPeriodBar>.or-report-filter-grid{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    gap:.45rem!important;
+    padding-bottom:.2rem!important;
+  }
+  #operativoPeriodBar>.or-report-filter-grid>*{
+    flex-shrink:0;
+  }
+
+  #globalFilters{
+    max-width:100%!important;
+    overflow-x:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  #operativoNav,#analysisNav,#v200OperationTabs{
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    touch-action:pan-x!important;
+  }
+
+  input,select,textarea{
+    max-width:100%!important;
+  }
+}
+
+/* ---------- Very small phones ---------- */
+@media (max-width:430px){
+  .main{
+    padding-left:.38rem!important;
+    padding-right:.38rem!important;
+  }
+  .hero h1{
+    font-size:clamp(1.08rem,5.8vw,1.4rem)!important;
+  }
+  .val,.report-kpi .rk-value{
+    font-size:clamp(1.12rem,6.4vw,1.5rem)!important;
+  }
+}
+
+/* ---------- Safari / iOS / iPadOS ---------- */
+@supports (-webkit-touch-callout:none){
+  html,body,#appView,.shell{
+    min-height:-webkit-fill-available;
+  }
+  .tablewrap,.model-sticky-table,
+  #operativoNav,#analysisNav,#v200OperationTabs,
+  #operativoPeriodBar>.or-report-filter-grid{
+    -webkit-overflow-scrolling:touch;
+  }
+  input,select,textarea{
+    font-size:max(16px,1rem);
+  }
+}
+
+/* ---------- Accessibility / reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    scroll-behavior:auto!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
