@@ -205,6 +205,7 @@ from v250_option9b_filters_patch import install as _install_v250_option9b_filter
 from v254_filters_final_patch import install as _install_v254_filters_final_patch
 from v256_center_quick_view_restore_patch import install as _install_v256_center_quick_view_restore_patch
 from v257_universal_period_filter_patch import install as _install_v257_universal_period_filter_patch
+from v258_universal_filter_controller_patch import install as _install_v258_universal_filter_controller_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -326,8 +327,8 @@ _install_v243_recovery_rate_patch(web_app)
 _install_v250_option9b_filters_patch(web_app)
 # V254 queda al final: filtros 9B definitivos por pestaña.
 _install_v254_filters_final_patch(web_app)
-# V256 restaura Vista operativa del Centro y delega Día/Semanal/Mensual/Anual a V240.
-_install_v256_center_quick_view_restore_patch(web_app)
-# V257 unifica Vista operativa en todos los reportes que soportan periodo variable y alinea Restablecer.
-_install_v257_universal_period_filter_patch(web_app)
+# V258 sustituye V256/V257: evita tres controladores compitiendo por la misma fila.
+# _install_v256_center_quick_view_restore_patch(web_app)
+# _install_v257_universal_period_filter_patch(web_app)
+_install_v258_universal_filter_controller_patch(web_app)
 app = web_app.app
