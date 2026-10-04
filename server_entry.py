@@ -209,6 +209,7 @@ from v258_universal_filter_controller_patch import install as _install_v258_univ
 from v259_stable_report_filter_patch import install as _install_v259_stable_report_filter_patch
 from v260_responsive_layout_patch import install as _install_v260_responsive_layout_patch
 from v261_option9_commercial_auto_operational_filters_patch import install as _install_v261_option9_commercial_auto_operational_filters_patch
+from v262_hide_filter_actions_patch import install as _install_v262_hide_filter_actions_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -339,4 +340,6 @@ _install_v259_stable_report_filter_patch(web_app)
 _install_v260_responsive_layout_patch(web_app)
 # V261: Opción 9 en Comercial; Cambios y Muertos sin Consultar/Restablecer y actualización automática.
 _install_v261_option9_commercial_auto_operational_filters_patch(web_app)
+# V262: oculta Consultar/Restablecer con prioridad superior a V259/V254.
+_install_v262_hide_filter_actions_patch(web_app)
 app = web_app.app
