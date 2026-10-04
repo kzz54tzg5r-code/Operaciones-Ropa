@@ -1180,7 +1180,7 @@ $$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));
 
 let OP_VIEW='Centro Ejecutivo';
 let OP_RENDER_SEQ=0;
-$$('[data-opview]').forEach(b=>b.onclick=async()=>{
+$('[data-opview]').forEach(b=>b.onclick=async()=>{
   OP_VIEW=b.dataset.opview;
   $('[data-opview]').forEach(x=>{
     const on=x===b;
