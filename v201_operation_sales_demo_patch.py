@@ -424,6 +424,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
   const nf=v=>Math.round(n(v)).toLocaleString('es-MX');
   const money=v=>'$'+Math.round(n(v)).toLocaleString('es-MX');
   const pct=v=>n(v).toLocaleString('es-MX',{maximumFractionDigits:1})+'%';
+  const p=v=>pct(v);
   let demoMode=false,demoData=null,demoLoading=false,demoTab='summary';
 
   function isOperation(){
