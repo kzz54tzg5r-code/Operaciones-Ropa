@@ -333,6 +333,40 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
     if(cur!==sig)sel.innerHTML=opts.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('');
     sel.value=opts.some(x=>x[0]===mode)?mode:defaultMode(opts);
   }
+  function periodList(mode){
+    const meta=window.OPSDATA||{};
+    if(mode==='day')return [...(meta.available_dates||[])].filter(Boolean);
+    if(mode==='week')return [...(meta.available_weeks||[])].filter(Boolean);
+    if(mode==='month')return [...(meta.available_months||[])].filter(Boolean);
+    if(mode==='year'){
+      const own=[...(meta.available_years||[])].filter(Boolean);
+      if(own.length)return own;
+      return [...new Set((meta.available_months||[]).map(x=>String(x||'').slice(0,4)).filter(x=>/^\\d{4}$/.test(x)))].sort();
+    }
+    return [];
+  }
+  function syncPeriodControl(mode,reset=false){
+    const sel=q('#operPeriodSelect'),lab=q('#operPeriodLabel');
+    if(!sel||!lab)return'';
+    const list=periodList(mode);
+    let desired='';
+    try{
+      if(!reset && OPER_PERIOD?.type===mode && list.includes(String(OPER_PERIOD.value||'')))desired=String(OPER_PERIOD.value||'');
+    }catch(_){}
+    if(!desired && list.includes(String(sel.value||'')))desired=String(sel.value||'');
+    if(!desired)desired=list.at(-1)||'';
+    const monthNames=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const label=v=>{
+      if(mode!=='month')return String(v||'');
+      const mt=String(v||'').match(/^(\\d{4})-(\\d{2})$/);
+      return mt?((monthNames[Number(mt[2])-1]||mt[2])+' '+mt[1]):String(v||'');
+    };
+    sel.innerHTML=list.map(v=>'<option value="'+v+'">'+label(v)+'</option>').join('');
+    if(desired)sel.value=desired;
+    lab.textContent=mode==='day'?'Fecha':mode==='week'?'Semana ISO':mode==='year'?'Año':'Mes';
+    try{OPER_PERIOD.type=mode;OPER_PERIOD.value=desired}catch(_){}
+    return desired;
+  }
   function alignReset(){
     const grid=q('#operativoPeriodBar .or-report-filter-grid');
     const apply=q('#operPeriodApply',grid);
@@ -399,28 +433,21 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
     try{
       try{localStorage.setItem(storageKey(ctx.key),mode)}catch(_){}
       setNative(opts,mode);
-
-      try{
-        if(typeof OPER_PERIOD==='object'&&OPER_PERIOD){
-          OPER_PERIOD.type=mode;
-          OPER_PERIOD.value='';
-        }
-      }catch(_){}
-
-      if(typeof setPeriodSelector==='function'){
-        setPeriodSelector(ctx.view,window.OPSDATA||{
-          available_dates:[],available_weeks:[],available_months:[],available_years:[]
-        });
-      }
-      try{
-        if(typeof resolveOpsPeriod==='function')await resolveOpsPeriod(mode);
-      }catch(_){}
+      syncPeriodControl(mode,true);
 
       if(ctx.key==='operations.center'&&typeof window.V240_renderCenter==='function'){
         await window.V240_renderCenter(mode,false);
       }else if(typeof window.renderOperativoView==='function'){
+        /* El render existente sigue haciendo los cálculos. Sólo fijamos antes
+           el tipo/valor correcto para que cada pestaña consulte su periodo. */
         await window.renderOperativoView(ctx.view,true);
       }
+
+      /* Algunos reportes reconstruyen los controles durante el render.
+         Reafirmar el modo seleccionado evita que vuelvan a mostrar MES cuando
+         el usuario eligió Semana/Día/Año. */
+      setNative(opts,mode);
+      syncPeriodControl(mode,false);
     }catch(err){
       console.error('[V259] aplicar filtro',ctx,mode,err);
     }finally{
