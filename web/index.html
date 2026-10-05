@@ -1772,7 +1772,7 @@ function option10Icon(kind='bars'){
   return icons[kind]||icons.bars;
 }
 function option10KpiCard(label,value,sub='',tone='blue',icon='bars',cls=''){
-  return `<div class="report-kpi v268-option10-card" data-v268-tone="${tone}">
+  return `<div class="report-kpi v268-option10-card" data-v268-native="1" data-v268-tone="${tone}">
     <div class="v268-ribbon"><span class="v268-icon">${option10Icon(icon)}</span><span class="v268-ribbon-title">${label}</span></div>
     <div class="rk-label">${label}</div>
     <div class="rk-value ${cls}">${value}</div>
