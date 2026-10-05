@@ -642,7 +642,7 @@ def install(m):
         )
         html = html.replace(
             "  if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'period';",
-            "  if(name==='Recuperación por Tienda')return 'recovery';\n  if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'period';",
+            "  if(name==='Recuperación por Tienda')return 'fullperiod';\n  if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')return 'period';",
         )
         html = html.replace(
             "  if(fixed==='flex' || fixed==='period') return $('#operPeriodMode')?.value || 'month';",
@@ -709,4 +709,4 @@ def install(m):
         return response
 
     m._V243_RECOVERY_RATE = True
-    print("[V243] Tasa de recuperación instalada: Sell-Through Neto por día/semana ISO.", flush=True)
+    print("[V243] Tasa de recuperación instalada: Sell-Through Neto por día/semana/mes/año.", flush=True)
