@@ -1,4 +1,4 @@
-"""V273.1 · Encabezados compactos universales para tablas en móvil/tablet.
+"""V273.2 · Encabezados compactos universales para tablas en móvil/tablet.
 
 - Sólo <=1024 px: escritorio queda intacto.
 - Todas las tablas de reportes usan encabezados abreviados y de 2–3 líneas.
@@ -407,8 +407,35 @@ def install(m):
     });
   }
 
+  function restoreDesktop(table){
+    if(!table)return;
+    table.classList.remove('v273-mobile-table','v273-fit','v273-scroll');
+    table.style.removeProperty('--v273-cols');
+    table.style.removeProperty('width');
+    table.style.removeProperty('min-width');
+    table.style.removeProperty('max-width');
+    table.style.removeProperty('table-layout');
+    const wrap=table.parentElement;
+    if(wrap){
+      wrap.style.removeProperty('width');
+      wrap.style.removeProperty('max-width');
+      wrap.style.removeProperty('min-width');
+      wrap.style.removeProperty('overflow-x');
+    }
+    qa('thead th',table).forEach(th=>{
+      if(th.dataset.v273Original){
+        th.textContent=th.dataset.v273Original;
+        delete th.dataset.v273Signature;
+      }
+      th.classList.remove('v273-left');
+      th.style.removeProperty('width');
+    });
+    qa('tbody td',table).forEach(td=>td.classList.remove('v273-num','v273-rank'));
+  }
+
   function scan(){
-    qa('table').forEach(decorate);
+    const mobileTablet=matchMedia('(max-width:1024px)').matches;
+    qa('table').forEach(table=>mobileTablet?decorate(table):restoreDesktop(table));
   }
 
   let timer=0;
@@ -434,7 +461,7 @@ def install(m):
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 
-  console.info('[V273.1] encabezados compactos definitivos activos en móvil/tablet.');
+  console.info('[V273.2] encabezados compactos sólo móvil/tablet; escritorio restaurado.');
 })();
 </script>'''
 
@@ -467,4 +494,4 @@ def install(m):
             return response
 
     m._V273_MOBILE_TABLE_HEADERS=True
-    print("[V273.1] Tablas móvil/tablet sin min-width heredado; encabezados multilínea activos.",flush=True)
+    print("[V273.2] Tablas compactas limitadas a móvil/tablet; escritorio sin estilos inline heredados.",flush=True)
