@@ -1,4 +1,4 @@
-"""V159 · Operación por tienda + personal requerido + piezas pendientes.
+"""V159.1 · Operación Origen + personal requerido + piezas pendientes.
 
 - Conserva el filtro real de Tienda y garantiza que el Resumen se recalcule por tienda.
 - Agrega "Colaboradores necesarios" al Resumen y al desempeño por tienda.
@@ -136,52 +136,125 @@ def install(m):
 
     @m.app.get("/api/operation/staff-needed-v159")
     def staff_needed_v159(request: Request, period_type: str="day", period_value: str="", store: str="Compañía"):
-        actor = m.require_user(request); start, end = bounds(period_type, period_value); stores, selected = stores_for(actor, store); ss, es = start.isoformat(), end.isoformat(); standard = stds()
+        """Personal requerido del módulo Operación, sólo para Origen.
+
+        El último pendiente capturado es autoritativo y se actualiza únicamente
+        con movimientos posteriores. C&M no participa en esta vista.
+        """
+        actor = m.require_user(request)
+        start, end = bounds(period_type, period_value)
+        stores, selected = stores_for(actor, store)
+        ss, es = start.isoformat(), end.isoformat()
+        standard = stds()
         if not stores:
             return {"store":selected,"total_required":0,"rows":[],"formula":""}
+
         ph = ",".join("?" for _ in stores)
         with m.db() as con:
-            caps = [dict(r) for r in con.execute(f"SELECT date,store,arrival,pending_manual FROM operation_daily_capture WHERE origin='Origen' AND date<=? AND store IN ({ph}) ORDER BY date", (es,*stores)).fetchall()]
-            prod = [dict(r) for r in con.execute(f"SELECT date,store,origin,pieces FROM operation_productivity WHERE origin IN ('Colgado','Doblado') AND date<=? AND store IN ({ph}) ORDER BY date", (es,*stores)).fetchall()]
+            caps = [dict(r) for r in con.execute(
+                f"""SELECT date,store,arrival,pending_manual
+                    FROM operation_daily_capture
+                    WHERE origin='Origen' AND date<=? AND store IN ({ph})
+                    ORDER BY date""",
+                (es,*stores)
+            ).fetchall()]
+            prod = [dict(r) for r in con.execute(
+                f"""SELECT date,store,origin,pieces
+                    FROM operation_productivity
+                    WHERE origin IN ('Colgado','Doblado','Jeans','Lencería')
+                      AND date<=? AND store IN ({ph})
+                    ORDER BY date""",
+                (es,*stores)
+            ).fetchall()]
             try:
-                active = {str(r["store"]):int(r["c"]) for r in con.execute(f"SELECT store,COUNT(*) c FROM users WHERE role='colaborador' AND active=1 AND store IN ({ph}) GROUP BY store", tuple(stores)).fetchall()}
+                active = {
+                    str(r["store"]):int(r["c"])
+                    for r in con.execute(
+                        f"""SELECT store,COUNT(*) c
+                            FROM users
+                            WHERE role IN ('colaborador','colaborador_operativo')
+                              AND active=1 AND store IN ({ph})
+                            GROUP BY store""",
+                        tuple(stores)
+                    ).fetchall()
+                }
             except Exception:
                 active = {}
-        stset = set(stores); cm=[]
-        try:
-            for r in (m.load_ops() or {}).get("rows",[]):
-                ds=str(r.get("date") or "")[:10]; st=str(r.get("store") or "").strip()
-                if not ds or st not in stset: continue
-                try: d=date.fromisoformat(ds)
-                except Exception: continue
-                if d>end: continue
-                cm.append({"date":ds,"store":st,"arrival":num(r.get("recolectadas")),"processed":num(r.get("acondicionado"))})
-        except Exception as exc:
-            print(f"[V159] staff C&M: {type(exc).__name__}: {exc}", flush=True)
+
+        def family(origin):
+            org=str(origin or "")
+            if org in ("Colgado","Lencería"):
+                return "Colgado"
+            if org in ("Doblado","Jeans"):
+                return "Doblado"
+            return org
+
+        def closing_pending(st):
+            st_caps=[r for r in caps if str(r.get("store") or "")==st and str(r.get("date") or "")<=es]
+            st_prod=[r for r in prod if str(r.get("store") or "")==st and str(r.get("date") or "")<=es]
+            explicit=[r for r in st_caps if r.get("pending_manual") is not None]
+            if explicit:
+                anchor=max(explicit,key=lambda r:str(r.get("date") or ""))
+                anchor_day=str(anchor.get("date") or "")
+                balance=num(anchor.get("pending_manual"))
+                balance+=sum(num(r.get("arrival")) for r in st_caps if str(r.get("date") or "")>anchor_day)
+                balance-=sum(num(r.get("pieces")) for r in st_prod if str(r.get("date") or "")>anchor_day)
+                return max(balance,0.0),"capturado"
+            arr=sum(num(r.get("arrival")) for r in st_caps)
+            processed=sum(num(r.get("pieces")) for r in st_prod)
+            return max(arr-processed,0.0),"calculado"
 
         rows=[]
         for st in stores:
-            # Pendiente derivado histórico de Origen al cierre del periodo.
-            hist_arr=sum(num(r.get("arrival")) for r in caps if r["store"]==st and str(r["date"])<=es)
-            hist_proc=sum(num(r.get("pieces")) for r in prod if r["store"]==st and str(r["date"])<=es)
-            derived=max(hist_arr-hist_proc,0.0)
-            # Si existe captura explícita de pendientes, usa la más reciente del periodo.
-            explicit=[r for r in caps if r["store"]==st and ss<=str(r["date"])<=es and r.get("pending_manual") is not None]
-            explicit.sort(key=lambda r:str(r["date"]))
-            origin_pending=num(explicit[-1]["pending_manual"]) if explicit else derived
-            # Mezcla real Colgado/Doblado del periodo; si no hay mezcla, usa promedio simple.
-            pc=sum(num(r.get("pieces")) for r in prod if r["store"]==st and ss<=str(r["date"])<=es and r.get("origin")=="Colgado")
-            pd=sum(num(r.get("pieces")) for r in prod if r["store"]==st and ss<=str(r["date"])<=es and r.get("origin")=="Doblado")
-            mix=pc+pd
-            origin_std=((pc*standard["Colgado"]+pd*standard["Doblado"])/mix) if mix>0 else ((standard["Colgado"]+standard["Doblado"])/2)
-            cm_arr=sum(num(r["arrival"]) for r in cm if r["store"]==st and str(r["date"])<=es); cm_proc=sum(num(r["processed"]) for r in cm if r["store"]==st and str(r["date"])<=es); cm_pending=max(cm_arr-cm_proc,0.0)
+            origin_pending,pending_source=closing_pending(st)
+
+            # Estándar ponderado según la mezcla real del periodo. Lencería
+            # usa estándar Colgado y Jeans usa estándar Doblado.
+            colgado=sum(
+                num(r.get("pieces")) for r in prod
+                if str(r.get("store") or "")==st and ss<=str(r.get("date") or "")<=es
+                and family(r.get("origin"))=="Colgado"
+            )
+            doblado=sum(
+                num(r.get("pieces")) for r in prod
+                if str(r.get("store") or "")==st and ss<=str(r.get("date") or "")<=es
+                and family(r.get("origin"))=="Doblado"
+            )
+            mix=colgado+doblado
+            origin_std=(
+                (colgado*standard["Colgado"]+doblado*standard["Doblado"])/mix
+                if mix>0 else (standard["Colgado"]+standard["Doblado"])/2
+            )
             req_origin=int(math.ceil(origin_pending/origin_std)) if origin_pending>0 and origin_std>0 else 0
-            req_cm=int(math.ceil(cm_pending/standard["Cambios y Muertos"])) if cm_pending>0 and standard["Cambios y Muertos"]>0 else 0
-            required=req_origin+req_cm; current=int(active.get(st,0)); gap=max(required-current,0)
-            rows.append({"store":st,"origin_pending":origin_pending,"cm_pending":cm_pending,"pending_total":origin_pending+cm_pending,"origin_standard":origin_std,"origin_required":req_origin,"cm_required":req_cm,"required":required,"active_collaborators":current,"gap":gap,"pending_source":"capturado" if explicit else "calculado"})
+            current=int(active.get(st,0))
+            gap=max(req_origin-current,0)
+
+            rows.append({
+                "store":st,
+                "origin_pending":origin_pending,
+                "pending_total":origin_pending,
+                "origin_standard":origin_std,
+                "origin_required":req_origin,
+                "required":req_origin,
+                "active_collaborators":current,
+                "gap":gap,
+                "pending_source":pending_source,
+            })
+
         rows.sort(key=lambda x:(-x["required"],-x["pending_total"],x["store"]))
-        total_required=sum(r["required"] for r in rows); total_active=sum(r["active_collaborators"] for r in rows); total_gap=sum(r["gap"] for r in rows)
-        return {"store":selected,"start_date":ss,"end_date":es,"total_required":total_required,"total_active":total_active,"total_gap":total_gap,"rows":rows,"formula":"Origen = redondeo superior(pendiente / estándar ponderado Colgado-Doblado); C&M = redondeo superior(pendiente / estándar 670); total = ambos."}
+        total_required=sum(r["required"] for r in rows)
+        total_active=sum(r["active_collaborators"] for r in rows)
+        total_gap=sum(r["gap"] for r in rows)
+        return {
+            "store":selected,
+            "start_date":ss,
+            "end_date":es,
+            "total_required":total_required,
+            "total_active":total_active,
+            "total_gap":total_gap,
+            "rows":rows,
+            "formula":"Origen = redondeo superior(pendiente vigente / estándar ponderado Colgado-Doblado).",
+        }
 
     css=r'''<style id="v159-operation-css">
 .v159-staff{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;margin:9px 0}.v159-staff h3{margin:0 0 7px;color:var(--navy);font-size:12px}.v159-staff-note{font-size:8px;color:#667085;line-height:1.45;margin-top:6px}.v159-pending-field{min-width:0}.v159-pending-field label{display:block;font-size:8px;font-weight:950;color:#667085;text-transform:uppercase;margin-bottom:5px}.v159-pending-field input{width:100%;min-height:44px;border:1px solid #ccd6e2;border-radius:10px;background:#fff;color:var(--text);padding:9px 10px;font-size:16px}@media(max-width:900px){.v159-staff{padding:10px}.v159-pending-field input{font-size:16px}}</style>'''
@@ -190,7 +263,7 @@ def install(m):
 (function(){
 if(window.__V159_OPERATION)return;window.__V159_OPERATION=true;
 const OP='Operación',num=v=>Number(v||0),fmt=v=>num(v).toLocaleString('es-MX',{maximumFractionDigits:0}),f1=v=>num(v).toLocaleString('es-MX',{maximumFractionDigits:1}),esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-function activeTab(){const a=document.querySelector('.v125-tabs .active');const t=(a?.textContent||'').toLowerCase();if(t.includes('captura diaria'))return'daily';if(t.includes('resumen'))return'summary';return''}
+function activeTab(){const b=document.querySelector('#v200OperationTabs [data-v200-op].active')||document.querySelector('#v200OperationTabs [data-v200-op][aria-selected="true"]');if(b?.dataset?.v200Op)return b.dataset.v200Op;const a=document.querySelector('.v125-tabs .active');const t=(a?.textContent||'').toLowerCase();if(t.includes('captura diaria'))return'daily';if(t.includes('resumen'))return'summary';return''}
 async function decorateDaily(){
  if(activeTab()!=='daily')return;const store=document.getElementById('operStoreSelect')?.value||'',day=document.getElementById('operPeriodSelect')?.value||'';if(!store||store==='Compañía'||!day)return;
  let data;try{data=await api('/api/operation/origin-capture-v159?'+new URLSearchParams({date:day,store}),{timeoutMs:60000})}catch(e){console.warn('[V159] pendiente diario',e);return}
@@ -201,13 +274,13 @@ async function decorateDaily(){
 function findPanel(title){return [...document.querySelectorAll('.v149-panel')].find(p=>(p.querySelector('h3')?.textContent||'').trim()===title)}
 async function decorateSummary(){
  if(activeTab()!=='summary')return;const store=document.getElementById('operStoreSelect')?.value||'Compañía',ptype=(document.getElementById('operPeriodMode')?.value||'day'),pval=document.getElementById('operPeriodSelect')?.value||'';let d;try{d=await api('/api/operation/staff-needed-v159?'+new URLSearchParams({period_type:ptype,period_value:pval,store}),{timeoutMs:180000})}catch(e){console.warn('[V159] personal requerido',e);return}
- const k=document.querySelector('.v149-kpis');if(k&&!k.querySelector('[data-v159-staff-kpi]')){const x=document.createElement('div');x.className='v149-kpi';x.dataset.v159StaffKpi='1';x.style.setProperty('--k','#0f766e');const row=d.rows?.[0],sub=store==='Compañía'?`Brecha total: ${fmt(d.total_gap)}`:`Origen ${fmt(row?.origin_required)} · C&M ${fmt(row?.cm_required)}`;x.innerHTML=`<small>Colaboradores necesarios</small><b>${fmt(d.total_required)}</b><span>${sub}</span>`;k.appendChild(x)}
+ const k=document.querySelector('.v149-kpis');if(k&&!k.querySelector('[data-v159-staff-kpi]')){const x=document.createElement('div');x.className='v149-kpi';x.dataset.v159StaffKpi='1';x.style.setProperty('--k','#0f766e');const row=d.rows?.[0],sub=store==='Compañía'?`Brecha total: ${fmt(d.total_gap)}`:`Origen ${fmt(row?.origin_required)}`;x.innerHTML=`<small>Colaboradores necesarios</small><b>${fmt(d.total_required)}</b><span>${sub}</span>`;k.appendChild(x)}
  const panel=findPanel('Desempeño por tienda');const table=panel?.querySelector('table');if(table&&!table.dataset.v159){table.dataset.v159='1';const th=document.createElement('th');th.textContent='Colab. necesarios';table.querySelector('thead tr')?.appendChild(th);const map=new Map((d.rows||[]).map(r=>[r.store,r]));table.querySelectorAll('tbody tr').forEach(tr=>{const name=(tr.cells?.[0]?.textContent||'').trim();const r=map.get(name);const td=document.createElement('td');td.innerHTML=r?`<b>${fmt(r.required)}</b><div style="font-size:7px;color:#667085">Actual ${fmt(r.active_collaborators)} · Faltan ${fmt(r.gap)}</div>`:'—';tr.appendChild(td)})}
- if(panel&&!document.getElementById('v159StaffDetail')){const box=document.createElement('div');box.id='v159StaffDetail';box.className='v159-staff';box.innerHTML=`<h3>Personal requerido · ${esc(store)}</h3><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Pendiente Origen</th><th>Pendiente C&M</th><th>Necesarios</th><th>Activos</th><th>Brecha</th></tr></thead><tbody>${(d.rows||[]).map(r=>`<tr><td><b>${esc(r.store)}</b></td><td>${fmt(r.origin_pending)} <small>(${esc(r.pending_source)})</small></td><td>${fmt(r.cm_pending)}</td><td><b>${fmt(r.required)}</b></td><td>${fmt(r.active_collaborators)}</td><td>${fmt(r.gap)}</td></tr>`).join('')}</tbody></table></div><div class="v159-staff-note">${esc(d.formula||'')}</div>`;panel.insertAdjacentElement('afterend',box)}
+ if(panel&&!document.getElementById('v159StaffDetail')){const box=document.createElement('div');box.id='v159StaffDetail';box.className='v159-staff';box.innerHTML=`<h3>Personal requerido · ${esc(store)}</h3><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Pendiente Origen</th><th>Necesarios</th><th>Activos</th><th>Brecha</th></tr></thead><tbody>${(d.rows||[]).map(r=>`<tr><td><b>${esc(r.store)}</b></td><td>${fmt(r.origin_pending)} <small>(${esc(r.pending_source)})</small></td><td><b>${fmt(r.required)}</b></td><td>${fmt(r.active_collaborators)}</td><td>${fmt(r.gap)}</td></tr>`).join('')}</tbody></table></div><div class="v159-staff-note">${esc(d.formula||'')}</div>`;panel.insertAdjacentElement('afterend',box)}
 }
 async function decorate(){if(String(window.MAIN||'').toLowerCase()!=='operation'&&window.OP_VIEW!==OP)return;await decorateDaily();await decorateSummary()}
 const previous=window.renderOperativoView;window.renderOperativoView=async function(name,force=false){const out=await previous(name,force);if(name===OP){await decorate();setTimeout(decorate,120)}return out};
-document.addEventListener('click',e=>{if(e.target.closest?.('[data-main="operation"],.v125-tab,#operPeriodApply'))setTimeout(decorate,350)},true);document.addEventListener('change',e=>{if(e.target?.matches?.('#operStoreSelect,#operPeriodMode,#operPeriodSelect'))setTimeout(decorate,250)},true);setTimeout(decorate,600);console.info('[V159] Tienda + colaboradores necesarios + piezas pendientes activos.');
+document.addEventListener('click',e=>{if(e.target.closest?.('[data-main="operation"],.v125-tab,#operPeriodApply'))setTimeout(decorate,350)},true);document.addEventListener('change',e=>{if(e.target?.matches?.('#operStoreSelect,#operPeriodMode,#operPeriodSelect'))setTimeout(decorate,250)},true);setTimeout(decorate,600);console.info('[V159.1] Operación Origen-only: personal requerido + pendiente capturado activos.');
 })();
 </script>'''
 
@@ -222,10 +295,10 @@ document.addEventListener('click',e=>{if(e.target.closest?.('[data-main="operati
             html=body.decode("utf-8",errors="replace")
             if "v159-operation-css" not in html: html=html.replace("</head>",css+"</head>",1)
             if "v159-operation-js" not in html: html=html.replace("</body>",js+"</body>",1)
-            headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None);headers.update({"Cache-Control":"no-store, no-cache, must-revalidate, max-age=0","Pragma":"no-cache","Expires":"0","X-Operations-UI-Version":"V159"})
+            headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None);headers.update({"Cache-Control":"no-store, no-cache, must-revalidate, max-age=0","Pragma":"no-cache","Expires":"0","X-Operations-UI-Version":"V159.1"})
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V159] HTML warning: {type(exc).__name__}: {exc}",flush=True);return response
 
     m._V159_OPERATION_STORE_STAFF_PENDING=True
-    print("[V159] Operación: filtro por tienda, personal requerido y piezas pendientes activos.",flush=True)
+    print("[V159.1] Operación: sólo Origen, personal requerido y pendiente capturado activos.",flush=True)
