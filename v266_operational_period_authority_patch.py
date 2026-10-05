@@ -1,4 +1,4 @@
-"""V266.2 · controlador autoritativo de periodos operativos.
+"""V266.3 · controlador autoritativo de periodos operativos.
 
 Corrige la desincronización entre la Vista operativa visible y el selector
 real usado por los reportes. Obtiene periodos reales desde /api/operations/meta,
@@ -374,6 +374,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     return {host,ctx,opts,mode};
   }
   async function renderCurrent(mode,value){
+    if(document.body.classList.contains('v201-demo-mode'))return;
     const ctx=active();
     if(!ctx.view)return;
     if(rendering){
@@ -422,6 +423,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     }
   }
   async function chooseMode(mode){
+    if(document.body.classList.contains('v201-demo-mode'))return;
     const info=ensureHost();
     if(!info||!info.opts.some(x=>x[0]===mode))return;
     try{localStorage.setItem(modeKey(info.ctx),mode)}catch(_){}
@@ -437,6 +439,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
   }
   let filterTimer=0;
   function scheduleFilter(){
+    if(document.body.classList.contains('v201-demo-mode'))return;
     clearTimeout(filterTimer);
     filterTimer=setTimeout(async()=>{
       const info=ensureHost();
@@ -449,6 +452,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     },90);
   }
   async function repair(){
+    if(document.body.classList.contains('v201-demo-mode'))return;
     const info=ensureHost();
     if(!info)return;
     const sel=q('#operPeriodSelect');
@@ -465,7 +469,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
 
   window.addEventListener('click',e=>{
     const b=e.target.closest?.('#operativoPeriodBar .v266-period-btn');
-    if(!b)return;
+    if(!b||document.body.classList.contains('v201-demo-mode'))return;
     e.preventDefault();
     e.stopImmediatePropagation();
     chooseMode(String(b.dataset.mode||''));
@@ -473,6 +477,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
 
   window.addEventListener('change',e=>{
     const id=e.target?.id||'';
+    if(document.body.classList.contains('v201-demo-mode'))return;
     if(id==='operPeriodSelect'){
       e.stopImmediatePropagation();
       scheduleFilter();
@@ -510,7 +515,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 
-  console.info('[V266.2] Periodos: fuente correcta por módulo + captura temprana sin carreras heredadas.');
+  console.info('[V266.3] Periodos: pausa total mientras DEMO de Operación está activo.');
 })();
 </script>'''
 
@@ -542,4 +547,4 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
             return response
 
     m._V266_OPERATIONAL_PERIOD_AUTHORITY=True
-    print("[V266.2] Periodos operativos instalados con metadata por módulo y eventos autoritativos.",flush=True)
+    print("[V266.3] Periodos operativos instalados con protección de DEMO.",flush=True)
