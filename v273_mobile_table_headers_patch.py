@@ -1,4 +1,4 @@
-"""V273 · Encabezados compactos universales para tablas en móvil/tablet.
+"""V273.1 · Encabezados compactos universales para tablas en móvil/tablet.
 
 - Sólo <=1024 px: escritorio queda intacto.
 - Todas las tablas de reportes usan encabezados abreviados y de 2–3 líneas.
@@ -21,7 +21,7 @@ def install(m):
    ========================================================= */
 @media (max-width:1024px){
   /* Todos los contenedores de tablas se quedan dentro del viewport. */
-  html body #appView :is(
+  html body :is(
     .tablewrap,.model-sticky-table,.table-scroll-35,.model-scroll-30,
     .monthly-cross-desktop,.lingerie-table-wrap,.rr243-tablewrap,
     .v240-matrix-wrap,.v240-route-calendar
@@ -36,14 +36,37 @@ def install(m):
     touch-action:pan-x pan-y!important;
   }
 
+  /* Fallback autoritativo: si el JS tarda o una tabla se repinta, no recuperar min-width heredado. */
+  html body :is(.tablewrap,.model-sticky-table,.table-scroll-35,.model-scroll-30,.monthly-cross-desktop,.lingerie-table-wrap,.rr243-tablewrap) > table.table{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    table-layout:fixed!important;
+  }
+  html body :is(.tablewrap,.model-sticky-table,.table-scroll-35,.model-scroll-30,.monthly-cross-desktop,.lingerie-table-wrap,.rr243-tablewrap) > table.table thead th{
+    white-space:normal!important;
+    overflow-wrap:normal!important;
+    word-break:normal!important;
+    height:54px!important;
+    min-height:54px!important;
+    padding:3px 1px!important;
+  }
+  html body :is(.tablewrap,.model-sticky-table,.table-scroll-35,.model-scroll-30,.monthly-cross-desktop,.lingerie-table-wrap,.rr243-tablewrap) > table.table tbody td{
+    min-width:0!important;
+    padding-left:1.5px!important;
+    padding-right:1.5px!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+
   /* Base universal para tablas de reportes. */
-  html body #appView table.v273-mobile-table{
+  html body table.v273-mobile-table{
     border-collapse:collapse!important;
     font-variant-numeric:tabular-nums!important;
   }
 
   /* <=12 columnas: prioridad absoluta a caber al ancho de móvil/tablet. */
-  html body #appView table.v273-mobile-table.v273-fit{
+  html body table.v273-mobile-table.v273-fit{
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
@@ -51,7 +74,7 @@ def install(m):
   }
 
   /* Tablas realmente grandes: scroll interno, pero ya no 68–90 px por columna. */
-  html body #appView table.v273-mobile-table.v273-scroll{
+  html body table.v273-mobile-table.v273-scroll{
     width:max-content!important;
     max-width:none!important;
     min-width:max(100%,calc(var(--v273-cols,13) * 44px))!important;
@@ -59,13 +82,13 @@ def install(m):
   }
 
   /* Encabezados: más altos, angostos y centrados. */
-  html body #appView table.v273-mobile-table thead th{
+  html body table.v273-mobile-table thead th{
     min-width:0!important;
     width:auto;
-    height:42px!important;
-    min-height:42px!important;
+    height:54px!important;
+    min-height:54px!important;
     max-height:none!important;
-    padding:3px 2px!important;
+    padding:3px 1px!important;
     white-space:normal!important;
     word-break:normal!important;
     overflow-wrap:normal!important;
@@ -76,10 +99,10 @@ def install(m):
     line-height:1.02!important;
     letter-spacing:0!important;
   }
-  html body #appView table.v273-mobile-table thead th.v273-left{
+  html body table.v273-mobile-table thead th.v273-left{
     text-align:left!important;
   }
-  html body #appView table.v273-mobile-table thead th .v273-head{
+  html body table.v273-mobile-table thead th .v273-head{
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
@@ -89,10 +112,10 @@ def install(m):
     min-width:0!important;
     gap:0!important;
   }
-  html body #appView table.v273-mobile-table thead th.v273-left .v273-head{
+  html body table.v273-mobile-table thead th.v273-left .v273-head{
     align-items:flex-start!important;
   }
-  html body #appView table.v273-mobile-table thead th .v273-line{
+  html body table.v273-mobile-table thead th .v273-line{
     display:block!important;
     width:100%!important;
     min-width:0!important;
@@ -102,7 +125,7 @@ def install(m):
   }
 
   /* Celdas: densidad alta para conservar la matriz de laptop. */
-  html body #appView table.v273-mobile-table tbody td{
+  html body table.v273-mobile-table tbody td{
     min-width:0!important;
     padding:4px 2px!important;
     font-size:7px!important;
@@ -112,23 +135,23 @@ def install(m):
     word-break:normal!important;
     vertical-align:middle!important;
   }
-  html body #appView table.v273-mobile-table tbody td.v273-num{
+  html body table.v273-mobile-table tbody td.v273-num{
     text-align:right!important;
     white-space:nowrap!important;
     overflow:hidden!important;
     text-overflow:clip!important;
     font-size:6.8px!important;
   }
-  html body #appView table.v273-mobile-table tbody td.v273-rank{
+  html body table.v273-mobile-table tbody td.v273-rank{
     text-align:center!important;
     white-space:nowrap!important;
   }
 
   /* Las reglas heredadas no deben volver a ensanchar estas tablas. */
-  html body #appView table.v273-mobile-table.v273-fit.v264-scroll-table,
-  html body #appView table.v273-mobile-table.v273-fit.v270-scroll-table,
-  html body #appView .rr243-table.v273-mobile-table.v273-fit,
-  html body #appView .monthly-cross-table.v273-mobile-table.v273-fit{
+  html body table.v273-mobile-table.v273-fit.v264-scroll-table,
+  html body table.v273-mobile-table.v273-fit.v270-scroll-table,
+  html body .rr243-table.v273-mobile-table.v273-fit,
+  html body .monthly-cross-table.v273-mobile-table.v273-fit{
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
@@ -136,7 +159,7 @@ def install(m):
   }
 
   /* Categorías de la matriz principal pueden usar altura, no ancho. */
-  html body #appView table.v273-mobile-table .monthly-cat{
+  html body table.v273-mobile-table .monthly-cat{
     white-space:normal!important;
     overflow-wrap:anywhere!important;
     padding-left:2px!important;
@@ -146,59 +169,59 @@ def install(m):
 
 /* Tablet: algo más legible, misma lógica compacta. */
 @media (min-width:701px) and (max-width:1024px){
-  html body #appView table.v273-mobile-table thead th{
+  html body table.v273-mobile-table thead th{
     height:48px!important;
     min-height:48px!important;
     padding:4px 3px!important;
     font-size:8.3px!important;
   }
-  html body #appView table.v273-mobile-table tbody td{
+  html body table.v273-mobile-table tbody td{
     padding:5px 3px!important;
     font-size:8.2px!important;
   }
-  html body #appView table.v273-mobile-table tbody td.v273-num{
+  html body table.v273-mobile-table tbody td.v273-num{
     font-size:8px!important;
   }
-  html body #appView table.v273-mobile-table.v273-scroll{
+  html body table.v273-mobile-table.v273-scroll{
     min-width:max(100%,calc(var(--v273-cols,13) * 55px))!important;
   }
 }
 
 /* iPhone/Android: usa todavía más alto de cabecera y menos ancho. */
 @media (max-width:700px){
-  html body #appView table.v273-mobile-table thead th{
+  html body table.v273-mobile-table thead th{
     height:46px!important;
     min-height:46px!important;
     padding:3px 1px!important;
     font-size:6.2px!important;
     line-height:.98!important;
   }
-  html body #appView table.v273-mobile-table tbody td{
+  html body table.v273-mobile-table tbody td{
     padding:4px 1.5px!important;
     font-size:6.2px!important;
     line-height:1.02!important;
   }
-  html body #appView table.v273-mobile-table tbody td.v273-num{
+  html body table.v273-mobile-table tbody td.v273-num{
     font-size:6px!important;
   }
-  html body #appView table.v273-mobile-table.v273-scroll{
+  html body table.v273-mobile-table.v273-scroll{
     min-width:max(100%,calc(var(--v273-cols,13) * 39px))!important;
   }
 }
 
 /* Teléfonos muy angostos: 3 líneas son preferibles a ensanchar columnas. */
 @media (max-width:430px){
-  html body #appView table.v273-mobile-table thead th{
+  html body table.v273-mobile-table thead th{
     height:50px!important;
     min-height:50px!important;
     font-size:5.7px!important;
     padding:2px 1px!important;
   }
-  html body #appView table.v273-mobile-table tbody td{
+  html body table.v273-mobile-table tbody td{
     font-size:5.8px!important;
     padding:3.5px 1px!important;
   }
-  html body #appView table.v273-mobile-table tbody td.v273-num{
+  html body table.v273-mobile-table tbody td.v273-num{
     font-size:5.6px!important;
   }
 }
@@ -319,8 +342,22 @@ def install(m):
 
     table.classList.add('v273-mobile-table');
     table.style.setProperty('--v273-cols',String(ths.length));
-    table.classList.toggle('v273-fit',ths.length<=12);
-    table.classList.toggle('v273-scroll',ths.length>12);
+    table.classList.toggle('v273-fit',ths.length<=16);
+    table.classList.toggle('v273-scroll',ths.length>16);
+
+    if(ths.length<=16){
+      table.style.setProperty('width','100%','important');
+      table.style.setProperty('min-width','0','important');
+      table.style.setProperty('max-width','100%','important');
+      table.style.setProperty('table-layout','fixed','important');
+      const wrap=table.parentElement;
+      if(wrap){
+        wrap.style.setProperty('width','100%','important');
+        wrap.style.setProperty('max-width','100%','important');
+        wrap.style.setProperty('min-width','0','important');
+        wrap.style.setProperty('overflow-x','hidden','important');
+      }
+    }
 
     const weights=[];
     ths.forEach((th,index)=>{
@@ -348,7 +385,7 @@ def install(m):
       }
     });
 
-    if(ths.length<=12){
+    if(ths.length<=16){
       const total=weights.reduce((a,b)=>a+b,0)||1;
       ths.forEach((th,i)=>{
         th.style.setProperty('width',(weights[i]/total*100).toFixed(2)+'%','important');
@@ -371,8 +408,7 @@ def install(m):
   }
 
   function scan(){
-    if(!matchMedia('(max-width:1024px)').matches)return;
-    qa('#appView table').forEach(decorate);
+    qa('table').forEach(decorate);
   }
 
   let timer=0;
@@ -398,7 +434,7 @@ def install(m):
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 
-  console.info('[V273] encabezados compactos universales activos en móvil/tablet.');
+  console.info('[V273.1] encabezados compactos definitivos activos en móvil/tablet.');
 })();
 </script>'''
 
@@ -431,4 +467,4 @@ def install(m):
             return response
 
     m._V273_MOBILE_TABLE_HEADERS=True
-    print("[V273] Encabezados compactos aplicados a todas las tablas en móvil/tablet.",flush=True)
+    print("[V273.1] Tablas móvil/tablet sin min-width heredado; encabezados multilínea activos.",flush=True)
