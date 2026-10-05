@@ -1,11 +1,13 @@
-"""Paridad de Render con la versión Python validada V89/V90.1.
+"""Paridad de Render con la versión Python validada V89/V90.2.
 
 Este parche NO sustituye la optimización de memoria de Render. Se instala al
 final del arranque y restaura exactamente las reglas funcionales que quedaron
 validadas en la versión local:
 
 * El arrastre se conserva por etapa: Acondicionar y Ubicar tienen saldos separados.
-* Día/Semana/Mes/Año usan saldo de apertura + movimientos del periodo; no suman pendientes diarios.
+* Lunes inicia únicamente con el pendiente generado el domingo anterior.
+* Martes toma cierre de lunes; miércoles cierre de martes; así hasta domingo.
+* Nunca se reconstruye el Pendiente Anterior sumando todo el histórico.
 * Pend. acondicionar = apertura acond. + ingresos - acondicionado.
 * Pend. ubicar = apertura ubicar + acondicionado - ubicado.
 * % Acondicionado y % Ubicado usan Total pzs como denominador.
@@ -101,15 +103,19 @@ def _install_pending_cut(module) -> None:
     signature = inspect.signature(original)
 
     def _period_opening_pending(params, result):
-        """Saldo de apertura por ETAPA al inicio del periodo consultado.
+        """Saldo de apertura por ETAPA con corte semanal real.
 
-        Regla operativa:
-        - Acondicionar(D) = Acondicionar(D-1) + ingresos(D) - acondicionado(D)
-        - Ubicar(D)       = Ubicar(D-1) + acondicionado(D) - ubicado(D)
+        Regla solicitada:
+        - El LUNES toma ÚNICAMENTE lo que quedó pendiente del DOMINGO anterior.
+        - MARTES toma el cierre del lunes.
+        - MIÉRCOLES toma el cierre del martes.
+        - ... y así hasta DOMINGO.
+        - Al iniciar el lunes siguiente se vuelve a sembrar con el pendiente
+          generado por ese domingo, sin reconstruir ni sumar toda la historia.
 
-        Día/Semana/Mes/Año usan únicamente el saldo al INICIO del periodo y
-        después agregan los movimientos del periodo. Nunca se suman pendientes
-        diarios entre sí y nunca se reutiliza un mismo saldo para las dos etapas.
+        Las etapas siguen separadas:
+        - Pend. acondicionar = apertura acond. + ingresos - acondicionado.
+        - Pend. ubicar       = apertura ubicar + acondicionado - ubicado.
         """
         period_type = str(params.get("period_type") or "").strip().lower()
         period_value = str(params.get("period_value") or "").strip()
@@ -128,7 +134,6 @@ def _install_pending_cut(module) -> None:
                 period_start = module.pd.Timestamp(f"{str(period_value)[:4]}-01-01").normalize()
             else:
                 return {}
-            start_date = period_start.date().isoformat()
         except Exception:
             return {}
 
@@ -141,18 +146,32 @@ def _install_pending_cut(module) -> None:
         wanted_activity = module.normalize_col(params.get("activity") or "")
         data = module.load_ops() or {}
 
+        # Para calcular el inicio del periodo sólo necesitamos:
+        # domingo anterior + lunes..día anterior dentro de esa misma semana.
+        week_monday = period_start - module.pd.Timedelta(days=int(period_start.weekday()))
+        seed_sunday = week_monday - module.pd.Timedelta(days=1)
+        carry_end = period_start - module.pd.Timedelta(days=1)
+        seed_date = seed_sunday.date().isoformat()
+        carry_end_date = carry_end.date().isoformat()
+
         daily = {store: {} for store in stores}
+
         def bucket(store, day):
             return daily[store].setdefault(day, {
-                "dev": 0.0, "muertos": 0.0, "cajas": 0.0, "probador": 0.0,
-                "acondicionado": 0.0, "ubicado": 0.0,
+                "dev": 0.0,
+                "muertos": 0.0,
+                "cajas": 0.0,
+                "probador": 0.0,
+                "acondicionado": 0.0,
+                "ubicado": 0.0,
             })
 
-        # Movimientos operativos históricos anteriores al corte.
+        # Leer exclusivamente desde el domingo semilla hasta el día previo
+        # al periodo. Nada anterior puede inflar el Pendiente Anterior.
         for row in data.get("rows") or []:
             store = str(row.get("store") or "")
             day = str(row.get("date") or "")[:10]
-            if store not in allowed or not day or day >= start_date:
+            if store not in allowed or not day or day < seed_date or day > carry_end_date:
                 continue
             if wanted_area and module.normalize_col(row.get("area") or "") != wanted_area:
                 continue
@@ -175,31 +194,66 @@ def _install_pending_cut(module) -> None:
             d["acondicionado"] += _number(row.get("acondicionado"))
             d["ubicado"] += _number(row.get("ubicado"))
 
-        # Dev Pzs forma parte del ingreso de Cambios y Muertos/Centro Operativo.
+        # Dev Pzs también se limita al domingo semilla + días corridos de la semana.
         try:
             recovery = module._get_recovery_fifo_rows(data)
         except Exception:
             recovery = data.get("recovery_fifo") or data.get("commercial_daily") or []
+
         for row in recovery or []:
             store = str(row.get("store") or "")
             day = str(row.get("date") or "")[:10]
-            if store not in allowed or not day or day >= start_date:
+            if store not in allowed or not day or day < seed_date or day > carry_end_date:
                 continue
             bucket(store, day)["dev"] += _number(row.get("dev_pzs"))
 
         opening = {}
+        monday_date = week_monday.date().isoformat()
+
         for store in stores:
-            pending_acond = 0.0
-            pending_ubicar = 0.0
-            for day in sorted(daily.get(store, {})):
-                d = daily[store][day]
-                ingresos = d["dev"] + d["muertos"] + d["cajas"] + d["probador"]
-                pending_acond = max(pending_acond + ingresos - d["acondicionado"], 0.0)
-                pending_ubicar = max(pending_ubicar + d["acondicionado"] - d["ubicado"], 0.0)
+            # 1) Domingo anterior: saldo semilla calculado SÓLO con ese domingo.
+            sunday = daily.get(store, {}).get(seed_date, {})
+            sunday_ingresos = (
+                _number(sunday.get("dev")) +
+                _number(sunday.get("muertos")) +
+                _number(sunday.get("cajas")) +
+                _number(sunday.get("probador"))
+            )
+            pending_acond = max(
+                sunday_ingresos - _number(sunday.get("acondicionado")),
+                0.0,
+            )
+            pending_ubicar = max(
+                _number(sunday.get("acondicionado")) - _number(sunday.get("ubicado")),
+                0.0,
+            )
+
+            # 2) Desde lunes hasta el día inmediatamente anterior al consultado,
+            #    cada cierre alimenta únicamente al siguiente día.
+            if period_start.weekday() > 0:
+                cursor = week_monday
+                while cursor < period_start:
+                    day = cursor.date().isoformat()
+                    d = daily.get(store, {}).get(day, {})
+                    ingresos = (
+                        _number(d.get("dev")) +
+                        _number(d.get("muertos")) +
+                        _number(d.get("cajas")) +
+                        _number(d.get("probador"))
+                    )
+                    acondicionado = _number(d.get("acondicionado"))
+                    ubicado = _number(d.get("ubicado"))
+                    pending_acond = max(pending_acond + ingresos - acondicionado, 0.0)
+                    pending_ubicar = max(pending_ubicar + acondicionado - ubicado, 0.0)
+                    cursor += module.pd.Timedelta(days=1)
+
             opening[store] = {
                 "acondicionar": pending_acond,
                 "ubicar": pending_ubicar,
+                "seed_sunday": seed_date,
+                "week_monday": monday_date,
             }
+
         return opening
 
     @wraps(original)
@@ -229,6 +283,8 @@ def _install_pending_cut(module) -> None:
             row["pendiente_anterior"] = pending_prev_acond
             row["pendiente_anterior_acondicionar"] = pending_prev_acond
             row["pendiente_anterior_ubicar"] = pending_prev_ubicar
+            row["pendiente_regla"] = "domingo->lunes->...->domingo"
+            row["pendiente_semilla_domingo"] = str(stage_open.get("seed_sunday") or "")
             row["ingresos_periodo"] = base
 
             workload_acond = pending_prev_acond + base
@@ -518,4 +574,4 @@ def install(module) -> None:
     _install_pdf_v90(module)
     _install_ui(module)
     module._V90_RENDER_PARITY = True
-    print("[V90.1-PARITY] Saldos por etapa + Python V89/V90 sincronizado en Render: Pend. Ant., menú/rol y PDF espejo.", flush=True)
+    print("[V90.2-PARITY] Pendiente semanal: domingo semilla -> lunes -> ... -> domingo; sin arrastre histórico.", flush=True)
