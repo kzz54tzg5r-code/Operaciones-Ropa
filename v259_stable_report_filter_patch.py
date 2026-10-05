@@ -381,6 +381,12 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
     });
   }
   function ensure(){
+    /* V266 es la autoridad final. No recrear la Vista operativa histórica. */
+    if(window.__V266_OPERATIONAL_PERIOD_AUTHORITY){
+      const old=q('#operativoPeriodBar .v259-period-view');
+      if(old)old.remove();
+      return;
+    }
     const bar=q('#operativoPeriodBar');
     const grid=q('#operativoPeriodBar .or-report-filter-grid');
     if(!bar||!grid)return;
@@ -424,6 +430,7 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
   }
 
   async function applyMode(mode){
+    if(window.__V266_OPERATIONAL_PERIOD_AUTHORITY)return;
     if(applying)return;
     const ctx=context();
     const opts=optionsFor(ctx.view);
