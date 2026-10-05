@@ -218,6 +218,7 @@ from v267_option7_monthly_table_patch import install as _install_v267_option7_mo
 from v268_option10_kpis_patch import install as _install_v268_option10_kpis_patch
 from v269_operation_option4_kpis_patch import install as _install_v269_operation_option4_kpis_patch
 from v270_desktop_compact_responsive_authority_patch import install as _install_v270_desktop_compact_responsive_authority_patch
+from v271_center_operativo_laptop_parity_patch import install as _install_v271_center_operativo_laptop_parity_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -366,4 +367,6 @@ _install_v268_option10_kpis_patch(web_app)
 _install_v269_operation_option4_kpis_patch(web_app)
 # V270: autoridad responsive final. Laptop/PC como referencia; móvil/tablet/iPad compactos al ancho real.
 _install_v270_desktop_compact_responsive_authority_patch(web_app)
+# V271: Centro Operativo móvil/tablet conserva exactamente la matriz de laptop, sólo compacta.
+_install_v271_center_operativo_laptop_parity_patch(web_app)
 app = web_app.app
