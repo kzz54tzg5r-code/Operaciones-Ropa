@@ -221,6 +221,7 @@ from v270_desktop_compact_responsive_authority_patch import install as _install_
 from v271_center_operativo_laptop_parity_patch import install as _install_v271_center_operativo_laptop_parity_patch
 from v272_center_pdf_parity_patch import install as _install_v272_center_pdf_parity_patch
 from v273_mobile_table_headers_patch import install as _install_v273_mobile_table_headers_patch
+from v275_operation_ui_final_patch import install as _install_v275_operation_ui_final_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -375,4 +376,6 @@ _install_v271_center_operativo_laptop_parity_patch(web_app)
 _install_v272_center_pdf_parity_patch(web_app)
 # V273: encabezados universales compactos para todas las tablas en móvil/tablet.
 _install_v273_mobile_table_headers_patch(web_app)
+# V275: capa final exclusiva de Operación; pestañas y tarjetas compactas.
+_install_v275_operation_ui_final_patch(web_app)
 app = web_app.app
