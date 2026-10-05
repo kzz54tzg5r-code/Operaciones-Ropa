@@ -1793,11 +1793,16 @@ function monthlyCrossTable(mt,showOpening=false){
     : (metaRecorridos ? recorridos/metaRecorridos*100 : 0);
 
   const dash='—';
+  const valuePieces=(value,pieces=dash)=>{
+    const v=String(value??'').trim();
+    const p=String(pieces??'').trim();
+    if(!p||p===dash||p===v)return `<b>${v||dash}</b>`;
+    return `<div class="mct-value-pieces"><b>${v||dash}</b><small>${p} pzs</small></div>`;
+  };
   const row=(label,value,pieces=dash,pctValue=dash,meta=dash,total=dash,cls='')=>`
     <tr class="${cls}">
       <td><b>${label}</b></td>
-      <td><b>${value}</b></td>
-      <td>${pieces}</td>
+      <td>${valuePieces(value,pieces)}</td>
       <td>${pctValue}</td>
       <td>${meta}</td>
       <td><b>${total}</b></td>
@@ -1812,8 +1817,8 @@ function monthlyCrossTable(mt,showOpening=false){
     <style>
       /* V242 · Opción 8: dashboard + tabla continua */
       .monthly-cross-table{
-        min-width:980px;
-        font-size:16px;
+        min-width:720px;
+        font-size:14px;
         border-collapse:separate;
         border-spacing:0;
       }
@@ -2054,10 +2059,9 @@ function monthlyCrossTable(mt,showOpening=false){
     <table class="table monthly-cross-table">
       <thead>
         <tr>
-          <th style="min-width:155px">Categoría</th>
-          <th style="min-width:210px">Indicador</th>
-          <th>Valor</th>
-          <th>Piezas</th>
+          <th style="min-width:125px">Categoría</th>
+          <th style="min-width:220px">Indicador</th>
+          <th>Valor / Piezas</th>
           <th>%</th>
           <th>Meta</th>
           <th>Total</th>
@@ -2066,36 +2070,35 @@ function monthlyCrossTable(mt,showOpening=false){
       <tbody>
         <tr>
           <td rowspan="${showOpening?6:5}" class="monthly-cat" style="vertical-align:middle;background:#ECFDF5;color:#047857;text-align:center">OPERACIÓN<br><span>(RECOLECCIÓN)</span></td>
-          <td><b>DEV PZS</b></td><td><b>${fmt(dev)}</b></td><td>${fmt(dev)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(dev)}</b></td>
+          <td><b>DEV PZS</b></td><td>${valuePieces(fmt(dev),fmt(dev))}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(dev)}</b></td>
         </tr>
         ${row('MUERTOS',fmt(muertos),fmt(muertos),dash,dash,fmt(muertos))}
         ${row('PROBADOR',fmt(probador),fmt(probador),dash,dash,fmt(probador))}
         ${row('CAJAS',fmt(cajas),fmt(cajas),dash,dash,fmt(cajas))}
         ${showOpening?row('PENDIENTE ANTERIOR',fmt(pendingPrev),fmt(pendingPrev),dash,dash,fmt(pendingPrev)) : ''}
         <tr style="background:#E8F8EF">
-          <td><b>TOTAL OPERACIÓN</b></td><td><b>${fmt(totalOperacion)}</b></td><td><b>${fmt(totalOperacion)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalOperacion)}</b></td>
+          <td><b>TOTAL OPERACIÓN</b></td><td>${valuePieces(fmt(totalOperacion),fmt(totalOperacion))}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalOperacion)}</b></td>
         </tr>
 
         <tr>
           <td rowspan="3" class="monthly-cat" style="vertical-align:middle;background:#FFF2E8;color:#C2410C;text-align:center">PENDIENTES</td>
-          <td><b>PENDIENTE DE ACONDICIONAR</b></td><td><b>${fmt(pendAcond)}</b></td><td>${fmt(pendAcond)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendAcond)}</b></td>
+          <td><b>PENDIENTE DE ACONDICIONAR</b></td><td>${valuePieces(fmt(pendAcond),fmt(pendAcond))}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendAcond)}</b></td>
         </tr>
-        <tr><td><b>PENDIENTE DE UBICAR</b></td><td><b>${fmt(pendUbicar)}</b></td><td>${fmt(pendUbicar)}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendUbicar)}</b></td></tr>
-        <tr style="background:#FFF0E6"><td><b>TOTAL PENDIENTES</b></td><td><b>${fmt(totalPend)}</b></td><td><b>${fmt(totalPend)}</b></td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPend)}</b></td></tr>
+        <tr><td><b>PENDIENTE DE UBICAR</b></td><td>${valuePieces(fmt(pendUbicar),fmt(pendUbicar))}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(pendUbicar)}</b></td></tr>
+        <tr style="background:#FFF0E6"><td><b>TOTAL PENDIENTES</b></td><td>${valuePieces(fmt(totalPend),fmt(totalPend))}</td><td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPend)}</b></td></tr>
 
         <tr style="background:#EAF3FF;color:#173B73">
           <td colspan="2"><b>TOTAL GENERAL · TOTAL PZS</b></td>
-          <td><b>${fmt(totalPzs)}</b></td>
-          <td><b>${fmt(totalPzs)}</b></td>
+          <td>${valuePieces(fmt(totalPzs),fmt(totalPzs))}</td>
           <td>${dash}</td><td>${dash}</td><td><b>${fmt(totalPzs)}</b></td>
         </tr>
 
         <tr>
           <td rowspan="3" class="monthly-cat" style="vertical-align:middle;background:#F3EAFF;color:#6D28D9;text-align:center">AVANCE %</td>
-          <td><b>RECORRIDOS REALIZADOS</b></td><td><b>${fmt(recorridos)}</b></td><td>${dash}</td><td><b>${pct(pctRec)}</b></td><td>${fmt(metaRecorridos)}</td><td>${dash}</td>
+          <td><b>RECORRIDOS REALIZADOS</b></td><td>${valuePieces(fmt(recorridos),dash)}</td><td><b>${pct(pctRec)}</b></td><td>${fmt(metaRecorridos)}</td><td>${dash}</td>
         </tr>
-        <tr><td><b>% ACONDICIONADO</b></td><td><b>${pct(pctAcond)}</b></td><td>${fmt(acondicionado)}</td><td><b>${pct(pctAcond)}</b></td><td>${dash}</td><td>${dash}</td></tr>
-        <tr><td><b>% UBICADO</b></td><td><b>${pct(pctUbicado)}</b></td><td>${fmt(ubicado)}</td><td><b>${pct(pctUbicado)}</b></td><td>${dash}</td><td>${dash}</td></tr>
+        <tr><td><b>% ACONDICIONADO</b></td><td>${valuePieces(pct(pctAcond),fmt(acondicionado))}</td><td><b>${pct(pctAcond)}</b></td><td>${dash}</td><td>${dash}</td></tr>
+        <tr><td><b>% UBICADO</b></td><td>${valuePieces(pct(pctUbicado),fmt(ubicado))}</td><td><b>${pct(pctUbicado)}</b></td><td>${dash}</td><td>${dash}</td></tr>
       </tbody>
     </table>
   </div>
