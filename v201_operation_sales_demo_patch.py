@@ -670,7 +670,30 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       nativeBar.classList.toggle('hidden',!needsFilter);
       nativeBar.style.display=needsFilter?'block':'none';
     }
+    host.dataset.v201DemoView=demoTab;
     host.innerHTML=(demoTab==='summary'?trend(demoData):'')+(views[demoTab]||summary)(demoData);
+  }
+
+  let demoGuardTimer=0;
+  function guardDemo(){
+    if(!demoMode||!demoData||!isOperation())return;
+    clearTimeout(demoGuardTimer);
+    demoGuardTimer=setTimeout(()=>{
+      if(!demoMode||!demoData||!isOperation())return;
+      const host=q('#operativoDynamicContent');
+      if(!host)return;
+      const marker=host.querySelector('.v201-demo-note');
+      if(!marker||host.dataset.v201DemoView!==demoTab){
+        renderDemo();
+        return;
+      }
+      document.body.classList.add('v201-demo-mode');
+      const title=q('#operativoDynamicTitle');
+      const sub=q('#operativoDynamicSub');
+      if(title&&title.textContent!=='Operación · DEMO')title.textContent='Operación · DEMO';
+      if(sub&&sub.textContent!=='Datos de venta reales como base · operación estimada para visualización')sub.textContent='Datos de venta reales como base · operación estimada para visualización';
+      syncTab();
+    },25);
   }
 
   async function openDemo(tab='summary'){
@@ -723,10 +746,17 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       el.addEventListener('change',()=>{if(demoMode&&demoTab==='productivity')renderDemo()});
     });
   }
-  function setup(){ensureToolbar();bindDemoFilters();if(demoMode&&isOperation())renderDemo()}
+  let demoObserver=null;
+  function setupDemoGuard(){
+    if(demoObserver)return;
+    demoObserver=new MutationObserver(()=>guardDemo());
+    demoObserver.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style','aria-selected']});
+    setInterval(()=>{if(demoMode)guardDemo()},250);
+  }
+  function setup(){ensureToolbar();bindDemoFilters();setupDemoGuard();if(demoMode&&isOperation())guardDemo()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
   [250,800,1600].forEach(ms=>setTimeout(setup,ms));
-  console.info('[V201] Demo de Operación basado en ventas reales disponible bajo demanda.');
+  console.info('[V201.1] Demo de Operación protegido contra re-render de capas posteriores.');
 })();
 </script>'''
 
@@ -749,7 +779,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V204",
+                "X-Operations-UI-Version": "V201.1-DEMO-GUARD",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
@@ -757,4 +787,4 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
             return response
 
     m._V201_OPERATION_SALES_DEMO = True
-    print("[V204] Demo Operación: ranking de tiendas + colaboradores por rol.", flush=True)
+    print("[V201.1] Demo Operación: contenido protegido contra sobrescrituras tardías.", flush=True)
