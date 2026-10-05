@@ -1,4 +1,4 @@
-"""V269 · Opción 4 compacta en tarjetas de Operación.
+"""V269.2 · Opción 4 compacta en tarjetas de Operación.
 
 Aplica exclusivamente a:
 - Resumen: .v149-kpis / .v149-kpi
@@ -19,19 +19,29 @@ def install(m):
         return
 
     css = r'''<style id="v269-operation-option4-kpis-css">
-/* V269.1 · Opción 4 ultra compacta · Resumen + Productividad */
-body[data-v163-module="operation"] .v149-kpis,
-body[data-v163-module="operation"] .v204-kpis{
+/* V269.2 · Opción 4 ultra compacta · Resumen + Productividad */
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis,
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{
   display:grid!important;
   gap:6px!important;
   margin:6px 0 8px!important;
   align-items:stretch!important;
 }
-body[data-v163-module="operation"] .v149-kpis{grid-template-columns:repeat(5,minmax(0,1fr))!important}
-body[data-v163-module="operation"] .v204-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+body:is([data-v163-module="operation"],.v238-module-operation) #operativoDynamicContent .v149-kpi,
+body:is([data-v163-module="operation"],.v238-module-operation) #operativoDynamicContent .v204-kpi{
+  height:78px!important;
+  min-height:78px!important;
+  max-height:78px!important;
+  padding:28px 8px 6px!important;
+  margin:0!important;
+  border-radius:10px!important;
+  overflow:hidden!important;
+}
 
-body[data-v163-module="operation"] .v149-kpi.v269-option4-card,
-body[data-v163-module="operation"] .v204-kpi.v269-option4-card{
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card,
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card{
   position:relative!important;
   box-sizing:border-box!important;
   height:78px!important;
@@ -45,10 +55,10 @@ body[data-v163-module="operation"] .v204-kpi.v269-option4-card{
   background:#fff!important;
   box-shadow:0 3px 9px rgba(18,63,115,.05)!important;
 }
-body[data-v163-module="operation"] .v149-kpi.v269-option4-card:before,
-body[data-v163-module="operation"] .v204-kpi.v269-option4-card:before{display:none!important}
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card:before,
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card:before{display:none!important}
 
-body[data-v163-module="operation"] .v269-option4-card .v269-ribbon{
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card .v269-ribbon{
   position:absolute!important;
   z-index:5!important;
   left:0!important;
@@ -69,7 +79,7 @@ body[data-v163-module="operation"] .v269-option4-card .v269-ribbon{
   visibility:visible!important;
   clip-path:none!important;
 }
-body[data-v163-module="operation"] .v269-option4-card .v269-icon{
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card .v269-icon{
   position:absolute!important;
   z-index:6!important;
   left:5px!important;
@@ -87,10 +97,10 @@ body[data-v163-module="operation"] .v269-option4-card .v269-icon{
   color:var(--v269,#1679e8)!important;
   box-shadow:none!important;
 }
-body[data-v163-module="operation"] .v269-option4-card .v269-icon svg{
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card .v269-icon svg{
   width:10px!important;height:10px!important;display:block!important
 }
-body[data-v163-module="operation"] .v269-option4-card .v269-title{
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card .v269-title{
   display:block!important;
   min-width:0!important;
   overflow:hidden!important;
@@ -104,13 +114,13 @@ body[data-v163-module="operation"] .v269-option4-card .v269-title{
   text-transform:uppercase!important;
 }
 
-body[data-v163-module="operation"] .v149-kpi.v269-option4-card > small,
-body[data-v163-module="operation"] .v204-kpi.v269-option4-card > small{
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card > small,
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card > small{
   display:none!important;
 }
 
-body[data-v163-module="operation"] .v149-kpi.v269-option4-card > b,
-body[data-v163-module="operation"] .v204-kpi.v269-option4-card > b{
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card > b,
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card > b{
   display:block!important;
   margin:2px 0 0!important;
   padding:0!important;
@@ -121,8 +131,8 @@ body[data-v163-module="operation"] .v204-kpi.v269-option4-card > b{
   letter-spacing:-.025em!important;
   white-space:nowrap!important;
 }
-body[data-v163-module="operation"] .v149-kpi.v269-option4-card > span:not(.v269-ribbon),
-body[data-v163-module="operation"] .v204-kpi.v269-option4-card > span:not(.v269-ribbon){
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card > span:not(.v269-ribbon),
+body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card > span:not(.v269-ribbon){
   display:block!important;
   margin:3px 0 0!important;
   padding:0!important;
@@ -135,35 +145,35 @@ body[data-v163-module="operation"] .v204-kpi.v269-option4-card > span:not(.v269-
   text-overflow:ellipsis!important;
 }
 
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="blue"]{--v269:#168cff}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="purple"]{--v269:#7c3aed}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="pink"]{--v269:#e91e78}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="red"]{--v269:#ef4444}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="green"]{--v269:#10b981}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="orange"]{--v269:#f59e0b}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="teal"]{--v269:#0fa9a2}
-body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="navy"]{--v269:#1d568d}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="blue"]{--v269:#168cff}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="purple"]{--v269:#7c3aed}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="pink"]{--v269:#e91e78}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="red"]{--v269:#ef4444}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="green"]{--v269:#10b981}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="orange"]{--v269:#f59e0b}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="teal"]{--v269:#0fa9a2}
+body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card[data-v269-tone="navy"]{--v269:#1d568d}
 
 @media(max-width:1100px) and (min-width:701px){
-  body[data-v163-module="operation"] .v149-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-  body[data-v163-module="operation"] .v204-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 }
 @media(max-width:700px){
-  body[data-v163-module="operation"] .v149-kpis,
-  body[data-v163-module="operation"] .v204-kpis{
+  body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis,
+  body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{
     grid-template-columns:repeat(2,minmax(0,1fr))!important;
     gap:5px!important;
   }
-  body[data-v163-module="operation"] .v149-kpi.v269-option4-card,
-  body[data-v163-module="operation"] .v204-kpi.v269-option4-card{
+  body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card,
+  body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card{
     height:70px!important;
     min-height:70px!important;
     max-height:70px!important;
     padding:25px 6px 5px!important;
   }
-  body[data-v163-module="operation"] .v269-option4-card .v269-ribbon{height:22px!important;min-height:22px!important}
-  body[data-v163-module="operation"] .v149-kpi.v269-option4-card > b,
-  body[data-v163-module="operation"] .v204-kpi.v269-option4-card > b{font-size:18px!important}
+  body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-card .v269-ribbon{height:22px!important;min-height:22px!important}
+  body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpi.v269-option4-card > b,
+  body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpi.v269-option4-card > b{font-size:18px!important}
 }
 </style>'''
 
@@ -291,9 +301,14 @@ body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="navy"]{--v
     });
   }
 
+  function isOperationMode(){
+    if(document.body.classList.contains('v238-module-operation'))return true;
+    if(String(document.body.dataset.v163Module||'').toLowerCase()==='operation')return true;
+    try{return String(window.MAIN||MAIN||'').toLowerCase()==='operation'}catch(_){return false}
+  }
   function enforce(){
-    if(String(document.body.dataset.v163Module||'').toLowerCase()!=='operation')return;
-    qa('.v149-kpis').forEach(grid=>{
+    if(!isOperationMode())return;
+    qa('#operativoDynamicContent .v149-kpis,.v149-kpis').forEach(grid=>{
       forceGrid(grid,'summary');
       qa(':scope > .v149-kpi',grid).forEach((card,i)=>decorateCard(card,summaryTones[i%summaryTones.length]));
     });
@@ -313,15 +328,16 @@ body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="navy"]{--v
   function start(){
     mo.observe(document.body,{subtree:true,childList:true});
     enforce();
-    [80,200,450,900,1600].forEach(ms=>setTimeout(enforce,ms));
+    [60,140,260,500,900,1600,2600,4200].forEach(ms=>setTimeout(enforce,ms));
   }
   window.addEventListener('resize',schedule,{passive:true});
-  document.addEventListener('click',()=>setTimeout(enforce,50),true);
-  document.addEventListener('change',()=>setTimeout(enforce,50),true);
+  window.addEventListener('pageshow',()=>[50,180,500].forEach(ms=>setTimeout(enforce,ms)),{passive:true});
+  document.addEventListener('click',()=>[20,100,260,620].forEach(ms=>setTimeout(enforce,ms)),true);
+  document.addEventListener('change',()=>[20,100,260,620].forEach(ms=>setTimeout(enforce,ms)),true);
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
-  console.info('[V269.1] Opción 4 ultra compacta aplicada con estilos inline.');
+  console.info('[V269.2] Opción 4 compacta autoritativa aplicada en Resumen/Productividad.');
 })();
 </script>'''
 
@@ -345,7 +361,7 @@ body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="navy"]{--v
                 "Cache-Control":"no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma":"no-cache",
                 "Expires":"0",
-                "X-Operations-UI-Version":"V269.1-OPTION4-KPIS",
+                "X-Operations-UI-Version":"V269.2-OPTION4-KPIS",
             })
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
@@ -353,4 +369,4 @@ body[data-v163-module="operation"] .v269-option4-card[data-v269-tone="navy"]{--v
             return response
 
     m._V269_OPERATION_OPTION4_KPIS=True
-    print("[V269.1] Opción 4 ultra compacta instalada en Resumen y Productividad.",flush=True)
+    print("[V269.2] Opción 4 compacta autoritativa instalada en Resumen y Productividad.",flush=True)
