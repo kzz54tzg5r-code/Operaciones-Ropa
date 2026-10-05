@@ -5,8 +5,8 @@
 - Agrega "Piezas pendientes" a Captura diaria de Origen.
 - Piezas pendientes capturadas son el cierre autoritativo de Origen; si no existen,
   se usa el pendiente derivado histórico como compatibilidad.
-- Personal requerido = ceil(pendiente Origen / estándar ponderado Colgado-Doblado)
-  + ceil(pendiente Cambios y Muertos / estándar C&M).
+- Personal requerido = ceil(pendiente Origen / estándar ponderado Colgado-Doblado).
+- Cambios y Muertos no participa en los cálculos del módulo Operación.
 """
 from __future__ import annotations
 
