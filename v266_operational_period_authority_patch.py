@@ -1,4 +1,4 @@
-"""V266.1 · controlador autoritativo de periodos operativos.
+"""V266.2 · controlador autoritativo de periodos operativos.
 
 Corrige la desincronización entre la Vista operativa visible y el selector
 real usado por los reportes. Obtiene periodos reales desde /api/operations/meta,
@@ -143,6 +143,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
 
   let metaCache=null;
   let metaAt=0;
+  let metaCacheKey='';
   let rendering=false;
   let queued=null;
   let ensureTimer=0;
@@ -233,27 +234,37 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     sel.value=mode;
   }
   async function loadMeta(force=false){
-    if(!force&&metaCache&&Date.now()-metaAt<60000)return metaCache;
+    const operation=operationModuleActive();
+    const endpoint=operation?'/api/operation/meta':'/api/operations/meta';
+    if(!force&&metaCache&&metaCacheKey===endpoint&&Date.now()-metaAt<60000)return metaCache;
     try{
-      const res=await fetch('/api/operations/meta',{credentials:'same-origin',cache:'no-store'});
+      const res=await fetch(endpoint,{credentials:'same-origin',cache:'no-store'});
       if(!res.ok)throw new Error('HTTP '+res.status);
-      const d=await res.json();
-      metaCache=d||{};
+      const raw=await res.json();
+      const d=raw||{};
+      metaCache=operation?{
+        ...d,
+        available_dates:d.available_dates||d.dates||[],
+        available_weeks:d.available_weeks||d.weeks||[],
+        available_months:d.available_months||d.months||[],
+        available_years:d.available_years||d.years||[]
+      }:d;
+      metaCacheKey=endpoint;
       metaAt=Date.now();
-      /* Compatibilidad con V254/V259, que leen esta referencia. */
-      window.OPSDATA=metaCache;
+      /* OPSDATA sólo pertenece a Cambios y Muertos; no contaminarlo con meta de Operación. */
+      if(!operation)window.OPSDATA=metaCache;
       return metaCache;
     }catch(err){
-      console.error('[V266] metadata',err);
-      return metaCache||{};
+      console.error('[V266] metadata',endpoint,err);
+      return (metaCacheKey===endpoint?metaCache:null)||{};
     }
   }
   function listFor(meta,mode){
-    if(mode==='day')return [...(meta.available_dates||[])].filter(Boolean).sort();
-    if(mode==='week')return [...(meta.available_weeks||[])].filter(Boolean).sort();
-    if(mode==='month')return [...(meta.available_months||[])].filter(Boolean).sort();
+    if(mode==='day')return [...(meta.available_dates||meta.dates||[])].filter(Boolean).sort();
+    if(mode==='week')return [...(meta.available_weeks||meta.weeks||[])].filter(Boolean).sort();
+    if(mode==='month')return [...(meta.available_months||meta.months||[])].filter(Boolean).sort();
     if(mode==='year'){
-      const direct=[...(meta.available_years||[])].map(String).filter(Boolean);
+      const direct=[...(meta.available_years||meta.years||[])].map(String).filter(Boolean);
       if(direct.length)return [...new Set(direct)].sort();
       return [...new Set((meta.available_months||[]).map(x=>String(x||'').slice(0,4)).filter(x=>/^\d{4}$/.test(x)))].sort();
     }
@@ -384,7 +395,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     }finally{
       rendering=false;
       /* Reafirmar identidad después de que capas históricas reconstruyan controles. */
-      [0,40,120,280].forEach(ms=>setTimeout(async()=>{
+      [0,40,120,280,520,980].forEach(ms=>setTimeout(async()=>{
         const now=active();
         if(now.key!==ctx.key||now.view!==ctx.view)return;
         const opts=options(now.view);
@@ -452,7 +463,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     }
   }
 
-  document.addEventListener('click',e=>{
+  window.addEventListener('click',e=>{
     const b=e.target.closest?.('#operativoPeriodBar .v266-period-btn');
     if(!b)return;
     e.preventDefault();
@@ -460,7 +471,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     chooseMode(String(b.dataset.mode||''));
   },true);
 
-  document.addEventListener('change',e=>{
+  window.addEventListener('change',e=>{
     const id=e.target?.id||'';
     if(id==='operPeriodSelect'){
       e.stopImmediatePropagation();
@@ -499,7 +510,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 
-  console.info('[V266.1] Periodos operativos: Operación respeta su subpestaña activa; Centro Operativo queda aislado.');
+  console.info('[V266.2] Periodos: fuente correcta por módulo + captura temprana sin carreras heredadas.');
 })();
 </script>'''
 
@@ -531,4 +542,4 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
             return response
 
     m._V266_OPERATIONAL_PERIOD_AUTHORITY=True
-    print("[V266.1] Periodos operativos instalados con aislamiento Operación/Centro Operativo.",flush=True)
+    print("[V266.2] Periodos operativos instalados con metadata por módulo y eventos autoritativos.",flush=True)
