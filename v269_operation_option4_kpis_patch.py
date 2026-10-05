@@ -1,4 +1,4 @@
-"""V269.3 · Opción 4 compacta en tarjetas de Operación.
+"""V269.4 · Opción 4 compacta en tarjetas de Operación.
 
 Aplica exclusivamente a:
 - Resumen: .v149-kpis / .v149-kpi
@@ -306,6 +306,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
     try{return String(window.MAIN||MAIN||'').toLowerCase()==='operation'}catch(_){return false}
   }
   function enforce(){
+    if(window.__V275_OPERATION_UI_FINAL)return;
     if(!isOperationMode())return;
     qa('#operativoDynamicContent .v149-kpis,.v149-kpis').forEach(grid=>{
       forceGrid(grid,'summary');
@@ -336,7 +337,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
-  console.info('[V269.3] Opción 4 restaurada: Resumen 4x2 y Productividad 4 columnas.');
+  console.info('[V269.4] Opción 4 queda en espera cuando V275/V276 controla Operación.');
 })();
 </script>'''
 
@@ -360,7 +361,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
                 "Cache-Control":"no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma":"no-cache",
                 "Expires":"0",
-                "X-Operations-UI-Version":"V269.3-OPTION4-KPIS",
+                "X-Operations-UI-Version":"V269.4-OPTION4-KPIS",
             })
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
@@ -368,4 +369,4 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
             return response
 
     m._V269_OPERATION_OPTION4_KPIS=True
-    print("[V269.3] Opción 4 compacta 4 columnas instalada en Resumen y Productividad.",flush=True)
+    print("[V269.4] Opción 4 instalada sin interferir con la capa final de Operación.",flush=True)
