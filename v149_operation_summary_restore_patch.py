@@ -2,8 +2,9 @@
 
 Se instala al final de la cadena para que no lo oculten los parches posteriores.
 Resumen: Llegada Origen, productividad, mercancía liberada, pendiente,
-eficiencia, productividad promedio, cumplimiento, colaboradores; además
-Origen vs Cambios y Muertos, desempeño por tienda, Top 5 y alertas.
+eficiencia, productividad promedio, cumplimiento y colaboradores.
+El módulo Operación es exclusivamente Origen; Cambios y Muertos se mantiene
+separado en su propio módulo.
 """
 from __future__ import annotations
 
