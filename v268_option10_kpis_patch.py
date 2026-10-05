@@ -283,8 +283,8 @@ def install(m):
 
     js = r'''<script id="v268-option10-kpis-js">
 (function(){
-  if(window.__V268_OPTION10_KPIS)return;
-  window.__V268_OPTION10_KPIS=true;
+  if(window.__V268_OPTION10_KPIS_V3)return;
+  window.__V268_OPTION10_KPIS_V3=true;
 
   const q=(s,r=document)=>r.querySelector(s);
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
@@ -310,92 +310,107 @@ def install(m):
     const t=String(label||'').toLowerCase();
     if(t.includes('pieza'))return ICONS.cube;
     if(t.includes('%'))return ICONS.percent;
-    if(t.includes('recuperación $')||t.includes('valor devolución'))return ICONS.money;
+    if(t.includes('recuperación')||t.includes('devolución'))return ICONS.money;
     if(t.includes('pendiente'))return ICONS.clock;
     if(t.includes('score'))return ICONS.gauge;
     return ICONS.bars;
   }
 
-  function reset(){
-    const root=q('#operativoDynamicContent');
-    if(!root)return;
+  function clearOutside(root){
     root.classList.remove('v268-score-active');
     qa('.report-kpis.v268-option10-grid',root).forEach(g=>g.classList.remove('v268-option10-grid'));
     qa('.report-kpi.v268-option10-card',root).forEach(card=>{
-      if(card.dataset.v268Native==='1')return;
       card.classList.remove('v268-option10-card');
       card.removeAttribute('data-v268-tone');
-      q('.v268-ribbon',card)?.remove();
-      q('.v268-mini',card)?.remove();
+      card.removeAttribute('data-v268-ready');
+      q(':scope > .v268-ribbon',card)?.remove();
+      q(':scope > .v268-mini',card)?.remove();
     });
   }
 
-  function decorate(){
+  function decorateCard(card,i){
+    if(!card)return;
+    card.classList.add('v268-option10-card');
+    card.dataset.v268Tone=tones[i%tones.length];
+
+    const label=q(':scope > .rk-label',card)?.textContent?.trim()||'Indicador';
+    let ribbon=q(':scope > .v268-ribbon',card);
+    if(!ribbon){
+      ribbon=document.createElement('div');
+      ribbon.className='v268-ribbon';
+      card.insertBefore(ribbon,card.firstChild);
+    }
+    if(ribbon.dataset.label!==label){
+      ribbon.dataset.label=label;
+      ribbon.innerHTML='<span class="v268-icon">'+iconFor(label)+'</span><span class="v268-ribbon-title"></span>';
+      const title=q('.v268-ribbon-title',ribbon);
+      if(title)title.textContent=label;
+    }
+
+    if(!q(':scope > .v268-mini',card)){
+      const mini=document.createElement('span');
+      mini.className='v268-mini';
+      mini.setAttribute('aria-hidden','true');
+      mini.innerHTML='<i></i><i></i><i></i><i></i><i></i>';
+      card.appendChild(mini);
+    }
+    card.dataset.v268Ready='1';
+  }
+
+  function enforce(){
     const root=q('#operativoDynamicContent');
     if(!root)return;
+
     const view=activeView();
     if(!allowed.has(view)){
-      reset();
+      if(q('.v268-option10-card',root))clearOutside(root);
       return;
     }
 
     root.classList.toggle('v268-score-active',view==='Índice Integral');
 
-    const grids=qa('.report-kpis',root);
+    /* Sólo los KPI principales del reporte activo. */
+    const grids=qa('.report-kpis',root).filter(g=>qa(':scope > .report-kpi',g).length>0);
     grids.forEach(grid=>{
-      const cards=qa(':scope > .report-kpi',grid);
-      if(!cards.length)return;
       grid.classList.add('v268-option10-grid');
-      cards.forEach((card,i)=>{
-        card.classList.add('v268-option10-card');
-        card.dataset.v268Tone=tones[i%tones.length];
-
-        const label=q(':scope > .rk-label',card)?.textContent?.trim()||'Indicador';
-        let ribbon=q(':scope > .v268-ribbon',card);
-        if(!ribbon){
-          ribbon=document.createElement('div');
-          ribbon.className='v268-ribbon';
-          card.insertBefore(ribbon,card.firstChild);
-        }
-        ribbon.innerHTML='<span class="v268-icon">'+iconFor(label)+'</span><span class="v268-ribbon-title"></span>';
-        q('.v268-ribbon-title',ribbon).textContent=label;
-
-        if(!q(':scope > .v268-mini',card)){
-          const mini=document.createElement('span');
-          mini.className='v268-mini';
-          mini.setAttribute('aria-hidden','true');
-          mini.innerHTML='<i></i><i></i><i></i><i></i><i></i>';
-          card.appendChild(mini);
-        }
-      });
+      qa(':scope > .report-kpi',grid).forEach(decorateCard);
     });
   }
 
-  let timer=0;
-  const observer=new MutationObserver(()=>{
-    clearTimeout(timer);
-    timer=setTimeout(decorate,24);
-  });
-
-  function start(){
-    const root=q('#operativoDynamicContent');
-    const nav=q('#operativoNav');
-    if(root)observer.observe(root,{subtree:true,childList:true});
-    if(nav)observer.observe(nav,{subtree:true,attributes:true,attributeFilter:['class','aria-selected']});
-    decorate();
-    [80,220,500,1000].forEach(ms=>setTimeout(decorate,ms));
+  function burst(){
+    [0,40,100,220,450,900,1500].forEach(ms=>setTimeout(enforce,ms));
   }
 
   document.addEventListener('click',e=>{
-    if(e.target.closest?.('#operativoNav>button[data-opview]')){
-      [0,50,150,400].forEach(ms=>setTimeout(decorate,ms));
+    if(e.target.closest?.('#operativoNav>button[data-opview]')||
+       e.target.closest?.('#operativoPeriodBar button')||
+       e.target.closest?.('#operativoPeriodBar select')){
+      burst();
     }
   },true);
+
+  document.addEventListener('change',e=>{
+    if(e.target?.closest?.('#operativoPeriodBar'))burst();
+  },true);
+
+  function start(){
+    enforce();
+    burst();
+    /* Guardia ligera: detecta renders tardíos sin mutar si ya está correcto. */
+    window.__V268_OPTION10_TIMER=setInterval(()=>{
+      const view=activeView();
+      if(!allowed.has(view))return;
+      const root=q('#operativoDynamicContent');
+      if(!root)return;
+      const cards=qa('.report-kpis > .report-kpi',root);
+      if(cards.length && cards.some(c=>c.dataset.v268Ready!=='1'))enforce();
+    },350);
+  }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 
-  console.info('[V268] KPI Opción 10 activa en Conversión, Recuperación $ y Score.');
+  console.info('[V268.3] Opción 10 persistente activa en Conversión, Recuperación $ y Score.');
 })();
 </script>'''
 
@@ -419,7 +434,7 @@ def install(m):
                 "Cache-Control":"no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma":"no-cache",
                 "Expires":"0",
-                "X-Operations-UI-Version":"V268-OPTION10-KPIS",
+                "X-Operations-UI-Version":"V268.3-OPTION10-KPIS",
             })
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
@@ -427,4 +442,4 @@ def install(m):
             return response
 
     m._V268_OPTION10_KPIS=True
-    print("[V268] Opción 10 aplicada a Conversión, Recuperación $ y Score.",flush=True)
+    print("[V268.3] Opción 10 persistente aplicada a Conversión, Recuperación $ y Score.",flush=True)
