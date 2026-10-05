@@ -547,12 +547,116 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     return '<div class="v201-demo-bars">'+Object.entries(d.company.activities||{}).map(([name,val])=>'<div class="v201-demo-bar"><b>'+esc(name)+'</b><div class="v201-demo-track"><div class="v201-demo-fill" style="width:'+Math.min(100,n(val)/total*100)+'%"></div></div><span class="v201-demo-val">'+pct(n(val)/total*100)+'</span></div>').join('')+'</div>';
   }
 
+  /* V279 · El Resumen DEMO replica exactamente la Opción 1 del reporte real.
+     Los valores siguen siendo DEMO/estimados y nunca se guardan. */
+  function v279Status(score){
+    if(score>=95)return ['Excelente','excellent'];
+    if(score>=80)return ['En objetivo','target'];
+    if(score>=70)return ['Atención','attention'];
+    return ['Crítico','critical'];
+  }
+  function v279DemoRows(d){
+    return (d.stores||[]).map((r,i)=>{
+      const target=n(r.collaborators)*n(d.productivity_target)*Math.max(1,n(d.workdays));
+      const productivity=target?n(r.processed)/target*100:n(r.compliance);
+      const flow=n(r.arrival)?n(r.released)/n(r.arrival)*100:0;
+      const pendingScore=n(r.arrival)?Math.max(0,Math.min(100,(1-n(r.pending)/n(r.arrival))*100)):100;
+      const advance=Math.max(68,Math.min(112,n(r.efficiency)+((i%5)-2)*2.2));
+      const offsets=[4,-3,1,-1];
+      const areaPct={};
+      ['Colgado','Doblado','Jeans','Lencería'].forEach((a,j)=>{
+        areaPct[a]=Math.max(60,Math.min(112,productivity+offsets[(j+i)%offsets.length]));
+      });
+      const coverage=Object.values(areaPct).reduce((a,b)=>a+Math.min(100,n(b)),0)/4;
+      let score=Math.min(100,productivity)*.35+Math.min(100,flow)*.30+pendingScore*.20+Math.min(100,advance)*.10+coverage*.05;
+      if(pendingScore<70)score=Math.min(score,94);
+      const st=v279Status(score);
+      const clas=n(r.arrival)*.72;
+      const pizca=n(r.arrival)*.28;
+      const originUb=n(r.released)*.70;
+      const resUb=n(r.released)*.30;
+      return {
+        ...r,rank:i+1,score,status:st[0],status_key:st[1],
+        productivity_pct:productivity,flow_pct:flow,pending_score:pendingScore,
+        advance_pct:advance,coverage_pct:coverage,area_pct:areaPct,
+        origin:{Clasificado:clas,Acondicionado:Math.max(originUb,clas*.91),Ubicado:originUb},
+        resupply:{Pizca:pizca,Acondicionado:Math.max(resUb,pizca*.92),Ubicado:resUb}
+      };
+    }).sort((a,b)=>n(b.score)-n(a.score)||n(b.productivity_pct)-n(a.productivity_pct)||String(a.store).localeCompare(String(b.store),'es'))
+      .map((r,i)=>({...r,rank:i+1}));
+  }
+  function v279Flow(x,names){
+    const a=n(x[names[0]]),b=n(x[names[1]]),c=n(x[names[2]]);
+    return '<div class="v278-steps"><div class="v278-step">'+names[0]+'</div><div class="v278-step">'+names[1]+'</div><div class="v278-step">'+names[2]+'</div></div>'+
+      '<div class="v278-nums"><div><b>'+nf(a)+'</b><span>inicio</span></div><div><b>'+nf(b)+'</b><span>'+(a?p(b/a*100):'0')+'%</span></div><div><b>'+nf(c)+'</b><span>'+(a?p(c/a*100):'0')+'%</span></div></div>';
+  }
+  function v279Areas(rows,d){
+    return ['Colgado','Doblado','Jeans','Lencería'].map(a=>{
+      const pieces=rows.reduce((s,r)=>s+n(r.areas?.[a]),0);
+      const cp=rows.length?rows.reduce((s,r)=>s+n(r.area_pct?.[a]),0)/rows.length:0;
+      const target=cp?pieces/(cp/100):0;
+      return {area:a,pieces,target,compliance_pct:cp};
+    });
+  }
+  function v279Kpis(s){
+    const tag=s.status||'Sin datos';
+    return '<div class="v278-kpis">'+
+      '<div class="v278-kpi g"><div class="v278-l">Score Operativo</div><div class="v278-ring" style="--p:'+Math.min(100,Math.max(0,n(s.score)))+'"><b>'+p(s.score)+'</b></div><span class="v278-tag">'+esc(tag)+'</span></div>'+
+      '<div class="v278-kpi b"><div class="v278-l">Productividad</div><div class="v278-v">'+p(s.productivity_pct)+'%</div><div class="v278-s">'+nf(s.productivity_pieces)+' / '+nf(s.productivity_target)+'</div><div class="v278-bar"><i style="width:'+Math.min(100,n(s.productivity_pct))+'%"></i></div></div>'+
+      '<div class="v278-kpi p"><div class="v278-l">Cierre de flujo</div><div class="v278-v">'+p(s.flow_pct)+'%</div><div class="v278-s">Ubicado ÷ inicio</div><div class="v278-bar"><i style="width:'+Math.min(100,n(s.flow_pct))+'%;background:#8056e8"></i></div></div>'+
+      '<div class="v278-kpi o"><div class="v278-l">Pendiente actual</div><div class="v278-v" style="color:#ef7b08">'+nf(s.pending)+'</div><div class="v278-s">Control '+p(s.pending_score)+'%</div></div>'+
+      '<div class="v278-kpi r"><div class="v278-l">Avance vs esperado</div><div class="v278-v" style="color:#e71954">'+p(s.advance_pct)+'%</div><div class="v278-s">Ritmo del periodo</div></div>'+
+      '<div class="v278-kpi b"><div class="v278-l">Pzas ubicadas</div><div class="v278-v">'+nf(s.located_pieces)+'</div><div class="v278-s">Origen + Resurtido</div></div>'+
+    '</div>';
+  }
+  function v279Ranking(rows){
+    return '<div class="v278-rank"><div class="v278-rr h"><div>#</div><div>Tienda</div><div>Score Operativo</div><div></div></div>'+
+      rows.map(r=>'<div class="v278-rr"><b>'+r.rank+'</b><b title="'+esc(r.store)+'">'+esc(r.store)+'</b><div class="v278-rb"><i style="width:'+Math.min(100,n(r.score))+'%"></i></div><div class="v278-rs">'+p(r.score)+'</div></div>').join('')+
+      '</div>';
+  }
+  function v279States(rows){
+    const counts={'Excelente':0,'En objetivo':0,'Atención':0,'Crítico':0};
+    rows.forEach(r=>counts[r.status]=(counts[r.status]||0)+1);
+    return '<table class="v278-status">'+[['Excelente','excellent'],['En objetivo','target'],['Atención','attention'],['Crítico','critical']].map(x=>{
+      const v=n(counts[x[0]]);return '<tr><td><span class="v278-dot '+x[1]+'"></span><b>'+x[0]+'</b></td><td>'+v+'</td><td>'+(rows.length?p(v/rows.length*100):'0')+'%</td></tr>';
+    }).join('')+'</table>';
+  }
+  function v279Detail(rows){
+    return '<div class="v278-tw"><table class="v278-table"><thead><tr><th>#</th><th>Tienda</th><th>Score</th><th>Productividad<span class="v278-w">35%</span></th><th>Cierre de flujo<span class="v278-w">30%</span></th><th>Pendientes<span class="v278-w">20%</span></th><th>Avance<span class="v278-w">10%</span></th><th>Cobertura áreas<span class="v278-w">5%</span></th><th>Estado</th></tr></thead><tbody>'+
+      rows.map(r=>'<tr><td>'+r.rank+'</td><td><b>'+esc(r.store)+'</b></td><td><span class="v278-chip">'+p(r.score)+'</span></td><td>'+p(r.productivity_pct)+'%</td><td>'+p(r.flow_pct)+'%</td><td>'+nf(r.pending)+' pzs</td><td>'+p(r.advance_pct)+'%</td><td>'+p(r.coverage_pct)+'%</td><td><span class="v278-state '+r.status_key+'">'+esc(r.status)+'</span></td></tr>').join('')+
+      '</tbody></table></div>';
+  }
   function summary(d){
-    return '<span class="v201-demo-marker" hidden></span>'+
-      kpis(d)+
-      demoAlerts(d)+
-      demoStoreTable(d)+
-      demoTop(d);
+    const ranking=v279DemoRows(d);
+    const selected=String(q('#operStoreSelect')?.value||'Compañía');
+    const view=selected==='Compañía'?ranking:ranking.filter(r=>String(r.store)===selected);
+    const active=view.length?view:ranking;
+    const areas=v279Areas(active,d);
+    const productivityPieces=active.reduce((s,r)=>s+n(r.processed),0);
+    const productivityTarget=active.reduce((s,r)=>s+n(r.collaborators)*n(d.productivity_target)*Math.max(1,n(d.workdays)),0);
+    const productivityPct=productivityTarget?productivityPieces/productivityTarget*100:0;
+    const arrival=active.reduce((s,r)=>s+n(r.arrival),0);
+    const located=active.reduce((s,r)=>s+n(r.released),0);
+    const flowPct=arrival?located/arrival*100:0;
+    const pending=active.reduce((s,r)=>s+n(r.pending),0);
+    const pendingScore=arrival?Math.max(0,Math.min(100,(1-pending/arrival)*100)):100;
+    const advance=active.length?active.reduce((s,r)=>s+n(r.advance_pct),0)/active.length:0;
+    const coverage=areas.length?areas.reduce((s,r)=>s+Math.min(100,n(r.compliance_pct)),0)/areas.length:0;
+    let score=Math.min(100,productivityPct)*.35+Math.min(100,flowPct)*.30+pendingScore*.20+Math.min(100,advance)*.10+coverage*.05;
+    if(pendingScore<70)score=Math.min(score,94);
+    const st=v279Status(score);
+    const s={score,status:st[0],productivity_pct:productivityPct,productivity_pieces:productivityPieces,productivity_target:productivityTarget,flow_pct:flowPct,pending,pending_score:pendingScore,advance_pct:advance,coverage_pct:coverage,located_pieces:located};
+    const origin={Clasificado:active.reduce((x,r)=>x+n(r.origin.Clasificado),0),Acondicionado:active.reduce((x,r)=>x+n(r.origin.Acondicionado),0),Ubicado:active.reduce((x,r)=>x+n(r.origin.Ubicado),0)};
+    const resupply={Pizca:active.reduce((x,r)=>x+n(r.resupply.Pizca),0),Acondicionado:active.reduce((x,r)=>x+n(r.resupply.Acondicionado),0),Ubicado:active.reduce((x,r)=>x+n(r.resupply.Ubicado),0)};
+    const areaHtml=areas.map(x=>'<div class="v278-ar"><b>'+esc(x.area)+'</b><div class="v278-pr"><i style="width:'+Math.min(100,n(x.compliance_pct))+'%"></i></div><div class="v278-ap">'+p(x.compliance_pct)+'%</div><div class="v278-an">'+nf(x.pieces)+' / '+nf(x.target)+'</div></div>').join('');
+    return '<span class="v201-demo-marker" hidden></span><div class="v278">'+
+      '<div class="v278-head"><div><h2>Reporte de Operación <span style="font-size:9px;padding:4px 7px;border-radius:999px;background:#ffffff24;vertical-align:middle">DEMO</span></h2><p>Tienda: '+esc(selected)+' &nbsp;|&nbsp; '+esc(d.period_label||'')+' · datos simulados para visualización</p></div><div class="v278-date">'+esc(d.period_label||'DEMO')+'</div></div>'+
+      v279Kpis(s)+
+      '<div class="v278-grid"><div class="v278-panel"><h3>▦ Flujo de Operación</h3><div class="v278-flows"><div class="v278-flow"><div class="v278-ft">Origen</div>'+v279Flow(origin,['Clasificado','Acondicionado','Ubicado'])+'</div><div class="v278-flow"><div class="v278-ft">Resurtido</div>'+v279Flow(resupply,['Pizca','Acondicionado','Ubicado'])+'</div></div></div><div class="v278-panel"><h3>▥ Productividad por área <small>Meta 100%</small></h3>'+areaHtml+'</div></div>'+
+      '<div class="v278-grid"><div class="v278-panel"><h3>🏆 Ranking por tienda — Score Operativo <small>'+ranking.length+' tiendas</small></h3>'+v279Ranking(ranking)+'</div><div class="v278-panel"><h3>▥ Estado de indicadores</h3>'+v279States(ranking)+'</div></div>'+
+      '<div class="v278-panel"><h3>▦ Detalle de evaluación por tienda <small>Score: 35% Productividad · 30% Cierre · 20% Pendientes · 10% Avance · 5% Cobertura</small></h3>'+v279Detail(ranking)+'</div>'+
+      '<div class="v201-demo-note"><b>DEMO</b><span>Estos valores sirven únicamente para visualizar la Opción 1 llena. No se guardan ni sustituyen la operación real.</span></div>'+
+      '</div>';
   }
 
   function daily(d){
