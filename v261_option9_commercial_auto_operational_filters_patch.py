@@ -334,16 +334,26 @@ body[data-v163-module="operativo"] #operativoPeriodBar > .or-report-filter-grid 
   let opBusy=false;
   let opQueued=false;
 
+  function operationalFilterActive(){
+    const bar=q('#operativoPeriodBar');
+    const nav=q('#operativoNav');
+    const active=q('#operativoNav>button.active[data-opview],#operativoNav>button[aria-selected="true"][data-opview]');
+    if(!bar||!nav||!active)return false;
+    if(bar.classList.contains('hidden'))return false;
+    const view=String(active.dataset.opview||'');
+    return view!=='Carga de datos'&&view!=='Metas y tiendas';
+  }
+
   async function runOperationalQuery(){
-    if(moduleName()!=='operativo')return;
+    if(!operationalFilterActive())return;
     if(opBusy){opQueued=true;return}
     const apply=q('#operPeriodApply');
     if(!apply||typeof apply.onclick!=='function')return;
 
     opBusy=true;
     try{
-      /* Invoca exactamente el flujo ya validado de Consultar, sin duplicar
-         cálculos ni construir una ruta alternativa. */
+      /* El botón permanece oculto, pero reutilizamos exactamente su lógica
+         validada para filtrar la pestaña activa. */
       const result=apply.onclick();
       if(result&&typeof result.then==='function')await result;
     }catch(err){
@@ -407,6 +417,12 @@ body[data-v163-module="operativo"] #operativoPeriodBar > .or-report-filter-grid 
   document.addEventListener('change',e=>{
     if(e.target?.matches?.('#week,#store,#section,#catalog,#v166StatusSelect')){
       [0,60,160].forEach(ms=>setTimeout(ensure,ms));
+    }
+    if(e.target?.matches?.('#operPeriodSelect,#operStoreSelect,#operAreaSelect,#operActivitySelect')){
+      /* Delegado a nivel documento: funciona aunque otro render reemplace
+         cualquiera de los selectores. */
+      scheduleOperationalQuery(120);
+      [0,60,180].forEach(ms=>setTimeout(ensure,ms));
     }
   },false);
 
