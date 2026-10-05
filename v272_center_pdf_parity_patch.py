@@ -1,4 +1,4 @@
-"""V272.1 · PDF Centro Operativo fiel a la vista consultada.
+"""V272.2 · PDF Centro Operativo fiel a la vista consultada.
 
 Objetivo:
 - El PDF de Centro Operativo usa exactamente el mismo alcance/periodo que la vista.
@@ -114,6 +114,22 @@ def install(m):
         def set_stroke(hex_color):
             c.setStrokeColor(colors.HexColor(hex_color))
 
+        def draw_header_cell(x, width, top_y, header_h, text, font_size=5.0, align="center"):
+            """Encabezado compacto: usa 1-2 líneas para aprovechar alto, no ancho."""
+            parts = [p.strip() for p in str(text or "").split("\\n") if p.strip()]
+            if not parts:
+                parts = [""]
+            c.setFont("Helvetica-Bold", font_size)
+            line_gap = font_size + 1.2
+            total_h = line_gap * len(parts)
+            first_y = top_y - (header_h - total_h)/2 - font_size + 1.2
+            for j, part in enumerate(parts):
+                yy = first_y - j*line_gap
+                if align == "left":
+                    c.drawString(x + 3, yy, part)
+                else:
+                    c.drawCentredString(x + width/2, yy, part)
+
         def page_header(suffix=""):
             nonlocal y
             set_fill(BG)
@@ -211,7 +227,7 @@ def install(m):
             total_op = dev + muertos + probador + cajas + (pending_prev if show_opening else 0)
             total_pending = pend_ac + pend_ub
 
-            headers = ["Categoría", "Indicador", "Valor / Piezas", "%", "Meta", "Total"]
+            headers = ["Cat.", "Indicador", "Valor /\nPzs", "%", "Meta", "Total"]
             fracs = [.14, .27, .18, .10, .11, .20]
             total_w = W - 2*M
             xs = [M]
@@ -271,7 +287,7 @@ def install(m):
             ]
 
             row_h = 13.2
-            head_h = 18
+            head_h = 22
             total_rows = sum(len(g["rows"]) for g in groups)
             needed = head_h + total_rows*row_h + 8
             ensure(needed, "Resumen")
@@ -280,12 +296,16 @@ def install(m):
             set_fill(BLUE_DARK)
             c.roundRect(M, y-head_h+2, total_w, head_h, 5, fill=1, stroke=0)
             c.setFillColor(colors.white)
-            c.setFont("Helvetica-Bold", 6.2)
             for i, h in enumerate(headers):
-                if i >= 2:
-                    c.drawCentredString(xs[i] + total_w*fracs[i]/2, y-10, h)
-                else:
-                    c.drawString(xs[i]+5, y-10, h)
+                draw_header_cell(
+                    xs[i],
+                    total_w*fracs[i],
+                    y,
+                    head_h,
+                    h,
+                    font_size=5.7,
+                    align="left" if i < 2 else "center",
+                )
             y -= head_h
 
             for group in groups:
@@ -344,8 +364,13 @@ def install(m):
                 return
 
             section("Recuperación por tienda")
-            headers = ["#", "Tienda", "Dev Pzs", "Pzas rec.", "Conversión", "Valor devolución", "Recuperación $", "Recup. %", "Pend. Pzs", "Pend. $"]
-            fracs = [.04,.14,.07,.08,.08,.13,.13,.08,.08,.17]
+            # V272.2: abreviaturas + 2 líneas; el encabezado gana alto y
+            # cada columna necesita menos ancho horizontal.
+            headers = [
+                "#", "Tienda", "Dev\nPzs", "Pzas\nrecup.", "Conv.\n%",
+                "Valor\nDev.", "Recup.\n$", "Recup.\n%", "Pend.\nPzs", "Pend.\n$"
+            ]
+            fracs = [.04,.18,.075,.085,.075,.13,.13,.075,.08,.13]
             total_w = W - 2*M
             xs = [M]
             acc = M
@@ -353,16 +378,19 @@ def install(m):
                 acc += total_w*frac
                 xs.append(acc)
             row_h = 10.4
-            head_h = 14
+            head_h = 22
 
             def head():
                 nonlocal y
                 set_fill(BLUE_DARK)
                 c.roundRect(M, y-head_h+2, total_w, head_h, 4, fill=1, stroke=0)
                 c.setFillColor(colors.white)
-                c.setFont("Helvetica-Bold", 4.8)
                 for i, h in enumerate(headers):
-                    c.drawString(xs[i]+2, y-8.8, fit(h, 18))
+                    draw_header_cell(
+                        xs[i], total_w*fracs[i], y, head_h, h,
+                        font_size=4.8,
+                        align="left" if i == 1 else "center",
+                    )
                 y -= head_h
 
             ensure(head_h + min(len(rows), 17)*row_h + 8, "Recuperación")
@@ -406,8 +434,12 @@ def install(m):
 
             label = f"Detalle operativo · {period_label()}" if period_type == "day" else "Detalle operativo · tiendas del proyecto"
             section(label)
-            headers = ["#", "Tienda", "Muertos", "Probador", "Cajas", "Ingresos", "Rec.", "Acond.", "Ubicado", "Pend.Acond", "Pend.Ubicar"]
-            fracs = [.04,.14,.075,.075,.07,.09,.06,.09,.09,.115,.115]
+            headers = [
+                "Rank.", "Tienda", "Muertos", "Prob.", "Cajas", "Ingreso\nPzs",
+                "Recorr.\nReal.", "Acond.\nPzs", "Ubic.\nPzs",
+                "Pend.\nAcond.", "Pend.\nUbic."
+            ]
+            fracs = [.04,.15,.075,.07,.06,.09,.08,.095,.09,.115,.135]
             total_w = W - 2*M
             xs = [M]
             acc = M
@@ -415,16 +447,19 @@ def install(m):
                 acc += total_w*frac
                 xs.append(acc)
             row_h = 10.2
-            head_h = 14
+            head_h = 22
 
             def head():
                 nonlocal y
                 set_fill(BLUE_DARK)
                 c.roundRect(M, y-head_h+2, total_w, head_h, 4, fill=1, stroke=0)
                 c.setFillColor(colors.white)
-                c.setFont("Helvetica-Bold", 4.8)
                 for i,h in enumerate(headers):
-                    c.drawString(xs[i]+2, y-8.8, fit(h, 18))
+                    draw_header_cell(
+                        xs[i], total_w*fracs[i], y, head_h, h,
+                        font_size=4.7,
+                        align="left" if i == 1 else "center",
+                    )
                 y -= head_h
 
             ensure(head_h + min(len(rows),17)*row_h + 8, "Detalle operativo")
@@ -609,4 +644,4 @@ def install(m):
 
     m._build_operations_pdf = builder
     m._V272_CENTER_PDF_PARITY = True
-    print("[V272] PDF Centro Operativo alineado 1:1 con la vista consultada; gráfico operativo compacto.", flush=True)
+    print("[V272] PDF Centro Operativo alineado 1:1; encabezados compactos de 2 líneas y gráfico operativo compacto.", flush=True)
