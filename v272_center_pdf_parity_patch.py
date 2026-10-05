@@ -1,4 +1,4 @@
-"""V272 · PDF Centro Operativo fiel a la vista consultada.
+"""V272.1 · PDF Centro Operativo fiel a la vista consultada.
 
 Objetivo:
 - El PDF de Centro Operativo usa exactamente el mismo alcance/periodo que la vista.
@@ -455,31 +455,44 @@ def install(m):
             rows = [r for r in rows if _num(r.get("recolectadas")) or _num(r.get("acondicionado")) or _num(r.get("ubicado"))]
             if not rows:
                 return
+
             rec_lookup = {str(r.get("store") or ""): _num(r.get("conversion_pct")) for r in recovery or []}
             rows.sort(key=lambda r: (-rec_lookup.get(str(r.get("store") or ""), 0), str(r.get("store") or "")))
 
-            chart_h = 180
-            ensure(chart_h + 26, "Gráfico operativo")
+            # V272.1: el gráfico se dimensiona según las tiendas con información.
+            # Con 1-5 tiendas no se estira de lado a lado ni deja barras aisladas.
+            count = len(rows)
+            chart_h = 124 if count <= 5 else (138 if count <= 9 else 154)
+            ensure(chart_h + 25, "Gráfico operativo")
             section(f"Ingreso vs Acondicionado vs Ubicado · {scope} · {period_label()}")
 
-            x0 = M + 38
-            x1 = W - M - 12
-            base = y - chart_h + 28
-            top = y - 12
-            plot_h = top - base
+            available_w = W - 2*M - 52
+            desired_w = max(300, min(available_w, 105*count + 100))
+            x0 = M + 40 + max(0, (available_w - desired_w)/2)
+            x1 = x0 + desired_w
+            base = y - chart_h + 24
+            top = y - 14
+            plot_h = max(60, top - base)
             plot_w = x1 - x0
             maxv = max([_num(r.get(k)) for r in rows for k in ("recolectadas","acondicionado","ubicado")] + [1])
-            group_w = plot_w/max(1,len(rows))
-            bar_w = min(9, group_w*.24)
+            group_w = plot_w/max(1,count)
+            bar_w = max(8, min(18, group_w*.24))
 
+            # Fondo sutil para que el gráfico se lea como un bloque y no como
+            # una zona vacía del PDF.
+            set_fill("#FFFFFF")
             set_stroke(LINE)
-            c.setLineWidth(.6)
+            c.roundRect(x0-34, base-19, plot_w+46, plot_h+48, 7, fill=1, stroke=1)
+
+            # Rejilla y eje Y.
+            set_stroke(LINE)
+            c.setLineWidth(.55)
             for q in range(5):
                 gy = base + plot_h*q/4
                 c.line(x0, gy, x1, gy)
                 set_fill(MUTED)
-                c.setFont("Helvetica", 4.8)
-                c.drawRightString(x0-4, gy-1.5, n(maxv*q/4))
+                c.setFont("Helvetica", 5.1)
+                c.drawRightString(x0-6, gy-1.5, n(maxv*q/4))
 
             points = []
             for i, r in enumerate(rows):
@@ -490,41 +503,58 @@ def install(m):
                 ah = plot_h*acond/maxv
                 uh = plot_h*ubic/maxv
 
+                # Barras compactas y etiquetas visibles.
                 set_fill(NAVY)
-                c.rect(cx-bar_w-1, base, bar_w, ah, fill=1, stroke=0)
+                c.roundRect(cx-bar_w-2, base, bar_w, max(1,ah), 1.5, fill=1, stroke=0)
                 set_fill(PINK)
-                c.rect(cx+1, base, bar_w, uh, fill=1, stroke=0)
+                c.roundRect(cx+2, base, bar_w, max(1,uh), 1.5, fill=1, stroke=0)
+
+                label_fs = 5.0 if count <= 6 else 4.4
+                value_fs = 4.7 if count <= 6 else 4.1
+
+                if acond > 0:
+                    set_fill(NAVY)
+                    c.setFont("Helvetica-Bold", value_fs)
+                    c.drawCentredString(cx-bar_w/2-2, min(top-1, base+ah+3), n(acond))
+                if ubic > 0:
+                    set_fill(PINK)
+                    c.setFont("Helvetica-Bold", value_fs)
+                    c.drawCentredString(cx+bar_w/2+2, min(top-1, base+uh+3), n(ubic))
 
                 py = base + plot_h*ingreso/maxv
                 points.append((cx, py, ingreso))
                 set_fill(BLUE)
-                c.circle(cx, py, 2.4, fill=1, stroke=0)
+                c.circle(cx, py, 2.5, fill=1, stroke=0)
+                if ingreso > 0:
+                    set_fill(BLUE)
+                    c.setFont("Helvetica-Bold", value_fs)
+                    c.drawCentredString(cx, min(top-1, py+4), n(ingreso))
 
-                set_fill(MUTED)
-                c.setFont("Helvetica", 4.1)
-                c.saveState()
-                c.translate(cx-1, base-5)
-                c.rotate(38)
-                c.drawString(0, 0, fit(r.get("store"), 12))
-                c.restoreState()
+                # Tienda horizontal, centrada; evita texto inclinado/ilegible.
+                set_fill(TEXT)
+                c.setFont("Helvetica-Bold", label_fs)
+                c.drawCentredString(cx, base-11, fit(r.get("store"), 14))
 
             if len(points) > 1:
                 set_stroke(BLUE)
-                c.setLineWidth(1.4)
+                c.setLineWidth(1.35)
                 for a,b in zip(points, points[1:]):
                     c.line(a[0],a[1],b[0],b[1])
 
-            # Leyenda.
-            ly = y + 1
-            set_fill(NAVY); c.rect(x0,ly,7,5,fill=1,stroke=0)
-            set_fill(TEXT); c.setFont("Helvetica",5); c.drawString(x0+10,ly-1,"Acondicionado")
-            set_fill(PINK); c.rect(x0+82,ly,7,5,fill=1,stroke=0)
-            set_fill(TEXT); c.drawString(x0+92,ly-1,"Ubicado")
-            set_stroke(BLUE); c.line(x0+145,ly+2,x0+160,ly+2)
-            set_fill(BLUE); c.circle(x0+152.5,ly+2,2,fill=1,stroke=0)
-            set_fill(TEXT); c.drawString(x0+165,ly-1,"Ingresos")
+            # Leyenda compacta sobre el gráfico.
+            ly = top + 8
+            legend_x = x0
+            set_fill(NAVY); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
+            set_fill(TEXT); c.setFont("Helvetica",5.3); c.drawString(legend_x+10,ly-1,"Acondicionado")
+            legend_x += 86
+            set_fill(PINK); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
+            set_fill(TEXT); c.drawString(legend_x+10,ly-1,"Ubicado")
+            legend_x += 58
+            set_stroke(BLUE); c.line(legend_x,ly+2,legend_x+15,ly+2)
+            set_fill(BLUE); c.circle(legend_x+7.5,ly+2,2,fill=1,stroke=0)
+            set_fill(TEXT); c.drawString(legend_x+20,ly-1,"Ingresos")
 
-            y -= chart_h + 5
+            y -= chart_h + 7
 
         # ---------- Construcción ----------
         page_header()
@@ -579,4 +609,4 @@ def install(m):
 
     m._build_operations_pdf = builder
     m._V272_CENTER_PDF_PARITY = True
-    print("[V272] PDF Centro Operativo alineado 1:1 con la vista consultada.", flush=True)
+    print("[V272] PDF Centro Operativo alineado 1:1 con la vista consultada; gráfico operativo compacto.", flush=True)
