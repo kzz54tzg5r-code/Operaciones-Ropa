@@ -222,6 +222,7 @@ from v271_center_operativo_laptop_parity_patch import install as _install_v271_c
 from v272_center_pdf_parity_patch import install as _install_v272_center_pdf_parity_patch
 from v273_mobile_table_headers_patch import install as _install_v273_mobile_table_headers_patch
 from v275_operation_ui_final_patch import install as _install_v275_operation_ui_final_patch
+from v276_operation_ui_scroll_final_patch import install as _install_v276_operation_ui_scroll_final_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -378,4 +379,6 @@ _install_v272_center_pdf_parity_patch(web_app)
 _install_v273_mobile_table_headers_patch(web_app)
 # V275: capa final exclusiva de Operación; pestañas y tarjetas compactas.
 _install_v275_operation_ui_final_patch(web_app)
+# V276: limpia iconos heredados, compacta KPIs y desbloquea scroll móvil de Operación.
+_install_v276_operation_ui_scroll_final_patch(web_app)
 app = web_app.app
