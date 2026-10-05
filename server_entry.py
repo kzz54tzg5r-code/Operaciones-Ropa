@@ -219,6 +219,7 @@ from v268_option10_kpis_patch import install as _install_v268_option10_kpis_patc
 from v269_operation_option4_kpis_patch import install as _install_v269_operation_option4_kpis_patch
 from v270_desktop_compact_responsive_authority_patch import install as _install_v270_desktop_compact_responsive_authority_patch
 from v271_center_operativo_laptop_parity_patch import install as _install_v271_center_operativo_laptop_parity_patch
+from v272_center_pdf_parity_patch import install as _install_v272_center_pdf_parity_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -369,4 +370,6 @@ _install_v269_operation_option4_kpis_patch(web_app)
 _install_v270_desktop_compact_responsive_authority_patch(web_app)
 # V271: Centro Operativo móvil/tablet conserva exactamente la matriz de laptop, sólo compacta.
 _install_v271_center_operativo_laptop_parity_patch(web_app)
+# V272: PDF de Centro Operativo refleja la vista consultada (tarjetas, tablas y gráfico vigente).
+_install_v272_center_pdf_parity_patch(web_app)
 app = web_app.app
