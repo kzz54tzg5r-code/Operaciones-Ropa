@@ -44,21 +44,21 @@ def install(m):
 }
 
 /* Distribución de columnas: aprovecha el ancho sin deformar. */
-.monthly-cross-table.v267-option7 th:nth-child(1){width:19%!important}
-.monthly-cross-table.v267-option7 th:nth-child(2){width:29%!important}
-.monthly-cross-table.v267-option7 th:nth-child(3){width:12%!important}
-.monthly-cross-table.v267-option7 th:nth-child(4){width:12%!important}
-.monthly-cross-table.v267-option7 th:nth-child(5){width:9%!important}
-.monthly-cross-table.v267-option7 th:nth-child(6){width:9%!important}
-.monthly-cross-table.v267-option7 th:nth-child(7){width:10%!important}
+.monthly-cross-table.v267-option7 th:nth-child(1){width:12%!important}
+.monthly-cross-table.v267-option7 th:nth-child(2){width:22%!important}
+.monthly-cross-table.v267-option7 th:nth-child(3){width:14%!important}
+.monthly-cross-table.v267-option7 th:nth-child(4){width:14%!important}
+.monthly-cross-table.v267-option7 th:nth-child(5){width:10%!important}
+.monthly-cross-table.v267-option7 th:nth-child(6){width:11%!important}
+.monthly-cross-table.v267-option7 th:nth-child(7){width:17%!important}
 
 /* Encabezado */
 .monthly-cross-table.v267-option7 thead th{
   position:sticky!important;
   top:0!important;
   z-index:3!important;
-  height:48px!important;
-  padding:10px clamp(10px,1vw,17px)!important;
+  height:40px!important;
+  padding:7px clamp(7px,.7vw,11px)!important;
   border:0!important;
   border-right:1px solid rgba(255,255,255,.13)!important;
   background:linear-gradient(100deg,#0a3e75 0%,#0b5597 100%)!important;
@@ -83,9 +83,9 @@ def install(m):
 
 /* Cuerpo */
 .monthly-cross-table.v267-option7 tbody td{
-  height:43px!important;
-  min-height:43px!important;
-  padding:7px clamp(10px,1vw,17px)!important;
+  height:34px!important;
+  min-height:34px!important;
+  padding:4px clamp(7px,.7vw,11px)!important;
   border:0!important;
   border-bottom:1px solid #dbe6f2!important;
   background:#fff!important;
@@ -96,6 +96,24 @@ def install(m):
 }
 .monthly-cross-table.v267-option7 tbody td:nth-child(n+3){
   text-align:center!important;
+}
+.monthly-cross-table.v267-option7 tbody td:nth-child(2){
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.monthly-cross-table.v267-option7 tbody td,
+.monthly-cross-table.v267-option7 thead th{
+  letter-spacing:0!important;
+}
+.monthly-cross-table.v267-option7 .monthly-cat{
+  white-space:normal!important;
+}
+.monthly-cross-table.v267-option7 .monthly-cat br{
+  display:none!important;
+}
+.monthly-cross-table.v267-option7 .monthly-cat span:not(.v267-cat-icon){
+  display:block!important;
 }
 .monthly-cross-table.v267-option7 tbody td b{
   color:#173B73!important;
@@ -110,7 +128,7 @@ def install(m):
 /* Categorías tipo Opción 7 */
 .monthly-cross-table.v267-option7 .monthly-cat{
   position:relative!important;
-  padding:16px 16px!important;
+  padding:8px 8px!important;
   text-align:center!important;
   font-size:clamp(14px,.9vw,18px)!important;
   line-height:1.05!important;
@@ -146,14 +164,14 @@ def install(m):
 .monthly-cross-table.v267-option7 .v267-cat-icon{
   display:grid!important;
   place-items:center!important;
-  width:44px!important;
-  height:44px!important;
-  margin:0 auto 9px!important;
+  width:32px!important;
+  height:32px!important;
+  margin:0 auto 5px!important;
   border-radius:50%!important;
 }
 .monthly-cross-table.v267-option7 .v267-cat-icon svg{
-  width:25px!important;
-  height:25px!important;
+  width:18px!important;
+  height:18px!important;
   display:block!important;
 }
 .monthly-cross-table.v267-option7 .v267-operation-cat .v267-cat-icon{
@@ -171,10 +189,10 @@ def install(m):
 
 /* Separación visual entre bloques. */
 .monthly-cross-table.v267-option7 tr.v267-group-start:not(:first-child) > td{
-  border-top:9px solid #f3f7fb!important;
+  border-top:4px solid #f3f7fb!important;
 }
 .monthly-cross-table.v267-option7 tr.v267-general-total > td{
-  border-top:9px solid #f3f7fb!important;
+  border-top:4px solid #f3f7fb!important;
 }
 
 /* Totales por bloque */
@@ -197,7 +215,7 @@ def install(m):
 
 /* Total General independiente */
 .monthly-cross-table.v267-option7 tr.v267-general-total td{
-  height:50px!important;
+  height:38px!important;
   background:linear-gradient(100deg,#dcebff 0%,#edf6ff 100%)!important;
   color:#0d4b91!important;
   border-top:9px solid #f3f7fb!important;
@@ -220,17 +238,17 @@ def install(m):
 .monthly-cross-table.v267-option7 .v267-general-icon{
   display:inline-grid!important;
   place-items:center!important;
-  width:30px!important;
-  height:30px!important;
-  margin-right:9px!important;
+  width:24px!important;
+  height:24px!important;
+  margin-right:6px!important;
   border-radius:8px!important;
   color:#1675d1!important;
   background:#cae4ff!important;
   vertical-align:middle!important;
 }
 .monthly-cross-table.v267-option7 .v267-general-icon svg{
-  width:19px!important;
-  height:19px!important;
+  width:15px!important;
+  height:15px!important;
 }
 
 /* Último bloque */
@@ -244,9 +262,9 @@ def install(m):
 /* Pantallas anchas: un poco más de aire, sin desperdiciar espacio. */
 @media(min-width:1500px){
   .monthly-cross-table.v267-option7 tbody td{
-    height:46px!important;
-    padding-top:8px!important;
-    padding-bottom:8px!important;
+    height:36px!important;
+    padding-top:4px!important;
+    padding-bottom:4px!important;
   }
   .monthly-cross-table.v267-option7 .monthly-cat{
     padding-left:20px!important;
@@ -257,32 +275,32 @@ def install(m):
 /* Laptop/tablet landscape */
 @media(min-width:701px) and (max-width:1199px){
   .monthly-cross-table.v267-option7{
-    min-width:820px!important;
+    min-width:760px!important;
   }
   .monthly-cross-table.v267-option7 thead th{
-    height:43px!important;
-    padding:8px 10px!important;
-    font-size:12px!important;
+    height:36px!important;
+    padding:6px 8px!important;
+    font-size:11px!important;
   }
   .monthly-cross-table.v267-option7 tbody td{
-    height:39px!important;
-    padding:6px 10px!important;
-    font-size:12px!important;
+    height:31px!important;
+    padding:4px 8px!important;
+    font-size:11px!important;
   }
   .monthly-cross-table.v267-option7 tbody td b{
-    font-size:13px!important;
+    font-size:12px!important;
   }
   .monthly-cross-table.v267-option7 .monthly-cat{
-    font-size:14px!important;
+    font-size:12px!important;
   }
   .monthly-cross-table.v267-option7 .v267-cat-icon{
-    width:38px!important;
-    height:38px!important;
-    margin-bottom:7px!important;
+    width:28px!important;
+    height:28px!important;
+    margin-bottom:4px!important;
   }
   .monthly-cross-table.v267-option7 .v267-cat-icon svg{
-    width:22px!important;
-    height:22px!important;
+    width:16px!important;
+    height:16px!important;
   }
 }
 
