@@ -213,6 +213,7 @@ from v262_hide_filter_actions_patch import install as _install_v262_hide_filter_
 from v263_laptop_mobile_density_patch import install as _install_v263_laptop_mobile_density_patch
 from v264_uniform_responsive_patch import install as _install_v264_uniform_responsive_patch
 from v265_desktop_matrix_mobile_patch import install as _install_v265_desktop_matrix_mobile_patch
+from v266_operational_period_authority_patch import install as _install_v266_operational_period_authority_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -351,4 +352,6 @@ _install_v263_laptop_mobile_density_patch(web_app)
 _install_v264_uniform_responsive_patch(web_app)
 # V265: autoridad final; conserva la matriz real de laptop en móvil/tablet y sólo la compacta.
 _install_v265_desktop_matrix_mobile_patch(web_app)
+# V266: autoridad final del periodo operativo; corrige Semana y texto/icono dinámicos.
+_install_v266_operational_period_authority_patch(web_app)
 app = web_app.app
