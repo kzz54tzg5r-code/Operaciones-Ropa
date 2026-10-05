@@ -1,4 +1,4 @@
-"""V238 · Navegación responsive unificada para PC, tablet, iOS y Android.
+"""V238.1 · Navegación responsive unificada para PC, tablet, iOS y Android.
 
 Objetivo:
 - hacer visibles las pestañas del módulo activo también en escritorio;
@@ -314,10 +314,12 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
     }
 
     if(kind==='operation'){
-      if(t.includes('resumen'))return['Resumen','Resumen','dashboard'];
-      if(t.includes('captura'))return['Captura diaria','Captura\ndiaria','dashboard'];
-      if(t.includes('productividad'))return['Productividad','Productividad','chart'];
-      if(t.includes('estandares'))return['Estándares Operativos','Estándares\nOperativos','target'];
+      const opKey=String(btn.dataset.v200Op||'').toLowerCase();
+      if(opKey==='summary'||t.includes('resumen'))return['Resumen','Resumen','dashboard'];
+      if(opKey==='daily'||t.includes('captura diaria'))return['Captura diaria','Captura\ndiaria','dashboard'];
+      if(opKey==='capture'||t.includes('cargar productividad'))return['Cargar productividad','Cargar\nProductividad','truck'];
+      if(opKey==='productivity'||t==='productividad')return['Productividad','Productividad','chart'];
+      if(opKey==='standards'||t.includes('estandares'))return['Estándares Operativos','Estándares\nOperativos','target'];
       if(t.includes('diaria')||t.includes('operacion'))return[raw,raw,'gear'];
     }
     return[raw,raw,'chart'];
