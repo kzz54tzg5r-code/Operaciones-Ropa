@@ -187,17 +187,20 @@ def install(m):
 }
 
 /* Score: compactar el donut + tarjetas sin deformar. */
-#operativoDynamicContent.v268-score-active .donut-row{
+#operativoDynamicContent.v268-score-active .donut-row,
+#operativoDynamicContent .donut-row.v268-score-layout{
   display:grid!important;
   grid-template-columns:145px minmax(0,1fr)!important;
   gap:16px!important;
   align-items:center!important;
 }
-#operativoDynamicContent.v268-score-active .donut-row > div[style*="flex:1"]{
+#operativoDynamicContent.v268-score-active .donut-row > div[style*="flex:1"],
+#operativoDynamicContent .donut-row.v268-score-layout > div[style*="flex:1"]{
   min-width:0!important;
   width:100%!important;
 }
-#operativoDynamicContent.v268-score-active .donut{
+#operativoDynamicContent.v268-score-active .donut,
+#operativoDynamicContent .donut-row.v268-score-layout .donut{
   width:140px!important;
   height:140px!important;
   margin:0 auto!important;
@@ -213,10 +216,12 @@ def install(m):
     min-height:140px!important;
     padding:53px 14px 12px!important;
   }
-  #operativoDynamicContent.v268-score-active .donut-row{
+  #operativoDynamicContent.v268-score-active .donut-row,
+  #operativoDynamicContent .donut-row.v268-score-layout{
     grid-template-columns:120px minmax(0,1fr)!important;
   }
-  #operativoDynamicContent.v268-score-active .donut{
+  #operativoDynamicContent.v268-score-active .donut,
+  #operativoDynamicContent .donut-row.v268-score-layout .donut{
     width:112px!important;
     height:112px!important;
   }
@@ -263,10 +268,12 @@ def install(m):
     right:9px!important;
     bottom:9px!important;
   }
-  #operativoDynamicContent.v268-score-active .donut-row{
+  #operativoDynamicContent.v268-score-active .donut-row,
+  #operativoDynamicContent .donut-row.v268-score-layout{
     display:block!important;
   }
-  #operativoDynamicContent.v268-score-active .donut{
+  #operativoDynamicContent.v268-score-active .donut,
+  #operativoDynamicContent .donut-row.v268-score-layout .donut{
     width:105px!important;
     height:105px!important;
     margin:0 auto 10px!important;
@@ -315,6 +322,7 @@ def install(m):
     root.classList.remove('v268-score-active');
     qa('.report-kpis.v268-option10-grid',root).forEach(g=>g.classList.remove('v268-option10-grid'));
     qa('.report-kpi.v268-option10-card',root).forEach(card=>{
+      if(card.dataset.v268Native==='1')return;
       card.classList.remove('v268-option10-card');
       card.removeAttribute('data-v268-tone');
       q('.v268-ribbon',card)?.remove();
