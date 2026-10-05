@@ -1,4 +1,4 @@
-"""V269.2 · Opción 4 compacta en tarjetas de Operación.
+"""V269.3 · Opción 4 compacta en tarjetas de Operación.
 
 Aplica exclusivamente a:
 - Resumen: .v149-kpis / .v149-kpi
@@ -19,7 +19,7 @@ def install(m):
         return
 
     css = r'''<style id="v269-operation-option4-kpis-css">
-/* V269.2 · Opción 4 ultra compacta · Resumen + Productividad */
+/* V269.3 · Opción 4 ultra compacta · Resumen + Productividad */
 body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis,
 body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{
   display:grid!important;
@@ -27,7 +27,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{
   margin:6px 0 8px!important;
   align-items:stretch!important;
 }
-body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+body:is([data-v163-module="operation"],.v238-module-operation) .v149-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 body:is([data-v163-module="operation"],.v238-module-operation) .v204-kpis{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 body:is([data-v163-module="operation"],.v238-module-operation) #operativoDynamicContent .v149-kpi,
 body:is([data-v163-module="operation"],.v238-module-operation) #operativoDynamicContent .v204-kpi{
@@ -217,8 +217,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
   function forceGrid(grid,type){
     if(!grid)return;
     const mobile=window.innerWidth<=700;
-    const tablet=window.innerWidth<=1100;
-    const cols=mobile?2:(type==='summary'?(tablet?4:5):4);
+    const cols=mobile?2:4;
     imp(grid,'display','grid');
     imp(grid,'grid-template-columns','repeat('+cols+',minmax(0,1fr))');
     imp(grid,'gap',mobile?'5px':'6px');
@@ -337,7 +336,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
-  console.info('[V269.2] Opción 4 compacta autoritativa aplicada en Resumen/Productividad.');
+  console.info('[V269.3] Opción 4 restaurada: Resumen 4x2 y Productividad 4 columnas.');
 })();
 </script>'''
 
@@ -361,7 +360,7 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
                 "Cache-Control":"no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma":"no-cache",
                 "Expires":"0",
-                "X-Operations-UI-Version":"V269.2-OPTION4-KPIS",
+                "X-Operations-UI-Version":"V269.3-OPTION4-KPIS",
             })
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
@@ -369,4 +368,4 @@ body:is([data-v163-module="operation"],.v238-module-operation) .v269-option4-car
             return response
 
     m._V269_OPERATION_OPTION4_KPIS=True
-    print("[V269.2] Opción 4 compacta autoritativa instalada en Resumen y Productividad.",flush=True)
+    print("[V269.3] Opción 4 compacta 4 columnas instalada en Resumen y Productividad.",flush=True)
