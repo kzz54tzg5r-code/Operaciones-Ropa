@@ -1,13 +1,13 @@
-"""Paridad de Render con la versión Python validada V89/V90.
+"""Paridad de Render con la versión Python validada V89/V90.1.
 
 Este parche NO sustituye la optimización de memoria de Render. Se instala al
 final del arranque y restaura exactamente las reglas funcionales que quedaron
 validadas en la versión local:
 
-* Pend. Ant. del día D = pendiente de ubicar generado EXCLUSIVAMENTE en D-1.
-* Total pzs = Dev + Muertos + Cajas + Probador + Pend. Ant.
-* Pendiente de acondicionar = max(Total - Acondicionado, 0).
-* Pendiente de ubicar = max(Total - Ubicado, 0).
+* El arrastre se conserva por etapa: Acondicionar y Ubicar tienen saldos separados.
+* Día/Semana/Mes/Año usan saldo de apertura + movimientos del periodo; no suman pendientes diarios.
+* Pend. acondicionar = apertura acond. + ingresos - acondicionado.
+* Pend. ubicar = apertura ubicar + acondicionado - ubicado.
 * % Acondicionado y % Ubicado usan Total pzs como denominador.
 * Menú de Super Administrador con tarjeta "Vista de usuario" y acceso directo
   a "Pestañas visibles", conservando el botón de contraer/expandir.
@@ -100,21 +100,35 @@ def _install_pending_cut(module) -> None:
     original = module.operations
     signature = inspect.signature(original)
 
-    def _previous_day_pending(params, result):
-        """Saldo de arrastre al inicio del día consultado.
+    def _period_opening_pending(params, result):
+        """Saldo de apertura por ETAPA al inicio del periodo consultado.
 
-        Recorre todo el histórico anterior al día D por tienda. Así el cierre de
-        D-1 ya incluye cualquier pendiente heredado de D-2, D-3, etc. Si no hubo
-        movimiento en D-1, el saldo sigue vivo y pasa a D.
+        Regla operativa:
+        - Acondicionar(D) = Acondicionar(D-1) + ingresos(D) - acondicionado(D)
+        - Ubicar(D)       = Ubicar(D-1) + acondicionado(D) - ubicado(D)
+
+        Día/Semana/Mes/Año usan únicamente el saldo al INICIO del periodo y
+        después agregan los movimientos del periodo. Nunca se suman pendientes
+        diarios entre sí y nunca se reutiliza un mismo saldo para las dos etapas.
         """
-        if str(params.get("period_type") or "") != "day":
-            return {}
+        period_type = str(params.get("period_type") or "").strip().lower()
         period_value = str(params.get("period_value") or "").strip()
-        if not period_value:
-            return {}
+        explicit_start = str(params.get("start_date") or "").strip()
         try:
-            current = module.pd.Timestamp(period_value).normalize()
-            current_date = current.date().isoformat()
+            if explicit_start:
+                period_start = module.pd.Timestamp(explicit_start).normalize()
+            elif period_type == "day" and period_value:
+                period_start = module.pd.Timestamp(period_value).normalize()
+            elif period_type == "week" and period_value:
+                y, w = period_value.upper().split("-W", 1)
+                period_start = module.pd.Timestamp.fromisocalendar(int(y), int(w), 1).normalize()
+            elif period_type == "month" and period_value:
+                period_start = module.pd.Period(period_value, freq="M").start_time.normalize()
+            elif period_type == "year" and period_value:
+                period_start = module.pd.Timestamp(f"{str(period_value)[:4]}-01-01").normalize()
+            else:
+                return {}
+            start_date = period_start.date().isoformat()
         except Exception:
             return {}
 
@@ -127,18 +141,18 @@ def _install_pending_cut(module) -> None:
         wanted_activity = module.normalize_col(params.get("activity") or "")
         data = module.load_ops() or {}
 
-        # Acumular entradas/ubicados por fecha para reproducir el saldo día a día.
-        daily = {s: {} for s in stores}
+        daily = {store: {} for store in stores}
         def bucket(store, day):
             return daily[store].setdefault(day, {
-                "dev": 0.0, "muertos": 0.0, "cajas": 0.0,
-                "probador": 0.0, "ubicado": 0.0,
+                "dev": 0.0, "muertos": 0.0, "cajas": 0.0, "probador": 0.0,
+                "acondicionado": 0.0, "ubicado": 0.0,
             })
 
+        # Movimientos operativos históricos anteriores al corte.
         for row in data.get("rows") or []:
             store = str(row.get("store") or "")
             day = str(row.get("date") or "")[:10]
-            if store not in allowed or not day or day >= current_date:
+            if store not in allowed or not day or day >= start_date:
                 continue
             if wanted_area and module.normalize_col(row.get("area") or "") != wanted_area:
                 continue
@@ -150,7 +164,6 @@ def _install_pending_cut(module) -> None:
 
             d = bucket(store, day)
             muertos = _number(row.get("muertos"))
-            # En el Excel real una Recolección de muertos puede venir sin motivo.
             if (
                 str(row.get("activity") or "") == "Recolección de muertos"
                 and str(row.get("motive_class") or "") == "Sin clasificar"
@@ -159,28 +172,34 @@ def _install_pending_cut(module) -> None:
             d["muertos"] += muertos
             d["cajas"] += _number(row.get("cajas"))
             d["probador"] += _number(row.get("probador"))
+            d["acondicionado"] += _number(row.get("acondicionado"))
             d["ubicado"] += _number(row.get("ubicado"))
 
+        # Dev Pzs forma parte del ingreso de Cambios y Muertos/Centro Operativo.
         try:
             recovery = module._get_recovery_fifo_rows(data)
         except Exception:
             recovery = data.get("recovery_fifo") or data.get("commercial_daily") or []
-
         for row in recovery or []:
             store = str(row.get("store") or "")
             day = str(row.get("date") or "")[:10]
-            if store not in allowed or not day or day >= current_date:
+            if store not in allowed or not day or day >= start_date:
                 continue
             bucket(store, day)["dev"] += _number(row.get("dev_pzs"))
 
         opening = {}
         for store in stores:
-            saldo = 0.0
+            pending_acond = 0.0
+            pending_ubicar = 0.0
             for day in sorted(daily.get(store, {})):
                 d = daily[store][day]
                 ingresos = d["dev"] + d["muertos"] + d["cajas"] + d["probador"]
-                saldo = max(saldo + ingresos - d["ubicado"], 0.0)
-            opening[store] = saldo
+                pending_acond = max(pending_acond + ingresos - d["acondicionado"], 0.0)
+                pending_ubicar = max(pending_ubicar + d["acondicionado"] - d["ubicado"], 0.0)
+            opening[store] = {
+                "acondicionar": pending_acond,
+                "ubicar": pending_ubicar,
+            }
         return opening
 
     @wraps(original)
@@ -192,26 +211,36 @@ def _install_pending_cut(module) -> None:
             return result
 
         stores = result.get("stores") or []
-        opening = _previous_day_pending(params, result)
-        is_day = str(params.get("period_type") or "") == "day"
+        opening = _period_opening_pending(params, result)
 
         for row in stores:
-            pending_prev = _number(opening.get(str(row.get("store") or ""), 0)) if is_day else 0.0
-            row["pendiente_anterior"] = pending_prev
+            stage_open = opening.get(str(row.get("store") or ""), {}) or {}
+            pending_prev_acond = _number(stage_open.get("acondicionar"))
+            pending_prev_ubicar = _number(stage_open.get("ubicar"))
             base = (
                 _number(row.get("dev_pzs")) + _number(row.get("muertos")) +
                 _number(row.get("cajas")) + _number(row.get("probador"))
             )
-            total = base + pending_prev
-            row["ingresos_periodo"] = base
-            row["total_pzs"] = total
-            row["ingresos"] = total
             acondicionado = _number(row.get("acondicionado"))
             ubicado = _number(row.get("ubicado"))
-            row["pendiente_acondicionar"] = max(total - acondicionado, 0.0)
-            row["pendiente_ubicar"] = max(total - ubicado, 0.0)
-            row["pct_acondicionado"] = acondicionado / total * 100 if total else 0.0
-            row["pct_ubicado"] = ubicado / total * 100 if total else 0.0
+
+            # "Pend. Ant." visible representa la cola que entra a Acondicionado.
+            # Se guardan también ambos saldos de apertura para trazabilidad.
+            row["pendiente_anterior"] = pending_prev_acond
+            row["pendiente_anterior_acondicionar"] = pending_prev_acond
+            row["pendiente_anterior_ubicar"] = pending_prev_ubicar
+            row["ingresos_periodo"] = base
+
+            workload_acond = pending_prev_acond + base
+            workload_ubicar = pending_prev_ubicar + acondicionado
+            row["total_pzs"] = workload_acond
+            row["ingresos"] = workload_acond
+            row["pendiente_acondicionar"] = max(workload_acond - acondicionado, 0.0)
+            row["pendiente_ubicar"] = max(workload_ubicar - ubicado, 0.0)
+
+            row["pct_acondicionado"] = acondicionado / workload_acond * 100 if workload_acond else 0.0
+            # Conservar la lectura histórica aprobada de % ubicado contra Total Pzs.
+            row["pct_ubicado"] = ubicado / workload_acond * 100 if workload_acond else 0.0
             row["pct_ubicado_acondicionado"] = ubicado / acondicionado * 100 if acondicionado else 0.0
 
         stores.sort(key=lambda r: (-_number(r.get("ingresos")), str(r.get("store") or "")))
@@ -219,6 +248,8 @@ def _install_pending_cut(module) -> None:
         metrics = result.setdefault("metrics", {})
         sum_key = lambda key: float(sum(_number(r.get(key)) for r in stores))
         metrics["pendiente_anterior"] = sum_key("pendiente_anterior")
+        metrics["pendiente_anterior_acondicionar"] = sum_key("pendiente_anterior_acondicionar")
+        metrics["pendiente_anterior_ubicar"] = sum_key("pendiente_anterior_ubicar")
         metrics["ingresos_periodo"] = sum_key("ingresos_periodo")
         metrics["total_pzs"] = sum_key("total_pzs")
         metrics["ingresos"] = metrics["total_pzs"]
@@ -487,4 +518,4 @@ def install(module) -> None:
     _install_pdf_v90(module)
     _install_ui(module)
     module._V90_RENDER_PARITY = True
-    print("[V90-PARITY] Python V89/V90 sincronizado en Render: Pend. Ant., menú/rol y PDF espejo.", flush=True)
+    print("[V90.1-PARITY] Saldos por etapa + Python V89/V90 sincronizado en Render: Pend. Ant., menú/rol y PDF espejo.", flush=True)
