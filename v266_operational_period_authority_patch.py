@@ -279,10 +279,17 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
       b.setAttribute('aria-pressed',on?'true':'false');
     });
   }
+  function removeLegacyPeriodViews(grid){
+    qa(':scope > .v259-period-view, :scope > .v250-quick-period, :scope > .v256-center-view, :scope > .v257-period-view, :scope > .v258-period-view',grid)
+      .forEach(el=>el.remove());
+  }
   function ensureHost(){
     const bar=q('#operativoPeriodBar');
     const grid=q('#operativoPeriodBar .or-report-filter-grid');
     if(!bar||!grid)return null;
+    /* Nunca permitir dos barras Vista operativa. */
+    removeLegacyPeriodViews(grid);
+    qa(':scope > .v266-period-view',grid).slice(1).forEach(el=>el.remove());
     const ctx=active();
     const opts=options(ctx.view);
     let host=q(':scope > .v266-period-view',grid);
