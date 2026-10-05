@@ -481,17 +481,48 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
 
   function kpis(d){
     const s=d.company;
+    const needed=Math.max(0,Math.ceil(n(s.arrival)/Math.max(n(d.productivity_target)*Math.max(1,n(d.workdays)),1)));
     const rows=[
-      ['Llegada estimada',nf(s.arrival),'Escala por venta desde abril'],
-      ['Productividad registrada',nf(s.processed),'Estimación DEMO'],
-      ['Mercancía liberada',nf(s.released),'Estimación DEMO'],
-      ['Pendiente',nf(s.pending),'Llegada - liberada'],
-      ['Eficiencia',pct(s.efficiency),'Procesadas / llegada'],
-      ['Prod. promedio',nf(s.productivity),'Pzas / colaborador / día'],
-      ['Cumplimiento',pct(s.compliance),'Vs meta '+nf(d.productivity_target)],
-      ['Colaboradores',nf(s.collaborators),'Estimados por carga'],
+      ['Productividad registrada',nf(s.processed),'Piezas procesadas','#7338ef'],
+      ['Mercancía liberada',nf(s.released),'Origen','#ec007c'],
+      ['Pendiente',nf(s.pending),'Piezas por procesar','#ef3434'],
+      ['Eficiencia',pct(s.efficiency),'Procesadas / carga','#10b981'],
+      ['Prod. promedio',nf(s.productivity),'Pzas / colaborador / día','#f3a300'],
+      ['Cumplimiento',pct(s.compliance),'Vs estándar','#10b981'],
+      ['Colaboradores',nf(s.collaborators),'Con productividad','#173f78'],
+      ['Colaboradores necesarios',nf(needed),'Estimación DEMO','#0f7f73'],
     ];
-    return '<div class="v201-demo-grid">'+rows.map(x=>'<div class="v201-demo-kpi"><small>'+x[0]+'</small><b>'+x[1]+'</b><span>'+x[2]+'</span></div>').join('')+'</div>';
+    return '<div class="v149-kpis">'+rows.map(x=>'<div class="v149-kpi" style="--k:'+x[3]+'"><small>'+x[0]+'</small><b>'+x[1]+'</b><span>'+x[2]+'</span></div>').join('')+'</div>';
+  }
+
+  function demoAlerts(d){
+    return '<div class="v149-panel"><h3>Alertas operativas</h3>'+
+      '<div class="v149-alert good">DEMO activo: los valores usan la venta real disponible como base y no se guardan como operación real.</div>'+
+    '</div>';
+  }
+
+  function demoStoreTable(d){
+    const rows=(d.stores||[]).map(r=>{
+      const target=n(r.collaborators)*n(d.productivity_target)*Math.max(1,n(d.workdays));
+      const compliance=target?n(r.processed)/target*100:0;
+      const cls=compliance>=100?'metric-good':compliance>=75?'metric-warn':'metric-bad';
+      return '<tr><td><b>'+esc(r.store)+'</b></td><td>'+nf(r.arrival)+'</td><td>'+nf(r.processed)+'</td><td>'+nf(r.released)+'</td><td>'+nf(target)+'</td><td><b class="'+cls+'">'+pct(compliance)+'</b></td></tr>';
+    }).join('');
+    return '<div class="v149-panel"><h3>Desempeño por tienda</h3><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Llegada</th><th>Procesadas</th><th>Liberadas</th><th>Meta</th><th>Cumplimiento</th></tr></thead><tbody>'+
+      (rows||'<tr><td colspan="6">Sin información para el periodo.</td></tr>')+
+      '</tbody></table></div></div>';
+  }
+
+  function demoTop(d){
+    const rows=[...(d.collaborators||[])].sort((a,b)=>n(b.daily_productivity)-n(a.daily_productivity)).slice(0,5);
+    const body=rows.map((r,i)=>{
+      const compliance=n(r.compliance);
+      const cls=compliance>=100?'metric-good':compliance>=75?'metric-warn':'metric-bad';
+      return '<tr><td>#'+(i+1)+'</td><td><b>'+esc(r.name)+'</b></td><td>'+esc(r.store)+'</td><td>'+nf(r.pieces)+'</td><td>'+nf(r.daily_productivity)+'</td><td><b class="'+cls+'">'+pct(compliance)+'</b></td></tr>';
+    }).join('');
+    return '<div class="v149-panel"><h3>Top 5 colaboradores</h3><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Prod. diaria</th><th>Cumplimiento</th></tr></thead><tbody>'+
+      (body||'<tr><td colspan="6">Sin productividad registrada.</td></tr>')+
+      '</tbody></table></div></div>';
   }
 
   function allStoresTable(d,kind){
@@ -517,10 +548,11 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
   }
 
   function summary(d){
-    return note(d)+
-      '<div class="v201-demo-card"><h3>Resumen ejecutivo · '+esc(d.period_label)+'</h3><div class="sub">Base de escala: venta real disponible · '+d.store_count+' tiendas</div>'+kpis(d)+'</div>'+
-      '<div class="v201-demo-split"><div class="v201-demo-card"><h3>Participación por área</h3><div class="sub">Distribución operativa DEMO</div>'+areaBars(d)+'</div><div class="v201-demo-card"><h3>Participación por actividad</h3><div class="sub">Acondicionado · Clasificado · Ubicado</div>'+activityBars(d)+'</div></div>'+
-      '<div class="v201-demo-card"><h3>Todas las tiendas</h3><div class="sub">Ordenadas por participación de venta base</div>'+allStoresTable(d,'summary')+'</div>';
+    return '<span class="v201-demo-marker" hidden></span>'+
+      kpis(d)+
+      demoAlerts(d)+
+      demoStoreTable(d)+
+      demoTop(d);
   }
 
   function daily(d){
@@ -671,7 +703,15 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       nativeBar.style.display=needsFilter?'block':'none';
     }
     host.dataset.v201DemoView=demoTab;
-    host.innerHTML=(demoTab==='summary'?trend(demoData):'')+(views[demoTab]||summary)(demoData);
+    host.innerHTML=(views[demoTab]||summary)(demoData);
+
+    /* El DEMO usa exactamente la misma estructura visual que la vista real.
+       Sólo cambian los valores y la marca DEMO, nunca el layout. */
+    const modeMap={day:'Día',week:'Semanal',month:'Mensual',year:'Anual'};
+    let mode='day';
+    try{mode=String(OPER_PERIOD?.type||q('#operPeriodMode')?.value||'day')}catch(_){}
+    if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación · '+(modeMap[mode]||'Día')+' · DEMO';
+    if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Resumen ejecutivo de operación y productividad · DEMO con ventas';
   }
 
   let demoGuardTimer=0;
@@ -682,7 +722,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       if(!demoMode||!demoData||!isOperation())return;
       const host=q('#operativoDynamicContent');
       if(!host)return;
-      const marker=host.querySelector('.v201-demo-note');
+      const marker=host.querySelector('.v201-demo-marker,.v201-demo-note');
       if(!marker||host.dataset.v201DemoView!==demoTab){
         renderDemo();
         return;
@@ -690,8 +730,12 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       document.body.classList.add('v201-demo-mode');
       const title=q('#operativoDynamicTitle');
       const sub=q('#operativoDynamicSub');
-      if(title&&title.textContent!=='Operación · DEMO')title.textContent='Operación · DEMO';
-      if(sub&&sub.textContent!=='Datos de venta reales como base · operación estimada para visualización')sub.textContent='Datos de venta reales como base · operación estimada para visualización';
+      const modeMap={day:'Día',week:'Semanal',month:'Mensual',year:'Anual'};
+      let mode='day';try{mode=String(OPER_PERIOD?.type||q('#operPeriodMode')?.value||'day')}catch(_){}
+      const wantedTitle='Operación · '+(modeMap[mode]||'Día')+' · DEMO';
+      const wantedSub='Resumen ejecutivo de operación y productividad · DEMO con ventas';
+      if(title&&title.textContent!==wantedTitle)title.textContent=wantedTitle;
+      if(sub&&sub.textContent!==wantedSub)sub.textContent=wantedSub;
       syncTab();
     },25);
   }
@@ -756,7 +800,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
   function setup(){ensureToolbar();bindDemoFilters();setupDemoGuard();if(demoMode&&isOperation())guardDemo()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
   [250,800,1600].forEach(ms=>setTimeout(setup,ms));
-  console.info('[V201.1] Demo de Operación protegido contra re-render de capas posteriores.');
+  console.info('[V201.2] DEMO de Operación conserva el mismo formato visual de la vista real.');
 })();
 </script>'''
 
@@ -779,7 +823,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
             headers.update({
                 "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
                 "Pragma": "no-cache", "Expires": "0",
-                "X-Operations-UI-Version": "V201.1-DEMO-GUARD",
+                "X-Operations-UI-Version": "V201.2-DEMO-NATIVE-LAYOUT",
             })
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
@@ -787,4 +831,4 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
             return response
 
     m._V201_OPERATION_SALES_DEMO = True
-    print("[V201.1] Demo Operación: contenido protegido contra sobrescrituras tardías.", flush=True)
+    print("[V201.2] Demo Operación: formato nativo conservado y datos demo protegidos.", flush=True)
