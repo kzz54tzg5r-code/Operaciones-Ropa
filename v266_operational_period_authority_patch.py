@@ -229,10 +229,14 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     return String(v||'');
   }
   function paintPeriodIdentity(mode){
+    const label=LABELS[mode]||'Periodo';
     const lab=q('#operPeriodLabel');
-    if(lab)lab.textContent=LABELS[mode]||'Periodo';
+    if(lab&&lab.textContent!==label)lab.textContent=label;
     const icon=q('#operPeriodSelectWrap label .or-fcontrol-icon');
-    if(icon)icon.innerHTML=ICONS[mode]||ICONS.month;
+    if(icon&&icon.dataset.v266Mode!==mode){
+      icon.innerHTML=ICONS[mode]||ICONS.month;
+      icon.dataset.v266Mode=mode;
+    }
   }
   function setGlobals(mode,value){
     try{
@@ -293,7 +297,10 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
       grid.insertBefore(host,grid.firstElementChild||null);
     }
     host.classList.remove('hidden');
-    host.style.setProperty('--v266-mode-count',String(opts.length));
+    const modeCount=String(opts.length);
+    if(host.style.getPropertyValue('--v266-mode-count')!==modeCount){
+      host.style.setProperty('--v266-mode-count',modeCount);
+    }
     const sig=opts.map(x=>x.join('|')).join('¦');
     if(host.dataset.signature!==sig){
       host.dataset.signature=sig;
