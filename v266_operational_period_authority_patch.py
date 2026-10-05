@@ -1,4 +1,4 @@
-"""V266 · controlador autoritativo de periodos operativos.
+"""V266.1 · controlador autoritativo de periodos operativos.
 
 Corrige la desincronización entre la Vista operativa visible y el selector
 real usado por los reportes. Obtiene periodos reales desde /api/operations/meta,
@@ -147,13 +147,44 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
   let queued=null;
   let ensureTimer=0;
 
+  function operationModuleActive(){
+    const tagged=String(document.body.dataset.v163Module||'').toLowerCase();
+    if(tagged==='operation'||document.body.classList.contains('v238-module-operation'))return true;
+    try{
+      const m=String(window.MAIN||MAIN||'').toLowerCase();
+      if(m==='operation')return true;
+    }catch(_){}
+    return false;
+  }
+  function activeOperationTab(){
+    const btn=q('#v200OperationTabs>button.active[data-v200-op]')||
+              q('#v200OperationTabs>button[aria-selected="true"][data-v200-op]');
+    let tab=String(btn?.dataset?.v200Op||'');
+    if(!tab){
+      try{tab=String(window.V149_OPERATION_TAB||window.V125_OPERATION_TAB||'summary')}catch(_){tab='summary'}
+    }
+    return {btn,tab:tab||'summary'};
+  }
   function active(){
+    /* V275: Operación y Cambios y Muertos comparten #operativoPeriodBar.
+       Cuando el módulo activo es Operación, NUNCA usar la pestaña escondida
+       de #operativoNav (por ejemplo Centro Operativo) como destino del filtro. */
+    if(operationModuleActive()){
+      const op=activeOperationTab();
+      return {
+        btn:op.btn,
+        key:'operation.'+op.tab,
+        view:'Operación',
+        operationTab:op.tab
+      };
+    }
     const btn=q('#operativoNav>button.active[data-opview]')||
               q('#operativoNav>button[aria-selected="true"][data-opview]');
     return {
       btn,
       key:String(btn?.dataset?.tabKey||''),
-      view:String(btn?.dataset?.opview||'')
+      view:String(btn?.dataset?.opview||''),
+      operationTab:''
     };
   }
   function profile(view){
@@ -167,6 +198,13 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     return'';
   }
   function options(view){
+    if(view==='Operación'){
+      const tab=activeOperationTab().tab;
+      if(tab==='summary')return FULL;
+      if(tab==='productivity')return PROD;
+      if(tab==='daily')return [['day','Día']];
+      return [];
+    }
     const p=profile(view);
     return p==='fullperiod'?FULL:p==='productivityperiod'?PROD:p==='flex'?FLEX:[];
   }
@@ -450,9 +488,10 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
 
   function start(){
     loadMeta(true).then(()=>repair());
-    const bar=q('#operativoPeriodBar'),nav=q('#operativoNav');
+    const bar=q('#operativoPeriodBar'),nav=q('#operativoNav'),opNav=q('#v200OperationTabs');
     if(bar)observer.observe(bar,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
     if(nav)observer.observe(nav,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-selected']});
+    if(opNav)observer.observe(opNav,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-selected']});
     ensureHost();
     [80,220,500,1000,1800].forEach(ms=>setTimeout(repair,ms));
   }
@@ -460,7 +499,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
   else start();
 
-  console.info('[V266] Periodos operativos autoritativos: Día/Semana/Mes/Año + icono dinámico.');
+  console.info('[V266.1] Periodos operativos: Operación respeta su subpestaña activa; Centro Operativo queda aislado.');
 })();
 </script>'''
 
@@ -492,4 +531,4 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
             return response
 
     m._V266_OPERATIONAL_PERIOD_AUTHORITY=True
-    print("[V266] Periodos operativos autoritativos instalados.",flush=True)
+    print("[V266.1] Periodos operativos instalados con aislamiento Operación/Centro Operativo.",flush=True)
