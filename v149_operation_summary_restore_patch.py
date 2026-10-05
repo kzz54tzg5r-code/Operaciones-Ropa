@@ -1,4 +1,4 @@
-"""V149.2 · Restaura Resumen como primera pestaña de Operación.
+"""V149.3 · Restaura Resumen como primera pestaña de Operación.
 
 Se instala al final de la cadena para que no lo oculten los parches posteriores.
 Resumen: Llegada Origen, productividad, mercancía liberada, pendiente,
@@ -72,7 +72,7 @@ def install(m):
         """Resumen del módulo Operación: EXCLUSIVAMENTE flujo Origen.
 
         El pendiente usa la última captura manual disponible como cierre
-        autoritativo. Si no existe captura, se deriva históricamente. Para
+        autoritativo. Si no existe captura, usa sólo el último día con movimiento. Para
         Semana/Mes/Año se toma saldo de apertura + movimientos del periodo;
         nunca se suman pendientes diarios.
         """
@@ -113,7 +113,13 @@ def install(m):
             return org
 
         def balance_to(st, cutoff):
-            """Cierre Origen de una tienda al corte solicitado."""
+            """Saldo Origen al corte sin acumular toda la historia.
+
+            Prioridad:
+            1) última captura manual de pendiente y movimientos posteriores;
+            2) si no existe captura manual, usar sólo el último día con movimiento
+               como saldo de cierre, nunca la suma histórica completa.
+            """
             st_caps = [r for r in caps if str(r.get("store") or "")==st and str(r.get("date") or "")<=cutoff]
             st_prod = [r for r in prod if str(r.get("store") or "")==st and str(r.get("date") or "")<=cutoff]
             explicit = [r for r in st_caps if r.get("pending_manual") is not None]
@@ -124,8 +130,16 @@ def install(m):
                 bal += sum(n(r.get("arrival")) for r in st_caps if str(r.get("date") or "")>anchor_day)
                 bal -= sum(n(r.get("pieces")) for r in st_prod if str(r.get("date") or "")>anchor_day)
                 return max(bal,0.0), "capturado"
-            arrivals = sum(n(r.get("arrival")) for r in st_caps)
-            processed = sum(n(r.get("pieces")) for r in st_prod)
+
+            days = sorted({
+                str(r.get("date") or "") for r in (st_caps + st_prod)
+                if str(r.get("date") or "")
+            })
+            if not days:
+                return 0.0, "calculado"
+            last_day = days[-1]
+            arrivals = sum(n(r.get("arrival")) for r in st_caps if str(r.get("date") or "")==last_day)
+            processed = sum(n(r.get("pieces")) for r in st_prod if str(r.get("date") or "")==last_day)
             return max(arrivals-processed,0.0), "calculado"
 
         cp=[r for r in caps if ss<=str(r.get("date") or "")<=es]
@@ -135,8 +149,27 @@ def install(m):
         closing_by={}
         pending_source={}
         for st in stores:
-            opening_by[st]=balance_to(st,day_before)[0]
-            closing_by[st],pending_source[st]=balance_to(st,es)
+            opening_by[st], opening_source = balance_to(st,day_before)
+
+            st_cp=[r for r in cp if str(r.get("store") or "")==st]
+            st_pp=[r for r in pp if str(r.get("store") or "")==st]
+            explicit_period=[r for r in st_cp if r.get("pending_manual") is not None]
+
+            if explicit_period:
+                anchor=max(explicit_period,key=lambda r:str(r.get("date") or ""))
+                anchor_day=str(anchor.get("date") or "")
+                bal=n(anchor.get("pending_manual"))
+                bal+=sum(n(r.get("arrival")) for r in st_cp if str(r.get("date") or "")>anchor_day)
+                bal-=sum(n(r.get("pieces")) for r in st_pp if str(r.get("date") or "")>anchor_day)
+                closing_by[st]=max(bal,0.0)
+                pending_source[st]="capturado"
+            else:
+                # Regla acordada: saldo inicial del periodo + movimientos acumulados,
+                # sin sumar pendientes diarios ni arrastrar toda la historia.
+                period_arrival=sum(n(r.get("arrival")) for r in st_cp)
+                period_processed=sum(n(r.get("pieces")) for r in st_pp)
+                closing_by[st]=max(opening_by[st]+period_arrival-period_processed,0.0)
+                pending_source[st]=opening_source
 
         oa=sum(n(r.get("arrival")) for r in cp)
         op=sum(n(r.get("pieces")) for r in pp)
