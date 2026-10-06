@@ -436,6 +436,10 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       return ['superadmin','admin','director','consulta'].includes(role)||USER?.can_preview_roles===true;
     }catch(_){return false}
   }
+  function currentOperationTab(){
+    const active=q('#v200OperationTabs [data-v200-op].active,#v200OperationTabs [data-v200-op][aria-selected="true"]');
+    return active?.dataset?.v200Op||'summary';
+  }
   async function A(url){
     if(typeof api==='function')return api(url,{timeoutMs:120000});
     const r=await fetch(url,{credentials:'same-origin'});
@@ -452,7 +456,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       bar.innerHTML='<button id="v201DemoOn" class="v201-demo-btn">DEMO con ventas</button><button id="v201DemoOff" class="v201-demo-btn v201-real-btn">Volver a real</button>';
       const tabs=q('#v200OperationTabs');
       tabs?.parentNode?.insertBefore(bar,tabs);
-      q('#v201DemoOn')?.addEventListener('click',()=>openDemo('summary'));
+      q('#v201DemoOn')?.addEventListener('click',()=>openDemo(currentOperationTab()));
       q('#v201DemoOff')?.addEventListener('click',closeDemo);
     }
     bar.style.display=isOperation()?'flex':'none';
@@ -791,6 +795,43 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     return '<div class="v201-demo-card"><h3>Base de venta desde abril</h3><div class="sub">Piezas reales usadas para dimensionar el DEMO</div><div class="v201-demo-months">'+(d.trend||[]).map(r=>'<div class="v201-demo-month"><small>'+esc(r.label)+'</small><b>'+nf(r.sales_pieces)+'</b><span>venta pzas · eficiencia demo '+pct(r.efficiency)+'</span></div>').join('')+'</div></div>';
   }
 
+  function aisleResupplyDemo(d){
+    if(typeof window.V281AisleDemoHTML==='function'){
+      try{return window.V281AisleDemoHTML(d)}catch(e){console.warn('[V201] DEMO Resurtido',e)}
+    }
+    return '<span class="v201-demo-marker" hidden></span>'+note(d)+'<div class="v201-demo-card"><h3>Resurtido de Pasillos · DEMO</h3><div class="sub">El boceto de Resurtido todavía se está preparando.</div></div>';
+  }
+
+  function bonusType(v){
+    const k=v%3;return k===0?'Mixto':k===1?'Origen':'Resurtido';
+  }
+  function bonusesDemo(d){
+    const collaborators=(d.collaborators||[]).slice(0,80);
+    const storeNames=[...new Set((d.stores||[]).map(x=>x.store).filter(Boolean))];
+    const clusterOf={};storeNames.forEach((st,i)=>clusterOf[st]=['A','B','C','D'][i%4]);
+    const rows=collaborators.map((r,i)=>{
+      const compliance=n(r.compliance),op=bonusType(i),level=compliance>=110?'Oro':compliance>=100?'Plata':compliance>=95?'Bronce':'Sin bono';
+      const assignment=compliance>=110?'100%':compliance>=100?'75%':compliance>=95?'50%':'0%';
+      const bonus=compliance>=110?900:compliance>=100?650:compliance>=95?350:0;
+      return {...r,cluster:clusterOf[r.store]||['A','B','C','D'][i%4],op,level,assignment,bonus,rank:i+1};
+    });
+    const clusters=['A','B','C','D'].map(c=>{
+      const rr=rows.filter(x=>x.cluster===c),avg=rr.length?rr.reduce((a,x)=>a+n(x.compliance),0)/rr.length:0,total=rr.reduce((a,x)=>a+n(x.bonus),0),withb=rr.filter(x=>x.bonus>0).length,stores=new Set(rr.map(x=>x.store)).size;
+      return {c,avg,total,withb,n:rr.length,stores};
+    });
+    const cards=clusters.map(x=>'<div class="v279-card" style="--c:'+(x.c==='A'?'#2f80ed':x.c==='B'?'#20b86a':x.c==='C'?'#f3a326':'#ed5573')+'"><b>Cluster '+x.c+'</b><small>'+nf(x.stores)+' tiendas</small><strong>'+pct(x.avg)+'</strong><span>'+nf(x.n)+' colaboradores · '+(x.n?pct(x.withb/x.n*100):'0%')+' con bono</span><div class="v279-money">'+money(x.total)+'</div></div>').join('');
+    const body=rows.slice(0,30).map((r,i)=>'<tr><td>'+(i<3?['🥇','🥈','🥉'][i]:i+1)+'</td><td><b>'+esc(r.name)+(r.synthetic?' <span class="v201-demo-pill">DEMO</span>':'')+'</b><br><small>'+esc(r.employee_no||'')+'</small></td><td>'+esc(r.store)+'</td><td><span class="v279-type '+(r.op==='Resurtido'?'res':r.op==='Mixto'?'mix':'')+'">'+r.op+'</span></td><td>'+nf(r.pieces)+'</td><td>'+nf(r.pieces/Math.max(1,n(d.workdays))*1.02)+'</td><td class="v279-pct">'+pct(r.compliance)+'</td><td><span class="v279-band">'+r.assignment+'</span></td><td>'+r.level+'</td><td class="v279-money">'+money(r.bonus)+'</td></tr>').join('');
+    return '<span class="v201-demo-marker" hidden></span><div class="v279"><div class="v201-demo-note"><b>DEMO</b><span>Bonos usa colaboradores y venta disponibles como base para visualizar el ranking. No guarda asignaciones ni pagos.</span></div><div class="v279-cards">'+cards+'</div><div class="v279-panel"><div class="v279-head"><h3>🏆 Ranking general por clúster y tienda · DEMO</h3><span>'+rows.length+' colaboradores</span></div><div class="v279-tablewrap"><table class="v279-table"><thead><tr><th>Pos.</th><th>Colaborador</th><th>Tienda</th><th>Tipo operación</th><th>Piezas realizadas</th><th>Piezas esperadas</th><th>% Cumplimiento</th><th>% Asignación</th><th>Nivel bono</th><th>Monto bono</th></tr></thead><tbody>'+body+'</tbody></table></div></div></div>';
+  }
+
+  function customDemoTitle(){
+    if(demoTab==='aisle-resupply')return ['Operación · Resurtido de Pasillos · DEMO','Bloques consecutivos, productividad por pareja y avance por pasillo'];
+    if(demoTab==='bonuses')return ['Operación · Bonos · DEMO','Ranking por clúster y tienda con datos simulados para visualización'];
+    const modeMap={day:'Día',week:'Semanal',month:'Mensual',year:'Anual'};let mode='day';
+    try{mode=String(OPER_PERIOD?.type||q('#operPeriodMode')?.value||'day')}catch(_){}
+    return ['Operación · '+(modeMap[mode]||'Día')+' · DEMO','Resumen ejecutivo de operación y productividad · DEMO con ventas'];
+  }
+
   function renderDemo(){
     if(!demoMode||!demoData)return;
     syncTab();
@@ -799,7 +840,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación · DEMO';
     if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Datos de venta reales como base · operación estimada para visualización';
     const host=q('#operativoDynamicContent');if(!host)return;
-    const views={summary,daily,capture,productivity,standards};
+    const views={summary,daily,capture,productivity,standards,'aisle-resupply':aisleResupplyDemo,bonuses:bonusesDemo};
     const needsFilter=['summary','productivity'].includes(demoTab);
     document.body.classList.toggle('v201-demo-filtered',needsFilter);
     const nativeBar=q('#operativoPeriodBar');
@@ -810,13 +851,10 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     host.dataset.v201DemoView=demoTab;
     host.innerHTML=(views[demoTab]||summary)(demoData);
 
-    /* El DEMO usa exactamente la misma estructura visual que la vista real.
-       Sólo cambian los valores y la marca DEMO, nunca el layout. */
-    const modeMap={day:'Día',week:'Semanal',month:'Mensual',year:'Anual'};
-    let mode='day';
-    try{mode=String(OPER_PERIOD?.type||q('#operPeriodMode')?.value||'day')}catch(_){}
-    if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación · '+(modeMap[mode]||'Día')+' · DEMO';
-    if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent='Resumen ejecutivo de operación y productividad · DEMO con ventas';
+    /* El DEMO conserva el layout de cada pestaña, también en Resurtido y Bonos. */
+    const customTitle=customDemoTitle();
+    if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent=customTitle[0];
+    if(q('#operativoDynamicSub'))q('#operativoDynamicSub').textContent=customTitle[1];
   }
 
   let demoGuardTimer=0;
@@ -835,10 +873,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       document.body.classList.add('v201-demo-mode');
       const title=q('#operativoDynamicTitle');
       const sub=q('#operativoDynamicSub');
-      const modeMap={day:'Día',week:'Semanal',month:'Mensual',year:'Anual'};
-      let mode='day';try{mode=String(OPER_PERIOD?.type||q('#operPeriodMode')?.value||'day')}catch(_){}
-      const wantedTitle='Operación · '+(modeMap[mode]||'Día')+' · DEMO';
-      const wantedSub='Resumen ejecutivo de operación y productividad · DEMO con ventas';
+      const wanted=customDemoTitle(),wantedTitle=wanted[0],wantedSub=wanted[1];
       if(title&&title.textContent!==wantedTitle)title.textContent=wantedTitle;
       if(sub&&sub.textContent!==wantedSub)sub.textContent=wantedSub;
       syncTab();
@@ -860,10 +895,15 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     }
   }
   async function closeDemo(){
+    const returnTab=demoTab;
     demoMode=false;demoData=null;document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
     q('#v201DemoOn')?.classList.remove('active');
     if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación';
     if(typeof window.renderOperativoView==='function')await window.renderOperativoView('Operación',true);
+    setTimeout(()=>{
+      const btn=q('#v200OperationTabs [data-v200-op="'+returnTab+'"]');
+      if(btn&&returnTab!=='summary')btn.click();
+    },80);
   }
 
   document.addEventListener('click',e=>{
