@@ -860,24 +860,19 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
   let demoGuardTimer=0;
   function guardDemo(){
     if(!demoMode||!demoData||!isOperation())return;
-    clearTimeout(demoGuardTimer);
-    demoGuardTimer=setTimeout(()=>{
-      if(!demoMode||!demoData||!isOperation())return;
-      const host=q('#operativoDynamicContent');
-      if(!host)return;
-      const marker=host.querySelector('.v201-demo-marker,.v201-demo-note');
-      if(!marker||host.dataset.v201DemoView!==demoTab){
-        renderDemo();
-        return;
-      }
-      document.body.classList.add('v201-demo-mode');
-      const title=q('#operativoDynamicTitle');
-      const sub=q('#operativoDynamicSub');
-      const wanted=customDemoTitle(),wantedTitle=wanted[0],wantedSub=wanted[1];
-      if(title&&title.textContent!==wantedTitle)title.textContent=wantedTitle;
-      if(sub&&sub.textContent!==wantedSub)sub.textContent=wantedSub;
-      syncTab();
-    },25);
+    const host=q('#operativoDynamicContent');
+    if(!host)return;
+    const marker=host.querySelector('.v201-demo-marker,.v201-demo-note');
+    if(!marker||host.dataset.v201DemoView!==demoTab){
+      renderDemo();return;
+    }
+    document.body.classList.add('v201-demo-mode');
+    const title=q('#operativoDynamicTitle');
+    const sub=q('#operativoDynamicSub');
+    const wanted=customDemoTitle(),wantedTitle=wanted[0],wantedSub=wanted[1];
+    if(title&&title.textContent!==wantedTitle)title.textContent=wantedTitle;
+    if(sub&&sub.textContent!==wantedSub)sub.textContent=wantedSub;
+    syncTab();
   }
 
   async function openDemo(tab='summary'){
@@ -896,7 +891,7 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
   }
   async function closeDemo(){
     const returnTab=demoTab;
-    demoMode=false;demoData=null;document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
+    demoMode=false;demoData=null;clearTimeout(demoGuardTimer);document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
     q('#v201DemoOn')?.classList.remove('active');
     if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Operación';
     if(typeof window.renderOperativoView==='function')await window.renderOperativoView('Operación',true);
@@ -919,12 +914,14 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
     }
     const main=e.target.closest?.('[data-main]');
     if(main){
-      setTimeout(()=>{
-        ensureToolbar();
-        if(String(main.dataset.main||'')!=='operation'&&demoMode){
-          demoMode=false;document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
-        }
-      },100);
+      const next=String(main.dataset.main||'').toLowerCase();
+      if(next!=='operation'&&demoMode){
+        demoMode=false;demoData=null;
+        clearTimeout(demoGuardTimer);
+        document.body.classList.remove('v201-demo-mode','v201-demo-filtered');
+        q('#v201DemoOn')?.classList.remove('active');
+      }
+      setTimeout(ensureToolbar,100);
     }
   },true);
 
@@ -935,14 +932,8 @@ body.v201-demo-mode:not(.v201-demo-filtered) #operativoPeriodBar{display:none!im
       el.addEventListener('change',()=>{if(demoMode&&demoTab==='productivity')renderDemo()});
     });
   }
-  let demoObserver=null;
-  function setupDemoGuard(){
-    if(demoObserver)return;
-    demoObserver=new MutationObserver(()=>guardDemo());
-    demoObserver.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style','aria-selected']});
-    setInterval(()=>{if(demoMode)guardDemo()},250);
-  }
-  function setup(){ensureToolbar();bindDemoFilters();setupDemoGuard();if(demoMode&&isOperation())guardDemo()}
+  function setupDemoGuard(){/* V284: sin observador global; evita bucles al cambiar de módulo. */}
+  function setup(){ensureToolbar();bindDemoFilters();if(demoMode&&isOperation())guardDemo()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
   [250,800,1600].forEach(ms=>setTimeout(setup,ms));
   console.info('[V201.2] DEMO de Operación conserva el mismo formato visual de la vista real.');
