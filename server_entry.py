@@ -228,6 +228,7 @@ from v279_operation_bonus_cluster_patch import install as _install_v279_operatio
 from v279_aisle_resupply_patch import install as _install_v279_aisle_resupply_patch
 from v281_aisle_resupply_boceto_patch import install as _install_v281_aisle_resupply_boceto_patch
 from v285_global_table_density_patch import install as _install_v285_global_table_density_patch
+from v286_scroll_type_authority_patch import install as _install_v286_scroll_type_authority_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -399,4 +400,7 @@ _install_v281_aisle_resupply_boceto_patch(web_app)
 
 # V285: densidad global de tablas; fuentes legibles y columnas compactas.
 _install_v285_global_table_density_patch(web_app)
+
+# V286: autoridad final de scroll y tipografía para iOS/Android/tablet/laptop/PC.
+_install_v286_scroll_type_authority_patch(web_app)
 app = web_app.app
