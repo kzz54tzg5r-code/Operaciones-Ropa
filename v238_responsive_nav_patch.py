@@ -237,6 +237,7 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
     route:'<path d="M5 19c3-6 11-5 14-12"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="7" r="2"/>',
     database:'<ellipse cx="12" cy="5" rx="7" ry="3"/><path d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
     target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+    award:'<path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M6 5H3v2a4 4 0 0 0 4 4M18 5h3v2a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/>',
     accordion:'<rect x="3" y="4" width="18" height="5" rx="1.5"/><rect x="3" y="11" width="18" height="4" rx="1.5"/><rect x="3" y="17" width="18" height="3" rx="1.5"/>',
     building:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h2M14 7h2M8 11h2M14 11h2M8 15h2M14 15h2M9 21v-3h6v3"/>',
     checklist:'<path d="M9 5h10M9 12h10M9 19h10"/><path d="m3 5 1.2 1.2L6.5 4M3 12l1.2 1.2L6.5 11M3 19l1.2 1.2L6.5 18"/>',
@@ -319,6 +320,8 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
       if(opKey==='daily'||t.includes('captura diaria'))return['Captura diaria','Captura\ndiaria','dashboard'];
       if(opKey==='capture'||t.includes('cargar productividad'))return['Cargar productividad','Cargar\nProductividad','truck'];
       if(opKey==='productivity'||t==='productividad')return['Productividad','Productividad','chart'];
+      if(opKey==='aisle-resupply'||t.includes('resurtido de pasillos'))return['Resurtido de Pasillos','Resurtido\nPasillos','route'];
+      if(opKey==='bonuses'||t==='bonos')return['Bonos','Bonos','award'];
       if(opKey==='standards'||t.includes('estandares'))return['Estándares Operativos','Estándares\nOperativos','target'];
       if(t.includes('diaria')||t.includes('operacion'))return[raw,raw,'gear'];
     }
