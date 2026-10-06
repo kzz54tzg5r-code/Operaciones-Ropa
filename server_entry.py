@@ -227,6 +227,7 @@ from v277_operation_kpis_final_patch import install as _install_v277_operation_k
 from v279_operation_bonus_cluster_patch import install as _install_v279_operation_bonus_cluster_patch
 from v279_aisle_resupply_patch import install as _install_v279_aisle_resupply_patch
 from v281_aisle_resupply_boceto_patch import install as _install_v281_aisle_resupply_boceto_patch
+from v285_global_table_density_patch import install as _install_v285_global_table_density_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -395,4 +396,7 @@ _install_v279_aisle_resupply_patch(web_app)
 
 # V281: layout final del boceto 2+7+9 + historial + soporte DEMO.
 _install_v281_aisle_resupply_boceto_patch(web_app)
+
+# V285: densidad global de tablas; fuentes legibles y columnas compactas.
+_install_v285_global_table_density_patch(web_app)
 app = web_app.app
