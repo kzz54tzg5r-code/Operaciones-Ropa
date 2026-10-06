@@ -12,7 +12,7 @@ Incluye:
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import uuid
 
@@ -94,6 +94,35 @@ def install(m):
         except Exception:
             return None
 
+    def _expire_stale_timer(con, created_by: str):
+        """Cierra capturas activas heredadas de días anteriores.
+        Una productividad operativa pertenece a un solo día de operación.
+        """
+        today = _today()
+        now = datetime.now(MX).isoformat(timespec="seconds")
+        rows = con.execute(
+            "SELECT id,date,started_at FROM operation_productivity_timer "
+            "WHERE created_by=? AND status='active'",
+            (created_by,),
+        ).fetchall()
+        expired = []
+        for row in rows:
+            data = dict(row)
+            row_day = str(data.get("date") or "")[:10]
+            start = _parse_dt(data.get("started_at"))
+            start_day = start.astimezone(MX).date().isoformat() if start and start.tzinfo else (
+                start.date().isoformat() if start else ""
+            )
+            if (row_day and row_day != today) or (start_day and start_day != today):
+                expired.append(int(data.get("id") or 0))
+        for rid in expired:
+            con.execute(
+                "UPDATE operation_productivity_timer "
+                "SET status='cancelled',ended_at=?,updated_at=? WHERE id=? AND status='active'",
+                (now, now, rid),
+            )
+        return len(expired)
+
     def _clean_capture(operation_type, supply_reason, activity):
         op = str(operation_type or "").strip().title()
         if op not in ("Origen", "Resurtido"):
@@ -133,17 +162,19 @@ def install(m):
     @m.app.get("/api/operation-capture-v222/active")
     def v222_capture_active(request: Request):
         actor = m.require_user(request)
+        created_by = str(actor.get("username") or "")
         with m.db() as con:
+            stale_cleared = _expire_stale_timer(con, created_by)
             row = con.execute(
                 "SELECT * FROM operation_productivity_timer "
                 "WHERE created_by=? AND status='active' ORDER BY id DESC LIMIT 1",
-                (str(actor.get("username") or ""),),
+                (created_by,),
             ).fetchone()
         item = dict(row) if row else None
         if item:
             item["operation_type"] = str(item.get("operation_type") or "Origen")
             item["supply_reason"] = str(item.get("supply_reason") or "")
-        return {"item": item}
+        return {"item": item, "stale_cleared": stale_cleared}
 
     @m.app.post("/api/operation-capture-v222/start")
     async def v222_capture_start(request: Request):
@@ -166,6 +197,7 @@ def install(m):
         created_by = str(actor.get("username") or "")
         group_id = "v222-" + uuid.uuid4().hex
         with m.db() as con:
+            _expire_stale_timer(con, created_by)
             running = con.execute(
                 "SELECT id FROM operation_productivity_timer WHERE created_by=? AND status='active' LIMIT 1",
                 (created_by,),

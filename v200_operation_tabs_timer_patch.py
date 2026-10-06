@@ -121,11 +121,20 @@ def install(m):
     @m.app.get("/api/operation-productivity-timer/active")
     def operation_productivity_timer_active(request: Request):
         actor = m.require_user(request)
+        created_by = str(actor.get("username") or "")
+        today = _today()
+        now = datetime.now(MX).isoformat(timespec="seconds")
         with m.db() as con:
+            con.execute(
+                "UPDATE operation_productivity_timer "
+                "SET status='cancelled',ended_at=?,updated_at=? "
+                "WHERE created_by=? AND status='active' AND substr(date,1,10)<>?",
+                (now, now, created_by, today),
+            )
             row = con.execute(
                 "SELECT * FROM operation_productivity_timer "
                 "WHERE created_by=? AND status='active' ORDER BY id DESC LIMIT 1",
-                (str(actor.get("username") or ""),),
+                (created_by,),
             ).fetchone()
         return {"item": dict(row) if row else None}
 
@@ -154,6 +163,12 @@ def install(m):
         day = now_dt.date().isoformat()
         created_by = str(actor.get("username") or "")
         with m.db() as con:
+            con.execute(
+                "UPDATE operation_productivity_timer "
+                "SET status='cancelled',ended_at=?,updated_at=? "
+                "WHERE created_by=? AND status='active' AND substr(date,1,10)<>?",
+                (now, now, created_by, day),
+            )
             running = con.execute(
                 "SELECT id FROM operation_productivity_timer "
                 "WHERE created_by=? AND status='active' LIMIT 1",
