@@ -536,6 +536,10 @@ body[data-v163-module="operation"].v200-operation-no-filter #operativoPeriodBar{
   }
 
   async function renderOperationCapture(){
+    if(typeof window.V222_renderOperationCapture==='function'){
+      clearInterval(timerInterval);
+      return window.V222_renderOperationCapture();
+    }
     if(!isOperation())return;
     setOpTab('capture');
     syncOperationChrome('capture',true);

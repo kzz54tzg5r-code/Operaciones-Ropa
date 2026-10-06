@@ -370,7 +370,13 @@ def install(m):
 .v222-choice button{min-height:38px;padding:7px 14px;border:1px solid #d3e0ed;border-radius:11px;background:#f8fbff;color:#315677;font-size:10px;font-weight:900;cursor:pointer}
 .v222-choice button.selected{border-color:#0b6cc5;background:linear-gradient(135deg,#0d4f8b,#0b82ed);color:#fff;box-shadow:0 7px 16px rgba(13,93,167,.16)}
 .v222-choice button:disabled{cursor:default;opacity:.75}
-.v222-area-wrap{margin-top:12px;border:1px solid #d9e5f1;border-radius:13px;overflow:hidden}
+.v222-area-wrap{margin-top:8px;border:0;border-radius:0;overflow:visible}
+.v222-area-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.v222-area-card{border:1px solid #d7e3ef;border-radius:12px;background:#f8fbff;padding:8px;min-width:0}
+.v222-area-card label{display:block;margin-bottom:5px;color:#173f68;font-size:9px;font-weight:950}
+.v222-area-card input{width:100%;height:42px;border:1px solid #cbd9e7;border-radius:9px;background:#fff;color:#123f73;text-align:center;font-size:18px;font-weight:950;padding:4px 7px}
+.v222-area-total{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:7px;padding:6px 9px;border-radius:9px;background:#edf5ff;color:#173f68;font-size:9px;font-weight:900}
+.v222-area-total b{font-size:16px}
 .v222-area-table{width:100%;border-collapse:collapse}
 .v222-area-table th{padding:9px 11px;background:#124d84;color:#fff;text-align:left;font-size:9px}
 .v222-area-table td{padding:8px 11px;border-bottom:1px solid #e8eef5;color:#264b70;font-size:10px}
@@ -448,6 +454,11 @@ def install(m):
  .v222-choice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
  .v222-choice.v222-two{grid-template-columns:repeat(2,minmax(0,1fr))}
  .v222-choice button{min-width:0;padding:6px 5px;font-size:9px}
+ .v222-area-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .v222-area-card{padding:5px;border-radius:8px}
+ .v222-area-card label{font-size:6px;margin-bottom:3px}
+ .v222-area-card input{height:32px;font-size:13px;padding:2px 4px}
+ .v222-area-total{font-size:6px;padding:4px 6px;margin-top:4px}.v222-area-total b{font-size:11px}
  .v222-tab-stage{grid-template-columns:26px minmax(0,1fr) 26px;gap:3px}
  .v222-tab-arrow{width:26px;height:38px;border-radius:10px;font-size:19px}
  #page-users.v219-users #tabVisibilityOptions.v222-grouped{grid-template-columns:1fr;gap:7px!important}
@@ -543,8 +554,8 @@ def install(m):
       ?'<div class="v222-section"><label>Motivo Surtido:</label><div class="v222-choice v222-two">'+reasons.map(x=>'<button type="button" data-v222-reason="'+esc(x)+'" class="'+(x===reason?'selected':'')+'" '+(running?'disabled':'')+'>'+esc(x)+'</button>').join('')+'</div></div>'
       :'';
     const activityButtons=acts.map(x=>'<button type="button" data-v222-activity="'+esc(x)+'" class="'+(x===activity?'selected':'')+'" '+(running?'disabled':'')+'>'+esc(x)+'</button>').join('');
-    const areaRows=(meta.areas||['Colgado','Doblado','Jeans','Lencería']).map(area=>
-      '<tr><td>'+esc(area)+'</td><td><input type="number" min="0" step="1" inputmode="numeric" data-v222-area="'+esc(area)+'" value="" placeholder="0" '+(!running?'disabled':'')+'></td></tr>'
+    const areaCards=(meta.areas||['Colgado','Doblado','Jeans','Lencería']).map(area=>
+      '<div class="v222-area-card"><label>'+esc(area)+'</label><input type="number" min="0" step="1" inputmode="numeric" data-v222-area="'+esc(area)+'" value="" placeholder="0" '+(!running?'disabled':'')+'></div>'
     ).join('');
     const hist=(history.items||[]).map(r=>{
       const p=r.pieces_by_area||{};
@@ -555,12 +566,12 @@ def install(m):
 
     host.innerHTML=
       '<div id="v222CaptureCard" class="v222-capture-card">'+
-        '<div class="v222-capture-head"><div><h3>Registro de productividad</h3><div class="v222-note">Selecciona el tipo de operación y la actividad. Al finalizar captura las piezas por área.</div></div><div id="v222Timer" class="v222-timer">00:00:00</div></div>'+
+        '<div class="v222-capture-head"><div><h3>Registro de productividad</h3><div class="v222-note">Selecciona Origen o Resurtido, después la etapa. Al finalizar captura las piezas realizadas por área.</div></div><div id="v222Timer" class="v222-timer">00:00:00</div></div>'+
         '<div class="v222-meta"><span>'+esc(meta.date||'')+'</span><span>'+esc(meta.store||'')+'</span><span>'+esc(meta.employee_name||'')+'</span><span>Nómina '+esc(meta.employee_no||'—')+'</span></div>'+
-        '<div class="v222-section"><label>Tipo de operación</label><div class="v222-choice v222-two">'+typeButtons+'</div></div>'+
+        '<div class="v222-section"><label>Actividad a realizar</label><div class="v222-choice v222-two">'+typeButtons+'</div></div>'+
         reasonHtml+
-        '<div class="v222-section"><label>Actividad</label><div class="v222-choice">'+activityButtons+'</div></div>'+
-        '<div class="v222-section"><label>Piezas por área</label><div class="v222-area-wrap"><table class="v222-area-table"><thead><tr><th>Área</th><th>Piezas</th></tr></thead><tbody>'+areaRows+'<tr class="v222-total-row"><td>Total</td><td><b id="v222AreaTotal">0</b></td></tr></tbody></table></div></div>'+
+        '<div class="v222-section"><label>Etapa</label><div class="v222-choice">'+activityButtons+'</div></div>'+
+        '<div class="v222-section"><label>Captura de piezas por área</label><div class="v222-area-wrap"><div class="v222-area-grid">'+areaCards+'</div><div class="v222-area-total"><span>Total piezas</span><b id="v222AreaTotal">0</b></div></div></div>'+
         '<div class="v222-actions"><button type="button" id="v222Start" class="v222-start" '+(running?'disabled':'')+'>▶ Inicio</button><button type="button" id="v222Finish" class="v222-finish" '+(!running?'disabled':'')+'>■ Fin</button><span id="v222Msg" class="v222-msg"></span></div>'+
       '</div>'+
       '<div class="v222-capture-card"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3><div class="v222-history-wrap"><table class="v222-history"><thead><tr><th>Colaborador</th><th>Tipo</th><th>Motivo</th><th>Actividad</th><th>Colgado</th><th>Doblado</th><th>Jeans</th><th>Lencería</th><th>Total</th><th>Tiempo</th></tr></thead><tbody>'+(hist||'<tr><td colspan="10">Sin capturas de hoy.</td></tr>')+'</tbody></table></div></div>';

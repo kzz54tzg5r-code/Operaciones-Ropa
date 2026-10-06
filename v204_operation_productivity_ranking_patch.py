@@ -546,6 +546,10 @@ body[data-v163-module="operation"][data-v204-view="capture"] #operativoPeriodBar
   }
   function startClock(){clearInterval(timerId);updateClock();timerId=setInterval(updateClock,1000)}
   async function renderCapture(){
+    if(typeof window.V222_renderOperationCapture==='function'){
+      clearInterval(timerId);
+      return window.V222_renderOperationCapture();
+    }
     showShell('Cargar productividad','Operación · registro de actividad, área, piezas y tiempo real','capture');
     const bar=q('#operativoPeriodBar');bar?.classList.add('hidden');if(bar)bar.style.display='none';
     const host=q('#operativoDynamicContent');if(!host)return;
