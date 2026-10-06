@@ -25,15 +25,48 @@ def install(m):
     if getattr(m, "_V159_OPERATION_STORE_STAFF_PENDING", False):
         return
 
-    # Migración no destructiva: los registros anteriores quedan NULL y conservan
-    # la fórmula histórica hasta que la tienda capture el pendiente explícito.
+    # V287: pendiente inicial único + excedente separado.
     try:
         with m.db() as con:
             cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(operation_daily_capture)").fetchall()}
             if "pending_manual" not in cols:
                 con.execute("ALTER TABLE operation_daily_capture ADD COLUMN pending_manual REAL")
+            if "excess" not in cols:
+                con.execute("ALTER TABLE operation_daily_capture ADD COLUMN excess REAL NOT NULL DEFAULT 0")
+            con.execute("""CREATE TABLE IF NOT EXISTS operation_pending_seed(
+                store TEXT PRIMARY KEY,
+                seed_date TEXT NOT NULL,
+                seed_pending REAL NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                created_by TEXT NOT NULL DEFAULT ''
+            )""")
+            now = datetime.now(MX).isoformat(timespec="seconds")
+            anchors = con.execute(
+                """SELECT c.store,c.date,c.pending_manual,c.updated_at,c.updated_by
+                   FROM operation_daily_capture c
+                   JOIN (
+                     SELECT store,MAX(date) max_date
+                     FROM operation_daily_capture
+                     WHERE origin='Origen' AND pending_manual IS NOT NULL
+                     GROUP BY store
+                   ) x ON x.store=c.store AND x.max_date=c.date
+                   WHERE c.origin='Origen' AND c.pending_manual IS NOT NULL"""
+            ).fetchall()
+            for a in anchors:
+                con.execute(
+                    """INSERT OR IGNORE INTO operation_pending_seed(
+                         store,seed_date,seed_pending,created_at,created_by
+                       ) VALUES(?,?,?,?,?)""",
+                    (
+                        str(a["store"] or ""),
+                        str(a["date"] or "")[:10],
+                        float(a["pending_manual"] or 0),
+                        str(a["updated_at"] or now),
+                        str(a["updated_by"] or ""),
+                    ),
+                )
     except Exception as exc:
-        print(f"[V159] Migración pending_manual: {type(exc).__name__}: {exc}", flush=True)
+        print(f"[V159] Migración pendiente/excedente: {type(exc).__name__}: {exc}", flush=True)
 
     def num(v):
         try:
@@ -41,6 +74,62 @@ def install(m):
             return x if math.isfinite(x) else 0.0
         except Exception:
             return 0.0
+
+    def _origin_ubicado(con, st, start_exclusive, end_inclusive):
+        """Piezas que reducen pendiente: sólo Origen · Ubicado.
+        El excedente nunca participa en esta resta.
+        """
+        try:
+            count = con.execute(
+                """SELECT COUNT(*) c FROM operation_productivity_timer
+                   WHERE store=? AND status='finished' AND operation_type='Origen'
+                     AND activity='Ubicado' AND date>? AND date<=?""",
+                (st, start_exclusive, end_inclusive),
+            ).fetchone()
+            if count and int(count["c"] or 0) > 0:
+                row = con.execute(
+                    """SELECT COALESCE(SUM(pieces),0) p FROM operation_productivity_timer
+                       WHERE store=? AND status='finished' AND operation_type='Origen'
+                         AND activity='Ubicado' AND date>? AND date<=?""",
+                    (st, start_exclusive, end_inclusive),
+                ).fetchone()
+                return num(row["p"] if row else 0)
+        except Exception:
+            pass
+        try:
+            row = con.execute(
+                """SELECT COALESCE(SUM(pieces),0) p FROM operation_productivity
+                   WHERE store=? AND activity='Ubicado'
+                     AND origin IN ('Colgado','Doblado','Jeans','Lencería')
+                     AND date>? AND date<=?""",
+                (st, start_exclusive, end_inclusive),
+            ).fetchone()
+            return num(row["p"] if row else 0)
+        except Exception:
+            return 0.0
+
+    def _pending_at(st, cutoff):
+        cutoff = iso_day(cutoff)
+        with m.db() as con:
+            seed = con.execute(
+                """SELECT seed_date,seed_pending FROM operation_pending_seed
+                   WHERE store=? AND seed_date<=?""",
+                (st, cutoff),
+            ).fetchone()
+            if not seed:
+                return None, "captura_inicial", ""
+            seed_day = str(seed["seed_date"] or "")[:10]
+            balance = num(seed["seed_pending"])
+            row = con.execute(
+                """SELECT COALESCE(SUM(arrival),0) a FROM operation_daily_capture
+                   WHERE store=? AND origin='Origen' AND date>? AND date<=?""",
+                (st, seed_day, cutoff),
+            ).fetchone()
+            balance += num(row["a"] if row else 0)
+            balance -= _origin_ubicado(con, st, seed_day, cutoff)
+            return max(balance, 0.0), "automatico", seed_day
+
+    m.operation_pending_at = _pending_at
 
     def iso_day(v):
         s = str(v or "")[:10]
@@ -106,14 +195,24 @@ def install(m):
         if not st or st == "Compañía":
             raise HTTPException(400, "Selecciona una tienda")
         with m.db() as con:
-            row = con.execute("SELECT arrival,released,pending_manual,notes,updated_at,updated_by FROM operation_daily_capture WHERE date=? AND store=? AND origin='Origen'", (day, st)).fetchone()
+            row = con.execute("SELECT arrival,released,excess,pending_manual,notes,updated_at,updated_by FROM operation_daily_capture WHERE date=? AND store=? AND origin='Origen'", (day, st)).fetchone()
             if row:
                 data = dict(row)
             else:
                 legacy = con.execute("SELECT COALESCE(SUM(arrival),0) arrival,COALESCE(SUM(released),0) released FROM operation_daily_capture WHERE date=? AND store=? AND origin IN ('Colgado','Doblado')", (day, st)).fetchone()
-                data = {"arrival": num(legacy["arrival"]) if legacy else 0, "released": num(legacy["released"]) if legacy else 0, "pending_manual": None, "notes":"", "updated_at":"", "updated_by":""}
+                data = {"arrival": num(legacy["arrival"]) if legacy else 0, "released": num(legacy["released"]) if legacy else 0, "excess":0, "pending_manual": None, "notes":"", "updated_at":"", "updated_by":""}
+            seed = con.execute("SELECT seed_date,seed_pending FROM operation_pending_seed WHERE store=?", (st,)).fetchone()
             status = con.execute("SELECT status,closed_at,closed_by FROM operation_day_status WHERE date=? AND store=?", (day, st)).fetchone()
-        return {"date":day,"store":st,"arrival":num(data.get("arrival")),"released":num(data.get("released")),"pending":None if data.get("pending_manual") is None else num(data.get("pending_manual")),"status":dict(status) if status else {"status":"open"},"can_capture":str(actor.get("role") or "") in ("superadmin","admin","tienda")}
+        auto_pending, pending_source, seed_day = _pending_at(st, day)
+        pending_editable = seed is None
+        return {
+            "date":day,"store":st,"arrival":num(data.get("arrival")),"released":num(data.get("released")),
+            "excess":num(data.get("excess")),
+            "pending":None if pending_editable else num(auto_pending),
+            "pending_editable":pending_editable,"pending_source":pending_source,"pending_seed_date":seed_day,
+            "status":dict(status) if status else {"status":"open"},
+            "can_capture":str(actor.get("role") or "") in ("superadmin","admin","tienda")
+        }
 
     @m.app.post("/api/operation/origin-capture-v159")
     async def origin_capture_save_v159(request: Request):
@@ -122,17 +221,60 @@ def install(m):
             raise HTTPException(400, "Selecciona una tienda")
         if not is_open(st, day):
             raise HTTPException(409, "El corte de ese día está cerrado")
-        arrival = max(num(body.get("arrival")), 0); released = max(num(body.get("released")), 0); pending = max(num(body.get("pending")), 0); now = datetime.now(MX).isoformat(timespec="seconds")
+        arrival = max(num(body.get("arrival")), 0)
+        released = max(num(body.get("released")), 0)
+        excess = max(num(body.get("excess")), 0)
+        now = datetime.now(MX).isoformat(timespec="seconds")
+        user = str(actor.get("username") or "")
+        seed_created = False
         with m.db() as con:
-            con.execute("""INSERT INTO operation_daily_capture(date,store,origin,arrival,released,pending_manual,notes,updated_at,updated_by)
-                           VALUES(?,?,?,?,?,?,'',?,?)
-                           ON CONFLICT(date,store,origin) DO UPDATE SET arrival=excluded.arrival,released=excluded.released,pending_manual=excluded.pending_manual,updated_at=excluded.updated_at,updated_by=excluded.updated_by""",
-                        (day, st, "Origen", arrival, released, pending, now, str(actor.get("username") or "")))
+            seed = con.execute("SELECT seed_date,seed_pending FROM operation_pending_seed WHERE store=?", (st,)).fetchone()
+            if not seed:
+                raw_pending = body.get("pending")
+                if raw_pending is None or str(raw_pending).strip()=="":
+                    raise HTTPException(400, "Captura las piezas pendientes iniciales; sólo se solicitarán esta primera vez")
+                pending_seed = max(num(raw_pending), 0)
+                con.execute(
+                    """INSERT INTO operation_pending_seed(store,seed_date,seed_pending,created_at,created_by)
+                       VALUES(?,?,?,?,?)""",
+                    (st, day, pending_seed, now, user),
+                )
+                seed_created = True
+            con.execute(
+                """INSERT INTO operation_daily_capture(
+                     date,store,origin,arrival,released,pending_manual,excess,notes,updated_at,updated_by
+                   ) VALUES(?,?,?,?,?,?,?,'',?,?)
+                   ON CONFLICT(date,store,origin) DO UPDATE SET
+                     arrival=excluded.arrival,released=excluded.released,excess=excluded.excess,
+                     pending_manual=CASE
+                       WHEN operation_daily_capture.pending_manual IS NULL AND ?=1
+                       THEN excluded.pending_manual
+                       ELSE operation_daily_capture.pending_manual
+                     END,
+                     updated_at=excluded.updated_at,updated_by=excluded.updated_by""",
+                (
+                    day, st, "Origen", arrival, released,
+                    max(num(body.get("pending")),0) if seed_created else None,
+                    excess, now, user, 1 if seed_created else 0,
+                ),
+            )
             try:
-                con.execute("INSERT INTO operation_audit(entity,entity_key,action,before_json,after_json,changed_at,changed_by) VALUES(?,?,?,?,?,?,?)", ("daily_capture", f"{day}|{st}|Origen", "upsert_v159", "{}", f'{{"arrival":{arrival},"released":{released},"pending":{pending}}}', now, str(actor.get("username") or "")))
+                con.execute(
+                    "INSERT INTO operation_audit(entity,entity_key,action,before_json,after_json,changed_at,changed_by) VALUES(?,?,?,?,?,?,?)",
+                    (
+                        "daily_capture", f"{day}|{st}|Origen", "upsert_v287", "{}",
+                        f'{{"arrival":{arrival},"released":{released},"excess":{excess},"seed_created":{str(seed_created).lower()}}}',
+                        now, user,
+                    ),
+                )
             except Exception:
                 pass
-        return {"ok":True,"message":"Captura diaria guardada","arrival":arrival,"released":released,"pending":pending}
+        pending, pending_source, seed_day = _pending_at(st, day)
+        return {
+            "ok":True,"message":"Captura diaria guardada","arrival":arrival,"released":released,
+            "excess":excess,"pending":num(pending),"pending_source":pending_source,
+            "pending_editable":False,"pending_seed_date":seed_day
+        }
 
     @m.app.get("/api/operation/staff-needed-v159")
     def staff_needed_v159(request: Request, period_type: str="day", period_value: str="", store: str="Compañía"):
@@ -190,19 +332,10 @@ def install(m):
             return org
 
         def closing_pending(st):
-            st_caps=[r for r in caps if str(r.get("store") or "")==st and str(r.get("date") or "")<=es]
-            st_prod=[r for r in prod if str(r.get("store") or "")==st and str(r.get("date") or "")<=es]
-            explicit=[r for r in st_caps if r.get("pending_manual") is not None]
-            if explicit:
-                anchor=max(explicit,key=lambda r:str(r.get("date") or ""))
-                anchor_day=str(anchor.get("date") or "")
-                balance=num(anchor.get("pending_manual"))
-                balance+=sum(num(r.get("arrival")) for r in st_caps if str(r.get("date") or "")>anchor_day)
-                balance-=sum(num(r.get("pieces")) for r in st_prod if str(r.get("date") or "")>anchor_day)
-                return max(balance,0.0),"capturado"
-            arr=sum(num(r.get("arrival")) for r in st_caps)
-            processed=sum(num(r.get("pieces")) for r in st_prod)
-            return max(arr-processed,0.0),"calculado"
+            value, source, _seed_day = _pending_at(st, es)
+            if value is None:
+                return 0.0, "captura_inicial"
+            return value, source
 
         rows=[]
         for st in stores:
@@ -257,7 +390,7 @@ def install(m):
         }
 
     css=r'''<style id="v159-operation-css">
-.v159-staff{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;margin:9px 0}.v159-staff h3{margin:0 0 7px;color:var(--navy);font-size:12px}.v159-staff-note{font-size:8px;color:#667085;line-height:1.45;margin-top:6px}.v159-pending-field{min-width:0}.v159-pending-field label{display:block;font-size:8px;font-weight:950;color:#667085;text-transform:uppercase;margin-bottom:5px}.v159-pending-field input{width:100%;min-height:44px;border:1px solid #ccd6e2;border-radius:10px;background:#fff;color:var(--text);padding:9px 10px;font-size:16px}@media(max-width:900px){.v159-staff{padding:10px}.v159-pending-field input{font-size:16px}}</style>'''
+.v159-staff{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px;margin:9px 0}.v159-staff h3{margin:0 0 7px;color:var(--navy);font-size:12px}.v159-staff-note{font-size:8px;color:#667085;line-height:1.45;margin-top:6px}.v159-pending-field,.v159-excess-field{min-width:0}.v159-pending-field label,.v159-excess-field label{display:block;font-size:8px;font-weight:950;color:#667085;text-transform:uppercase;margin-bottom:5px}.v159-pending-field input,.v159-excess-field input{width:100%;min-height:44px;border:1px solid #ccd6e2;border-radius:10px;background:#fff;color:var(--text);padding:9px 10px;font-size:16px}.v159-pending-field input:disabled{background:#f2f7fb;color:#123f73;font-weight:900}.v159-auto-note{display:block;margin-top:4px;color:#5f748a;font-size:7px;font-weight:750}.v159-excess-field input{border-color:#9cd8bd;background:#f4fff9}.v159-excess-field label{color:#087a4b}@media(max-width:900px){.v159-staff{padding:10px}.v159-pending-field input,.v159-excess-field input{font-size:16px}}</style>'''
 
     js=r'''<script id="v159-operation-js">
 (function(){
@@ -267,9 +400,24 @@ function activeTab(){const b=document.querySelector('#v200OperationTabs [data-v2
 async function decorateDaily(){
  if(activeTab()!=='daily')return;const store=document.getElementById('operStoreSelect')?.value||'',day=document.getElementById('operPeriodSelect')?.value||'';if(!store||store==='Compañía'||!day)return;
  let data;try{data=await api('/api/operation/origin-capture-v159?'+new URLSearchParams({date:day,store}),{timeoutMs:60000})}catch(e){console.warn('[V159] pendiente diario',e);return}
- if(!document.getElementById('v159OriginPending')){const rel=document.getElementById('v125OriginReleased');const host=rel?.closest('.v125-field')||rel?.parentElement;if(host){const w=document.createElement('div');w.className='v159-pending-field';w.innerHTML='<label>Origen · Piezas pendientes</label><input id="v159OriginPending" type="number" min="0" inputmode="numeric" value="0">';host.insertAdjacentElement('afterend',w)}}
- const inp=document.getElementById('v159OriginPending');if(inp)inp.value=data.pending==null?'0':String(data.pending);
- const old=document.getElementById('v125SaveOrigin');if(old&&!old.dataset.v159){const b=old.cloneNode(true);b.dataset.v159='1';old.replaceWith(b);b.addEventListener('click',async()=>{const msg=document.getElementById('v125DailyMsg');try{const r=await api('/api/operation/origin-capture-v159',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:document.getElementById('operPeriodSelect')?.value||day,store:document.getElementById('operStoreSelect')?.value||store,arrival:num(document.getElementById('v125OriginArrival')?.value),released:num(document.getElementById('v125OriginReleased')?.value),pending:num(document.getElementById('v159OriginPending')?.value)})});if(msg){msg.className='v125-msg ok';msg.textContent=r.message}setTimeout(()=>window.renderOperativoView(OP,true),300)}catch(e){if(msg){msg.className='v125-msg err';msg.textContent=e.message}else alert(e.message)}})}
+ if(!document.getElementById('v159OriginPending')){
+   const rel=document.getElementById('v125OriginReleased');const host=rel?.closest('.v125-field')||rel?.parentElement;
+   if(host){
+     const w=document.createElement('div');w.className='v159-pending-field';
+     w.innerHTML='<label id="v159PendingLabel">Origen · Piezas pendientes</label><input id="v159OriginPending" type="number" min="0" inputmode="numeric" value="0"><small id="v159PendingNote" class="v159-auto-note"></small>';
+     host.insertAdjacentElement('afterend',w);
+     const x=document.createElement('div');x.className='v159-excess-field';
+     x.innerHTML='<label>Origen · Excedente</label><input id="v159OriginExcess" type="number" min="0" inputmode="numeric" value="0"><small class="v159-auto-note">Suma al avance productivo; no modifica el pendiente.</small>';
+     w.insertAdjacentElement('afterend',x);
+   }
+ }
+ const inp=document.getElementById('v159OriginPending'),lab=document.getElementById('v159PendingLabel'),note=document.getElementById('v159PendingNote'),exc=document.getElementById('v159OriginExcess');
+ const isClosed=String(data.status?.status||'open')==='closed';
+ if(inp){inp.value=data.pending==null?'0':String(data.pending);inp.disabled=!data.pending_editable||!data.can_capture||isClosed}
+ if(lab)lab.textContent=data.pending_editable?'Origen · Piezas pendientes iniciales':'Origen · Pendiente automático';
+ if(note)note.textContent=data.pending_editable?'Se captura sólo esta primera vez.':('Calculado desde '+(data.pending_seed_date||'la captura inicial')+'; ya no requiere captura manual.');
+ if(exc){exc.value=String(data.excess||0);exc.disabled=!data.can_capture||isClosed}
+ const old=document.getElementById('v125SaveOrigin');if(old&&!old.dataset.v159){const b=old.cloneNode(true);b.dataset.v159='1';old.replaceWith(b);b.addEventListener('click',async()=>{const msg=document.getElementById('v125DailyMsg');try{const p=document.getElementById('v159OriginPending');const r=await api('/api/operation/origin-capture-v159',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:document.getElementById('operPeriodSelect')?.value||day,store:document.getElementById('operStoreSelect')?.value||store,arrival:num(document.getElementById('v125OriginArrival')?.value),released:num(document.getElementById('v125OriginReleased')?.value),pending:data.pending_editable?num(p?.value):null,excess:num(document.getElementById('v159OriginExcess')?.value)})});if(msg){msg.className='v125-msg ok';msg.textContent=r.message+' · Pendiente actual: '+Math.round(num(r.pending)).toLocaleString('es-MX')}setTimeout(()=>window.renderOperativoView(OP,true),300)}catch(e){if(msg){msg.className='v125-msg err';msg.textContent=e.message}else alert(e.message)}})}
 }
 function findPanel(title){return [...document.querySelectorAll('.v149-panel')].find(p=>(p.querySelector('h3')?.textContent||'').trim()===title)}
 async function decorateSummary(){

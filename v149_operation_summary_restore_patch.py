@@ -89,7 +89,7 @@ def install(m):
 
         with m.db() as con:
             caps = [dict(r) for r in con.execute(
-                f"""SELECT date,store,arrival,released,pending_manual
+                f"""SELECT date,store,arrival,released,pending_manual,COALESCE(excess,0) excess
                     FROM operation_daily_capture
                     WHERE origin='Origen' AND date<=? AND store IN ({ph})
                     ORDER BY date""",
@@ -120,6 +120,12 @@ def install(m):
             2) si no existe captura manual, usar sólo el último día con movimiento
                como saldo de cierre, nunca la suma histórica completa.
             """
+            if hasattr(m, "operation_pending_at"):
+                try:
+                    value, source, _seed = m.operation_pending_at(st, cutoff)
+                    return max(n(value),0.0) if value is not None else 0.0, source
+                except Exception:
+                    pass
             st_caps = [r for r in caps if str(r.get("store") or "")==st and str(r.get("date") or "")<=cutoff]
             st_prod = [r for r in prod if str(r.get("store") or "")==st and str(r.get("date") or "")<=cutoff]
             explicit = [r for r in st_caps if r.get("pending_manual") is not None]
@@ -149,30 +155,14 @@ def install(m):
         closing_by={}
         pending_source={}
         for st in stores:
-            opening_by[st], opening_source = balance_to(st,day_before)
-
-            st_cp=[r for r in cp if str(r.get("store") or "")==st]
-            st_pp=[r for r in pp if str(r.get("store") or "")==st]
-            explicit_period=[r for r in st_cp if r.get("pending_manual") is not None]
-
-            if explicit_period:
-                anchor=max(explicit_period,key=lambda r:str(r.get("date") or ""))
-                anchor_day=str(anchor.get("date") or "")
-                bal=n(anchor.get("pending_manual"))
-                bal+=sum(n(r.get("arrival")) for r in st_cp if str(r.get("date") or "")>anchor_day)
-                bal-=sum(n(r.get("pieces")) for r in st_pp if str(r.get("date") or "")>anchor_day)
-                closing_by[st]=max(bal,0.0)
-                pending_source[st]="capturado"
-            else:
-                # Regla acordada: saldo inicial del periodo + movimientos acumulados,
-                # sin sumar pendientes diarios ni arrastrar toda la historia.
-                period_arrival=sum(n(r.get("arrival")) for r in st_cp)
-                period_processed=sum(n(r.get("pieces")) for r in st_pp)
-                closing_by[st]=max(opening_by[st]+period_arrival-period_processed,0.0)
-                pending_source[st]=opening_source
+            opening_by[st], opening_source = balance_to(st, day_before)
+            closing_by[st], closing_source = balance_to(st, es)
+            pending_source[st] = closing_source or opening_source
 
         oa=sum(n(r.get("arrival")) for r in cp)
         op=sum(n(r.get("pieces")) for r in pp)
+        excess_total=sum(n(r.get("excess")) for r in cp)
+        progress_total=op+excess_total
         orl=sum(n(r.get("released")) for r in cp)
         opening_total=sum(opening_by.values())
         total_pending=sum(closing_by.values())
@@ -210,25 +200,27 @@ def install(m):
         # Meta global exclusivamente de Origen.
         target_keys={(str(r.get("date") or ""),str(r.get("store") or ""),family(r.get("origin"))) for r in pp}
         target=sum(n(std.get(fam)) for _,_,fam in target_keys)
-        compliance=op/target*100 if target else 0
-        efficiency=op/workload*100 if workload else 0
+        compliance=progress_total/target*100 if target else 0
+        efficiency=progress_total/workload*100 if workload else 0
 
         by=[]
         for st in stores:
             a=sum(n(r.get("arrival")) for r in cp if str(r.get("store") or "")==st)
             p=sum(n(r.get("pieces")) for r in pp if str(r.get("store") or "")==st)
+            exc=sum(n(r.get("excess")) for r in cp if str(r.get("store") or "")==st)
+            progress=p+exc
             rel=sum(n(r.get("released")) for r in cp if str(r.get("store") or "")==st)
             keys={(str(r.get("date") or ""),family(r.get("origin"))) for r in pp if str(r.get("store") or "")==st}
             tg=sum(n(std.get(fam)) for _,fam in keys)
-            comp=p/tg*100 if tg else 0
+            comp=progress/tg*100 if tg else 0
             closing=closing_by.get(st,0.0)
-            if a or p or rel or tg or opening_by.get(st,0) or closing:
+            if a or p or exc or rel or tg or opening_by.get(st,0) or closing:
                 by.append({
-                    "store":st,"arrival":a,"processed":p,"released":rel,
+                    "store":st,"arrival":a,"processed":p,"excess":exc,"progress":progress,"released":rel,
                     "target":tg,"compliance_pct":comp,
                     "pending_opening":opening_by.get(st,0.0),
                     "pending":closing,
-                    "pending_source":pending_source.get(st,"calculado"),
+                    "pending_source":pending_source.get(st,"automatico"),
                 })
         by.sort(key=lambda x:(-x["compliance_pct"],-x["processed"],x["store"]))
 
@@ -250,6 +242,8 @@ def install(m):
             "summary":{
                 "arrival_origin":oa,
                 "processed":op,
+                "excess":excess_total,
+                "progress_pieces":progress_total,
                 "released":orl,
                 "pending":total_pending,
                 "pending_opening":opening_total,
@@ -259,7 +253,7 @@ def install(m):
                 "collaborators":len(people),
             },
             "comparison":[{
-                "name":"Origen","arrival":oa,"processed":op,"released":orl,
+                "name":"Origen","arrival":oa,"processed":op,"excess":excess_total,"progress":progress_total,"released":orl,
                 "pending":total_pending,"pending_opening":opening_total
             }],
             "stores":by,
@@ -280,9 +274,9 @@ function def(meta,type){const d=today(),a=vals(meta,type);if(type==='day')return
 function setSel(el,a,v){if(!el)return;el.innerHTML='';a.forEach(x=>el.add(new Option(x,x)));el.value=a.includes(v)?v:(a[a.length-1]||'')}
 function tabs(active='summary'){return `<div class="v125-tabs" role="tablist"><button class="v125-tab ${active==='summary'?'active':''}" data-v149-tab="summary">Resumen</button><button class="v125-tab ${active==='daily'?'active':''}" data-v149-tab="daily">Captura diaria</button><button class="v125-tab ${active==='capture'?'active':''}" data-v149-tab="capture">Cargar productividad</button><button class="v125-tab ${active==='productivity'?'active':''}" data-v149-tab="productivity">Productividad</button><button class="v125-tab ${active==='standards'?'active':''}" data-v149-tab="standards">Estándares</button></div>`}
 async function setup(meta){$('#operativoPeriodBar')?.classList.remove('hidden');$('#operPeriodModeWrap')?.classList.remove('hidden');$('#operAreaSelect')?.closest('.filter')?.classList.add('hidden');$('#operActivitySelect')?.closest('.filter')?.classList.add('hidden');if(!['day','week','month','year'].includes(OPER_PERIOD.type))OPER_PERIOD.type='day';const mode=$('#operPeriodMode');if(mode){mode.innerHTML='<option value="day">Día</option><option value="week">Semanal</option><option value="month">Mensual</option><option value="year">Anual</option>';mode.value=OPER_PERIOD.type}let a=vals(meta,OPER_PERIOD.type);if(OPER_PERIOD.type==='day')a=[...new Set([...(a||[]),today()])].sort();if(!OPER_PERIOD.value||!a.includes(OPER_PERIOD.value))OPER_PERIOD.value=def(meta,OPER_PERIOD.type);setSel($('#operPeriodSelect'),a.length?a:[OPER_PERIOD.value],OPER_PERIOD.value);$('#operPeriodModeLabel').textContent='Vista';$('#operPeriodLabel').textContent=OPER_PERIOD.type==='day'?'Fecha':OPER_PERIOD.type==='week'?'Semana ISO':OPER_PERIOD.type==='month'?'Mes':'Año';const s=$('#operStoreSelect');if(s){const old=s.value,restricted=USER?.role==='tienda'||USER?.role==='colaborador';s.innerHTML='';if(!restricted)s.add(new Option('Compañía','Compañía'));(meta.stores||[]).forEach(x=>s.add(new Option(x,x)));if(restricted){s.value=USER.store||meta.stores?.[0]||'';s.disabled=true}else{s.disabled=false;s.value=[...s.options].some(o=>o.value===old)?old:'Compañía'}s.closest('.filter')?.classList.remove('hidden');s.parentElement.querySelector('label').textContent='Tienda'}}
-function cards(s){const d=[['Llegada Origen',s.arrival_origin,'Colgado + Doblado','#246fe5'],['Productividad registrada',s.processed,'Piezas procesadas','#7338ef'],['Mercancía liberada',s.released,'Origen','#ec007c'],['Pendiente',s.pending,'Piezas por procesar','#ef3434'],['Eficiencia',f1(s.efficiency_pct)+'%','Procesadas / carga','#10b981'],['Prod. promedio',f1(s.productivity_avg),'Pzas / colaborador / día','#f3a300'],['Cumplimiento',f1(s.compliance_pct)+'%','Vs estándar','#10b981'],['Colaboradores',s.collaborators,'Con productividad','#173f78']];return `<div class="v149-kpis">${d.map(x=>`<div class="v149-kpi" style="--k:${x[3]}"><small>${x[0]}</small><b>${typeof x[1]==='string'?x[1]:fn(x[1])}</b><span>${x[2]}</span></div>`).join('')}</div>`}
+function cards(s){const d=[['Productividad registrada',s.processed,'Captura de colaboradores','#7338ef'],['Excedente',s.excess,'No genera pendiente','#0f9f6e'],['Avance productivo',s.progress_pieces,'Productividad + excedente','#246fe5'],['Mercancía liberada',s.released,'Origen','#ec007c'],['Pendiente',s.pending,'Saldo automático','#ef3434'],['Eficiencia',f1(s.efficiency_pct)+'%','Avance / carga','#10b981'],['Prod. promedio',f1(s.productivity_avg),'Pzas / colaborador / día','#f3a300'],['Cumplimiento',f1(s.compliance_pct)+'%','(Productividad + excedente) / meta','#10b981'],['Colaboradores',s.collaborators,'Con productividad','#173f78']];return `<div class="v149-kpis">${d.map(x=>`<div class="v149-kpi" style="--k:${x[3]}"><small>${x[0]}</small><b>${typeof x[1]==='string'?x[1]:fn(x[1])}</b><span>${x[2]}</span></div>`).join('')}</div>`}
 function comp(rows){return ''}
-function storeTable(rows){return `<div class="v149-panel"><h3>Desempeño por tienda</h3><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Llegada</th><th>Procesadas</th><th>Liberadas</th><th>Meta</th><th>Cumplimiento</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td><b>${esc(r.store)}</b></td><td>${fn(r.arrival)}</td><td>${fn(r.processed)}</td><td>${fn(r.released)}</td><td>${fn(r.target)}</td><td><b class="${r.compliance_pct>=100?'metric-good':r.compliance_pct>=75?'metric-warn':'metric-bad'}">${f1(r.compliance_pct)}%</b></td></tr>`).join(''):'<tr><td colspan="6">Sin información para el periodo.</td></tr>'}</tbody></table></div></div>`}
+function storeTable(rows){return `<div class="v149-panel"><h3>Desempeño por tienda</h3><div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Llegada</th><th>Productividad</th><th>Excedente</th><th>Avance total</th><th>Liberadas</th><th>Pendiente</th><th>Meta</th><th>Cumplimiento</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td><b>${esc(r.store)}</b></td><td>${fn(r.arrival)}</td><td>${fn(r.processed)}</td><td>${fn(r.excess)}</td><td><b>${fn(r.progress)}</b></td><td>${fn(r.released)}</td><td>${fn(r.pending)}</td><td>${fn(r.target)}</td><td><b class="${r.compliance_pct>=100?'metric-good':r.compliance_pct>=75?'metric-warn':'metric-bad'}">${f1(r.compliance_pct)}%</b></td></tr>`).join(''):'<tr><td colspan="9">Sin información para el periodo.</td></tr>'}</tbody></table></div></div>`}
 function top(rows){return `<div class="v149-panel"><h3>Top 5 colaboradores</h3><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Colaborador</th><th>Tienda</th><th>Piezas</th><th>Prod. diaria</th><th>Cumplimiento</th></tr></thead><tbody>${rows.length?rows.map((r,i)=>`<tr><td>#${i+1}</td><td><b>${esc(r.name)}</b></td><td>${esc(r.store)}</td><td>${fn(r.pieces)}</td><td>${fn(r.daily)}</td><td><b class="${r.compliance_pct>=100?'metric-good':r.compliance_pct>=75?'metric-warn':'metric-bad'}">${f1(r.compliance_pct)}%</b></td></tr>`).join(''):'<tr><td colspan="6">Sin productividad registrada.</td></tr>'}</tbody></table></div></div>`}
 function alerts(rows){return `<div class="v149-panel"><h3>Alertas operativas</h3>${rows.map(a=>`<div class="v149-alert ${a.level||'warn'}">${esc(a.text)}</div>`).join('')}</div>`}
 function bindTabs(){document.querySelectorAll('[data-v149-tab]').forEach(b=>b.onclick=async()=>{V149_OPERATION_TAB=b.dataset.v149Tab;if(V149_OPERATION_TAB==='summary'){await renderOperativoView(OP,true);return}V125_OPERATION_TAB=V149_OPERATION_TAB;OPER_PERIOD.value='';if(V149_OPERATION_TAB!=='productivity')OPER_PERIOD.type='day';await renderOperativoView(OP,true)})}
