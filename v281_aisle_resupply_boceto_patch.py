@@ -311,9 +311,22 @@ async function load(){
  }catch(err){let h=q('#operativoDynamicContent');if(h)h.innerHTML='<div class="infoempty">No fue posible cargar Resurtido de Pasillos: '+e(err.message||err)+'</div>'}finally{busy=0}
 }
 function openReal(){if(!isOp()||document.body.classList.contains('v201-demo-mode'))return;load()}
-document.addEventListener('click',ev=>{let t=ev.target.closest?.('#v200OperationTabs [data-v200-op="aisle-resupply"]');if(!t||document.body.classList.contains('v201-demo-mode'))return;ev.preventDefault();ev.stopImmediatePropagation();openReal()},true);
-let mo=new MutationObserver(()=>{if(!isOp()||document.body.classList.contains('v201-demo-mode'))return;let active=q('#v200OperationTabs [data-v200-op="aisle-resupply"].active');if(active){let bar=q('#operativoPeriodBar');if(bar)bar.style.setProperty('display','none','important');let h=q('#operativoDynamicContent');if(h&&!h.querySelector('.v281')&&!busy)setTimeout(openReal,20)}});
-function boot(){mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','data-v163-module','style']});if(isOp()&&String(window.V149_OPERATION_TAB||'')==='aisle-resupply')openReal()}
+document.addEventListener('click',ev=>{
+ const aisleTab=ev.target.closest?.('#v200OperationTabs [data-v200-op="aisle-resupply"]');
+ if(aisleTab&&!document.body.classList.contains('v201-demo-mode')){
+   ev.preventDefault();ev.stopImmediatePropagation();openReal();return;
+ }
+ const otherOp=ev.target.closest?.('#v200OperationTabs [data-v200-op]');
+ if(otherOp&&otherOp.dataset.v200Op!=='aisle-resupply'){
+   clearInterval(tickId);document.body.removeAttribute('data-v281-view');
+   const bar=q('#operativoPeriodBar');if(bar){bar.classList.remove('hidden');bar.style.removeProperty('display')}
+ }
+ const main=ev.target.closest?.('[data-main]');
+ if(main&&String(main.dataset.main||'').toLowerCase()!=='operation'){
+   clearInterval(tickId);document.body.removeAttribute('data-v281-view');
+ }
+},true);
+function boot(){if(isOp()&&String(window.V149_OPERATION_TAB||'')==='aisle-resupply')setTimeout(openReal,40)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 
 function demoData(d){
