@@ -229,6 +229,7 @@ from v279_aisle_resupply_patch import install as _install_v279_aisle_resupply_pa
 from v281_aisle_resupply_boceto_patch import install as _install_v281_aisle_resupply_boceto_patch
 from v285_global_table_density_patch import install as _install_v285_global_table_density_patch
 from v286_scroll_type_authority_patch import install as _install_v286_scroll_type_authority_patch
+from v288_operation_daily_option5_patch import install as _install_v288_operation_daily_option5_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -403,4 +404,7 @@ _install_v285_global_table_density_patch(web_app)
 
 # V286: autoridad final de scroll y tipografía para iOS/Android/tablet/laptop/PC.
 _install_v286_scroll_type_authority_patch(web_app)
+
+# V288: Opción 5 final para Captura diaria de Operación.
+_install_v288_operation_daily_option5_patch(web_app)
 app = web_app.app
