@@ -219,3 +219,34 @@ test('V291 six-column center summary separates percent from pieces',()=>{
  assert.match(source,/\.monthly-cross-table \.mct-value-pieces/);
  assert.match(source,/flex-direction:column!important/);
 });
+
+test('V291 real mobile table behavior including expanded readable mode',async()=>{
+ const src=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
+ const js=src.split('id="v273-mobile-table-headers-js">')[1].split('</script>')[0];
+ const headers=['#','Tienda','Dev Pzs','Pzas recuperadas','Conversión','Valor devolución','Recuperación $','Recup. %','Pend. Pzs','Pend. $'];
+ const values=['#1','Iztapalapa','66,157','54,166','81.9%','$17,686,737','$14,251,605','80.6%','11,991','$3,435,132'];
+ const markup='<div id="operativoDynamicContent"><div class="tablewrap"><table id="recovery" class="table"><thead><tr>'+
+ headers.map(v=>'<th>'+v+'</th>').join('')+'</tr></thead><tbody><tr>'+
+ values.map(v=>'<td>'+v+'</td>').join('')+'</tr></tbody></table></div></div>';
+ const runtime=createRuntime(markup,path.join(output,'web')),w=runtime.window;
+ Object.defineProperty(w,'innerWidth',{configurable:true,value:390});
+ w.matchMedia=q=>({matches:q==='(max-width:1024px)',media:q,addEventListener(){},removeEventListener(){}});
+ try {
+   w.eval(js);w.dispatchEvent(new w.Event('resize'));await wait(220);
+   const t=w.document.getElementById('recovery');
+   assert.ok(t.classList.contains('v273-zoom'));
+   assert.equal(t.style.width,'max-content');
+   assert.equal(t.rows[1].cells[5].textContent,'$17,686,737');
+   const button=w.document.querySelector('.v291-zoom-toggle');
+   assert.ok(button);
+   assert.equal(button.textContent,'Ampliar tabla');
+   button.click();assert.equal(button.textContent,'Ajustar a pantalla');
+   assert.equal(t.parentElement.style.overflowX,'auto');
+   button.click();assert.equal(t.parentElement.style.overflowX,'hidden');
+   Object.defineProperty(w,'innerWidth',{configurable:true,value:800});
+   w.dispatchEvent(new w.Event('resize'));await wait(150);
+   assert.ok(!t.classList.contains('v273-zoom'));
+   assert.equal(w.document.querySelector('.v291-zoom-toggle'),null);
+   assert.deepEqual(runtime.errors,[]);
+ }finally{runtime.close()}
+});
