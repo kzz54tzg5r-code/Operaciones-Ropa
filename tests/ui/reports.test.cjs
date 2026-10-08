@@ -225,7 +225,7 @@ test('V292 keeps 10-column recovery and 15-column detail readable without zoom',
      assert.ok(t.classList.contains('v273-scroll'),id+' must have a scrollable report table');
      assert.ok(!t.classList.contains('v273-zoom'),id+' must not scale to microscopic text');
      assert.equal(t.parentElement.style.overflowX,'auto');
-     assert.equal(t.style.zoom,'');
+     assert.ok(!t.style.getPropertyValue('zoom'));
      assert.ok(t.parentElement.previousElementSibling.classList.contains('v292-scroll-hint'));
      assert.equal(t.parentElement.getAttribute('role'),'region');
      assert.equal(t.rows[0].cells[1].textContent,'Tienda');
