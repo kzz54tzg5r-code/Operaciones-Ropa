@@ -256,6 +256,80 @@ def install(m):
     text-overflow:clip!important;
   }
 }
+
+/* V291 · Centro Operativo: matriz completa proporcional, sin importes rotos.
+   El contenido sigue siendo la misma tabla con las mismas celdas. */
+@media (max-width:700px){
+  html body #operativoDynamicContent :is(.tablewrap,.rr243-tablewrap) > table.v273-mobile-table.v273-zoom {
+    width:max-content!important;
+    min-width:max-content!important;
+    max-width:none!important;
+    table-layout:auto!important;
+    border-collapse:collapse!important;
+  }
+  html body #operativoDynamicContent table.v273-zoom thead th {
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    height:52px!important;
+    min-height:52px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
+    line-height:1.16!important;
+    white-space:nowrap!important;
+    word-break:normal!important;
+    overflow:visible!important;
+  }
+  html body #operativoDynamicContent table.v273-zoom thead th .v273-line {
+    white-space:nowrap!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+  }
+  html body #operativoDynamicContent table.v273-zoom tbody td,
+  html body #operativoDynamicContent table.v273-zoom tbody td.v273-num,
+  html body #operativoDynamicContent table.v273-zoom tbody td.v273-rank {
+    width:auto!important;
+    min-width:0!important;
+    font-size:15px!important;
+    line-height:1.18!important;
+    padding:8px 10px!important;
+    white-space:nowrap!important;
+    overflow:visible!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  html body #operativoDynamicContent table.v273-zoom tbody td b,
+  html body #operativoDynamicContent table.v273-zoom tbody td span {
+    white-space:nowrap!important;
+    overflow-wrap:normal!important;
+  }
+  #operativoDynamicContent .v291-table-toolbar {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    min-height:24px;
+    margin:2px 0 3px;
+    padding:0 2px;
+    max-width:100%;
+  }
+  #operativoDynamicContent .v291-zoom-toggle {
+    min-height:23px;
+    border:1px solid #c9d9ed;
+    background:#f1f7ff;
+    color:#184e86;
+    font-size:10px!important;
+    line-height:1.1;
+    font-weight:800;
+    border-radius:7px;
+    padding:4px 9px;
+    cursor:pointer;
+  }
+  #operativoDynamicContent .v291-zoom-toggle:focus-visible{
+    outline:2px solid #1376df;
+    outline-offset:2px;
+  }
+}
 </style>'''
 
     js = r'''<script id="v273-mobile-table-headers-js">
@@ -377,11 +451,27 @@ def install(m):
     // Keep desktop/tablet parity but never squeeze currency into broken digits.
     const viewport=window.innerWidth||document.documentElement.clientWidth||1024;
     const fitLimit=viewport<=360?5:viewport<=700?6:viewport<=900?9:12;
-    const fits=ths.length<=fitLimit;
+    // Centro Operativo: miniatura fiel de la tabla para evitar cifras partidas.
+    // El botón de ampliación permite leer cualquier columna a tamaño completo.
+    const centerWide=viewport<=700 && ths.length>=7 && ths.length<=18 &&
+       !!table.closest('#operativoDynamicContent') &&
+       !!table.closest('.tablewrap,.rr243-tablewrap,.monthly-cross-desktop');
+    const fits=!centerWide && ths.length<=fitLimit;
     table.classList.toggle('v273-fit',fits);
-    table.classList.toggle('v273-scroll',!fits);
+    table.classList.toggle('v273-scroll',!fits && !centerWide);
+    table.classList.toggle('v273-zoom',centerWide);
 
-    if(fits){
+    if(centerWide){
+      table.style.setProperty('width','max-content','important');
+      table.style.setProperty('min-width','max-content','important');
+      table.style.setProperty('max-width','none','important');
+      table.style.setProperty('table-layout','auto','important');
+      const wrap=table.parentElement;
+      if(wrap){
+        wrap.style.setProperty('max-width','100%','important');
+        wrap.style.setProperty('overflow-x','hidden','important');
+      }
+    }else if(fits){
       table.style.setProperty('width','100%','important');
       table.style.setProperty('min-width','0','important');
       table.style.setProperty('max-width','100%','important');
@@ -430,7 +520,10 @@ def install(m):
       }
     });
 
-    if(fits){
+    if(centerWide){
+      ths.forEach(th=>th.style.removeProperty('width'));
+      scaleCenterTable(table);
+    }else if(fits){
       const total=weights.reduce((a,b)=>a+b,0)||1;
       ths.forEach((th,i)=>{
         th.style.setProperty('width',(weights[i]/total*100).toFixed(2)+'%','important');
@@ -452,9 +545,53 @@ def install(m):
     });
   }
 
+  function scaleCenterTable(table){
+    const wrap=table.parentElement;
+    if(!wrap)return;
+    let toolbar=wrap.previousElementSibling;
+    if(!toolbar || !toolbar.classList.contains('v291-table-toolbar')){
+      toolbar=document.createElement('div');
+      toolbar.className='v291-table-toolbar';
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='v291-zoom-toggle';
+      toolbar.appendChild(button);
+      wrap.parentElement?.insertBefore(toolbar,wrap);
+      button.addEventListener('click',()=>{
+        table.dataset.v291Expanded=table.dataset.v291Expanded==='1'?'0':'1';
+        delete table.dataset.v291Measured;
+        scaleCenterTable(table);
+      });
+    }
+    const button=toolbar.querySelector('button');
+    const expanded=table.dataset.v291Expanded==='1';
+    if(button){
+      button.textContent=expanded?'Ajustar a pantalla':'Ampliar tabla';
+      button.setAttribute('aria-pressed',String(expanded));
+      button.setAttribute('aria-label',expanded?'Mostrar todas las columnas al ancho del teléfono':'Ampliar tabla para leer sus cifras sin reducir');
+    }
+    const available=Math.max(0,wrap.clientWidth-2);
+    const signature=available+'|'+table.rows.length+'|'+expanded;
+    if(table.dataset.v291Measured===signature)return;
+    table.style.setProperty('zoom','1','important');
+    wrap.style.setProperty('overflow-x',expanded?'auto':'hidden','important');
+    const natural=table.getBoundingClientRect().width;
+    if(!expanded && available>0 && natural>0){
+      const factor=Math.min(1,(available/natural));
+      // CSS zoom escala la tabla sin cambiar el contenido o separar dígitos.
+      table.style.setProperty('zoom',String(Math.max(.01,Math.floor(factor*1000)/1000)),'important');
+    }
+    table.dataset.v291Measured=signature;
+  }
+
   function restoreDesktop(table){
     if(!table)return;
-    table.classList.remove('v273-mobile-table','v273-fit','v273-scroll');
+    table.classList.remove('v273-mobile-table','v273-fit','v273-scroll','v273-zoom');
+    table.style.removeProperty('zoom');
+    delete table.dataset.v291Measured;
+    delete table.dataset.v291Expanded;
+    const toolbar=table.parentElement?.previousElementSibling;
+    if(toolbar?.classList.contains('v291-table-toolbar'))toolbar.remove();
     table.style.removeProperty('--v273-cols');
     table.style.removeProperty('width');
     table.style.removeProperty('min-width');
