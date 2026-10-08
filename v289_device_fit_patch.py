@@ -361,6 +361,41 @@ section.page, section.page.active {
   }
 }
 
+/* V291 · Resumen de seis columnas: valores y subtexto apilados,
+   sin chocar con % o la columna siguiente. Solo móvil. */
+@media (max-width:700px) {
+  body.v271-center-parity #operativoDynamicContent .monthly-cross-table .mct-value-pieces {
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:0!important;
+    max-width:100%!important;
+    gap:2px!important;
+    white-space:normal!important;
+  }
+  body.v271-center-parity #operativoDynamicContent .monthly-cross-table .mct-value-pieces b,
+  body.v271-center-parity #operativoDynamicContent .monthly-cross-table .mct-value-pieces small {
+    display:block!important;
+    max-width:100%!important;
+    margin:0!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:clip!important;
+    line-height:1.1!important;
+    text-align:center!important;
+  }
+  body.v271-center-parity #operativoDynamicContent .monthly-cross-table .mct-value-pieces small{
+    font-size:6.8px!important;
+  }
+  body.v271-center-parity #operativoDynamicContent .monthly-cross-table td:not(.monthly-cat) {
+    overflow:hidden!important;
+  }
+  body.v271-center-parity #operativoDynamicContent .monthly-cross-table tbody td.v273-num {
+    overflow:hidden!important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html, body { scroll-behavior: auto !important; }
 }
