@@ -749,6 +749,11 @@ def install(m):
       wrap.style.removeProperty('max-width');
       wrap.style.removeProperty('min-width');
       wrap.style.removeProperty('overflow-x');
+      wrap.removeAttribute('aria-label');
+      wrap.removeAttribute('role');
+      wrap.removeAttribute('tabindex');
+      const hint=wrap.previousElementSibling;
+      if(hint?.classList.contains('v292-scroll-hint'))hint.remove();
     }
     qa('thead th',table).forEach(th=>{
       if(th.dataset.v273Original){
