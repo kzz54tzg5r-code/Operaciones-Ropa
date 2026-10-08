@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-v53-v241-navfix';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v2';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -65,14 +65,14 @@ self.addEventListener('install', event => {
       if (shellResponse.ok) await cache.put('/', shellResponse.clone());
     } catch (_) {}
 
-    await self.skipWaiting();
+    // Existing pages decide when their pending work permits activation.
   })());
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(keys => Promise.all(keys.filter(key => key.startsWith('operaciones-ropa-runtime-') && key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });

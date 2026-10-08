@@ -624,7 +624,24 @@ def install(m):
       captureState.activity=btn.dataset.v222Activity;
       paintCapture(meta,null,history);
     });
-    qa('[data-v222-area]').forEach(inp=>inp.addEventListener('input',updateAreaTotal));
+    // A draft belongs to this server-side timer and employee, never a shared form.
+    const draftKey=active ? 'or.capture.v1:'+String(meta.employee_no||meta.employee_name)+':'+String(meta.store)+':'+String(active.id) : null;
+    let savedDraft={};
+    try{savedDraft=JSON.parse(sessionStorage.getItem(draftKey)||'{}')||{}}catch(_){}
+    qa('[data-v222-area]').forEach(inp=>{
+      if(draftKey)inp.dataset.orDraftKey=draftKey;
+      if(draftKey && Object.prototype.hasOwnProperty.call(savedDraft,inp.dataset.v222Area))inp.value=savedDraft[inp.dataset.v222Area];
+    });
+    qa('[data-v222-area]').forEach(inp=>{
+      inp.addEventListener('input',()=>{
+        updateAreaTotal();
+        if(!draftKey)return;
+        const draft={};qa('[data-v222-area]').forEach(x=>draft[x.dataset.v222Area]=x.value);
+        try{sessionStorage.setItem(draftKey,JSON.stringify(draft))}catch(_){}
+      });
+      if(inp.value)inp.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    updateAreaTotal();
 
     q('#v222Start')?.addEventListener('click',async()=>{
       const msg=q('#v222Msg');msg.textContent='Iniciando…';
@@ -645,6 +662,10 @@ def install(m):
 
     q('#v222Finish')?.addEventListener('click',async()=>{
       if(!active)return;
+      const finishButton=q('#v222Finish');
+      if(finishButton.disabled)return;
+      finishButton.disabled=true;
+      const captureRoot=q('#v222CaptureCard');
       const msg=q('#v222Msg');msg.textContent='Guardando…';
       try{
         const pieces=areasFromInputs();
@@ -653,9 +674,12 @@ def install(m):
           body:JSON.stringify({pieces_by_area:pieces})
         });
         clearInterval(timerHandle);timerStartedAt='';
+        try{sessionStorage.removeItem(draftKey)}catch(_){}
+        document.dispatchEvent(new CustomEvent('or:capture-saved',{detail:{root:captureRoot,draftKey}}));
         msg.textContent=res.message||'Productividad guardada';
         await renderCapture();
       }catch(e){msg.textContent=e.message||String(e)}
+      finally{if(finishButton.isConnected)finishButton.disabled=false}
     });
   }
 

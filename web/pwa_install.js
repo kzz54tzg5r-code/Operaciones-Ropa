@@ -9,6 +9,50 @@
   let loadedBuild = null;
   let lastVersionCheck = 0;
   let updateVisible = false;
+  let pendingVersion = null;
+  let refreshing = false;
+  let pendingWrites = 0;
+  let lastInteraction = Date.now();
+  const edits = new Set();
+  const originals = new WeakMap();
+  const valueOf = el => ['checkbox', 'radio'].includes(el.type) ? el.checked : el.value;
+  const eligible = el => el?.matches?.('input,textarea,select') &&
+    !el.closest('#loginView,.filters,.v165-subfilters,.or-filter-panel-v3,#viewRoleBox') &&
+    !['hidden', 'button', 'submit'].includes(el.type);
+  document.addEventListener('focusin', event => {
+    if (eligible(event.target) && !originals.has(event.target)) originals.set(event.target, valueOf(event.target));
+  });
+  const trackEdit = event => {
+    lastInteraction = Date.now();
+    const el = event.target;
+    if (!eligible(el)) return;
+    if (originals.has(el) && valueOf(el) === originals.get(el)) edits.delete(el);
+    else edits.add(el);
+  };
+  document.addEventListener('input', trackEdit);
+  document.addEventListener('change', trackEdit);
+  document.addEventListener('or:capture-saved', event => {
+    const root = event.detail?.root;
+    if (!root) return;
+    for (const el of edits) if (root.contains(el) || (event.detail.draftKey && el.dataset.orDraftKey === event.detail.draftKey)) {
+      edits.delete(el);
+      originals.set(el, valueOf(el));
+    }
+  });
+  for (const type of ['pointerdown', 'touchstart', 'keydown']) {
+    document.addEventListener(type, () => { lastInteraction = Date.now(); }, { passive: true });
+  }
+  document.addEventListener('scroll', () => { lastInteraction = Date.now(); }, { passive: true, capture: true });
+  // Track writes only; never infer that an unrelated successful request saved a form.
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const method = String(args[1]?.method || args[0]?.method || 'GET').toUpperCase();
+    const writing = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    if (writing) pendingWrites++;
+    try { return await originalFetch(...args); }
+    finally { if (writing) pendingWrites--; }
+  };
+  const safeToRefresh = () => navigator.onLine !== false && pendingWrites === 0 && edits.size === 0;
 
   const addSystemStyle = () => {
     if (document.getElementById('pwaSystemStyle')) return;
@@ -53,23 +97,44 @@
     badge.innerHTML = '<span class="or-version-dot"></span><span>Versión ' + short + ' · actualización automática</span>';
   };
 
-  const refreshAndReload = async button => {
+  const refreshAndReload = async (button, automatic = false) => {
+    if (refreshing) return;
+    if (!safeToRefresh()) {
+      const message = document.querySelector('.or-update-banner span');
+      if (message) message.textContent = 'Guarda los cambios pendientes y espera a tener conexión antes de actualizar.';
+      return;
+    }
+    refreshing = true;
     if (button) {
       button.disabled = true;
       button.textContent = 'Actualizando…';
     }
     try {
       await swRegistration?.update?.();
-      const worker = swRegistration?.waiting || swRegistration?.active;
-      worker?.postMessage?.({ type: 'REFRESH_APP_SHELL' });
-      await new Promise(resolve => setTimeout(resolve, 700));
+      await fetchVersion(); // Do not reload into an unavailable deployment.
+      if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) throw new Error('Hay actividad pendiente');
+      const waiting = swRegistration?.waiting;
+      if (waiting) await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { waiting.removeEventListener('statechange', changed); reject(new Error('La actualización sigue preparándose')); }, 10000);
+        function changed() {
+          if (waiting.state === 'activated') { clearTimeout(timer); waiting.removeEventListener('statechange', changed); resolve(); }
+        }
+        waiting.addEventListener('statechange', changed);
+        waiting.postMessage({ type: 'SKIP_WAITING' });
+        changed();
+      });
+      if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) throw new Error('Hay actividad pendiente');
     } catch (error) {
       console.warn('[PWA] actualización previa a recarga:', error);
+      refreshing = false;
+      if (button) { button.disabled = false; button.textContent = 'Reintentar'; }
+      return;
     }
     location.reload();
   };
 
   const showUpdateBanner = newVersion => {
+    pendingVersion = newVersion;
     if (updateVisible) return;
     updateVisible = true;
     addSystemStyle();
@@ -84,7 +149,8 @@
     `;
     banner.querySelector('button')?.addEventListener('click', event => refreshAndReload(event.currentTarget));
     document.body.appendChild(banner);
-    renderVersion(newVersion);
+    // The badge identifies the loaded build, never the pending server build.
+    renderVersion(loadedBuild);
   };
 
   const fetchVersion = async () => {
@@ -163,6 +229,13 @@
   window.setInterval(() => {
     if (document.visibilityState === 'visible') checkVersion();
   }, 120000);
+
+  window.setInterval(() => {
+    if (pendingVersion && document.visibilityState === 'visible' &&
+        Date.now() - lastInteraction >= 30000 && safeToRefresh()) {
+      refreshAndReload(document.querySelector('.or-update-banner button'), true);
+    }
+  }, 10000);
 
   // La actualización anterior funciona tanto instalada como en navegador.
   // Lo siguiente sólo controla la invitación de instalación.

@@ -1,6 +1,6 @@
 {
   "name": "operaciones-ropa-ui-regression",
   "private": true,
-  "scripts": {"test": "node --test reports.test.cjs"},
+  "scripts": {"test": "node --test reports.test.cjs pwa.test.cjs"},
   "devDependencies": {"jsdom": "26.1.0"}
 }

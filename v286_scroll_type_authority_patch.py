@@ -44,7 +44,7 @@ body{
   overflow-y:auto!important;
   overscroll-behavior-y:auto!important;
   -webkit-overflow-scrolling:touch!important;
-  touch-action:pan-y pinch-zoom!important;
+  touch-action:pan-x pan-y pinch-zoom!important;
 }
 
 /* Ninguna vista/report host debe convertirse en un viewport vertical independiente. */
@@ -67,7 +67,7 @@ section.page.active,
   min-height:0!important;
   overflow-y:visible!important;
   overscroll-behavior-y:auto!important;
-  touch-action:pan-y pinch-zoom!important;
+  touch-action:pan-x pan-y pinch-zoom!important;
 }
 
 /* Navegaciones horizontales nunca bloquean el gesto vertical. */
@@ -334,7 +334,7 @@ body table td{
   #operativoNav,#analysisNav,#v200OperationTabs,
   .panel,.card,.kpi,.report-kpi,.filters,
   .v281,.v279,.or-filter-panel-v3{
-    touch-action:pan-y pinch-zoom!important;
+    touch-action:pan-x pan-y pinch-zoom!important;
     overscroll-behavior-y:auto!important;
   }
   .tablewrap,.model-sticky-table,.model-scroll-30,.table-scroll-35,

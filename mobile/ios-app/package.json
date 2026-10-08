@@ -7,9 +7,13 @@
     "ios:init": "npx cap add ios && node scripts/configure-ios.mjs && npx cap sync ios",
     "ios:sync": "node scripts/configure-ios.mjs && npx cap sync ios",
     "ios:open": "npx cap open ios",
-    "ios:doctor": "npx cap doctor"
+    "ios:doctor": "npx cap doctor",
+    "android:init": "npx cap add android && npx cap sync android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.2",
     "@capacitor/app": "8.1.1",
     "@capacitor/camera": "8.2.4",
     "@capacitor/core": "8.5.2",
