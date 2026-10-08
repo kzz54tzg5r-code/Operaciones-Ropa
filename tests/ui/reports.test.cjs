@@ -201,3 +201,21 @@ test('V290 mobile rules retain every tab and restore readable center KPI sizes',
   assert.match(css,/monthly-cross-table tbody td\.v273-num\s*\{/);
   assert.match(css,/touch-action:pan-x pan-y pinch-zoom/);
 });
+
+test('V291 preserves mobile numbers in a scaled operational matrix',()=>{
+ const source=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
+ const script=source.split('id="v273-mobile-table-headers-js">')[1].split('</script>')[0];
+ assert.doesNotThrow(()=>new vm.Script(script));
+ assert.match(script,/centerWide=viewport<=700/);
+ assert.match(script,/ths.length<=18/);
+ assert.match(script,/table\.classList\.toggle\('v273-zoom',centerWide\)/);
+ assert.match(script,/getBoundingClientRect\(\)\.width/);
+ assert.match(script,/overflow-x','hidden'/);
+ assert.match(source,/white-space:nowrap!important/);
+});
+test('V291 six-column center summary separates percent from pieces',()=>{
+ const source=fs.readFileSync(path.join(root,'v289_device_fit_patch.py'),'utf8');
+ assert.match(source,/V291 · Resumen de seis columnas/);
+ assert.match(source,/\.monthly-cross-table \.mct-value-pieces/);
+ assert.match(source,/flex-direction:column!important/);
+});
