@@ -230,6 +230,7 @@ from v281_aisle_resupply_boceto_patch import install as _install_v281_aisle_resu
 from v285_global_table_density_patch import install as _install_v285_global_table_density_patch
 from v286_scroll_type_authority_patch import install as _install_v286_scroll_type_authority_patch
 from v288_operation_daily_option5_patch import install as _install_v288_operation_daily_option5_patch
+from v289_device_fit_patch import install as _install_v289_device_fit_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -407,4 +408,6 @@ _install_v286_scroll_type_authority_patch(web_app)
 
 # V288: Opción 5 final para Captura diaria de Operación.
 _install_v288_operation_daily_option5_patch(web_app)
+# V289 conserva diseños aprobados y ajusta únicamente el desbordamiento responsivo.
+_install_v289_device_fit_patch(web_app)
 app = web_app.app
