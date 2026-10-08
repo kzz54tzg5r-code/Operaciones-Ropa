@@ -77,7 +77,7 @@ def install(m):
   html body table.v273-mobile-table.v273-scroll{
     width:max-content!important;
     max-width:none!important;
-    min-width:max(100%,calc(var(--v273-cols,13) * 44px))!important;
+    min-width:max(100%,calc(var(--v273-cols,13) * 78px))!important;
     table-layout:fixed!important;
   }
 
@@ -183,7 +183,7 @@ def install(m):
     font-size:8px!important;
   }
   html body table.v273-mobile-table.v273-scroll{
-    min-width:max(100%,calc(var(--v273-cols,13) * 55px))!important;
+    min-width:max(100%,calc(var(--v273-cols,13) * 72px))!important;
   }
 }
 
@@ -205,7 +205,7 @@ def install(m):
     font-size:6px!important;
   }
   html body table.v273-mobile-table.v273-scroll{
-    min-width:max(100%,calc(var(--v273-cols,13) * 39px))!important;
+    min-width:max(100%,calc(var(--v273-cols,13) * 86px))!important;
   }
 }
 
@@ -223,6 +223,37 @@ def install(m):
   }
   html body table.v273-mobile-table tbody td.v273-num{
     font-size:5.6px!important;
+  }
+}
+
+/* V290: only wide tables scroll; no number, price or percentage may wrap or crop. */
+@media (max-width:1024px){
+  html body :is(.tablewrap,.rr243-tablewrap,.monthly-cross-desktop,.model-sticky-table) > table.v273-mobile-table.v273-scroll{
+    table-layout:auto!important;
+    width:max-content!important;
+    max-width:none!important;
+  }
+  html body table.v273-mobile-table.v273-scroll thead th{
+    font-size:9px!important;
+    line-height:1.15!important;
+    height:40px!important;
+    min-height:40px!important;
+    padding:4px 6px!important;
+  }
+  html body table.v273-mobile-table.v273-scroll tbody td,
+  html body table.v273-mobile-table.v273-scroll tbody td.v273-num{
+    font-size:10px!important;
+    line-height:1.18!important;
+    white-space:nowrap!important;
+    overflow:visible!important;
+    overflow-wrap:normal!important;
+    word-break:normal!important;
+    padding:5px 7px!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  html body table.v273-mobile-table.v273-scroll th .v273-line{
+    white-space:nowrap!important;
+    text-overflow:clip!important;
   }
 }
 </style>'''
@@ -342,10 +373,15 @@ def install(m):
 
     table.classList.add('v273-mobile-table');
     table.style.setProperty('--v273-cols',String(ths.length));
-    table.classList.toggle('v273-fit',ths.length<=16);
-    table.classList.toggle('v273-scroll',ths.length>16);
+    // A 390px phone can read a six-column summary, not a ten-column ledger.
+    // Keep desktop/tablet parity but never squeeze currency into broken digits.
+    const viewport=window.innerWidth||document.documentElement.clientWidth||1024;
+    const fitLimit=viewport<=360?5:viewport<=700?6:viewport<=900?9:12;
+    const fits=ths.length<=fitLimit;
+    table.classList.toggle('v273-fit',fits);
+    table.classList.toggle('v273-scroll',!fits);
 
-    if(ths.length<=16){
+    if(fits){
       table.style.setProperty('width','100%','important');
       table.style.setProperty('min-width','0','important');
       table.style.setProperty('max-width','100%','important');
@@ -356,6 +392,15 @@ def install(m):
         wrap.style.setProperty('max-width','100%','important');
         wrap.style.setProperty('min-width','0','important');
         wrap.style.setProperty('overflow-x','hidden','important');
+      }
+    }else{
+      // Remove previous forced-fit inline !important rules after viewport/period changes.
+      ['width','min-width','max-width','table-layout'].forEach(prop=>table.style.removeProperty(prop));
+      const wrap=table.parentElement;
+      if(wrap){
+        ['width','max-width','min-width','overflow-x'].forEach(prop=>wrap.style.removeProperty(prop));
+        wrap.style.setProperty('overflow-x','auto','important');
+        wrap.style.setProperty('-webkit-overflow-scrolling','touch');
       }
     }
 
@@ -385,7 +430,7 @@ def install(m):
       }
     });
 
-    if(ths.length<=16){
+    if(fits){
       const total=weights.reduce((a,b)=>a+b,0)||1;
       ths.forEach((th,i)=>{
         th.style.setProperty('width',(weights[i]/total*100).toFixed(2)+'%','important');
