@@ -236,7 +236,7 @@ test('V292 keeps 10-column recovery and 15-column detail readable without zoom',
    w.dispatchEvent(new w.Event('resize'));await wait(165);
    const rec=w.document.getElementById('recovery');
    assert.ok(!rec.classList.contains('v273-scroll'));
-   assert.equal(rec.parentElement.previousElementSibling?.classList.contains('v292-scroll-hint'),false);
+   assert.ok(!rec.parentElement.previousElementSibling?.classList.contains('v292-scroll-hint'));
    assert.deepEqual(runtime.errors,[]);
  }finally{runtime.close()}
 });
