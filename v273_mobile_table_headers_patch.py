@@ -757,7 +757,11 @@ def install(m):
     }
     qa('thead th',table).forEach(th=>{
       if(th.dataset.v273Original){
-        th.textContent=th.dataset.v273Original;
+        // Avoid childList churn: setting identical text repeatedly retriggers
+        // our observer and can cause a persistent desktop re-render loop.
+        if(th.dataset.v273Signature || th.textContent.trim()!==th.dataset.v273Original){
+          th.textContent=th.dataset.v273Original;
+        }
         delete th.dataset.v273Signature;
       }
       th.classList.remove('v273-left');
