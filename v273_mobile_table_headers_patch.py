@@ -330,6 +330,111 @@ def install(m):
     outline-offset:2px;
   }
 }
+
+/* V292 · Prevent an unreadable 10-16-column squeeze on iPhones.
+   Keep every column; scroll only the grid, with frozen rank/store columns. */
+@media (max-width:700px) {
+  html body #operativoDynamicContent :is(.tablewrap,.rr243-tablewrap):has(>table.v273-scroll) {
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    overscroll-behavior-y:auto!important;
+    touch-action:pan-x pan-y pinch-zoom!important;
+    scrollbar-width:thin;
+    scrollbar-color:#8ab1dc #eff5fa;
+  }
+  html body #operativoDynamicContent :is(.tablewrap,.rr243-tablewrap)>table.v273-scroll,
+  html body #operativoDynamicContent :is(.tablewrap,.rr243-tablewrap)>table.v270-scroll-table.v273-scroll {
+    display:table!important;
+    zoom:1!important;
+    width:max-content!important;
+    min-width:max(100%,calc(var(--v273-cols,10)*86px))!important;
+    max-width:none!important;
+    table-layout:auto!important;
+    border-collapse:separate!important;
+    border-spacing:0!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll thead th {
+    width:auto!important;
+    height:auto!important;
+    min-height:45px!important;
+    max-height:none!important;
+    padding:8px 9px!important;
+    font-size:11px!important;
+    line-height:1.15!important;
+    vertical-align:middle!important;
+    white-space:nowrap!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll tbody td,
+  html body #operativoDynamicContent table.v273-scroll tbody td.v273-num,
+  html body #operativoDynamicContent table.v273-scroll tbody td.v273-rank {
+    width:auto!important;
+    height:auto!important;
+    min-height:32px!important;
+    padding:8px 9px!important;
+    font-size:11px!important;
+    line-height:1.18!important;
+    vertical-align:middle!important;
+    white-space:nowrap!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    overflow:visible!important;
+    text-overflow:clip!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll tbody td :is(b,span,small) {
+    white-space:nowrap!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    text-overflow:clip!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll :is(th,td):first-child {
+    position:sticky!important;
+    left:0!important;
+    z-index:3!important;
+    min-width:47px!important;
+    width:47px!important;
+    box-shadow:1px 0 0 #c7d7e8;
+    background:#fff!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll :is(th,td):nth-child(2) {
+    position:sticky!important;
+    left:47px!important;
+    z-index:3!important;
+    min-width:145px!important;
+    width:145px!important;
+    max-width:145px!important;
+    box-shadow:2px 0 4px rgba(5,41,81,.11);
+    background:#fff!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll thead th:first-child,
+  html body #operativoDynamicContent table.v273-scroll thead th:nth-child(2) {
+    z-index:5!important;
+    background:#123b73!important;
+    color:#fff!important;
+  }
+  html body #operativoDynamicContent table.v273-scroll tbody tr.project-row td:is(:first-child,:nth-child(2)) {
+    background:#eaf3ff!important;
+  }
+  #operativoDynamicContent .v292-scroll-hint {
+    width:100%;
+    margin:7px 0 4px;
+    color:#285e97;
+    font-size:11px;
+    font-weight:800;
+    text-align:right;
+    letter-spacing:0;
+  }
+}
+@media (min-width:701px){
+  #operativoDynamicContent .v292-scroll-hint {display:none!important;}
+}
 </style>'''
 
     js = r'''<script id="v273-mobile-table-headers-js">
@@ -453,10 +558,10 @@ def install(m):
     const fitLimit=viewport<=360?5:viewport<=700?6:viewport<=900?9:12;
     // Centro Operativo: miniatura fiel de la tabla para evitar cifras partidas.
     // El botón de ampliación permite leer cualquier columna a tamaño completo.
-    const centerWide=viewport<=700 && ths.length>=7 && ths.length<=18 &&
-       !!table.closest('#operativoDynamicContent') &&
-       !!table.closest('.tablewrap,.rr243-tablewrap,.monthly-cross-desktop');
-    const fits=!centerWide && ths.length<=fitLimit;
+    // Wide operational reports must remain readable, not scaled to a 390px screen.
+    // Their scroll container keeps the complete laptop column structure.
+    const centerWide=false;
+    const fits=ths.length<=fitLimit;
     table.classList.toggle('v273-fit',fits);
     table.classList.toggle('v273-scroll',!fits && !centerWide);
     table.classList.toggle('v273-zoom',centerWide);
@@ -516,13 +621,22 @@ def install(m):
       th.title=raw;
 
       if(!interactive){
-        const lines=linesFor(short,th);
-        const signature=lines.join('|');
-        if(th.dataset.v273Signature!==signature){
-          th.innerHTML='<span class="v273-head">'+lines.map(x=>'<span class="v273-line">'+
-            String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+
-          '</span>').join('')+'</span>';
-          th.dataset.v273Signature=signature;
+        // With horizontal scrolling there is space for real, readable labels.
+        // Old multiline headers are restored if the viewport changes.
+        if(!fits){
+          if(th.dataset.v273Signature || th.textContent.trim()!==raw){
+            th.textContent=raw;
+            delete th.dataset.v273Signature;
+          }
+        }else{
+          const lines=linesFor(short,th);
+          const signature=lines.join('|');
+          if(th.dataset.v273Signature!==signature){
+            th.innerHTML='<span class="v273-head">'+lines.map(x=>'<span class="v273-line">'+
+              String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+
+            '</span>').join('')+'</span>';
+            th.dataset.v273Signature=signature;
+          }
         }
       }
     });
@@ -537,6 +651,25 @@ def install(m):
       });
     }else{
       ths.forEach(th=>th.style.removeProperty('width'));
+      const wrap=table.parentElement;
+      const operational=viewport<=700 && !!table.closest('#operativoDynamicContent') &&
+        !!table.closest('.tablewrap,.rr243-tablewrap,.monthly-cross-desktop');
+      if(operational && wrap){
+        let hint=wrap.previousElementSibling;
+        if(!hint?.classList.contains('v292-scroll-hint')){
+          hint=document.createElement('div');
+          hint.className='v292-scroll-hint';
+          hint.textContent='← Desliza para ver todas las columnas →';
+          wrap.before(hint);
+        }
+        hint.setAttribute('role','note');
+        wrap.setAttribute('role','region');
+        wrap.setAttribute('tabindex','0');
+        wrap.setAttribute('aria-label','Tabla operativa, desliza horizontalmente para leer todas las columnas');
+      }else if(wrap){
+        const hint=wrap.previousElementSibling;
+        if(hint?.classList.contains('v292-scroll-hint'))hint.remove();
+      }
     }
 
     // Clasificación de cuerpo para mantener números compactos.
