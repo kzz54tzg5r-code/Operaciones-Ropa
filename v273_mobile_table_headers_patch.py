@@ -584,9 +584,15 @@ def install(m):
     wrap.style.setProperty('overflow-x',expanded?'auto':'hidden','important');
     const natural=table.getBoundingClientRect().width;
     if(!expanded && available>0 && natural>0){
-      const factor=Math.min(1,(available/natural));
-      // CSS zoom escala la tabla sin cambiar el contenido o separar dígitos.
-      table.style.setProperty('zoom',String(Math.max(.01,Math.floor(factor*1000)/1000)),'important');
+      let factor=Math.min(1,(available/natural)*.96);
+      // CSS zoom redondea anchos intrínsecos; dejar margen evita cortar
+      // la última columna en Safari y navegadores con zoom de texto.
+      table.style.setProperty('zoom',String(Math.max(.01,Math.floor(factor*10000)/10000)),'important');
+      const actual=table.getBoundingClientRect().width;
+      if(actual>available){
+        factor=Math.max(.01,factor*(available/actual)*.98);
+        table.style.setProperty('zoom',String(Math.floor(factor*10000)/10000),'important');
+      }
     }
     table.dataset.v291Measured=signature;
   }
