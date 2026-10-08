@@ -2432,6 +2432,8 @@ async function fetchOpsForView(name){
 async function refreshOperativoMeta(){
   const d=await api('/api/operations/meta',{timeoutMs:30000});
   OPSDATA=d;
+  // Una consulta puede terminar tras cerrar sesión; no acceder a USER nulo.
+  if(!USER)return d;
   const areaSel=$('#operAreaSelect'), actSel=$('#operActivitySelect');
   if(areaSel){const cur=areaSel.value||'';areaSel.innerHTML='<option value="">Todas</option>'+(d.areas_available||[]).map(x=>`<option>${x}</option>`).join('');if([...areaSel.options].some(o=>o.value===cur))areaSel.value=cur;}
   if(actSel){const cur=actSel.value||'';actSel.innerHTML='<option value="">Todas</option>'+(d.activities_available||[]).map(x=>`<option>${x}</option>`).join('');if([...actSel.options].some(o=>o.value===cur))actSel.value=cur;}

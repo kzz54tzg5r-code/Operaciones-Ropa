@@ -119,3 +119,45 @@ test('reports load after repeated initialization, tab changes and filters',{time
     assert.ok(requests.every(x=>x.method==='GET'),'navigation must not mutate application data');
   }finally{runtime.close()}
 });
+
+
+test('V289 keeps its device-fit stylesheet after earlier responsive layers',()=>{
+  const prior=html.indexOf('id="v288-operation-daily-option5-css"');
+  const current=html.indexOf('id="v289-device-fit-css"');
+  assert.ok(prior>=0,'V288 report design remains installed');
+  assert.ok(current>prior,'V289 layout protections must run after approved design layers');
+  assert.match(html,/touch-action:\s*pan-x pan-y pinch-zoom/);
+});
+
+test('unchanged filter chips stop generating childList mutations',async()=>{
+  const js=fs.readFileSync(path.join(root,'web/design_system.js'),'utf8');
+  const begin=js.indexOf('    const render = () => {');
+  const end=js.indexOf('\n    window.__orRenderFilterSummary = render;',begin);
+  assert.ok(begin>=0&&end>begin,'production filter-summary implementation exists');
+
+  const markup='<div class="filters"><div class="filter"><label>Tienda</label>'+
+    '<select id="selectedStore"><option>Compañía</option><option selected>Iztapalapa</option><option>Vallejo</option></select>'+
+    '</div></div><div id="orActiveFilters"></div>';
+  const runtime=createRuntime(markup,path.join(output,'web'));
+  const {window:w}=runtime, summary=w.document.getElementById('orActiveFilters');
+  const controls=[w.document.getElementById('selectedStore')];
+  const render=new w.Function('controls','summary',js.slice(begin,end)+'\nreturn render;')(controls,summary);
+  let mutations=0;
+  const observer=new w.MutationObserver(changes=>{mutations+=changes.filter(c=>c.type==='childList').length});
+  observer.observe(summary,{childList:true});
+  try{
+    render();
+    await wait(0);
+    const first=mutations;
+    assert.ok(first>=1,'initial filter chip is rendered');
+    for(let i=0;i<10;i++)render();
+    await wait(0);
+    assert.equal(mutations,first,'repeated render with unchanged filters must not mutate DOM');
+    controls[0].value='Vallejo';
+    render();
+    await wait(0);
+    assert.ok(mutations>first,'changed selection renders a fresh chip');
+    assert.match(summary.textContent,/Vallejo/);
+    assert.deepEqual(runtime.errors,[]);
+  }finally{observer.disconnect();runtime.close()}
+});

@@ -123,18 +123,31 @@
 
     const controls = [...filters.querySelectorAll('select,input')];
 
+    // Evita reconstruir el DOM cuando el filtro no cambió. El observador
+    // global se activa con childList: borrar/recrear los chips en cada frame
+    // causaba un ciclo de render y podía congelar consultas largas.
     const render = () => {
-      summary.innerHTML = '';
+      if (!summary.isConnected) return;
+      const chips = [];
       controls.forEach(control => {
         if (control.closest('.hidden')) return;
         const value = String(control.value || '').trim();
         if (!value || /^(Todas|Todos|Compañía)$/i.test(value)) return;
         const label = control.closest('.filter')?.querySelector('label')?.textContent?.trim() || 'Filtro';
+        chips.push({label, value});
+      });
+      const signature = JSON.stringify(chips);
+      if (summary.dataset.orSummarySignature === signature) return;
+      summary.dataset.orSummarySignature = signature;
+      const nodes = chips.map(({label, value}) => {
         const chip = document.createElement('span');
         chip.className = 'or-filter-chip';
-        chip.innerHTML = `<b>${label}:</b> ${value}`;
-        summary.appendChild(chip);
+        const heading = document.createElement('b');
+        heading.textContent = label + ':';
+        chip.append(heading, document.createTextNode(' ' + value));
+        return chip;
       });
+      summary.replaceChildren(...nodes);
     };
 
     window.__orRenderFilterSummary = render;
