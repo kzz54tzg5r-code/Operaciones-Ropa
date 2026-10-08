@@ -161,3 +161,43 @@ test('unchanged filter chips stop generating childList mutations',async()=>{
     assert.deepEqual(runtime.errors,[]);
   }finally{observer.disconnect();runtime.close()}
 });
+
+
+test('V290 keeps wide numeric tables horizontally scrollable on narrow phones',async()=>{
+  const tablePatch=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
+  const js=tablePatch.match(/<script id="v273-mobile-table-headers-js">([\s\S]*?)<\/script>/)?.[1];
+  assert.ok(js,'mobile table classifier must remain available');
+  assert.doesNotThrow(()=>new vm.Script(js));
+  const markup=n=>'<div class="tablewrap"><table id="columns'+n+'" class="table"><thead><tr>'+
+    Array.from({length:n},(_,i)=>'<th>'+(i===1?'Tienda':('Valor '+i))+'</th>').join('')+
+    '</tr></thead><tbody><tr>'+Array.from({length:n},(_,i)=>'<td>'+(i===1?'Iztapalapa':'$1,234,567')+'</td>').join('')+'</tr></tbody></table></div>';
+  const runtime=createRuntime(markup(6)+markup(10)+'<script>'+js+'</script>',path.join(output,'web'));
+  const {window:w}=runtime;
+  Object.defineProperty(w,'innerWidth',{configurable:true,value:390});
+  w.matchMedia=q=>({matches:q==='(max-width:1024px)',media:q,addEventListener(){},removeEventListener(){}});
+  try{
+    w.dispatchEvent(new w.Event('resize'));
+    await wait(185);
+    const six=w.document.getElementById('columns6');
+    const ten=w.document.getElementById('columns10');
+    assert.ok(six.classList.contains('v273-fit'),'six-column summary still fits the viewport');
+    assert.ok(ten.classList.contains('v273-scroll'),'ten-column recovery remains readable using local scroll');
+    assert.equal(ten.parentElement.style.overflowX,'auto');
+    assert.notEqual(ten.style.minWidth,'0px','the ten-column ledger is no longer forced to width zero');
+
+    Object.defineProperty(w,'innerWidth',{configurable:true,value:800});
+    w.dispatchEvent(new w.Event('resize'));
+    await wait(180);
+    assert.ok(ten.classList.contains('v273-scroll'),'ten columns scroll on narrow tablets too');
+    assert.deepEqual(runtime.errors,[]);
+  }finally{runtime.close()}
+});
+
+test('V290 mobile rules retain every tab and restore readable center KPI sizes',()=>{
+  const css=fs.readFileSync(path.join(root,'v289_device_fit_patch.py'),'utf8');
+  assert.match(css,/V290 · refuerzo visual móvil/);
+  assert.match(css,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(css,/mct-kpi-grid\s*\{\s*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css,/monthly-cross-table tbody td\.v273-num\s*\{/);
+  assert.match(css,/touch-action:pan-x pan-y pinch-zoom/);
+});
