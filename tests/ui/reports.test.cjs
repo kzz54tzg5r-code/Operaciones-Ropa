@@ -202,51 +202,56 @@ test('V290 mobile rules retain every tab and restore readable center KPI sizes',
   assert.match(css,/touch-action:pan-x pan-y pinch-zoom/);
 });
 
-test('V291 preserves mobile numbers in a scaled operational matrix',()=>{
- const source=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
- const script=source.split('id="v273-mobile-table-headers-js">')[1].split('</script>')[0];
- assert.doesNotThrow(()=>new vm.Script(script));
- assert.match(script,/centerWide=viewport<=700/);
- assert.match(script,/ths.length<=18/);
- assert.match(script,/table\.classList\.toggle\('v273-zoom',centerWide\)/);
- assert.match(script,/getBoundingClientRect\(\)\.width/);
- assert.match(script,/overflow-x','hidden'/);
- assert.match(source,/white-space:nowrap!important/);
+
+test('V292 keeps 10-column recovery and 15-column detail readable without zoom',async()=>{
+ const src=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
+ const js=src.split('id="v273-mobile-table-headers-js">')[1].split('</script>')[0];
+ assert.doesNotThrow(()=>new vm.Script(js));
+ const headers=['#','Tienda','Dev Pzs','Pzas recuperadas','Conversión','Valor devolución','Recuperación $','Recup. %','Pend. Pzs','Pend. $'];
+ const values=['#1','Iztapalapa','66,157','54,166','81.9%','$17,686,737','$14,251,605','80.6%','11,991','$3,435,132'];
+ const table=(id,heads,vals)=>'<div class="tablewrap"><table class="table" id="'+id+'"><thead><tr>'+
+ heads.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody><tr>'+
+ vals.map(x=>'<td>'+x+'</td>').join('')+'</tr></tbody></table></div>';
+ const html='<div id="operativoDynamicContent">'+table('recovery',headers,values)+
+ table('detail',['Ranking','Tienda',...Array.from({length:13},(_,i)=>'Indicador '+i)],
+ ['#1','Vallejo',...Array.from({length:13},(_,i)=>'1,234')])+'</div>';
+ const runtime=createRuntime(html,path.join(output,'web')),w=runtime.window;
+ Object.defineProperty(w,'innerWidth',{configurable:true,value:390});
+ w.matchMedia=q=>({matches:q==='(max-width:1024px)',media:q,addEventListener(){},removeEventListener(){}});
+ try{
+   w.eval(js);w.dispatchEvent(new w.Event('resize'));await wait(220);
+   for(const id of ['recovery','detail']){
+     const t=w.document.getElementById(id);
+     assert.ok(t.classList.contains('v273-scroll'),id+' must have a scrollable report table');
+     assert.ok(!t.classList.contains('v273-zoom'),id+' must not scale to microscopic text');
+     assert.equal(t.parentElement.style.overflowX,'auto');
+     assert.equal(t.style.zoom,'');
+     assert.ok(t.parentElement.previousElementSibling.classList.contains('v292-scroll-hint'));
+     assert.equal(t.parentElement.getAttribute('role'),'region');
+     assert.equal(t.rows[0].cells[1].textContent,'Tienda');
+   }
+   assert.equal(w.document.getElementById('recovery').rows[1].cells[5].textContent,'$17,686,737');
+   Object.defineProperty(w,'innerWidth',{configurable:true,value:1400});
+   w.matchMedia=q=>({matches:false,media:q,addEventListener(){},removeEventListener(){}});
+   w.dispatchEvent(new w.Event('resize'));await wait(165);
+   const rec=w.document.getElementById('recovery');
+   assert.ok(!rec.classList.contains('v273-scroll'));
+   assert.equal(rec.parentElement.previousElementSibling?.classList.contains('v292-scroll-hint'),false);
+   assert.deepEqual(runtime.errors,[]);
+ }finally{runtime.close()}
 });
-test('V291 six-column center summary separates percent from pieces',()=>{
+test('V292 phone CSS freezes store and keeps monetary values on a single line',()=>{
+ const source=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
+ assert.match(source,/V292 · Prevent an unreadable/);
+ assert.match(source,/left:47px!important/);
+ assert.match(source,/min-width:145px!important/);
+ assert.match(source,/font-size:11px!important/);
+ assert.match(source,/white-space:nowrap!important/);
+ assert.match(source,/touch-action:pan-x pan-y pinch-zoom!important/);
+});
+test('V291 six-column operational summary still stacks percentages and pieces',()=>{
  const source=fs.readFileSync(path.join(root,'v289_device_fit_patch.py'),'utf8');
  assert.match(source,/V291 · Resumen de seis columnas/);
  assert.match(source,/\.monthly-cross-table \.mct-value-pieces/);
  assert.match(source,/flex-direction:column!important/);
-});
-
-test('V291 real mobile table behavior including expanded readable mode',async()=>{
- const src=fs.readFileSync(path.join(root,'v273_mobile_table_headers_patch.py'),'utf8');
- const js=src.split('id="v273-mobile-table-headers-js">')[1].split('</script>')[0];
- const headers=['#','Tienda','Dev Pzs','Pzas recuperadas','Conversión','Valor devolución','Recuperación $','Recup. %','Pend. Pzs','Pend. $'];
- const values=['#1','Iztapalapa','66,157','54,166','81.9%','$17,686,737','$14,251,605','80.6%','11,991','$3,435,132'];
- const markup='<div id="operativoDynamicContent"><div class="tablewrap"><table id="recovery" class="table"><thead><tr>'+
- headers.map(v=>'<th>'+v+'</th>').join('')+'</tr></thead><tbody><tr>'+
- values.map(v=>'<td>'+v+'</td>').join('')+'</tr></tbody></table></div></div>';
- const runtime=createRuntime(markup,path.join(output,'web')),w=runtime.window;
- Object.defineProperty(w,'innerWidth',{configurable:true,value:390});
- w.matchMedia=q=>({matches:q==='(max-width:1024px)',media:q,addEventListener(){},removeEventListener(){}});
- try {
-   w.eval(js);w.dispatchEvent(new w.Event('resize'));await wait(220);
-   const t=w.document.getElementById('recovery');
-   assert.ok(t.classList.contains('v273-zoom'));
-   assert.equal(t.style.width,'max-content');
-   assert.equal(t.rows[1].cells[5].textContent,'$17,686,737');
-   const button=w.document.querySelector('.v291-zoom-toggle');
-   assert.ok(button);
-   assert.equal(button.textContent,'Ampliar tabla');
-   button.click();assert.equal(button.textContent,'Ajustar a pantalla');
-   assert.equal(t.parentElement.style.overflowX,'auto');
-   button.click();assert.equal(t.parentElement.style.overflowX,'hidden');
-   Object.defineProperty(w,'innerWidth',{configurable:true,value:800});
-   w.dispatchEvent(new w.Event('resize'));await wait(150);
-   assert.ok(!t.classList.contains('v273-zoom'));
-   assert.equal(w.document.querySelector('.v291-zoom-toggle'),null);
-   assert.deepEqual(runtime.errors,[]);
- }finally{runtime.close()}
 });
