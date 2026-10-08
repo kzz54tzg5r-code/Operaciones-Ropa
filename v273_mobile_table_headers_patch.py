@@ -460,6 +460,13 @@ def install(m):
     table.classList.toggle('v273-fit',fits);
     table.classList.toggle('v273-scroll',!fits && !centerWide);
     table.classList.toggle('v273-zoom',centerWide);
+    if(!centerWide && table.dataset.v291Measured!==undefined){
+      table.style.removeProperty('zoom');
+      delete table.dataset.v291Measured;
+      delete table.dataset.v291Expanded;
+      const previous=table.parentElement?.previousElementSibling;
+      if(previous?.classList.contains('v291-table-toolbar'))previous.remove();
+    }
 
     if(centerWide){
       table.style.setProperty('width','max-content','important');
