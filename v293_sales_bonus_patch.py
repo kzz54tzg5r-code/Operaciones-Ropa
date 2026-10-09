@@ -75,6 +75,9 @@ def install(m):
             )
         """)
         con.execute("CREATE INDEX IF NOT EXISTS ix_sales_bonus_targets_v293_month_store ON sales_bonus_targets_v293(month,store,catalog)")
+        target_cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(sales_bonus_targets_v293)").fetchall()}
+        if "initial_existence" not in target_cols:
+            con.execute("ALTER TABLE sales_bonus_targets_v293 ADD COLUMN initial_existence REAL NOT NULL DEFAULT 0")
         con.execute("""
             CREATE TABLE IF NOT EXISTS sales_bonus_attendance_v293(
                 month TEXT NOT NULL,
@@ -234,7 +237,7 @@ def install(m):
             mask = frame["Tienda"].astype(str).map(norm).isin(keys)
         cols = [c for c in [
             "Tienda", "ID_ART", "Modelo", "Marca", "Categoría", "Subcategoría", "Tipo catálogo",
-            "DDI", "Inversión", "Venta $ mes", "Venta $", "Venta $ 7"
+            "DDI", "Existencia", "Inversión"
         ] if c in frame.columns]
         return frame.loc[mask, cols].copy()
 
@@ -262,7 +265,7 @@ def install(m):
 
     def aggregate_models(work):
         if work.empty or "ID_ART" not in work.columns:
-            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "investment"])
+            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "existence", "investment"])
         w = work.copy()
         w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
         w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
@@ -274,12 +277,14 @@ def install(m):
         if w.empty:
             return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "investment"])
         w["ddi"] = pd.to_numeric(w.get("DDI", 0), errors="coerce").replace([math.inf, -math.inf], pd.NA).fillna(0.0)
+        w["existence"] = pd.to_numeric(w.get("Existencia", 0), errors="coerce").fillna(0.0)
         w["investment"] = pd.to_numeric(w.get("Inversión", 0), errors="coerce").fillna(0.0)
         w["model"] = w.get("Modelo", w["id_art"]).fillna("").astype(str).str.strip()
         grouped = w.groupby(["store", "id_art", "catalog"], sort=False, observed=True).agg(
             model=("model", "first"),
             ddi=("ddi", "max"),
-            investment=("investment", "sum"),
+            existence=("existence", "max"),
+            investment=("investment", "max"),
         ).reset_index()
         return grouped
 
@@ -401,13 +406,13 @@ def install(m):
                     for row in selected.to_dict("records"):
                         con.execute("""
                             INSERT OR IGNORE INTO sales_bonus_targets_v293(
-                                month,store,id_art,catalog,model,initial_ddi,initial_investment,avg_investment,
+                                month,store,id_art,catalog,model,initial_ddi,initial_existence,initial_investment,avg_investment,
                                 source_period,source_date,fixed_at
-                            ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
                         """, (
                             month, store, str(row.get("id_art") or ""), str(row.get("catalog") or ""),
-                            str(row.get("model") or row.get("id_art") or ""), num(row.get("ddi")), num(row.get("investment")),
-                            num(row.get("avg_investment")), source_period, source_date.isoformat(), now,
+                            str(row.get("model") or row.get("id_art") or ""), num(row.get("ddi")), num(row.get("existence")),
+                            num(row.get("investment")), num(row.get("avg_investment")), source_period, source_date.isoformat(), now,
                         ))
                 con.execute("""
                     INSERT OR IGNORE INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,fixed_at,model_count)
@@ -485,11 +490,16 @@ def install(m):
             w = w.loc[valid]
             if not w.empty:
                 w["ddi"] = pd.to_numeric(w.get("DDI", 0), errors="coerce").fillna(0.0)
+                w["existence"] = pd.to_numeric(w.get("Existencia", 0), errors="coerce").fillna(0.0)
                 w["investment"] = pd.to_numeric(w.get("Inversión", 0), errors="coerce").fillna(0.0)
                 agg = w.groupby(["store", "id_art"], sort=False, observed=True).agg(
-                    ddi=("ddi", "max"), investment=("investment", "sum")
+                    ddi=("ddi", "max"), existence=("existence", "max"), investment=("investment", "max")
                 ).reset_index()
-                current = {(str(x["store"]), str(x["id_art"])): {"ddi": num(x["ddi"]), "investment": num(x["investment"])} for x in agg.to_dict("records")}
+                current = {
+                    (str(x["store"]), str(x["id_art"])): {
+                        "ddi": num(x["ddi"]), "existence": num(x["existence"]), "investment": num(x["investment"])
+                    } for x in agg.to_dict("records")
+                }
         try:
             del work, frame
             m._release_process_memory()
@@ -505,8 +515,10 @@ def install(m):
             cur = current.get((store, ident))
             has_current = current_entry is not None
             current_ddi = num(cur.get("ddi")) if cur is not None else (0.0 if has_current else num(row.get("initial_ddi")))
+            current_exist = num(cur.get("existence")) if cur is not None else (0.0 if has_current else num(row.get("initial_existence")))
             current_inv = num(cur.get("investment")) if cur is not None else (0.0 if has_current else num(row.get("initial_investment")))
             initial_ddi = num(row.get("initial_ddi"))
+            initial_exist = num(row.get("initial_existence"))
             initial_inv = num(row.get("initial_investment"))
             ddi_red = ((initial_ddi - current_ddi) / initial_ddi * 100.0) if initial_ddi > 0 else 0.0
             inv_red = ((initial_inv - current_inv) / initial_inv * 100.0) if initial_inv > 0 else 0.0
@@ -518,6 +530,8 @@ def install(m):
                 "catalog": str(row.get("catalog") or ""),
                 "initial_ddi": round(initial_ddi, 1),
                 "current_ddi": round(current_ddi, 1),
+                "initial_existence": round(initial_exist, 1),
+                "current_existence": round(current_exist, 1),
                 "initial_investment": round(initial_inv, 2),
                 "current_investment": round(current_inv, 2),
                 "ddi_reduction_pct": round(ddi_red, 1),
