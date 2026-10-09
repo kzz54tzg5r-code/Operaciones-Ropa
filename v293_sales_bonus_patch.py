@@ -317,6 +317,7 @@ def install(m):
         totals = {s: 0.0 for s in stores}
         pieces = {s: 0.0 for s in stores}
         source_available = False
+        monthly_sheets = []
         if raw_path.exists():
             wanted = set(stores)
             try:
