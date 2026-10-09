@@ -556,63 +556,104 @@ def install(m):
                 ).start()
         return {s: 0.0 for s in stores}, {s: 0.0 for s in stores}, False, pending
 
+    snapshot_jobs = set()
+    snapshot_jobs_lock = threading.Lock()
+
+    def _build_month_snapshots(month, stores, opening):
+        source_date, _stamp, entry = opening
+        job_key = (month, str(entry.get("id") or ""))
+        try:
+            frame = _load_or_build_bonus_capacity(entry)
+            if frame is None or frame.empty:
+                print(f"[V299] Snapshot {month}: capacidad sin datos", flush=True)
+                return
+            work = scope_frame(frame, stores)
+            models = aggregate_models(work)
+            now = datetime.now(MX).isoformat(timespec="seconds")
+            source_period = period_for_entry(entry)
+            by_store = {s: pd.DataFrame() for s in stores}
+            if not models.empty:
+                for store, group in models.groupby("store", sort=False):
+                    by_store[str(store)] = group
+
+            with m.db() as con:
+                for store in stores:
+                    con.execute("DELETE FROM sales_bonus_targets_v293 WHERE month=? AND store=?", (month, store))
+                    con.execute("DELETE FROM sales_bonus_snapshot_v293 WHERE month=? AND store=?", (month, store))
+                    g = by_store.get(store)
+                    selected = pd.DataFrame()
+                    if g is not None and not g.empty:
+                        g = g.copy()
+                        g["avg_investment"] = g.groupby("catalog", observed=True)["investment"].transform("mean")
+                        selected = g[(g["ddi"] > 90.0) & (g["investment"] > g["avg_investment"])].copy()
+                        for row in selected.to_dict("records"):
+                            con.execute("""
+                                INSERT INTO sales_bonus_targets_v293(
+                                    month,store,id_art,catalog,model,initial_ddi,initial_existence,initial_investment,avg_investment,
+                                    source_period,source_date,fixed_at
+                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                            """, (
+                                month, store, str(row.get("id_art") or ""), str(row.get("catalog") or ""),
+                                str(row.get("model") or row.get("id_art") or ""), num(row.get("ddi")), num(row.get("existence")),
+                                num(row.get("investment")), num(row.get("avg_investment")), source_period, source_date.isoformat(), now,
+                            ))
+                    con.execute("""
+                        INSERT INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,fixed_at,model_count)
+                        VALUES(?,?,?,?,?,?)
+                    """, (month, store, source_period, source_date.isoformat(), now, int(len(selected))))
+            print(
+                f"[V299] Snapshot Bonos {month} listo · corte={source_date.isoformat()} · "
+                f"tiendas={len(stores)} · modelos={len(models)}",
+                flush=True,
+            )
+            try:
+                del work, models, frame
+                m._release_process_memory()
+            except Exception:
+                pass
+        except Exception as exc:
+            print(f"[V299] Error snapshot Bonos {month}: {type(exc).__name__}: {exc}", flush=True)
+        finally:
+            with snapshot_jobs_lock:
+                snapshot_jobs.discard(job_key)
+
     def ensure_snapshots(month, stores):
+        """Nunca construye la cartera mensual dentro de la petición HTTP."""
         stores = [s for s in stores if s]
         if not stores:
-            return {"entry": None, "created": 0}
-        with m.db() as con:
-            existing = {str(r["store"]) for r in con.execute(
-                "SELECT store FROM sales_bonus_snapshot_v293 WHERE month=?", (month,)
-            ).fetchall()}
-        missing = [s for s in stores if s not in existing]
+            return {"entry": None, "created": 0, "pending": False}
         opening = opening_capacity_entry(month)
-        if not missing:
-            return {"entry": opening[2] if opening else None, "created": 0, "pending": False}
         if not opening:
             return {"entry": None, "created": 0, "pending": False}
         source_date, _stamp, entry = opening
-        frame, capacity_pending = load_frame(entry)
-        if frame is None or frame.empty:
-            return {"entry": entry, "created": 0, "pending": bool(capacity_pending)}
-        work = scope_frame(frame, missing)
-        models = aggregate_models(work)
-        created = 0
-        now = datetime.now(MX).isoformat(timespec="seconds")
-        source_period = period_for_entry(entry)
-        by_store = {s: pd.DataFrame() for s in missing}
-        if not models.empty:
-            for store, group in models.groupby("store", sort=False):
-                by_store[str(store)] = group
+        expected_source_date = source_date.isoformat()
+
         with m.db() as con:
-            for store in missing:
-                g = by_store.get(store)
-                selected = pd.DataFrame()
-                if g is not None and not g.empty:
-                    g = g.copy()
-                    g["avg_investment"] = g.groupby("catalog", observed=True)["investment"].transform("mean")
-                    selected = g[(g["ddi"] > 90.0) & (g["investment"] > g["avg_investment"])].copy()
-                    for row in selected.to_dict("records"):
-                        con.execute("""
-                            INSERT OR IGNORE INTO sales_bonus_targets_v293(
-                                month,store,id_art,catalog,model,initial_ddi,initial_existence,initial_investment,avg_investment,
-                                source_period,source_date,fixed_at
-                            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-                        """, (
-                            month, store, str(row.get("id_art") or ""), str(row.get("catalog") or ""),
-                            str(row.get("model") or row.get("id_art") or ""), num(row.get("ddi")), num(row.get("existence")),
-                            num(row.get("investment")), num(row.get("avg_investment")), source_period, source_date.isoformat(), now,
-                        ))
-                con.execute("""
-                    INSERT OR IGNORE INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,fixed_at,model_count)
-                    VALUES(?,?,?,?,?,?)
-                """, (month, store, source_period, source_date.isoformat(), now, int(len(selected))))
-                created += int(len(selected))
-        try:
-            del work, models, frame
-            m._release_process_memory()
-        except Exception:
-            pass
-        return {"entry": entry, "created": created, "pending": False}
+            rows = con.execute(
+                "SELECT store,source_date FROM sales_bonus_snapshot_v293 WHERE month=?",
+                (month,),
+            ).fetchall()
+        valid_existing = {
+            str(r["store"]) for r in rows
+            if str(r["source_date"] or "") == expected_source_date
+        }
+        missing = [s for s in stores if s not in valid_existing]
+        if not missing:
+            return {"entry": entry, "created": 0, "pending": False}
+
+        job_key = (month, str(entry.get("id") or ""))
+        with snapshot_jobs_lock:
+            pending = job_key in snapshot_jobs
+            if not pending:
+                snapshot_jobs.add(job_key)
+                pending = True
+                threading.Thread(
+                    target=_build_month_snapshots,
+                    args=(month, list(missing), opening),
+                    daemon=True,
+                    name=f"bonus-snapshot-{month}",
+                ).start()
+        return {"entry": entry, "created": 0, "pending": pending}
 
     def actor_stores(actor):
         stores = all_stores()
@@ -657,6 +698,8 @@ def install(m):
 
     def current_maps(month, stores, targets):
         sales, sales_pieces, sales_available, sales_pending = operations_sales_by_store(month, stores)
+        if not targets:
+            return None, {}, sales, sales_pieces, sales_available, sales_pending, False
         current_pick = current_capacity_entry(month)
         if not current_pick:
             return None, {}, sales, sales_pieces, sales_available, sales_pending, False
