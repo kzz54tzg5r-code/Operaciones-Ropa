@@ -437,7 +437,8 @@ def install(m):
         if work.empty or "ID_ART" not in work.columns:
             return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "existence", "investment"])
         w = work.copy()
-        w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
+        store_list = all_stores()
+        w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, store_list))
         w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
         w = w[~w["id_art"].isin(["", "nan", "None"])]
         if w.empty:
@@ -745,7 +746,8 @@ def install(m):
             ids_by_store[str(row.get("store") or "")].add(str(row.get("id_art") or ""))
         if ids_by_store and not work.empty and "ID_ART" in work.columns:
             w = work.copy()
-            w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
+            store_list = all_stores()
+            w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, store_list))
             w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
             valid = pd.Series(False, index=w.index)
             for store, ids in ids_by_store.items():
