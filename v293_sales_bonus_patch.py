@@ -223,4 +223,79 @@ def install(m):
             "Tienda", "ID_ART", "Modelo", "Marca", "Categoría", "Subcategoría", "Tipo catálogo",
             "DDI", "Inversión", "Venta $ mes", "Venta $", "Venta $ 7"
         ] if c in frame.columns]
-     
+        return frame.loc[mask, cols].copy()
+
+    def classify_catalog(work):
+        if work.empty:
+            return pd.Series(dtype="object")
+        parts = []
+        for col in ("Tipo catálogo", "Categoría", "Subcategoría", "Marca", "Modelo"):
+            if col in work.columns:
+                parts.append(work[col].fillna("").astype(str))
+        if not parts:
+            return pd.Series("", index=work.index, dtype="object")
+        text = parts[0]
+        for part in parts[1:]:
+            text = text.str.cat(part, sep=" | ")
+        text = text.map(fold)
+        out = pd.Series("", index=work.index, dtype="object")
+        license_mask = text.str.contains(r"\bLICEN(?:CIA|CIAS|CIADO|CIADOS)?\b|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES", regex=True, na=False)
+        coat_mask = text.str.contains(r"ABRIGADOR|ABRIGO|CHAMARRA|CHAQUETA|PARKA", regex=True, na=False)
+        basic_mask = text.str.contains(r"\bBASIC(?:O|OS|A|AS)?\b", regex=True, na=False)
+        out.loc[basic_mask] = "Básicos"
+        out.loc[coat_mask] = "Abrigador"
+        out.loc[license_mask] = "Licencias"
+        return out
+
+    def aggregate_models(work):
+        if work.empty or "ID_ART" not in work.columns:
+            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "investment"])
+        w = work.copy()
+        w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
+        w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        w = w[~w["id_art"].isin(["", "nan", "None"])]
+        if w.empty:
+            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "investment"])
+        w["catalog"] = classify_catalog(w)
+        w = w[w["catalog"].isin(CATALOGS)]
+        if w.empty:
+            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "investment"])
+        w["ddi"] = pd.to_numeric(w.get("DDI", 0), errors="coerce").replace([math.inf, -math.inf], pd.NA).fillna(0.0)
+        w["investment"] = pd.to_numeric(w.get("Inversión", 0), errors="coerce").fillna(0.0)
+        w["model"] = w.get("Modelo", w["id_art"]).fillna("").astype(str).str.strip()
+        grouped = w.groupby(["store", "id_art", "catalog"], sort=False, observed=True).agg(
+            model=("model", "first"),
+            ddi=("ddi", "max"),
+            investment=("investment", "sum"),
+        ).reset_index()
+        return grouped
+
+    def sales_by_store(work):
+        if work.empty or "ID_ART" not in work.columns:
+            return {}
+        w = work.copy()
+        w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
+        w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        w = w[~w["id_art"].isin(["", "nan", "None"])]
+        if w.empty:
+            return {}
+        preferred = pd.to_numeric(w.get("Venta $ mes", 0), errors="coerce").fillna(0.0)
+        fallback = pd.to_numeric(w.get("Venta $", w.get("Venta $ 7", 0)), errors="coerce").fillna(0.0)
+        w["sales_value"] = preferred.where(preferred > 0, fallback)
+        per_id = w.groupby(["store", "id_art"], sort=False, observed=True)["sales_value"].max().reset_index()
+        totals = per_id.groupby("store", sort=False)["sales_value"].sum()
+        return {str(k): float(v or 0) for k, v in totals.items()}
+
+    def ensure_snapshots(month, stores):
+        stores = [s for s in stores if s]
+        if not stores:
+            return {"entry": None, "created": 0}
+        with m.db() as con:
+            existing = {str(r["store"]) for r in con.execute(
+                "SELECT store FROM sales_bonus_snapshot_v293 WHERE month=?", (month,)
+            ).fetchall()}
+        missing = [s for s in stores if s not in existing]
+        if not missing:
+            entries = capacity_entries(month)
+            return {"entry": entries[0][2] if entries else None, "created": 0}
+        entries = capa
