@@ -190,10 +190,37 @@ def install(m):
         yy = int(payload.get("year") or 2026)
         return [f"{yy:04d}-{mm:02d}" for mm in range(1, 13)]
 
+    manifest_cache = {"mtime": None, "entries": []}
+    manifest_cache_lock = threading.Lock()
+
+    def _fast_processed_capacity_entries():
+        """Lee manifest.json directamente; evita descubrir/hash de archivos en cada consulta."""
+        manifest_path = Path(m.COMMERCIAL_DATA_ROOT) / "manifest.json"
+        try:
+            stamp = manifest_path.stat().st_mtime_ns if manifest_path.exists() else 0
+        except Exception:
+            stamp = 0
+        with manifest_cache_lock:
+            if manifest_cache.get("mtime") == stamp:
+                return list(manifest_cache.get("entries") or [])
+        entries = []
+        try:
+            payload = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+            entries = [
+                dict(x) for x in (payload.get("capacities") or [])
+                if str(x.get("status") or "").strip().lower() == "procesado"
+            ]
+        except Exception as exc:
+            print(f"[V299] Manifest capacidades no disponible: {type(exc).__name__}: {exc}", flush=True)
+        with manifest_cache_lock:
+            manifest_cache["mtime"] = stamp
+            manifest_cache["entries"] = list(entries)
+        return entries
+
     def capacity_entries(month):
         """Cortes procesados que pertenecen exactamente al mes."""
         out = []
-        for entry in list(m._capacity_processed_entries() or []):
+        for entry in _fast_processed_capacity_entries():
             try:
                 d = m._capacity_report_date(entry)
             except Exception:
@@ -205,7 +232,7 @@ def install(m):
 
     def _capacity_all_entries():
         out = []
-        for entry in list(m._capacity_processed_entries() or []):
+        for entry in _fast_processed_capacity_entries():
             try:
                 d = m._capacity_report_date(entry)
             except Exception:
@@ -245,39 +272,85 @@ def install(m):
         iso = d.isocalendar()
         return f"{iso.year}-W{iso.week:02d}"
 
+    BONUS_CAPACITY_CACHE_VERSION = 1
     capacity_jobs = set()
     capacity_jobs_lock = threading.Lock()
+
+    def _bonus_capacity_cache_path(entry):
+        base = m._capacity_cache_path(str(entry.get("id") or "capacity"))
+        return base.with_name(base.stem + f".bonus-v{BONUS_CAPACITY_CACHE_VERSION}.pkl")
+
+    def _load_or_build_bonus_capacity(entry):
+        target = _bonus_capacity_cache_path(entry)
+        try:
+            if target.exists() and target.is_file():
+                frame = pd.read_pickle(target)
+                if isinstance(frame, pd.DataFrame) and not frame.empty:
+                    return frame
+        except Exception:
+            pass
+        frame = pd.DataFrame()
+        try:
+            frame = m._load_capacity_cache(entry)
+        except Exception:
+            frame = pd.DataFrame()
+        if frame is None or frame.empty:
+            try:
+                source_path = m.resolve_entry_path(entry)
+                frame = m.read_capacity_file(source_path)
+                if isinstance(frame, pd.DataFrame) and not frame.empty:
+                    frame = m._prepare_capacity_frame(frame)
+                    normalized = m._capacity_cache_path(str(entry.get("id") or ""))
+                    frame.to_pickle(normalized)
+                    m.update_entry(
+                        "capacities", str(entry.get("id") or ""),
+                        cache_file=str(normalized.relative_to(m.DATA_ROOT))
+                    )
+            except Exception as exc:
+                print(f"[V299] No se pudo reconstruir capacidad de Bonos: {type(exc).__name__}: {exc}", flush=True)
+                frame = pd.DataFrame()
+        if frame is None or frame.empty:
+            return pd.DataFrame()
+        keep = [x for x in [
+            "Tienda", "ID_ART", "Modelo", "Marca", "Categoría", "Subcategoría", "Tipo catálogo",
+            "DDI", "Existencia", "Inversión", "_TiendaKey"
+        ] if x in frame.columns]
+        light = frame.loc[:, keep].copy()
+        try:
+            light.to_pickle(target)
+        except Exception as exc:
+            print(f"[V299] No se pudo persistir cache ligero de Bonos: {type(exc).__name__}: {exc}", flush=True)
+        try:
+            del frame
+            m._release_process_memory()
+        except Exception:
+            pass
+        return light
 
     def _build_capacity_cache(entry):
         key = str(entry.get("id") or "")
         try:
-            m._load_capacity_compact_cache(entry)
-            print(f"[V297] Cache capacidad listo: {key}", flush=True)
+            frame = _load_or_build_bonus_capacity(entry)
+            print(f"[V299] Cache ligero capacidad listo: {key} filas={len(frame)}", flush=True)
         except Exception as exc:
-            print(f"[V297] Error preparando capacidad {key}: {type(exc).__name__}: {exc}", flush=True)
+            print(f"[V299] Error preparando cache capacidad {key}: {type(exc).__name__}: {exc}", flush=True)
         finally:
             with capacity_jobs_lock:
                 capacity_jobs.discard(key)
 
     def load_frame(entry):
-        """Carga sólo caches listos; nunca reprocesa Excel pesado dentro de la petición."""
+        """La petición sólo lee el cache ligero. Si falta, se prepara fuera de la petición."""
         if not entry:
             return pd.DataFrame(), False
         key = str(entry.get("id") or "")
+        target = _bonus_capacity_cache_path(entry)
         try:
-            target = m._capacity_compact_cache_path(entry)
             if target.exists() and target.is_file():
                 frame = pd.read_pickle(target)
                 if isinstance(frame, pd.DataFrame) and not frame.empty:
                     return frame, False
-        except Exception:
-            pass
-        try:
-            frame = m._load_capacity_cache(entry)
-            if frame is not None and not frame.empty:
-                return frame, False
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[V299] Cache ligero ilegible {key}: {type(exc).__name__}: {exc}", flush=True)
         with capacity_jobs_lock:
             pending = key in capacity_jobs
             if not pending:
