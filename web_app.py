@@ -536,6 +536,39 @@ ensure_user_security_columns()
 ensure_upload_history_columns()
 ensure_upload_job_columns()
 
+def _cleanup_stale_upload_job_sources():
+    """Libera staging huérfano sin tocar cargas que sí deben retomarse."""
+    try:
+        with db() as con:
+            rows=con.execute("SELECT source_path,status FROM upload_jobs").fetchall()
+        active={
+            str(Path(str(r["source_path"] or "")))
+            for r in rows
+            if str(r["status"] or "") in ("queued","processing","publishing") and str(r["source_path"] or "")
+        }
+        removed=0
+        removed_bytes=0
+        for p in STAGING_DIR.glob("operations_job_*.xlsx"):
+            try:
+                if str(p) in active:
+                    continue
+                size=p.stat().st_size if p.exists() else 0
+                p.unlink(missing_ok=True)
+                removed+=1; removed_bytes+=size
+            except Exception:
+                pass
+        if removed:
+            free_now=shutil.disk_usage(DATA_ROOT).free
+            print(
+                f"[V301-DISK] staging huérfano eliminado={removed} "
+                f"liberado={removed_bytes//(1024*1024)}MB libres={free_now//(1024*1024)}MB",
+                flush=True,
+            )
+    except Exception as exc:
+        print(f"[V301-DISK] limpieza staging omitida: {type(exc).__name__}: {exc}",flush=True)
+
+_cleanup_stale_upload_job_sources()
+
 def _create_upload_job(module: str, filename: str, source_path: Path, username: str) -> dict:
     job_id=secrets.token_hex(12)
     now=datetime.now().isoformat(timespec="seconds")
