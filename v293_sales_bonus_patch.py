@@ -191,6 +191,7 @@ def install(m):
         return [f"{yy:04d}-{mm:02d}" for mm in range(1, 13)]
 
     def capacity_entries(month):
+        """Cortes procesados que pertenecen exactamente al mes."""
         out = []
         for entry in list(m._capacity_processed_entries() or []):
             try:
@@ -201,6 +202,41 @@ def install(m):
                 out.append((d, str(entry.get("uploaded_at") or entry.get("created_at") or ""), entry))
         out.sort(key=lambda x: (x[0], x[1]))
         return out
+
+    def _capacity_all_entries():
+        out = []
+        for entry in list(m._capacity_processed_entries() or []):
+            try:
+                d = m._capacity_report_date(entry)
+            except Exception:
+                continue
+            out.append((d, str(entry.get("uploaded_at") or entry.get("created_at") or ""), entry))
+        out.sort(key=lambda x: (x[0], x[1]))
+        return out
+
+    def opening_capacity_entry(month):
+        """Corte que fija la cartera del mes: último disponible al iniciar el mes.
+
+        Ejemplo: para octubre, un corte 29/09 es la apertura correcta. Si no
+        existe ningún corte previo, usa el primero disponible dentro del mes.
+        """
+        yy, mm = (int(x) for x in month.split("-"))
+        month_start = date(yy, mm, 1)
+        all_entries = _capacity_all_entries()
+        prior = [x for x in all_entries if x[0] <= month_start]
+        if prior:
+            return prior[-1]
+        exact = [x for x in all_entries if x[0].year == yy and x[0].month == mm]
+        return exact[0] if exact else None
+
+    def current_capacity_entry(month):
+        """Último corte conocido hasta el mes consultado, sin usar datos futuros."""
+        yy, mm = (int(x) for x in month.split("-"))
+        candidates = [
+            x for x in _capacity_all_entries()
+            if (x[0].year, x[0].month) <= (yy, mm)
+        ]
+        return candidates[-1] if candidates else None
 
     def period_for_entry(entry):
         if not entry:
@@ -456,13 +492,12 @@ def install(m):
                 "SELECT store FROM sales_bonus_snapshot_v293 WHERE month=?", (month,)
             ).fetchall()}
         missing = [s for s in stores if s not in existing]
+        opening = opening_capacity_entry(month)
         if not missing:
-            entries = capacity_entries(month)
-            return {"entry": entries[0][2] if entries else None, "created": 0}
-        entries = capacity_entries(month)
-        if not entries:
-            return {"entry": None, "created": 0}
-        source_date, _stamp, entry = entries[0]
+            return {"entry": opening[2] if opening else None, "created": 0, "pending": False}
+        if not opening:
+            return {"entry": None, "created": 0, "pending": False}
+        source_date, _stamp, entry = opening
         frame, capacity_pending = load_frame(entry)
         if frame is None or frame.empty:
             return {"entry": entry, "created": 0, "pending": bool(capacity_pending)}
@@ -549,10 +584,10 @@ def install(m):
 
     def current_maps(month, stores, targets):
         sales, sales_pieces, sales_available, sales_pending = operations_sales_by_store(month, stores)
-        entries = capacity_entries(month)
-        if not entries:
+        current_pick = current_capacity_entry(month)
+        if not current_pick:
             return None, {}, sales, sales_pieces, sales_available, sales_pending, False
-        _d, _stamp, entry = entries[-1]
+        _d, _stamp, entry = current_pick
         frame, capacity_pending = load_frame(entry)
         if frame is None or frame.empty:
             return None, {}, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
@@ -741,6 +776,11 @@ def install(m):
                 "sales": "Base Muertos / Cambios: Ventas mensuales",
                 "attendance": "Captura de Asistencia",
             },
+            "source_dates": {
+                "opening_capacity": str((snapshot_state.get("entry") and m._capacity_report_date(snapshot_state.get("entry")).isoformat()) or ""),
+                "current_capacity": m._capacity_report_date(current_entry).isoformat() if current_entry else "",
+                "base_muertos_latest": str(max((m.load_operations_meta() or {}).get("available_dates") or [""]) or ""),
+            },
             "processing": {
                 "sales": bool(sales_pending),
                 "capacity": bool(capacity_pending),
@@ -847,11 +887,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"] = "V297-NONBLOCKING-MONTH"
+            headers["X-Operations-Bonus-Version"] = "V298-OPENING-CAPACITY"
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
             print(f"[V293] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V293_SALES_BONUS = True
-    print("[V297] Bonos no bloqueante: cambio de mes responde rápido y prepara caches en segundo plano.", flush=True)
+    print("[V298] Bonos: apertura mensual usa último corte de Capacidades previo al inicio del mes.", flush=True)
