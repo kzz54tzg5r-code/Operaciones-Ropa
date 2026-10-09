@@ -6457,9 +6457,10 @@ async def upload_operations_legacy(request: Request,file:UploadFile=File(...)):
         payload["uploaded_by"]=u["username"]
         payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
 
-        # Persistir metadatos y archivo fuente actual.
+        # Persistir metadatos y archivo fuente actual sin duplicar ~175 MB
+        # en el disco persistente. El staging y DATA_ROOT comparten filesystem.
         final_path=DATA_ROOT/"cambios_muertos_actual.xlsx"
-        await asyncio.to_thread(shutil.copy2,p,final_path)
+        await asyncio.to_thread(os.replace,p,final_path)
         await asyncio.to_thread(_write_json_stream,OPS_FILE,payload)
         _clear_operations_caches(clear_meta_file=True)
         try:
