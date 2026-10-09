@@ -531,4 +531,50 @@ def install(m):
             "months": [{"value": x, "label": period_label(x)} for x in available_goal_months()],
             "stores": stores,
             "selected_store": selected,
-         
+            "selected": selected_metric,
+            "ranking": [{
+                "rank": x["rank"], "store": x["store"], "sales_pct": x["sales"]["pct"], "ddi_pct": x["ddi"]["pct"],
+                "attendance_pct": x["attendance"]["pct"], "score": x["score"], "score_ready": x["score_ready"],
+                "target_models": x["target_models"],
+            } for x in ranking],
+            "current_source_period": period_for_entry(current_entry),
+            "current_source_date": m._capacity_report_date(current_entry).isoformat() if current_entry else "",
+            "can_edit_attendance": str(actor.get("role") or "").lower() in ADMIN,
+            "weights": {"sales": 50, "ddi": 30, "attendance": 20},
+            "rules": {"ddi_gt": 90, "investment": "Mayor al promedio del catálogo por tienda", "snapshot": "Listado fijo mensual"},
+            "meta_source": "METAS 2026.xlsx · hoja ROPA · valores convertidos de miles de pesos a MXN",
+        }
+
+    @m.app.get("/api/operation/sales-bonus-v293")
+    def sales_bonus_v293(request: Request, month: str = "", store: str = ""):
+        actor = m.require_user(request)
+        return monthly_payload(actor, month_key(month), store)
+
+    @m.app.post("/api/operation/sales-bonus-v293/attendance")
+    async def sales_bonus_attendance_v293(request: Request):
+        actor = m.require_user(request, ADMIN)
+        body = await request.json()
+        month = month_key(body.get("month"))
+        stores = all_stores()
+        store = canon_store(body.get("store"), stores)
+        if store not in stores:
+            raise HTTPException(400, "Tienda inválida")
+        pct = num(body.get("attendance_pct"))
+        if pct < 0 or pct > 100:
+            raise HTTPException(400, "La asistencia debe estar entre 0 y 100%")
+        now = datetime.now(MX).isoformat(timespec="seconds")
+        with m.db() as con:
+            con.execute("""
+                INSERT INTO sales_bonus_attendance_v293(month,store,attendance_pct,updated_at,updated_by)
+                VALUES(?,?,?,?,?)
+                ON CONFLICT(month,store) DO UPDATE SET
+                    attendance_pct=excluded.attendance_pct,
+                    updated_at=excluded.updated_at,
+                    updated_by=excluded.updated_by
+            """, (month, store, pct, now, str(actor.get("username") or "")))
+        return {"ok": True, "message": "Asistencia actualizada", "attendance_pct": round(pct, 1)}
+
+    css = r'''<style id="v293-bonus-css">
+body[data-v163-module="operation"][data-v293-view="bonuses"] #operativoPeriodBar{display:none!important}
+.v293{color:#123f73;min-width:0}.v293 *{box-sizing:border-box}.v293-head{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin:2px 0 7px}.v293-title h2{font-size:17px!important;margin:0!important}.v293-sub{font-size:7px;font-weight:800;color:#60758b;margin-top:2px}.v293-filters{display:grid;grid-template-columns:180px 150px 170px;gap:6px}.v293-field label{display:block;font-size:6px;font-weight:950;color:#66798d;margin:0 0 2px}.v293-field select,.v293-field input{width:100%;height:31px;border:1px solid #ccdae8;border-radius:8px;background:#fff;color:#173f72;padding:0 8px;font-size:7px;font-weight:850}.v293-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;margin:5px 0 8px;padding:3px;border:1px solid #dce7f1;border-radius:10px;background:#f8fbfe}.v293-tabs button{height:32px;border:0;border-radius:7px;background:transparent;color:#365a7e;font-size:6.5px;font-weight:950;white-space:nowrap}.v293-tabs button.active{background:#176fe8;color:#fff;box-shadow:0 2px 8px rgba(23,111,232,.18)}
+.v293-top{display:grid;grid-template-columns:1.08fr .82fr 1.1fr;gap:6px}.v293-panel{border:1px solid #dae5ef;border-radius:11px;background:#fff;overflow:hidden}.v293-ph{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;font-size:8px;font-weight:950;color:#123f73;border-bottom:1px solid #e9eff5}.v293-info{display:inline-grid;place-items:center;width:15px;height:
