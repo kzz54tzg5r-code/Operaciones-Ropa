@@ -209,22 +209,51 @@ def install(m):
         iso = d.isocalendar()
         return f"{iso.year}-W{iso.week:02d}"
 
-    def load_frame(entry):
-        if not entry:
-            return pd.DataFrame()
+    capacity_jobs = set()
+    capacity_jobs_lock = threading.Lock()
+
+    def _build_capacity_cache(entry):
+        key = str(entry.get("id") or "")
         try:
-            frame = m._load_capacity_cache(entry)
-            if frame is not None and not frame.empty:
-                return frame
+            m._load_capacity_compact_cache(entry)
+            print(f"[V297] Cache capacidad listo: {key}", flush=True)
+        except Exception as exc:
+            print(f"[V297] Error preparando capacidad {key}: {type(exc).__name__}: {exc}", flush=True)
+        finally:
+            with capacity_jobs_lock:
+                capacity_jobs.discard(key)
+
+    def load_frame(entry):
+        """Carga sólo caches listos; nunca reprocesa Excel pesado dentro de la petición."""
+        if not entry:
+            return pd.DataFrame(), False
+        key = str(entry.get("id") or "")
+        try:
+            target = m._capacity_compact_cache_path(entry)
+            if target.exists() and target.is_file():
+                frame = pd.read_pickle(target)
+                if isinstance(frame, pd.DataFrame) and not frame.empty:
+                    return frame, False
         except Exception:
             pass
         try:
-            path = m.resolve_entry_path(entry)
-            frame = m.read_capacity_file(path)
-            return m._prepare_capacity_frame(frame)
-        except Exception as exc:
-            print(f"[V293] No se pudo leer capacidad {entry.get('id')}: {type(exc).__name__}: {exc}", flush=True)
-            return pd.DataFrame()
+            frame = m._load_capacity_cache(entry)
+            if frame is not None and not frame.empty:
+                return frame, False
+        except Exception:
+            pass
+        with capacity_jobs_lock:
+            pending = key in capacity_jobs
+            if not pending:
+                capacity_jobs.add(key)
+                pending = True
+                threading.Thread(
+                    target=_build_capacity_cache,
+                    args=(dict(entry),),
+                    daemon=True,
+                    name=f"bonus-cap-{key[:10]}",
+                ).start()
+        return pd.DataFrame(), pending
 
     def scope_frame(frame, stores):
         if frame is None or frame.empty or not stores:
@@ -434,7 +463,9 @@ def install(m):
         if not entries:
             return {"entry": None, "created": 0}
         source_date, _stamp, entry = entries[0]
-        frame = load_frame(entry)
+        frame, capacity_pending = load_frame(entry)
+        if frame is None or frame.empty:
+            return {"entry": entry, "created": 0, "pending": bool(capacity_pending)}
         work = scope_frame(frame, missing)
         models = aggregate_models(work)
         created = 0
@@ -473,7 +504,7 @@ def install(m):
             m._release_process_memory()
         except Exception:
             pass
-        return {"entry": entry, "created": created}
+        return {"entry": entry, "created": created, "pending": False}
 
     def actor_stores(actor):
         stores = all_stores()
@@ -517,12 +548,14 @@ def install(m):
         return {str(r["store"]): dict(r) for r in rows}
 
     def current_maps(month, stores, targets):
-        sales, sales_pieces, sales_available = operations_sales_by_store(month, stores)
+        sales, sales_pieces, sales_available, sales_pending = operations_sales_by_store(month, stores)
         entries = capacity_entries(month)
         if not entries:
-            return None, {}, sales, sales_pieces, sales_available
+            return None, {}, sales, sales_pieces, sales_available, sales_pending, False
         _d, _stamp, entry = entries[-1]
-        frame = load_frame(entry)
+        frame, capacity_pending = load_frame(entry)
+        if frame is None or frame.empty:
+            return entry, {}, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
         work = scope_frame(frame, stores)
         current = {}
         ids_by_store = defaultdict(set)
@@ -554,7 +587,7 @@ def install(m):
             m._release_process_memory()
         except Exception:
             pass
-        return entry, current, sales, sales_pieces, sales_available
+        return entry, current, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
 
     def build_store_metric(store, month, rows, current, sales, sales_pieces, sales_available, attendance, snapshot, current_entry):
         details = []
@@ -662,11 +695,12 @@ def install(m):
 
     def monthly_payload(actor, month, selected_store):
         stores = actor_stores(actor)
-        ensure_snapshots(month, stores)
+        snapshot_state = ensure_snapshots(month, stores)
         targets = target_rows(month, stores)
         snapshots = snapshot_rows(month, stores)
         attendance = attendance_rows(month, stores)
-        current_entry, current, sales, sales_pieces, sales_available = current_maps(month, stores, targets)
+        current_entry, current, sales, sales_pieces, sales_available, sales_pending, capacity_pending = current_maps(month, stores, targets)
+        capacity_pending = bool(capacity_pending or snapshot_state.get("pending"))
         by_store = defaultdict(list)
         for row in targets:
             by_store[str(row.get("store") or "")].append(row)
@@ -706,6 +740,10 @@ def install(m):
                 "capacity": "Capacidades: Existencia, DDI e Inversión",
                 "sales": "Base Muertos / Cambios: Ventas mensuales",
                 "attendance": "Captura de Asistencia",
+            },
+            "processing": {
+                "sales": bool(sales_pending),
+                "capacity": bool(capacity_pending),
             },
         }
 
