@@ -85,6 +85,19 @@ def install(m):
                 PRIMARY KEY(month,store)
             )
         """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS sales_bonus_store_sales_v295(
+                source_stamp INTEGER NOT NULL,
+                month TEXT NOT NULL,
+                store TEXT NOT NULL,
+                sales_value REAL NOT NULL DEFAULT 0,
+                sales_pieces REAL NOT NULL DEFAULT 0,
+                source_available INTEGER NOT NULL DEFAULT 0,
+                built_at TEXT NOT NULL,
+                PRIMARY KEY(source_stamp,month,store)
+            )
+        """)
+        con.execute("CREATE INDEX IF NOT EXISTS ix_sales_bonus_store_sales_v295_month ON sales_bonus_store_sales_v295(month,source_stamp)")
 
     def norm(value):
         try:
@@ -270,21 +283,86 @@ def install(m):
         ).reset_index()
         return grouped
 
-    def sales_by_store(work):
-        if work.empty or "ID_ART" not in work.columns:
-            return {}
-        w = work.copy()
-        w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
-        w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
-        w = w[~w["id_art"].isin(["", "nan", "None"])]
-        if w.empty:
-            return {}
-        preferred = pd.to_numeric(w.get("Venta $ mes", 0), errors="coerce").fillna(0.0)
-        fallback = pd.to_numeric(w.get("Venta $", w.get("Venta $ 7", 0)), errors="coerce").fillna(0.0)
-        w["sales_value"] = preferred.where(preferred > 0, fallback)
-        per_id = w.groupby(["store", "id_art"], sort=False, observed=True)["sales_value"].max().reset_index()
-        totals = per_id.groupby("store", sort=False)["sales_value"].sum()
-        return {str(k): float(v or 0) for k, v in totals.items()}
+    def operations_sales_by_store(month, stores):
+        """Venta mensual desde Base Muertos/Cambios, nunca desde Capacidades."""
+        stores = [s for s in stores if s]
+        if not stores:
+            return {}, {}, False
+        try:
+            stamp = int(m._ops_source_stamp() or 0)
+        except Exception:
+            stamp = 0
+        if stamp <= 0:
+            return {}, {}, False
+
+        marks = ",".join("?" for _ in stores)
+        with m.db() as con:
+            cached = con.execute(
+                f"SELECT store,sales_value,sales_pieces,source_available FROM sales_bonus_store_sales_v295 "
+                f"WHERE source_stamp=? AND month=? AND store IN ({marks})",
+                (stamp, month, *stores),
+            ).fetchall()
+        if len(cached) == len(stores):
+            values = {str(r["store"]): num(r["sales_value"]) for r in cached}
+            pieces = {str(r["store"]): num(r["sales_pieces"]) for r in cached}
+            available = any(bool(r["source_available"]) for r in cached)
+            return values, pieces, available
+
+        raw_path = Path(m.DATA_ROOT) / "cambios_muertos_actual.xlsx"
+        totals = {s: 0.0 for s in stores}
+        pieces = {s: 0.0 for s in stores}
+        source_available = False
+        if raw_path.exists():
+            wanted = set(stores)
+            try:
+                with m._xlsx_stream_book(raw_path) as book:
+                    archive = book["archive"]
+                    sheet_paths = book["sheet_paths"]
+                    shared_value = book["shared_value"]
+                    for sheet in list(sheet_paths):
+                        if not m._monthly_sheet_name(sheet):
+                            continue
+                        member = sheet_paths.get(sheet, "")
+                        if not member or member not in archive.namelist():
+                            continue
+                        row_iter = m._xlsx_monthly_rows(archive, member, shared_value)
+                        first = dict(next(row_iter, {}) or {})
+                        next(row_iter, None)
+                        date_columns = []
+                        max_column = max(first.keys(), default=28)
+                        for index in range(29, max_column + 1, 3):
+                            _date_iso, _week_iso, _year_iso, month_key_value = m._safe_date_iso(first.get(index))
+                            if month_key_value == month:
+                                date_columns.append(index)
+                        if not date_columns:
+                            continue
+                        source_available = True
+                        for values in row_iter:
+                            values = dict(values or {})
+                            store = canon_store(m._normalize_store_value(values.get(25, "")), stores)
+                            if store not in wanted:
+                                continue
+                            for index in date_columns:
+                                pieces[store] += max(num(values.get(index, 0)), 0.0)
+                                totals[store] += max(num(values.get(index + 2, 0)), 0.0)
+            except Exception as exc:
+                print(f"[V295] No se pudo leer ventas de Base Muertos: {type(exc).__name__}: {exc}", flush=True)
+                source_available = False
+
+        now = datetime.now(MX).isoformat(timespec="seconds")
+        with m.db() as con:
+            for store in stores:
+                con.execute("""
+                    INSERT INTO sales_bonus_store_sales_v295(
+                        source_stamp,month,store,sales_value,sales_pieces,source_available,built_at
+                    ) VALUES(?,?,?,?,?,?,?)
+                    ON CONFLICT(source_stamp,month,store) DO UPDATE SET
+                        sales_value=excluded.sales_value,
+                        sales_pieces=excluded.sales_pieces,
+                        source_available=excluded.source_available,
+                        built_at=excluded.built_at
+                """, (stamp, month, store, totals.get(store, 0.0), pieces.get(store, 0.0), 1 if source_available else 0, now))
+        return totals, pieces, source_available
 
     def ensure_snapshots(month, stores):
         stores = [s for s in stores if s]
