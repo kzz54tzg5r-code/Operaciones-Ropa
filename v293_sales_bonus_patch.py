@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 import unicodedata
 from collections import defaultdict
 from datetime import date, datetime
@@ -288,51 +289,49 @@ def install(m):
         ).reset_index()
         return grouped
 
-    def operations_sales_by_store(month, stores):
-        """Venta mensual desde Base Muertos/Cambios, nunca desde Capacidades."""
-        stores = [s for s in stores if s]
-        if not stores:
-            return {}, {}, False
-        try:
-            stamp = int(m._ops_source_stamp() or 0)
-        except Exception:
-            stamp = 0
-        if stamp <= 0:
-            return {}, {}, False
+    sales_jobs = set()
+    sales_jobs_lock = threading.Lock()
 
-        marks = ",".join("?" for _ in stores)
+    def _persist_operations_sales(stamp, month, stores, totals, pieces, source_available):
+        now = datetime.now(MX).isoformat(timespec="seconds")
         with m.db() as con:
-            cached = con.execute(
-                f"SELECT store,sales_value,sales_pieces,source_available FROM sales_bonus_store_sales_v295 "
-                f"WHERE source_stamp=? AND month=? AND store IN ({marks})",
-                (stamp, month, *stores),
-            ).fetchall()
-        if len(cached) == len(stores):
-            values = {str(r["store"]): num(r["sales_value"]) for r in cached}
-            pieces = {str(r["store"]): num(r["sales_pieces"]) for r in cached}
-            available = any(bool(r["source_available"]) for r in cached)
-            return values, pieces, available
+            for store in stores:
+                con.execute("""
+                    INSERT INTO sales_bonus_store_sales_v295(
+                        source_stamp,month,store,sales_value,sales_pieces,source_available,built_at
+                    ) VALUES(?,?,?,?,?,?,?)
+                    ON CONFLICT(source_stamp,month,store) DO UPDATE SET
+                        sales_value=excluded.sales_value,
+                        sales_pieces=excluded.sales_pieces,
+                        source_available=excluded.source_available,
+                        built_at=excluded.built_at
+                """, (
+                    stamp, month, store, totals.get(store, 0.0), pieces.get(store, 0.0),
+                    1 if source_available else 0, now,
+                ))
 
+    def _build_operations_sales_cache(month, stores, stamp):
+        key = (stamp, month)
         raw_path = Path(m.DATA_ROOT) / "cambios_muertos_actual.xlsx"
         totals = {s: 0.0 for s in stores}
         pieces = {s: 0.0 for s in stores}
         source_available = False
         monthly_sheets = []
-        if raw_path.exists():
-            wanted = set(stores)
-            try:
+        try:
+            if raw_path.exists():
+                wanted = set(stores)
                 with m._xlsx_stream_book(raw_path) as book:
                     archive = book["archive"]
                     sheet_paths = book["sheet_paths"]
                     shared_value = book["shared_value"]
-                    yy, mm = (int(x) for x in month.split("-"))
+                    _yy, mm = (int(x) for x in month.split("-"))
                     wanted_month_name = fold(MONTH_LABELS.get(mm, str(mm)))
                     monthly_sheets = [
                         sheet for sheet in list(sheet_paths)
                         if m._monthly_sheet_name(sheet) and wanted_month_name in fold(sheet)
                     ]
-                    if not monthly_sheets:
-                        monthly_sheets = [sheet for sheet in list(sheet_paths) if m._monthly_sheet_name(sheet)]
+                    # Nunca recorrer todos los meses como fallback: si la hoja del
+                    # mes no existe, la fuente simplemente no está disponible.
                     for sheet in monthly_sheets:
                         member = sheet_paths.get(sheet, "")
                         if not member or member not in archive.namelist():
@@ -357,29 +356,67 @@ def install(m):
                             for index in date_columns:
                                 pieces[store] += max(num(values.get(index, 0)), 0.0)
                                 totals[store] += max(num(values.get(index + 2, 0)), 0.0)
-            except Exception as exc:
-                print(f"[V295] No se pudo leer ventas de Base Muertos: {type(exc).__name__}: {exc}", flush=True)
-                source_available = False
+            _persist_operations_sales(stamp, month, stores, totals, pieces, source_available)
+            print(
+                f"[V297] Ventas Base Muertos listas {month}: hojas={len(monthly_sheets)} "
+                f"tiendas={len(stores)} disponible={source_available}",
+                flush=True,
+            )
+        except Exception as exc:
+            print(f"[V297] Error preparando ventas {month}: {type(exc).__name__}: {exc}", flush=True)
+        finally:
+            with sales_jobs_lock:
+                sales_jobs.discard(key)
 
-        now = datetime.now(MX).isoformat(timespec="seconds")
+    def operations_sales_by_store(month, stores):
+        """Responde sin bloquear; prepara Base Muertos en segundo plano si falta caché."""
+        stores = [s for s in stores if s]
+        if not stores:
+            return {}, {}, False, False
+        try:
+            stamp = int(m._ops_source_stamp() or 0)
+        except Exception:
+            stamp = 0
+        if stamp <= 0:
+            return {}, {}, False, False
+
+        marks = ",".join("?" for _ in stores)
         with m.db() as con:
-            for store in stores:
-                con.execute("""
-                    INSERT INTO sales_bonus_store_sales_v295(
-                        source_stamp,month,store,sales_value,sales_pieces,source_available,built_at
-                    ) VALUES(?,?,?,?,?,?,?)
-                    ON CONFLICT(source_stamp,month,store) DO UPDATE SET
-                        sales_value=excluded.sales_value,
-                        sales_pieces=excluded.sales_pieces,
-                        source_available=excluded.source_available,
-                        built_at=excluded.built_at
-                """, (stamp, month, store, totals.get(store, 0.0), pieces.get(store, 0.0), 1 if source_available else 0, now))
-        print(
-            f"[V296] Ventas Base Muertos {month}: hojas={len(monthly_sheets) if raw_path.exists() else 0} "
-            f"tiendas={len(stores)} disponible={source_available}",
-            flush=True,
-        )
-        return totals, pieces, source_available
+            cached = con.execute(
+                f"SELECT store,sales_value,sales_pieces,source_available FROM sales_bonus_store_sales_v295 "
+                f"WHERE source_stamp=? AND month=? AND store IN ({marks})",
+                (stamp, month, *stores),
+            ).fetchall()
+        if len(cached) == len(stores):
+            values = {str(r["store"]): num(r["sales_value"]) for r in cached}
+            pieces = {str(r["store"]): num(r["sales_pieces"]) for r in cached}
+            available = any(bool(r["source_available"]) for r in cached)
+            return values, pieces, available, False
+
+        try:
+            meta = m.load_operations_meta() or {}
+            available_months = set(str(x) for x in (meta.get("available_months") or []))
+        except Exception:
+            available_months = set()
+        if available_months and month not in available_months:
+            totals = {s: 0.0 for s in stores}
+            pieces = {s: 0.0 for s in stores}
+            _persist_operations_sales(stamp, month, stores, totals, pieces, False)
+            return totals, pieces, False, False
+
+        key = (stamp, month)
+        with sales_jobs_lock:
+            pending = key in sales_jobs
+            if not pending:
+                sales_jobs.add(key)
+                pending = True
+                threading.Thread(
+                    target=_build_operations_sales_cache,
+                    args=(month, list(stores), stamp),
+                    daemon=True,
+                    name=f"bonus-sales-{month}",
+                ).start()
+        return {s: 0.0 for s in stores}, {s: 0.0 for s in stores}, False, pending
 
     def ensure_snapshots(month, stores):
         stores = [s for s in stores if s]
