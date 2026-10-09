@@ -458,4 +458,77 @@ def install(m):
             items = by_cat[catalog]
             total = len(items)
             ddi_pct = (sum(1 for x in items if x["ddi_reduced"]) / total * 100.0) if total else 0.0
-            inv_pct =
+            inv_pct = (sum(1 for x in items if x["investment_reduced"]) / total * 100.0) if total else 0.0
+            combined = (ddi_pct + inv_pct) / 2.0 if total else 0.0
+            if total:
+                component_values.append(combined)
+            catalog_summary.append({
+                "catalog": catalog,
+                "models": total,
+                "ddi_reduced_models": sum(1 for x in items if x["ddi_reduced"]),
+                "investment_reduced_models": sum(1 for x in items if x["investment_reduced"]),
+                "ddi_reduction_pct": round(ddi_pct, 1),
+                "investment_reduction_pct": round(inv_pct, 1),
+                "combined_pct": round(combined, 1),
+            })
+        ddi_component = sum(component_values) / len(component_values) if component_values else 0.0
+        goal = store_goal(store, month)
+        actual_sales = num(sales.get(store))
+        sales_pct = (actual_sales / goal * 100.0) if goal > 0 else 0.0
+        att = attendance.get(store)
+        attendance_pct = num(att.get("attendance_pct")) if att is not None else None
+        score = min(max(sales_pct, 0.0), 100.0) * 0.50 + min(max(ddi_component, 0.0), 100.0) * 0.30
+        if attendance_pct is not None:
+            score += min(max(attendance_pct, 0.0), 100.0) * 0.20
+        ready = bool(goal > 0 and current_entry is not None and attendance_pct is not None)
+        snap = snapshot.get(store) or {}
+        details.sort(key=lambda x: (x["progress_pct"], x["id_art"]))
+        return {
+            "store": store,
+            "month": month,
+            "period_label": period_label(month),
+            "sales": {"actual": round(actual_sales, 2), "goal": round(goal, 2), "pct": round(sales_pct, 1)},
+            "ddi": {"pct": round(ddi_component, 1), "catalogs": catalog_summary},
+            "attendance": {"pct": None if attendance_pct is None else round(attendance_pct, 1), "updated_at": str((att or {}).get("updated_at") or ""), "updated_by": str((att or {}).get("updated_by") or "")},
+            "score": round(score, 1),
+            "score_ready": ready,
+            "target_models": len(details),
+            "snapshot": {
+                "source_period": str(snap.get("source_period") or ""),
+                "source_date": str(snap.get("source_date") or ""),
+                "fixed_at": str(snap.get("fixed_at") or ""),
+            },
+            "details": details,
+        }
+
+    def monthly_payload(actor, month, selected_store):
+        stores = actor_stores(actor)
+        ensure_snapshots(month, stores)
+        targets = target_rows(month, stores)
+        snapshots = snapshot_rows(month, stores)
+        attendance = attendance_rows(month, stores)
+        current_entry, current, sales = current_maps(month, stores, targets)
+        by_store = defaultdict(list)
+        for row in targets:
+            by_store[str(row.get("store") or "")].append(row)
+        metrics = [build_store_metric(s, month, by_store.get(s, []), current, sales, attendance, snapshots, current_entry) for s in stores]
+        ranking = sorted(metrics, key=lambda x: (not x["score_ready"], -x["score"], norm(x["store"])))
+        position = 0
+        for item in ranking:
+            if item["score_ready"]:
+                position += 1
+                item["rank"] = position
+            else:
+                item["rank"] = None
+        selected = canon_store(selected_store, stores) if selected_store else ""
+        if selected not in stores:
+            actor_store = canon_store(actor.get("store"), stores)
+            selected = actor_store if actor_store in stores else (ranking[0]["store"] if ranking else (stores[0] if stores else ""))
+        selected_metric = next((x for x in metrics if x["store"] == selected), None)
+        return {
+            "month": month,
+            "period_label": period_label(month),
+            "months": [{"value": x, "label": period_label(x)} for x in available_goal_months()],
+            "stores": stores,
+            "selected_store": selected,
+         
