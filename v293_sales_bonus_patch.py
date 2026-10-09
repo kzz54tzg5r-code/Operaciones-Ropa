@@ -281,6 +281,7 @@ def install(m):
         return base.with_name(base.stem + f".bonus-v{BONUS_CAPACITY_CACHE_VERSION}.pkl")
 
     def _load_or_build_bonus_capacity(entry):
+        """Construye cache de Bonos por streaming sin cargar las 194k filas completas."""
         target = _bonus_capacity_cache_path(entry)
         try:
             if target.exists() and target.is_file():
@@ -289,39 +290,69 @@ def install(m):
                     return frame
         except Exception:
             pass
-        frame = pd.DataFrame()
+
+        source_path = None
         try:
-            frame = m._load_capacity_cache(entry)
+            source_path = m.resolve_entry_path(entry)
         except Exception:
-            frame = pd.DataFrame()
-        if frame is None or frame.empty:
-            try:
-                source_path = m.resolve_entry_path(entry)
-                frame = m.read_capacity_file(source_path)
-                if isinstance(frame, pd.DataFrame) and not frame.empty:
-                    frame = m._prepare_capacity_frame(frame)
-                    normalized = m._capacity_cache_path(str(entry.get("id") or ""))
-                    frame.to_pickle(normalized)
-                    m.update_entry(
-                        "capacities", str(entry.get("id") or ""),
-                        cache_file=str(normalized.relative_to(m.DATA_ROOT))
-                    )
-            except Exception as exc:
-                print(f"[V299] No se pudo reconstruir capacidad de Bonos: {type(exc).__name__}: {exc}", flush=True)
-                frame = pd.DataFrame()
-        if frame is None or frame.empty:
-            return pd.DataFrame()
-        keep = [x for x in [
+            source_path = None
+        keep_names = [
             "Tienda", "ID_ART", "Modelo", "Marca", "Categoría", "Subcategoría", "Tipo catálogo",
-            "DDI", "Existencia", "Inversión", "_TiendaKey"
-        ] if x in frame.columns]
-        light = frame.loc[:, keep].copy()
+            "DDI", "Existencia", "Inversión"
+        ]
+        light = pd.DataFrame()
+        if source_path is not None and source_path.exists() and source_path.suffix.lower() == ".xlsx":
+            parts = []
+            try:
+                from commercial.parsers import (
+                    _iter_fast_capacity_xlsx,
+                    _normalize_capacity_source,
+                    _compress_capacity_chunk,
+                    _combine_capacity_chunks,
+                )
+                for raw in _iter_fast_capacity_xlsx(source_path, chunk_rows=6000):
+                    normalized = _normalize_capacity_source(raw, source_path)
+                    del raw
+                    if normalized is None or normalized.empty:
+                        continue
+                    keep = [x for x in keep_names if x in normalized.columns]
+                    if not keep:
+                        continue
+                    part = normalized.loc[:, keep].copy()
+                    del normalized
+                    parts.append(_compress_capacity_chunk(part))
+                    if len(parts) % 6 == 0:
+                        try:
+                            m._release_process_memory()
+                        except Exception:
+                            pass
+                if parts:
+                    light = _combine_capacity_chunks(parts)
+                    parts.clear()
+            except Exception as exc:
+                print(f"[V299] Streaming capacidad de Bonos falló: {type(exc).__name__}: {exc}", flush=True)
+                parts.clear()
+                light = pd.DataFrame()
+
+        if light is None or light.empty:
+            try:
+                # Respaldo para fuentes no XLSX o archivos antiguos.
+                frame = m.read_capacity_file(source_path) if source_path is not None else pd.DataFrame()
+                if isinstance(frame, pd.DataFrame) and not frame.empty:
+                    keep = [x for x in keep_names if x in frame.columns]
+                    light = frame.loc[:, keep].copy()
+                    del frame
+            except Exception as exc:
+                print(f"[V299] Respaldo capacidad de Bonos falló: {type(exc).__name__}: {exc}", flush=True)
+                light = pd.DataFrame()
+
+        if light is None or light.empty:
+            return pd.DataFrame()
         try:
             light.to_pickle(target)
         except Exception as exc:
             print(f"[V299] No se pudo persistir cache ligero de Bonos: {type(exc).__name__}: {exc}", flush=True)
         try:
-            del frame
             m._release_process_memory()
         except Exception:
             pass
@@ -1003,11 +1034,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"] = "V298-OPENING-CAPACITY"
+            headers["X-Operations-Bonus-Version"] = "V299-LIGHT-CAPACITY-CACHE"
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
             print(f"[V293] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V293_SALES_BONUS = True
-    print("[V298] Bonos: apertura mensual usa último corte de Capacidades previo al inicio del mes.", flush=True)
+    print("[V299] Bonos: cache ligero + snapshot mensual en segundo plano; petición HTTP no procesa Excel.", flush=True)
