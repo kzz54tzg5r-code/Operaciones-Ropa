@@ -463,13 +463,13 @@ def install(m):
         return {str(r["store"]): dict(r) for r in rows}
 
     def current_maps(month, stores, targets):
+        sales, sales_pieces, sales_available = operations_sales_by_store(month, stores)
         entries = capacity_entries(month)
         if not entries:
-            return None, {}, {}
+            return None, {}, sales, sales_pieces, sales_available
         _d, _stamp, entry = entries[-1]
         frame = load_frame(entry)
         work = scope_frame(frame, stores)
-        sales = sales_by_store(work)
         current = {}
         ids_by_store = defaultdict(set)
         for row in targets:
@@ -495,9 +495,9 @@ def install(m):
             m._release_process_memory()
         except Exception:
             pass
-        return entry, current, sales
+        return entry, current, sales, sales_pieces, sales_available
 
-    def build_store_metric(store, month, rows, current, sales, attendance, snapshot, current_entry):
+    def build_store_metric(store, month, rows, current, sales, sales_pieces, sales_available, attendance, snapshot, current_entry):
         details = []
         by_cat = {c: [] for c in CATALOGS}
         for row in rows:
@@ -549,24 +549,42 @@ def install(m):
                 "investment_reduction_pct": round(inv_pct, 1),
                 "combined_pct": round(combined, 1),
             })
-        ddi_component = sum(component_values) / len(component_values) if component_values else 0.0
+        ddi_component_raw = sum(component_values) / len(component_values) if component_values else 0.0
+        ddi_component = ddi_component_raw if current_entry is not None else None
         goal = store_goal(store, month)
         actual_sales = num(sales.get(store))
-        sales_pct = (actual_sales / goal * 100.0) if goal > 0 else 0.0
+        actual_sales_pieces = num(sales_pieces.get(store))
+        sales_pct = (actual_sales / goal * 100.0) if sales_available and goal > 0 else None
         att = attendance.get(store)
         attendance_pct = num(att.get("attendance_pct")) if att is not None else None
-        score = min(max(sales_pct, 0.0), 100.0) * 0.50 + min(max(ddi_component, 0.0), 100.0) * 0.30
+        score = 0.0
+        if sales_pct is not None:
+            score += min(max(sales_pct, 0.0), 100.0) * 0.50
+        if ddi_component is not None:
+            score += min(max(ddi_component, 0.0), 100.0) * 0.30
         if attendance_pct is not None:
             score += min(max(attendance_pct, 0.0), 100.0) * 0.20
-        ready = bool(goal > 0 and current_entry is not None and attendance_pct is not None)
+        ready = bool(goal > 0 and sales_available and current_entry is not None and attendance_pct is not None)
         snap = snapshot.get(store) or {}
         details.sort(key=lambda x: (x["progress_pct"], x["id_art"]))
         return {
             "store": store,
             "month": month,
             "period_label": period_label(month),
-            "sales": {"actual": round(actual_sales, 2), "goal": round(goal, 2), "pct": round(sales_pct, 1)},
-            "ddi": {"pct": round(ddi_component, 1), "catalogs": catalog_summary},
+            "sales": {
+                "actual": round(actual_sales, 2),
+                "pieces": round(actual_sales_pieces, 1),
+                "goal": round(goal, 2),
+                "pct": None if sales_pct is None else round(sales_pct, 1),
+                "available": bool(sales_available),
+                "source": "Base Muertos / Cambios",
+            },
+            "ddi": {
+                "pct": None if ddi_component is None else round(ddi_component, 1),
+                "catalogs": catalog_summary,
+                "available": bool(current_entry is not None),
+                "source": "Capacidades",
+            },
             "attendance": {"pct": None if attendance_pct is None else round(attendance_pct, 1), "updated_at": str((att or {}).get("updated_at") or ""), "updated_by": str((att or {}).get("updated_by") or "")},
             "score": round(score, 1),
             "score_ready": ready,
@@ -585,11 +603,11 @@ def install(m):
         targets = target_rows(month, stores)
         snapshots = snapshot_rows(month, stores)
         attendance = attendance_rows(month, stores)
-        current_entry, current, sales = current_maps(month, stores, targets)
+        current_entry, current, sales, sales_pieces, sales_available = current_maps(month, stores, targets)
         by_store = defaultdict(list)
         for row in targets:
             by_store[str(row.get("store") or "")].append(row)
-        metrics = [build_store_metric(s, month, by_store.get(s, []), current, sales, attendance, snapshots, current_entry) for s in stores]
+        metrics = [build_store_metric(s, month, by_store.get(s, []), current, sales, sales_pieces, sales_available, attendance, snapshots, current_entry) for s in stores]
         ranking = sorted(metrics, key=lambda x: (not x["score_ready"], -x["score"], norm(x["store"])))
         position = 0
         for item in ranking:
