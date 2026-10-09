@@ -115,17 +115,32 @@ def _release_process_memory():
 def _cleanup_old_staging_files():
     """Elimina temporales desechables sin borrar cargas recuperables.
 
-    Los ``operations_job_*.xlsx`` viven en el disco persistente y son la
-    garantía de que un reinicio de Render no obligue al usuario a volver a
-    subir 140 MB. Su ciclo de vida lo controla ``_run_operations_job``.
+    Los ``operations_job_*.xlsx`` activos se conservan para poder retomar una
+    carga después de un reinicio. En cambio, los temporales de publicación
+    nunca son una fuente recuperable y pueden quedar ocupando cientos de MB si
+    el proceso se interrumpe.
     """
     try:
-        for pattern in ("legacy_*.xlsx","capacity_job_*","*.worker.json"):
+        for pattern in (
+            "legacy_*.xlsx","capacity_job_*","*.worker.json",
+            "operations_source_*.tmp.xlsx","operations_publish_*.tmp.json",
+        ):
             for _p in STAGING_DIR.glob(pattern):
                 try:
                     _p.unlink(missing_ok=True)
                 except Exception:
                     pass
+        for pattern in ("operations_source_*.tmp.xlsx","operations_publish_*.tmp.json"):
+            for _p in DATA_ROOT.glob(pattern):
+                try:
+                    _p.unlink(missing_ok=True)
+                except Exception:
+                    pass
+        for _p in OPERATIONS_HISTORY_DIR.glob("*.json.gz.tmp"):
+            try:
+                _p.unlink(missing_ok=True)
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -6220,18 +6235,31 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
     payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
 
     tmp_ops=DATA_ROOT/f"operations_publish_{token}.tmp.json"
-    tmp_raw=DATA_ROOT/f"operations_source_{token}.tmp.xlsx"
     snapshot_tmp=OPERATIONS_HISTORY_DIR/f"{token}.json.gz.tmp"
     snapshot_path=OPERATIONS_HISTORY_DIR/f"{token}.json.gz"
+    final_raw=DATA_ROOT/"cambios_muertos_actual.xlsx"
     try:
         _write_json_stream(tmp_ops,payload)
         # El snapshot comprimido conserva cada corte para consultas y futuros
-        # comparativos sin duplicar en disco los 141 MB del Excel original.
+        # comparativos sin duplicar en disco el Excel original.
         with tmp_ops.open("rb") as source, gzip.open(snapshot_tmp,"wb",compresslevel=6) as target:
             shutil.copyfileobj(source,target,length=1024*1024)
         snapshot_tmp.replace(snapshot_path)
-        shutil.copy2(stage_path,tmp_raw)
-        tmp_raw.replace(DATA_ROOT/"cambios_muertos_actual.xlsx")
+
+        # V301: stage_path ya está dentro del mismo disco persistente (/var/data).
+        # Antes se hacía shutil.copy2(stage_path, tmp_raw), lo que exigía otros
+        # ~175 MB libres y provocaba ENOSPC. Path.replace/os.replace es atómico
+        # dentro del mismo filesystem: publica el nuevo Excel sin crear una
+        # segunda copia completa y sustituye el archivo anterior de una vez.
+        free_before=shutil.disk_usage(DATA_ROOT).free
+        os.replace(stage_path,final_raw)
+        print(
+            f"[V301-DISK] publicación atómica operaciones · "
+            f"archivo={filename} · libres_antes={free_before//(1024*1024)}MB · "
+            f"tamaño={final_raw.stat().st_size//(1024*1024)}MB",
+            flush=True,
+        )
+
         tmp_ops.replace(OPS_FILE)
         _clear_operations_caches(clear_meta_file=True)
         try:
@@ -6259,7 +6287,7 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
             "missing_columns_by_sheet":payload.get("missing_columns_by_sheet",{}),"data_issues":payload.get("data_issues",[])[:100],
         }
     finally:
-        for path in (tmp_ops,tmp_raw,snapshot_tmp):
+        for path in (tmp_ops,snapshot_tmp):
             try:path.unlink(missing_ok=True)
             except Exception:pass
 
