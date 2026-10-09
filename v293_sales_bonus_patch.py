@@ -298,4 +298,91 @@ def install(m):
         if not missing:
             entries = capacity_entries(month)
             return {"entry": entries[0][2] if entries else None, "created": 0}
-        entries = capa
+        entries = capacity_entries(month)
+        if not entries:
+            return {"entry": None, "created": 0}
+        source_date, _stamp, entry = entries[0]
+        frame = load_frame(entry)
+        work = scope_frame(frame, missing)
+        models = aggregate_models(work)
+        created = 0
+        now = datetime.now(MX).isoformat(timespec="seconds")
+        source_period = period_for_entry(entry)
+        by_store = {s: pd.DataFrame() for s in missing}
+        if not models.empty:
+            for store, group in models.groupby("store", sort=False):
+                by_store[str(store)] = group
+        with m.db() as con:
+            for store in missing:
+                g = by_store.get(store)
+                selected = pd.DataFrame()
+                if g is not None and not g.empty:
+                    g = g.copy()
+                    g["avg_investment"] = g.groupby("catalog", observed=True)["investment"].transform("mean")
+                    selected = g[(g["ddi"] > 90.0) & (g["investment"] > g["avg_investment"])].copy()
+                    for row in selected.to_dict("records"):
+                        con.execute("""
+                            INSERT OR IGNORE INTO sales_bonus_targets_v293(
+                                month,store,id_art,catalog,model,initial_ddi,initial_investment,avg_investment,
+                                source_period,source_date,fixed_at
+                            ) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                        """, (
+                            month, store, str(row.get("id_art") or ""), str(row.get("catalog") or ""),
+                            str(row.get("model") or row.get("id_art") or ""), num(row.get("ddi")), num(row.get("investment")),
+                            num(row.get("avg_investment")), source_period, source_date.isoformat(), now,
+                        ))
+                con.execute("""
+                    INSERT OR IGNORE INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,fixed_at,model_count)
+                    VALUES(?,?,?,?,?,?)
+                """, (month, store, source_period, source_date.isoformat(), now, int(len(selected))))
+                created += int(len(selected))
+        try:
+            del work, models, frame
+            m._release_process_memory()
+        except Exception:
+            pass
+        return {"entry": entry, "created": created}
+
+    def actor_stores(actor):
+        stores = all_stores()
+        role = str(actor.get("role") or "").lower()
+        if role in RESTRICTED:
+            assigned = canon_store(actor.get("store"), stores)
+            return [assigned] if assigned in stores else []
+        return stores
+
+    def target_rows(month, stores):
+        if not stores:
+            return []
+        marks = ",".join("?" for _ in stores)
+        with m.db() as con:
+            rows = con.execute(
+                f"SELECT * FROM sales_bonus_targets_v293 WHERE month=? AND store IN ({marks}) ORDER BY store,catalog,id_art",
+                (month, *stores),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def snapshot_rows(month, stores):
+        if not stores:
+            return {}
+        marks = ",".join("?" for _ in stores)
+        with m.db() as con:
+            rows = con.execute(
+                f"SELECT * FROM sales_bonus_snapshot_v293 WHERE month=? AND store IN ({marks})",
+                (month, *stores),
+            ).fetchall()
+        return {str(r["store"]): dict(r) for r in rows}
+
+    def attendance_rows(month, stores):
+        if not stores:
+            return {}
+        marks = ",".join("?" for _ in stores)
+        with m.db() as con:
+            rows = con.execute(
+                f"SELECT store,attendance_pct,updated_at,updated_by FROM sales_bonus_attendance_v293 WHERE month=? AND store IN ({marks})",
+                (month, *stores),
+            ).fetchall()
+        return {str(r["store"]): dict(r) for r in rows}
+
+    def current_maps(month, stores, targets):
+        entries = capacity_entries(month
