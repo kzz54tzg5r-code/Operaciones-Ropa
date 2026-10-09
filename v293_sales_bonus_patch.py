@@ -324,9 +324,15 @@ def install(m):
                     archive = book["archive"]
                     sheet_paths = book["sheet_paths"]
                     shared_value = book["shared_value"]
-                    for sheet in list(sheet_paths):
-                        if not m._monthly_sheet_name(sheet):
-                            continue
+                    yy, mm = (int(x) for x in month.split("-"))
+                    wanted_month_name = fold(MONTH_LABELS.get(mm, str(mm)))
+                    monthly_sheets = [
+                        sheet for sheet in list(sheet_paths)
+                        if m._monthly_sheet_name(sheet) and wanted_month_name in fold(sheet)
+                    ]
+                    if not monthly_sheets:
+                        monthly_sheets = [sheet for sheet in list(sheet_paths) if m._monthly_sheet_name(sheet)]
+                    for sheet in monthly_sheets:
                         member = sheet_paths.get(sheet, "")
                         if not member or member not in archive.namelist():
                             continue
@@ -367,6 +373,11 @@ def install(m):
                         source_available=excluded.source_available,
                         built_at=excluded.built_at
                 """, (stamp, month, store, totals.get(store, 0.0), pieces.get(store, 0.0), 1 if source_available else 0, now))
+        print(
+            f"[V296] Ventas Base Muertos {month}: hojas={len(monthly_sheets) if raw_path.exists() else 0} "
+            f"tiendas={len(stores)} disponible={source_available}",
+            flush=True,
+        )
         return totals, pieces, source_available
 
     def ensure_snapshots(month, stores):
@@ -760,11 +771,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"] = "V295-BONUS-DATA-SOURCES"
+            headers["X-Operations-Bonus-Version"] = "V296-FAST-MONTHLY-SALES"
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
             print(f"[V293] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V293_SALES_BONUS = True
-    print("[V295] Bonos: Capacidades=Existencia/DDI/Inversión · Base Muertos=Ventas.", flush=True)
+    print("[V296] Bonos rápido: Base Muertos lee sólo el mes seleccionado y usa caché.", flush=True)
