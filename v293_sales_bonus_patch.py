@@ -736,6 +736,23 @@ def install(m):
         if not current_pick:
             return None, {}, sales, sales_pieces, sales_available, sales_pending, False
         _d, _stamp, entry = current_pick
+
+        # Si el último corte disponible es el mismo que fijó la cartera del mes,
+        # no vuelvas a recorrer ~194k filas. Los valores "actuales" son exactamente
+        # los iniciales y el avance correcto es 0% hasta que llegue un corte nuevo.
+        current_date = _d.isoformat()
+        source_dates = {str(row.get("source_date") or "") for row in targets}
+        if source_dates == {current_date}:
+            current = {}
+            for row in targets:
+                key = (str(row.get("store") or ""), str(row.get("id_art") or ""))
+                current[key] = {
+                    "ddi": num(row.get("initial_ddi")),
+                    "existence": num(row.get("initial_existence")),
+                    "investment": num(row.get("initial_investment")),
+                }
+            return entry, current, sales, sales_pieces, sales_available, sales_pending, False
+
         frame, capacity_pending = load_frame(entry)
         if frame is None or frame.empty:
             return None, {}, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
@@ -1036,11 +1053,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"] = "V299-LIGHT-CAPACITY-CACHE"
+            headers["X-Operations-Bonus-Version"] = "V300-SAME-CUT-FASTPATH"
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
             print(f"[V293] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V293_SALES_BONUS = True
-    print("[V299] Bonos: cache ligero + snapshot mensual en segundo plano; petición HTTP no procesa Excel.", flush=True)
+    print("[V300] Bonos: si corte inicial=actual, usa snapshot directo sin releer Capacidades.", flush=True)
