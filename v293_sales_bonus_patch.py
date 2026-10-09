@@ -614,4 +614,34 @@ function page(d){return '<div class="v293"><div class="v293-head"><div class="v2
 function bind(d){q('#v293Store')?.addEventListener('change',e=>{S.store=e.target.value;load()});q('#v293Month')?.addEventListener('change',e=>{S.month=e.target.value;load()});q('#v293Catalog')?.addEventListener('change',e=>{S.catalog=e.target.value;render()});qa('[data-v293-view]').forEach(b=>b.addEventListener('click',()=>{S.view=b.dataset.v293View;if(['Abrigador','Licencias','Básicos'].includes(S.view))S.catalog=S.view;render()}));qa('[data-v293-store]').forEach(tr=>tr.addEventListener('click',()=>{S.store=tr.dataset.v293Store;S.view='summary';load()}));q('#v293AttSave')?.addEventListener('click',saveAttendance);q('#v293Search')?.addEventListener('input',()=>{let b=q('#v293DetailBody');if(b)b.innerHTML=detailRows(S.data)});q('#v293DetailCat')?.addEventListener('change',e=>{S.catalog=e.target.value;let top=q('#v293Catalog');if(top)top.value=S.catalog;let b=q('#v293DetailBody');if(b)b.innerHTML=detailRows(S.data)})}
 function render(){active();let h=q('#operativoDynamicContent');if(!h||!S.data)return;h.innerHTML=page(S.data);bind(S.data)}
 async function saveAttendance(){let v=Number(q('#v293Att')?.value);if(!Number.isFinite(v)||v<0||v>100)return;let b=q('#v293AttSave');if(b){b.disabled=true;b.textContent='…'}try{await A('/api/operation/sales-bonus-v293/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({month:S.month,store:S.store,attendance_pct:v})});await load()}catch(e){alert(e.message||e)}finally{if(b){b.disabled=false;b.textContent='Guardar'}}}
-async function load(){if
+async function load(){if(S.busy)return;S.busy=true;active();let h=q('#operativoDynamicContent');if(h)h.innerHTML='<div class="v293-empty">Cargando Bonos…</div>';try{let p=new URLSearchParams();if(S.month)p.set('month',S.month);if(S.store)p.set('store',S.store);let d=await A('/api/operation/sales-bonus-v293?'+p);S.data=d;S.month=d.month;S.store=d.selected_store;if(!S.catalog)S.catalog='Todos';render()}catch(e){if(h)h.innerHTML='<div class="v293-empty">No fue posible cargar Bonos: '+esc(e.message||e)+'</div>'}finally{S.busy=false}}
+function open(){if(!isOp())return;load()}
+function boot(){let b=tab();if(b&&!b.dataset.v293Bound){b.dataset.v293Bound='1';b.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();open()},true)}if(isOp()&&(String(window.V149_OPERATION_TAB||'')==='bonuses'||q('#v200OperationTabs [data-v200-op="bonuses"].active')))open()}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true});document.addEventListener('click',e=>{if(e.target.closest?.('[data-main="operation"]'))setTimeout(boot,120)},true);[550,1300,2600].forEach(ms=>setTimeout(boot,ms));
+})();</script>'''
+
+    @m.app.middleware("http")
+    async def v293_html(request, call_next):
+        response = await call_next(request)
+        if request.url.path != "/" or getattr(response, "status_code", 200) != 200:
+            return response
+        try:
+            body = b""
+            async for chunk in response.body_iterator:
+                body += chunk
+            html = body.decode("utf-8", errors="replace")
+            if 'id="v293-bonus-css"' not in html:
+                html = html.replace("</head>", css + "</head>", 1)
+            if 'id="v293-bonus-js"' not in html:
+                html = html.replace("</body>", js + "</body>", 1)
+            headers = dict(getattr(response, "headers", {}) or {})
+            headers.pop("content-length", None)
+            headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            headers["X-Operations-Bonus-Version"] = "V293-SALES-BONUS-BOCETO5"
+            return HTMLResponse(html, status_code=response.status_code, headers=headers)
+        except Exception as exc:
+            print(f"[V293] HTML warning: {type(exc).__name__}: {exc}", flush=True)
+            return response
+
+    m._V293_SALES_BONUS = True
+    print("[V293] Bonos por tienda · Boceto 5 · Venta 50 + DDI/Inversión 30 + Asistencia 20 activo.", flush=True)
