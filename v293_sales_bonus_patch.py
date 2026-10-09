@@ -385,4 +385,77 @@ def install(m):
         return {str(r["store"]): dict(r) for r in rows}
 
     def current_maps(month, stores, targets):
-        entries = capacity_entries(month
+        entries = capacity_entries(month)
+        if not entries:
+            return None, {}, {}
+        _d, _stamp, entry = entries[-1]
+        frame = load_frame(entry)
+        work = scope_frame(frame, stores)
+        sales = sales_by_store(work)
+        current = {}
+        ids_by_store = defaultdict(set)
+        for row in targets:
+            ids_by_store[str(row.get("store") or "")].add(str(row.get("id_art") or ""))
+        if ids_by_store and not work.empty and "ID_ART" in work.columns:
+            w = work.copy()
+            w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, all_stores()))
+            w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+            valid = pd.Series(False, index=w.index)
+            for store, ids in ids_by_store.items():
+                if ids:
+                    valid = valid | ((w["store"] == store) & w["id_art"].isin(ids))
+            w = w.loc[valid]
+            if not w.empty:
+                w["ddi"] = pd.to_numeric(w.get("DDI", 0), errors="coerce").fillna(0.0)
+                w["investment"] = pd.to_numeric(w.get("Inversión", 0), errors="coerce").fillna(0.0)
+                agg = w.groupby(["store", "id_art"], sort=False, observed=True).agg(
+                    ddi=("ddi", "max"), investment=("investment", "sum")
+                ).reset_index()
+                current = {(str(x["store"]), str(x["id_art"])): {"ddi": num(x["ddi"]), "investment": num(x["investment"])} for x in agg.to_dict("records")}
+        try:
+            del work, frame
+            m._release_process_memory()
+        except Exception:
+            pass
+        return entry, current, sales
+
+    def build_store_metric(store, month, rows, current, sales, attendance, snapshot, current_entry):
+        details = []
+        by_cat = {c: [] for c in CATALOGS}
+        for row in rows:
+            ident = str(row.get("id_art") or "")
+            cur = current.get((store, ident))
+            has_current = current_entry is not None
+            current_ddi = num(cur.get("ddi")) if cur is not None else (0.0 if has_current else num(row.get("initial_ddi")))
+            current_inv = num(cur.get("investment")) if cur is not None else (0.0 if has_current else num(row.get("initial_investment")))
+            initial_ddi = num(row.get("initial_ddi"))
+            initial_inv = num(row.get("initial_investment"))
+            ddi_red = ((initial_ddi - current_ddi) / initial_ddi * 100.0) if initial_ddi > 0 else 0.0
+            inv_red = ((initial_inv - current_inv) / initial_inv * 100.0) if initial_inv > 0 else 0.0
+            progress = (max(0.0, min(100.0, ddi_red)) + max(0.0, min(100.0, inv_red))) / 2.0
+            status = "Excelente" if progress >= 85 else "Bueno" if progress >= 60 else "En riesgo" if progress >= 30 else "Crítico"
+            item = {
+                "id_art": ident,
+                "model": str(row.get("model") or ident),
+                "catalog": str(row.get("catalog") or ""),
+                "initial_ddi": round(initial_ddi, 1),
+                "current_ddi": round(current_ddi, 1),
+                "initial_investment": round(initial_inv, 2),
+                "current_investment": round(current_inv, 2),
+                "ddi_reduction_pct": round(ddi_red, 1),
+                "investment_reduction_pct": round(inv_red, 1),
+                "progress_pct": round(progress, 1),
+                "ddi_reduced": bool(has_current and current_ddi < initial_ddi),
+                "investment_reduced": bool(has_current and current_inv < initial_inv),
+                "status": status,
+            }
+            details.append(item)
+            if item["catalog"] in by_cat:
+                by_cat[item["catalog"]].append(item)
+        catalog_summary = []
+        component_values = []
+        for catalog in CATALOGS:
+            items = by_cat[catalog]
+            total = len(items)
+            ddi_pct = (sum(1 for x in items if x["ddi_reduced"]) / total * 100.0) if total else 0.0
+            inv_pct =
