@@ -301,7 +301,7 @@ def install(m):
         w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
         w = w[~w["id_art"].isin(["", "nan", "None"])]
         if w.empty:
-            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "investment"])
+            return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "existence", "investment"])
         w["catalog"] = classify_catalog(w)
         w = w[w["catalog"].isin(CATALOGS)]
         if w.empty:
@@ -555,7 +555,7 @@ def install(m):
         _d, _stamp, entry = entries[-1]
         frame, capacity_pending = load_frame(entry)
         if frame is None or frame.empty:
-            return entry, {}, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
+            return None, {}, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
         work = scope_frame(frame, stores)
         current = {}
         ids_by_store = defaultdict(set)
