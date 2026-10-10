@@ -195,14 +195,39 @@ body[data-v305-hide-analysis="1"] [data-main="analysis"]{
     document.body.dataset.v305HideOperativo=STATE.operativo?'0':'1';
     document.body.dataset.v305HideOperation=STATE.operation?'0':'1';
     document.body.dataset.v305HideAnalysis=STATE.analysis?'0':'1';
+
     for(const key of Object.keys(MODULES)){
       qa('[data-main="'+key+'"]').forEach(el=>{
         const off=STATE[key]===false;
         el.setAttribute('aria-hidden',off?'true':'false');
         if('disabled' in el)el.disabled=off;
         el.dataset.v305ReportDisabled=off?'1':'0';
+
+        // V307: la visibilidad maestra debe vencer cualquier regla posterior
+        // del sidebar colapsado. Al ocultar, el siguiente botón ocupa el lugar
+        // inmediatamente; no se conserva un hueco fantasma.
+        if(off){
+          el.hidden=true;
+          el.style.setProperty('display','none','important');
+        }else{
+          el.hidden=false;
+          el.style.removeProperty('display');
+        }
       });
     }
+
+    // Oculta encabezados de sección que quedaron sin botones visibles.
+    qa('.side .or-nav-section').forEach(sec=>{
+      let n=sec.nextElementSibling,hasVisible=false;
+      while(n&&!n.classList?.contains('or-nav-section')&&!n.classList?.contains('profile')){
+        if(n.matches?.('.nav[data-main]')&&!n.hidden&&getComputedStyle(n).display!=='none'){
+          hasVisible=true;break;
+        }
+        n=n.nextElementSibling;
+      }
+      if(hasVisible)sec.style.removeProperty('display');
+      else sec.style.setProperty('display','none','important');
+    });
   }
   async function loadState(){
     if(loading)return;
@@ -308,9 +333,15 @@ body[data-v305-hide-analysis="1"] [data-main="analysis"]{
   const observer=new MutationObserver(muts=>{
     if(muts.some(x=>x.type==='childList'))scheduleDecorate();
   });
+  const menuObserver=new MutationObserver(muts=>{
+    if(muts.some(x=>x.type==='childList'))setTimeout(applyModuleVisibility,20);
+  });
   function observe(){
     const box=q('#tabVisibilityOptions');
     if(box)observer.observe(box,{childList:true,subtree:true});
+    const side=q('#sidebar'),mobile=q('#mobileMainNav');
+    if(side)menuObserver.observe(side,{childList:true,subtree:true});
+    if(mobile)menuObserver.observe(mobile,{childList:true,subtree:true});
   }
 
   if(document.readyState==='loading'){
@@ -343,11 +374,11 @@ body[data-v305-hide-analysis="1"] [data-main="analysis"]{
             headers = dict(getattr(response, "headers", {}) or {})
             headers.pop("content-length", None)
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Visibility-Version"] = "V305-REPORT-MASTER"
+            headers["X-Operations-Visibility-Version"] = "V307-REPORT-MASTER-LAYOUT"
             return HTMLResponse(html, status_code=response.status_code, headers=headers)
         except Exception as exc:
             print(f"[V305] HTML warning: {type(exc).__name__}: {exc}", flush=True)
             return response
 
     m._V305_REPORT_MASTER_VISIBILITY = True
-    print("[V305] Reportes completos configurables: Cambios y Muertos, Operación y Análisis Comercial.", flush=True)
+    print("[V307] Reportes completos sin huecos: ocultar reacomoda inmediatamente el menú.", flush=True)

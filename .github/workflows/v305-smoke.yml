@@ -61,7 +61,12 @@ jobs:
           assert "_install_v305_report_master_visibility_patch(web_app)" in entry
           assert 'str(actor["username"] or "")' in src305
           assert 'actor.get("username")' not in src305
-          print("V305/V306 structural assertions OK")
+          assert "el.style.setProperty('display','none','important')" in src305
+          assert "menuObserver" in src305
+          assert "v307-nav-shell" in src302
+          assert "v307-bonus-icon" in src302
+          assert "function navShell(d)" in src302
+          print("V305/V306/V307 structural assertions OK")
           PY
           node --check /tmp/v302.js
           node --check /tmp/v305.js
