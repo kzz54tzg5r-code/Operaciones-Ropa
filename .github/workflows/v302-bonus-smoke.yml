@@ -41,7 +41,8 @@ jobs:
           end=js.rfind("</script>")
           body=js[start+1:end] if start>=0 and end>start else js
           Path("/tmp/v302.js").write_text(body,encoding="utf-8")
-          assert "Bono 1" in src and "Bono 6" in src
+          assert "BONUS_NOS=(1,2,3,4,5,6)" in src
+          assert "Bono '+i" in src and "Bono {b}" in src
           assert "/api/bonuses-v302" in src
           assert "Glosario de Bonos" in src
           assert "Comparativo de Bonos" in src
