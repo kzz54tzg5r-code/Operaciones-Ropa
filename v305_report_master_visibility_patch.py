@@ -333,9 +333,15 @@ body[data-v305-hide-analysis="1"] [data-main="analysis"]{
   const observer=new MutationObserver(muts=>{
     if(muts.some(x=>x.type==='childList'))scheduleDecorate();
   });
+  const menuObserver=new MutationObserver(muts=>{
+    if(muts.some(x=>x.type==='childList'))setTimeout(applyModuleVisibility,20);
+  });
   function observe(){
     const box=q('#tabVisibilityOptions');
     if(box)observer.observe(box,{childList:true,subtree:true});
+    const side=q('#sidebar'),mobile=q('#mobileMainNav');
+    if(side)menuObserver.observe(side,{childList:true,subtree:true});
+    if(mobile)menuObserver.observe(mobile,{childList:true,subtree:true});
   }
 
   if(document.readyState==='loading'){
