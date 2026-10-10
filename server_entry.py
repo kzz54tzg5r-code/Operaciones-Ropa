@@ -232,6 +232,7 @@ from v286_scroll_type_authority_patch import install as _install_v286_scroll_typ
 from v288_operation_daily_option5_patch import install as _install_v288_operation_daily_option5_patch
 from v289_device_fit_patch import install as _install_v289_device_fit_patch
 from v293_sales_bonus_patch import install as _install_v293_sales_bonus_patch
+from v302_six_sales_bonuses_patch import install as _install_v302_six_sales_bonuses_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -413,4 +414,6 @@ _install_v288_operation_daily_option5_patch(web_app)
 _install_v289_device_fit_patch(web_app)
 # V293: Bonos por tienda · Boceto 5 (Venta 50 + DDI/Inversión 30 + Asistencia 20).
 _install_v293_sales_bonus_patch(web_app)
+# V302: un solo módulo Bonos con Bono 1..6, Glosario, Calculadora, Comparativo y configuración versionada.
+_install_v302_six_sales_bonuses_patch(web_app)
 app = web_app.app
