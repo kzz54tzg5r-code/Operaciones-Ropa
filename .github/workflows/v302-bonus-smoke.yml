@@ -1,0 +1,63 @@
+name: V302 bonus smoke
+
+on:
+  pull_request:
+    paths:
+      - "v302_six_sales_bonuses_patch.py"
+      - "v293_sales_bonus_patch.py"
+      - "server_entry.py"
+      - ".github/workflows/v302-bonus-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Compile Python
+        run: |
+          python -m py_compile v302_six_sales_bonuses_patch.py v293_sales_bonus_patch.py server_entry.py
+      - name: Validate embedded V302 JavaScript
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          src=Path("v302_six_sales_bonuses_patch.py").read_text(encoding="utf-8")
+          tree=ast.parse(src)
+          js=None
+          for node in ast.walk(tree):
+              if isinstance(node,ast.Assign):
+                  for target in node.targets:
+                      if isinstance(target,ast.Name) and target.id=="js":
+                          value=ast.literal_eval(node.value)
+                          if isinstance(value,str) and "v302-js" in value:
+                              js=value
+          if not js:
+              raise SystemExit("V302 embedded JS not found")
+          start=js.find(">(function()")
+          end=js.rfind("</script>")
+          body=js[start+1:end] if start>=0 and end>start else js
+          Path("/tmp/v302.js").write_text(body,encoding="utf-8")
+          assert "Bono 1" in src and "Bono 6" in src
+          assert "/api/bonuses-v302" in src
+          assert "Glosario de Bonos" in src
+          assert "Comparativo de Bonos" in src
+          assert "_install_v302_six_sales_bonuses_patch(web_app)" in Path("server_entry.py").read_text(encoding="utf-8")
+          print("Python AST and V302 wiring OK")
+          PY
+          node --check /tmp/v302.js
+      - name: Guard Bono 1 and operation separation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          sales=Path("v293_sales_bonus_patch.py").read_text(encoding="utf-8")
+          op=Path("v279_operation_bonus_cluster_patch.py").read_text(encoding="utf-8")
+          new=Path("v302_six_sales_bonuses_patch.py").read_text(encoding="utf-8")
+          assert "if(window.__V302_SIX_BONUSES)return;" in sales
+          assert "/api/operation/bonuses-v279" in op
+          assert "Bono Operativo V279 intacto" in new
+          print("Bono 1 sales module and operational bonus remain separated")
+          PY
