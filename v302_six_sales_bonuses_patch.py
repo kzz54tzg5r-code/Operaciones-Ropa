@@ -519,11 +519,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             if 'id="v302-js"' not in html:html=html.replace("</body>",js+"</body>",1)
             headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V302-SIX-BONUSES"
+            headers["X-Operations-Bonus-Version"]="V303-BONUS-COPY-FONTS"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V302] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V302_SIX_SALES_BONUSES=True
-    print("[V302] Bonos: Bono 1 comercial preservado + Bono 2..6 + Glosario + Calculadora + Comparativo + Configuración versionada.",flush=True)
+    print("[V303] Bonos: objetivos visibles por metodología + tipografía ampliada; lógica de cálculo sin cambios.",flush=True)
