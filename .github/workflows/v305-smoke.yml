@@ -59,7 +59,9 @@ jobs:
           assert 'data-main="operation"' in src305
           assert 'data-main="analysis"' in src305
           assert "_install_v305_report_master_visibility_patch(web_app)" in entry
-          print("V305 structural assertions OK")
+          assert 'str(actor["username"] or "")' in src305
+          assert 'actor.get("username")' not in src305
+          print("V305/V306 structural assertions OK")
           PY
           node --check /tmp/v302.js
           node --check /tmp/v305.js
