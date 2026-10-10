@@ -1,0 +1,65 @@
+name: V305 bonus nav and report visibility smoke
+
+on:
+  pull_request:
+    paths:
+      - "v302_six_sales_bonuses_patch.py"
+      - "v305_report_master_visibility_patch.py"
+      - "server_entry.py"
+      - ".github/workflows/v305-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Compile Python
+        run: |
+          python -m py_compile v302_six_sales_bonuses_patch.py v305_report_master_visibility_patch.py server_entry.py
+      - name: Validate embedded JavaScript and wiring
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          def embedded_js(path, var):
+              src=Path(path).read_text(encoding="utf-8")
+              tree=ast.parse(src)
+              for node in ast.walk(tree):
+                  if isinstance(node,ast.Assign):
+                      for target in node.targets:
+                          if isinstance(target,ast.Name) and target.id==var:
+                              value=ast.literal_eval(node.value)
+                              if isinstance(value,str) and "<script" in value:
+                                  start=value.find(">")
+                                  end=value.rfind("</script>")
+                                  return value[start+1:end]
+              raise SystemExit(f"embedded JS not found: {path}")
+
+          Path("/tmp/v302.js").write_text(embedded_js("v302_six_sales_bonuses_patch.py","js"),encoding="utf-8")
+          Path("/tmp/v305.js").write_text(embedded_js("v305_report_master_visibility_patch.py","js"),encoding="utf-8")
+
+          src302=Path("v302_six_sales_bonuses_patch.py").read_text(encoding="utf-8")
+          src305=Path("v305_report_master_visibility_patch.py").read_text(encoding="utf-8")
+          entry=Path("server_entry.py").read_text(encoding="utf-8")
+
+          assert "['summary','Resumen general']" in src302
+          assert "['ranking','Ranking de tiendas']" in src302
+          assert "['models','Modelos a detalle']" in src302
+          assert "['catalogs','Abrigador']" in src302
+          assert "data-v305-catalog" in src302
+          assert "['Abrigador','Licencias','Básicos']" in src302
+          assert "/api/settings/report-modules-v305" in src305
+          assert "report_module_visibility_v305" in src305
+          assert 'data-main="operativo"' in src305
+          assert 'data-main="operation"' in src305
+          assert 'data-main="analysis"' in src305
+          assert "_install_v305_report_master_visibility_patch(web_app)" in entry
+          print("V305 structural assertions OK")
+          PY
+          node --check /tmp/v302.js
+          node --check /tmp/v305.js
