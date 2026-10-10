@@ -84,7 +84,7 @@ def install(m):
                     "INSERT INTO report_module_visibility_v305(report_key,visible,updated_at,updated_by) "
                     "VALUES(?,?,?,?) ON CONFLICT(report_key) DO UPDATE SET "
                     "visible=excluded.visible,updated_at=excluded.updated_at,updated_by=excluded.updated_by",
-                    (key, visible, stamp, str(actor.get("username") or "")),
+                    (key, visible, stamp, str(actor["username"] or "")),
                 )
                 changed.append(key)
         return {"ok": True, "changed": changed, "modules": _module_state()}
