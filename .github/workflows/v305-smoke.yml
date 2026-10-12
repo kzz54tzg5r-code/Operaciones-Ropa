@@ -50,7 +50,8 @@ jobs:
           assert "['summary','Resumen general']" in src302
           assert "['ranking','Ranking de tiendas']" in src302
           assert "['models','Modelos a detalle']" in src302
-          assert "['catalogs','Abrigador']" in src302
+          assert "['catalogs','Abrigador']" not in src302
+          assert "v310-three-tabs" in src302
           assert "data-v305-catalog" in src302
           assert "['Abrigador','Licencias','Básicos']" in src302
           assert "/api/settings/report-modules-v305" in src305
@@ -69,7 +70,7 @@ jobs:
           assert "v308SectionGuide" in src302
           assert "criterion[\"rule\"]=_rule_text(k)" in src302
           assert "Criterios del Bono" in src302
-          assert "V309-BONUS-MOCKUPS-FINAL" in src302
+          assert "V310-MODELS-INCLUDES-CATALOGS" in src302
           assert "function v309Summary(d)" in src302
           assert "function v309Bottom(d)" in src302
           assert "Regla proporcional por criterio" in src302
@@ -78,7 +79,9 @@ jobs:
           assert "Bolsa de puntos por criterio" in src302
           assert "Validación de mínimos" in src302
           assert "data-v305-catalog" in src302
-          print("V305/V306/V307/V308/V309 structural assertions OK")
+          assert "Modelos a detalle · " in src302
+          assert "function v309CatalogPage(d){return v309ModelsPage(d)}" in src302
+          print("V305/V306/V307/V308/V309/V310 structural assertions OK")
           PY
           node --check /tmp/v302.js
           node --check /tmp/v305.js
