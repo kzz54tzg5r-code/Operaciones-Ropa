@@ -302,6 +302,70 @@ def install(m):
                 difference="Combina una calificación total con requisitos mínimos obligatorios por indicador.",
                 formula="Puntaje base = suma ponderada. Se verifica cada mínimo; una penalización sólo se aplica si fue autorizada en configuración."
             )
+        # V308: cada bono conserva las mismas tres dimensiones comerciales,
+        # pero el glosario documenta la regla concreta con la que ESA metodología
+        # convierte cada criterio en puntos.
+        labels={k:label for k,label,_ in CRITERIA}
+        fixed_weights={k:w for k,_label,w in CRITERIA}
+        cfg_points=cfg.get("max_points") or {}
+        cfg_weights=cfg.get("weights") or {}
+        cfg_mins=cfg.get("minimums") or {}
+        cfg_bands=cfg.get("bands") or {}
+
+        def _param_text(k):
+            if b==1:
+                return f"Peso fijo {fixed_weights[k]:g}%"
+            if b==2:
+                return f"Máximo {num(cfg_points.get(k)):g} pts · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+            if b==3:
+                return f"Peso {num(cfg_weights.get(k)):g}% · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+            if b==4:
+                rows=cfg_bands.get(k) or []
+                return (f"{len(rows)} rango(s) autorizado(s)" if rows else "Rangos pendientes de configurar")
+            if b==5:
+                return f"Bolsa {num(cfg_points.get(k)):g} pts · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+            return (f"Peso {num(cfg_weights.get(k)):g}% · mínimo "
+                    + ("pendiente" if cfg_mins.get(k) is None else f"{num(cfg_mins.get(k)):g}%"))
+
+        def _rule_text(k):
+            label=labels[k]
+            if b==1:
+                return f"{label} aporta su cumplimiento limitado a 100% multiplicado por {fixed_weights[k]:g}%."
+            if b==2:
+                return f"{label} genera puntos proporcionales: máximo del criterio × cumplimiento / 100."
+            if b==3:
+                return f"{label} se pondera por el peso autorizado; su aporte es cumplimiento × peso / 100."
+            if b==4:
+                return f"{label} no puntúa linealmente: el cumplimiento cae en un rango y toma los puntos de ese nivel."
+            if b==5:
+                return f"{label} acumula puntos dentro de su bolsa máxima hasta alcanzar el tope configurado."
+            return f"{label} genera un aporte ponderado y además debe superar el mínimo autorizado del criterio."
+
+        def _criterion_formula(k):
+            if b==1:
+                return f"min(Cumplimiento,100) × {fixed_weights[k]:g}/100"
+            if b==2:
+                return "Puntos máximos × min(Cumplimiento,límite) / 100"
+            if b==3:
+                return "min(Cumplimiento,límite) × Peso / 100"
+            if b==4:
+                return "Puntos del rango donde se ubica el cumplimiento"
+            if b==5:
+                return "Bolsa máxima × min(Cumplimiento,límite) / 100"
+            return "Cumplimiento × Peso / 100 + validación de mínimo"
+
+        for criterion in common["criteria"]:
+            k=criterion["key"]
+            criterion["rule"]=_rule_text(k)
+            criterion["parameter"]=_param_text(k)
+            criterion["criterion_formula"]=_criterion_formula(k)
+            criterion["bonus_no"]=b
+            criterion["applies_to"]=f"Bono {b}"
+            if b==6:
+                criterion["minimum"]=cfg_mins.get(k)
+            if b==4:
+                criterion["bands"]=cfg_bands.get(k) or []
+
         example_pcts={"sales":90.0,"ddi":80.0,"attendance":95.0}
         example_b1=90.0*0.50+80.0*0.30+95.0*0.20
         common["example_inputs"]=example_pcts
@@ -495,6 +559,24 @@ body[data-v302="1"] #analysisNav,body[data-v302="1"] #operativoNav,body[data-v30
 }
 .v307-bonus-icon svg{display:block;width:100%;height:100%;stroke:currentColor}
 
+/* V308 · cada bono explica su metodología dentro de cada pestaña */
+.v308-guide{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.72fr);gap:10px;
+  align-items:center;margin:0 0 7px;padding:9px 11px;border:1px solid #dbe6f0;
+  border-radius:9px;background:#f8fbff;color:#234d75;
+}
+.v308-guide b{display:block;font-size:12px;font-weight:950;color:#123f73;margin-bottom:2px}
+.v308-guide span{display:block;font-size:10.5px;line-height:1.35;color:#5f7890;font-weight:760}
+.v308-guide small{display:block;text-align:right;font-size:9.5px;line-height:1.35;color:#315f88;font-weight:850}
+.v308-comp-rule{min-height:49px;padding:6px 7px;border-top:1px solid #edf2f7;background:#f9fbfd;font-size:8.5px;line-height:1.35;color:#56718a;font-weight:760}
+.v308-gloss-table{min-width:1120px!important}
+.v302-gloss .method p,.v302-gloss li{font-size:12px!important;line-height:1.45!important}
+.v302-gloss h3{font-size:15px!important}
+@media(max-width:900px){
+  .v308-guide{grid-template-columns:1fr}
+  .v308-guide small{text-align:left}
+}
+
 /* V307 · los paneles nunca se montan ni recortan entre sí */
 .v304-top{grid-template-columns:minmax(0,1.08fr) minmax(0,.82fr) minmax(0,1.1fr)!important;gap:8px!important;align-items:stretch!important}
 .v304-top>*{min-width:0!important;max-width:100%!important}
@@ -556,26 +638,50 @@ function breakdown(m){let rows=m.breakdown||[];return '<section class="v302-pane
 function miniRanking(d,limit=8){let a=(d.ranking||[]).slice(0,limit||999);return '<section class="v302-panel"><div class="v302-ph"><span>Ranking global por tienda</span><span>Mejor a peor</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th>#</th><th class="left">Tienda</th><th>Puntos</th><th>Máximo</th><th>Cumplimiento</th><th>Clasificación</th></tr></thead><tbody>'+a.map(r=>'<tr><td>'+(r.rank??'—')+'</td><td class="left"><b>'+esc(r.store)+'</b></td><td>'+nf(r.points)+'</td><td>'+nf(r.max_points)+'</td><td class="'+cls(r.compliance_pct)+'">'+pc(r.compliance_pct)+'</td><td>'+esc(r.classification||'')+'</td></tr>').join('')+'</tbody></table></div></section>'}
 function v304Method(d){let g=d.glossary||{},cfg=d.configs?.[S.bonus]||d.configs?.[String(S.bonus)]||{},official=Number(d.official_bonus)===Number(S.bonus);return '<div class="v304-method"><div class="v304-method-main"><b>Bono '+S.bonus+'</b><span>'+esc(g.objective||'')+'</span></div><div class="v304-method-meta"><span class="v304-chip '+(cfg.active?'':'off')+'">'+(cfg.active?'Activo':'Pendiente de configurar')+'</span>'+(official?'<span class="v304-chip">Bono oficial</span>':'')+'<span class="v304-chip">'+esc((d.model||{}).classification||'N/D')+'</span></div></div>'}
 function v304Tag(p,status){if(p==null)return'<span class="tag">N/D</span>';let k=n(p)>=90?'good':n(p)>=70?'mid':'bad';return'<span class="tag '+k+'">'+esc(status||'')+'</span>'}
-function v304Components(d){let m=d.model||{},rows=m.breakdown||[],base=d.base||{},s=base.selected||{};let src={sales:'Base Muertos/Cambios + Meta',ddi:'Capacidades · DDI e inversión',attendance:'Asistencia'};let order=[['sales','Venta vs Meta'],['ddi','DDI por Cat'],['attendance','Asistencia']];return '<section class="v302-panel"><div class="v302-ph"><span>Desempeño por componente del bono</span><span>Bono '+S.bonus+'</span></div><div class="v304-components">'+order.map(x=>{let r=rows.find(y=>y.key===x[0])||{},edit='';if(x[0]==='attendance'&&base.can_edit_attendance){edit='<div style="display:flex;gap:4px;padding:0 6px 7px"><input id="v304Att" type="number" min="0" max="100" step="0.1" value="'+(s.attendance?.pct==null?'':esc(s.attendance.pct))+'" style="min-width:0;width:100%;height:27px;border:1px solid #d1ddea;border-radius:6px;padding:0 6px;font-size:10px"><button id="v304AttSave" style="height:27px;border:0;border-radius:6px;background:#7149e8;color:#fff;font-size:9px;font-weight:900;padding:0 7px">Guardar</button></div>'}return '<div class="v304-comp '+x[0]+'"><div class="head">'+esc(x[1])+'</div><div class="main"><div class="pct">'+pc(r.compliance_pct)+'</div><div class="pts">'+(r.points==null?'Puntos N/D':(nf(r.points)+' / '+nf(r.max_points)+' pts'))+'</div>'+v304Tag(r.compliance_pct,r.status)+'</div><div class="src">'+esc(src[x[0]])+'</div>'+edit+'</div>'}).join('')+'</div></section>'}
+function v304Components(d){let m=d.model||{},rows=m.breakdown||[],base=d.base||{},s=base.selected||{};let src={sales:'Base Muertos/Cambios + Meta',ddi:'Capacidades · DDI e inversión',attendance:'Asistencia'};let order=[['sales','Venta vs Meta'],['ddi','DDI por Cat'],['attendance','Asistencia']];return '<section class="v302-panel"><div class="v302-ph"><span>Desempeño por componente del bono</span><span>Bono '+S.bonus+'</span></div><div class="v304-components">'+order.map(x=>{let r=rows.find(y=>y.key===x[0])||{},gc=v308Criterion(d,x[0]),edit='';if(x[0]==='attendance'&&base.can_edit_attendance){edit='<div style="display:flex;gap:4px;padding:0 6px 7px"><input id="v304Att" type="number" min="0" max="100" step="0.1" value="'+(s.attendance?.pct==null?'':esc(s.attendance.pct))+'" style="min-width:0;width:100%;height:27px;border:1px solid #d1ddea;border-radius:6px;padding:0 6px;font-size:10px"><button id="v304AttSave" style="height:27px;border:0;border-radius:6px;background:#7149e8;color:#fff;font-size:9px;font-weight:900;padding:0 7px">Guardar</button></div>'}return '<div class="v304-comp '+x[0]+'"><div class="head">'+esc(x[1])+'</div><div class="main"><div class="pct">'+pc(r.compliance_pct)+'</div><div class="pts">'+(r.points==null?'Puntos N/D':(nf(r.points)+' / '+nf(r.max_points)+' pts'))+'</div>'+v304Tag(r.compliance_pct,r.status)+'</div><div class="v308-comp-rule">'+esc(gc.parameter||'')+'<br>'+esc(gc.rule||'')+'</div><div class="src">'+esc(src[x[0]])+'</div>'+edit+'</div>'}).join('')+'</div></section>'}
 function v304Score(d){let m=d.model||{},p=m.compliance_pct,ring=p==null?0:Math.max(0,Math.min(100,n(p))),ready=!!m.ready;return '<section class="v302-panel"><div class="v302-ph"><span>Resultado del Bono · '+esc(d.selected_store||'')+'</span><span>Bono '+S.bonus+'</span></div><div class="v304-score-wrap"><div class="v304-ring" style="--p:'+ring+';'+(!ready?'background:conic-gradient(#9fb0c0 '+ring+'%,#edf2f6 0)':'')+'"><div><b>'+pc(p)+'</b><small>'+(ready?'Cumplimiento':'Parcial · falta información')+'</small></div></div><div class="v304-score-points">'+(m.points==null?'N/D':nf(m.points))+' / '+(m.max_points==null?'N/D':nf(m.max_points))+' pts</div><div class="v304-score-note">'+esc(m.formula||m.configuration_reason||'')+'</div></div></section>'}
 function v304Ranking(d,full=false){let a=d.ranking||[];if(!full)a=a.slice(0,8);return '<section class="v302-panel v304-ranking-panel"><div class="v302-ph"><span>🏆 Ranking de tiendas · mejor a peor</span><span>Bono '+S.bonus+'</span></div><div class="v304-ranking"><table class="v302-table"><thead><tr><th>#</th><th class="left">Tienda</th><th>Puntos</th><th>Máximo</th><th>Cumplimiento</th><th>Clasificación</th></tr></thead><tbody>'+a.map(r=>'<tr data-v304-store="'+esc(r.store)+'" style="cursor:pointer;'+(r.store===d.selected_store?'background:#e9f3ff':'')+'"><td>'+(r.rank??'—')+'</td><td class="left"><b>'+esc(r.store)+'</b></td><td>'+nf(r.points)+'</td><td>'+nf(r.max_points)+'</td><td class="'+cls(r.compliance_pct)+'">'+pc(r.compliance_pct)+'</td><td>'+esc(r.classification||r.configuration_reason||'')+'</td></tr>').join('')+'</tbody></table></div><div class="v302-note">El ranking cambia según la metodología del Bono '+S.bonus+'. No se generan posiciones con información incompleta.</div></section>'}
 function v304Target(d){let s=d.base?.selected||{},cats=s.ddi?.catalogs||[];return '<section class="v302-panel"><div class="v302-ph"><span>Modelos objetivo destacados</span><span>DDI por Cat</span></div><div class="v304-target"><div class="v304-target-num"><strong>'+nf(s.target_models)+'</strong><span>modelos fijos del mes</span></div><table class="v304-mini"><thead><tr><th>Catálogo</th><th>Modelos</th><th>%</th></tr></thead><tbody>'+cats.map(x=>'<tr><td>'+esc(x.catalog)+'</td><td>'+nf(x.models)+'</td><td>'+pc(s.target_models?n(x.models)/n(s.target_models)*100:0)+'</td></tr>').join('')+'</tbody></table></div><div class="v302-note">Cartera objetivo: DDI inicial &gt; 90 días e inversión inicial mayor al promedio del catálogo de la tienda.</div></section>'}
 function v304Catalogs(d,only='Todos'){let s=d.base?.selected||{},cats=s.ddi?.catalogs||[];if(only!=='Todos')cats=cats.filter(x=>x.catalog===only);return '<section class="v302-panel"><div class="v302-ph"><span>Resumen por catálogo</span><span>Mercancía objetivo</span></div><div class="v304-cats">'+cats.map(x=>'<div class="v304-cat"><h4>'+esc(x.catalog)+'</h4><b>'+nf(x.ddi_reduced_models)+' / '+nf(x.models)+'</b><small>modelos con DDI reducido</small><div class="v304-cat-grid"><div><span>Reducción DDI</span><strong>'+pc(x.ddi_reduction_pct)+'</strong></div><div><span>Reducción inversión</span><strong>'+pc(x.investment_reduction_pct)+'</strong></div></div></div>').join('')+'</div><div class="v302-note">Este bloque alimenta el indicador DDI por Cat; la forma en que aporta puntos cambia con cada bono.</div></section>'}
 function v304Details(d,only='Todos'){let rows=d.base?.selected?.details||[];if(only!=='Todos')rows=rows.filter(r=>r.catalog===only);return '<section class="v302-panel v304-detail"><div class="v304-detail-head"><b>Avance por ID · ordenado del peor al mejor</b><span>'+(only==='Todos'?'Todos los catálogos':esc(only))+'</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th>#</th><th class="left">ID Modelo</th><th class="left">Modelo</th><th>Catálogo</th><th>Exist. inicial</th><th>Exist. actual</th><th>DDI inicial</th><th>DDI actual</th><th>Inversión inicial</th><th>Inversión actual</th><th>% Red. DDI</th><th>% Red. inversión</th><th>Avance</th><th>Estatus</th></tr></thead><tbody>'+rows.map((r,i)=>'<tr><td>'+(i+1)+'</td><td class="left"><b>'+esc(r.id_art)+'</b></td><td class="left">'+esc(r.model)+'</td><td>'+esc(r.catalog)+'</td><td>'+nf(r.initial_existence)+'</td><td>'+nf(r.current_existence)+'</td><td>'+nf(r.initial_ddi)+'</td><td>'+nf(r.current_ddi)+'</td><td>'+money(r.initial_investment)+'</td><td>'+money(r.current_investment)+'</td><td>'+pc(r.ddi_reduction_pct)+'</td><td>'+pc(r.investment_reduction_pct)+'</td><td>'+pc(r.progress_pct)+'</td><td>'+esc(r.status)+'</td></tr>').join('')+'</tbody></table></div></section>'}
-function summary(d){return v304Method(d)+'<div class="v304-top">'+v304Components(d)+v304Score(d)+v304Ranking(d,false)+'</div><div class="v304-mid">'+v304Target(d)+v304Catalogs(d,'Todos')+'</div>'+v304Details(d,'Todos')}
+function v308Criterion(d,key){return (d.glossary?.criteria||[]).find(x=>x.key===key)||{}}
+function v308SectionGuide(d,section){
+  let g=d.glossary||{},title='',desc='',rule='';
+  if(section==='summary'){
+    title='Resumen general · Bono '+S.bonus;
+    desc='Resultado integral de la tienda con la metodología seleccionada. Las mismas fuentes comerciales se convierten en puntos de forma distinta en cada bono.';
+    rule=g.formula||'';
+  }else if(section==='ranking'){
+    title='Ranking de tiendas · Bono '+S.bonus;
+    desc='Ordena de mejor a peor usando únicamente el puntaje y cumplimiento calculados con la metodología del Bono '+S.bonus+'.';
+    rule=(d.model||{}).formula||g.formula||'';
+  }else if(section==='models'){
+    let c=v308Criterion(d,'ddi');
+    title='Modelos a detalle · criterio DDI · Bono '+S.bonus;
+    desc='La cartera de modelos objetivo es la misma fuente comercial; aquí se observa ID por ID el avance que alimenta DDI por Cat.';
+    rule=(c.rule||'')+(c.parameter?' · '+c.parameter:'');
+  }else{
+    let c=v308Criterion(d,'ddi');
+    title='Abrigador / Licencias / Básicos · Bono '+S.bonus;
+    desc='Consulta por catálogo los modelos objetivo, reducción de DDI e inversión. Este bloque alimenta exclusivamente el criterio DDI por Cat.';
+    rule=(c.rule||'')+(c.parameter?' · '+c.parameter:'');
+  }
+  return '<section class="v308-guide"><div><b>'+esc(title)+'</b><span>'+esc(desc)+'</span></div><small>'+esc(rule)+'</small></section>';
+}
+function summary(d){return v304Method(d)+v308SectionGuide(d,'summary')+'<div class="v304-top">'+v304Components(d)+v304Score(d)+v304Ranking(d,false)+'</div><div class="v304-mid">'+v304Target(d)+v304Catalogs(d,'Todos')+'</div>'+v304Details(d,'Todos')}
 function sources(d){let b=d.base||{},s=b.selected||{};return '<section class="v302-panel"><div class="v302-ph"><span>Fuentes de información del bono</span><span>No se mezclan datos operativos</span></div><div class="v302-body v302-sourcecards"><div class="v302-sourcecard"><b>Venta vs Meta</b><div>Venta: '+money(s.sales?.actual)+'</div><div>Meta: '+money(s.sales?.goal)+'</div><div>Fuente: Base Muertos/Cambios + METAS 2026</div></div><div class="v302-sourcecard"><b>DDI por Cat</b><div>'+pc(s.ddi?.pct)+'</div><div>Modelos objetivo: '+nf(s.target_models)+'</div><div>Fuente: Capacidades</div></div><div class="v302-sourcecard"><b>Asistencia</b><div>'+pc(s.attendance?.pct)+'</div><div>Fuente: captura autorizada</div></div></div></section>'}
 
-function dataView(d,only='Todos'){return v304Method(d)+'<div class="v304-mid">'+v304Target(d)+v304Catalogs(d,only)+'</div>'+v304Details(d,only)}
-function catalogView(d){if(!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';return v304Method(d)+catalogTabs()+'<div class="v304-mid">'+v304Target(d)+v304Catalogs(d,S.catalog)+'</div>'+v304Details(d,S.catalog)}
+function dataView(d,only='Todos'){return v304Method(d)+v308SectionGuide(d,'models')+'<div class="v304-mid">'+v304Target(d)+v304Catalogs(d,only)+'</div>'+v304Details(d,only)}
+function catalogView(d){if(!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';return v304Method(d)+v308SectionGuide(d,'catalogs')+catalogTabs()+'<div class="v304-mid">'+v304Target(d)+v304Catalogs(d,S.catalog)+'</div>'+v304Details(d,S.catalog)}
 function compare(d){let a=d.comparison||[];let ready=a.filter(x=>x.compliance_pct!=null),mx=Math.max(100,...ready.map(x=>n(x.compliance_pct)));return '<div class="v302-grid2"><section class="v302-panel"><div class="v302-ph"><span>Comparativo de Bonos</span><span>Mismos datos · seis metodologías</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th class="left">Bono</th><th>Puntos obtenidos</th><th>Puntos máximos</th><th>Cumplimiento %</th><th>Ranking</th><th>Clasificación</th></tr></thead><tbody>'+a.map(x=>'<tr><td class="left"><b>'+esc(x.name)+'</b></td><td>'+nf(x.points)+'</td><td>'+nf(x.max_points)+'</td><td class="'+cls(x.compliance_pct)+'">'+pc(x.compliance_pct)+'</td><td>'+(x.rank??'—')+'</td><td>'+esc(x.classification||x.configuration_reason||'')+'</td></tr>').join('')+'</tbody></table></div><div class="v302-note">No se declara automáticamente que un modelo sea mejor. Se muestran puntuación y porcentaje normalizado para comparar escalas diferentes.</div></section><section class="v302-panel"><div class="v302-ph"><span>Gráfica comparativa</span><span>% normalizado</span></div><div class="v302-chart">'+a.map(x=>'<div class="v302-chart-row"><span>'+esc(x.name)+'</span><div class="v302-track"><div class="v302-fill" style="width:'+Math.max(0,Math.min(100,(n(x.compliance_pct)/mx)*100))+'%"></div></div><b>'+pc(x.compliance_pct)+'</b></div>').join('')+'</div></section></div>'}
 function glossaryTabs(){return '<div class="v302-bonus-tabs">'+[1,2,3,4,5,6].map(i=>'<button data-v302-bonus="'+i+'" class="'+(S.bonus===i?'active':'')+'">Bono '+i+'</button>').join('')+'</div>'}
-function examplePanel(d){let g=d.glossary||{},e=g.example||{},ins=g.example_inputs||{};return '<section class="v302-panel"><div class="v302-ph"><span>Ejemplo práctico · simulación didáctica</span><span>'+esc(e.classification||'')+'</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th class="left">Criterio</th><th>Meta</th><th>Real</th><th>Cumplimiento</th><th>Peso</th><th>Puntos posibles</th><th>Puntos obtenidos</th></tr></thead><tbody>'+(e.breakdown||[]).map(r=>'<tr><td class="left"><b>'+esc(r.indicator)+'</b></td><td>100</td><td>'+nf(ins[r.key])+'</td><td>'+pc(r.compliance_pct)+'</td><td>'+(r.weight==null?'—':pc(r.weight))+'</td><td>'+nf(r.max_points)+'</td><td>'+nf(r.points)+'</td></tr>').join('')+'</tbody></table></div><div class="v302-note">'+esc(g.example_note||'')+' Total: '+nf(e.points)+' / '+nf(e.max_points)+' · '+pc(e.compliance_pct)+(e.configuration_reason?' · '+esc(e.configuration_reason):'')+'</div></section>'}
-function glossary(d){let g=d.glossary||{},m=d.model||{};return '<div class="v302-gloss">'+glossaryTabs()+'<div class="v302-gloss-grid"><section class="v302-panel"><div class="v302-ph"><span>'+esc(g.name||'')+'</span><span>Metodología</span></div><div class="v302-body"><div class="method"><h3>Descripción general</h3><p><b>Objetivo:</b> '+esc(g.objective||'')+'</p><p><b>Metodología:</b> '+esc(g.methodology||'')+'</p><p><b>Evaluados:</b> '+esc(g.evaluated||'')+'</p><p><b>Periodo:</b> '+esc(g.period||'')+'</p><p><b>Diferencia:</b> '+esc(g.difference||'')+'</p><p><b>Fórmula:</b> '+esc(g.formula||'')+'</p></div><h3>Fuentes</h3><ul>'+(g.sources||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><h3>Reglas y excepciones</h3><ul>'+(g.rules||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div></section><section class="v302-panel"><div class="v302-ph"><span>Criterios evaluados</span><span>Transparencia del cálculo</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th class="left">Criterio</th><th class="left">Qué evalúa</th><th>Fuente</th><th>Meta</th><th>Actual</th><th>Puntos</th></tr></thead><tbody>'+(g.criteria||[]).map(c=>{let r=(m.breakdown||[]).find(x=>x.key===c.key)||{};return '<tr><td class="left"><b>'+esc(c.name)+'</b></td><td class="left">'+esc(c.meaning)+'</td><td>'+esc(c.source)+'</td><td>'+esc(c.meta)+'</td><td>'+pc(r.compliance_pct)+'</td><td>'+nf(r.points)+' / '+nf(r.max_points)+'</td></tr>'}).join('')+'</tbody></table></div><div class="v302-note">Si un indicador no tiene información se muestra N/D y no se transforma en incumplimiento.</div></section></div>'+examplePanel(d)+calculator(d)+'</div>'}
+function examplePanel(d){let g=d.glossary||{},e=g.example||{},ins=g.example_inputs||{};return '<section class="v302-panel"><div class="v302-ph"><span>Ejemplo práctico · Bono '+S.bonus+'</span><span>'+esc(e.classification||'')+'</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th class="left">Criterio</th><th>Meta</th><th>Real</th><th>Cumplimiento</th><th>Parámetro del bono</th><th>Puntos posibles</th><th>Puntos obtenidos</th></tr></thead><tbody>'+(e.breakdown||[]).map(r=>{let gc=(g.criteria||[]).find(x=>x.key===r.key)||{};return '<tr><td class="left"><b>'+esc(r.indicator)+'</b></td><td>100</td><td>'+nf(ins[r.key])+'</td><td>'+pc(r.compliance_pct)+'</td><td>'+esc(gc.parameter||'—')+'</td><td>'+nf(r.max_points)+'</td><td>'+nf(r.points)+'</td></tr>'}).join('')+'</tbody></table></div><div class="v302-note">'+esc(g.example_note||'')+' Total: '+nf(e.points)+' / '+nf(e.max_points)+' · '+pc(e.compliance_pct)+(e.configuration_reason?' · '+esc(e.configuration_reason):'')+'</div></section>'}
+function glossary(d){let g=d.glossary||{},m=d.model||{};return '<div class="v302-gloss">'+glossaryTabs()+'<div class="v302-gloss-grid"><section class="v302-panel"><div class="v302-ph"><span>'+esc(g.name||'')+'</span><span>Metodología propia del Bono '+S.bonus+'</span></div><div class="v302-body"><div class="method"><h3>Descripción general</h3><p><b>Objetivo:</b> '+esc(g.objective||'')+'</p><p><b>Metodología:</b> '+esc(g.methodology||'')+'</p><p><b>Evaluados:</b> '+esc(g.evaluated||'')+'</p><p><b>Periodo:</b> '+esc(g.period||'')+'</p><p><b>Diferencia:</b> '+esc(g.difference||'')+'</p><p><b>Fórmula total:</b> '+esc(g.formula||'')+'</p></div><h3>Fuentes</h3><ul>'+(g.sources||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><h3>Reglas y excepciones</h3><ul>'+(g.rules||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div></section><section class="v302-panel"><div class="v302-ph"><span>Criterios del Bono '+S.bonus+'</span><span>Regla, parámetro y cálculo</span></div><div class="v302-scroll"><table class="v302-table v308-gloss-table"><thead><tr><th class="left">Criterio</th><th class="left">Qué evalúa</th><th class="left">Regla en Bono '+S.bonus+'</th><th>Parámetro</th><th>Meta</th><th>Actual</th><th>Puntos</th></tr></thead><tbody>'+(g.criteria||[]).map(c=>{let r=(m.breakdown||[]).find(x=>x.key===c.key)||{};return '<tr><td class="left"><b>'+esc(c.name)+'</b><br><small>'+esc(c.source)+'</small></td><td class="left">'+esc(c.meaning)+'</td><td class="left"><b>'+esc(c.rule||'')+'</b><br><small>'+esc(c.criterion_formula||'')+'</small></td><td>'+esc(c.parameter||'')+'</td><td>'+esc(c.meta)+'</td><td>'+pc(r.compliance_pct)+'</td><td>'+nf(r.points)+' / '+nf(r.max_points)+'</td></tr>'}).join('')+'</tbody></table></div><div class="v302-note">Los tres criterios comerciales pueden ser los mismos, pero la forma de convertirlos a puntos es exclusiva de cada Bono. Si falta información se muestra N/D y no se transforma en incumplimiento.</div></section></div>'+examplePanel(d)+calculator(d)+'</div>'}
 function calcConfig(d){let cfg=d.glossary?.config||{},b=S.bonus;if(b===2||b===5){let p=cfg.max_points||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-calc-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'</div>'}if(b===3){let w=cfg.weights||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-calc-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'</div>'}if(b===4){return '<div class="v302-field"><label>Rangos de simulación (JSON por criterio)</label><textarea id="v302CalcBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>'}if(b===6){let mins=cfg.minimums||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-calc-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización autorizada %</label><input id="v302CalcPenalty" type="number" value="'+esc(cfg.penalty_pct??0)+'"></div></div>'}return '<div class="v302-note">Bono 1 usa exactamente su cálculo original; la simulación no modifica información real.</div>'}
 function calculator(d){return '<section class="v302-panel"><div class="v302-ph"><span>Calculadora interactiva · simulación</span><span>No modifica metas ni resultados reales</span></div><div class="v302-body"><div class="v302-calc-grid">'+[['sales','Venta vs Meta'],['ddi','DDI por Cat'],['attendance','Asistencia']].map(x=>'<div class="v302-calc-row"><div><b style="font-size:11px">'+x[1]+'</b></div><div class="v302-field"><label>Meta</label><input data-calc-meta="'+x[0]+'" type="number" value="100"></div><div class="v302-field"><label>Resultado</label><input data-calc-result="'+x[0]+'" type="number" value="100"></div></div>').join('')+'</div>'+calcConfig(d)+'<div style="margin-top:7px"><button class="v302-btn" id="v302Sim">Simular</button></div><div id="v302SimOut"></div></div></section>'}
 function configFields(cfg,b){if(b===1)return '<div class="v302-note">Bono 1 está bloqueado para conservar íntegramente sus fórmulas, ponderaciones, fuentes y resultados históricos.</div>';let common='<div class="v302-field"><label>Estado</label><select id="v302CfgActive"><option value="1" '+(cfg.active?'selected':'')+'>Activo</option><option value="0" '+(!cfg.active?'selected':'')+'>Desactivado</option></select></div>';if(b===2||b===5){let p=cfg.max_points||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-cfg-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Límite de cumplimiento %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??100)+'"></div>'}if(b===3){let w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Límite de cumplimiento %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??100)+'"></div>'}if(b===4)return common+'<div class="v302-field" style="grid-column:1/-1"><label>Rangos autorizados (JSON)</label><textarea id="v302CfgBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>';if(b===6){let mins=cfg.minimums||{},w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-cfg-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización autorizada %</label><input id="v302CfgPenalty" type="number" value="'+esc(cfg.penalty_pct??0)+'"></div>'}return common}
 function configView(d){let cfg=d.glossary?.config||{};return '<section class="v302-panel"><div class="v302-ph"><span>Configuración administrativa · Bono '+S.bonus+'</span><span>Versionada por periodo efectivo</span></div><div class="v302-body"><div class="v302-config-grid"><div class="v302-field"><label>Vigencia desde</label><input id="v302CfgEffective" type="month" value="'+esc(d.month)+'"></div><div class="v302-field"><label>Meta y estándares</label><input disabled value="Definidos por la información y configuración vigente"></div><div class="v302-field"><label>Bono oficial</label><select id="v302CfgOfficial"><option value="0">No cambiar</option><option value="1">Hacer oficial desde la vigencia</option></select></div>'+configFields(cfg,S.bonus)+'</div><div style="margin-top:8px"><button class="v302-btn" id="v302SaveCfg">'+(S.bonus===1?'Seleccionar Bono 1 como oficial':'Guardar nueva versión')+'</button></div><div id="v302CfgMsg"></div></div><div class="v302-note">Cada guardado crea una nueva versión con usuario, fecha y hora. Los periodos anteriores conservan la configuración que les corresponde.</div></section><div id="v302History"></div>'}
-function body(d){if(S.section==='ranking')return v304Method(d)+v304Ranking(d,true);if(S.section==='models')return dataView(d,'Todos');if(S.section==='catalogs')return catalogView(d);if(S.section==='compare')return v304Method(d)+compare(d);if(S.section==='glossary')return glossary(d);if(S.section==='config')return configView(d);return summary(d)}
+function body(d){if(S.section==='ranking')return v304Method(d)+v308SectionGuide(d,'ranking')+v304Ranking(d,true);if(S.section==='models')return dataView(d,'Todos');if(S.section==='catalogs')return catalogView(d);if(S.section==='compare')return v304Method(d)+compare(d);if(S.section==='glossary')return glossary(d);if(S.section==='config')return configView(d);return summary(d)}
 function navShell(d){return '<div class="v307-nav-shell">'+nav(d)+toolsNav(d)+'</div>'}
 function page(d){return '<div class="v302"><div class="v302-head"><div><h2>Bonos</h2><div class="v302-sub">Selecciona Bono 1 a Bono 6 y compara cuál metodología se adapta mejor a la operación comercial.</div></div>'+filters(d)+'</div>'+bonusTabs(d)+navShell(d)+body(d)+'</div>'}
 
@@ -608,11 +714,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             if 'id="v302-js"' not in html:html=html.replace("</body>",js+"</body>",1)
             headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V307-BONUS-TABS-SIDEBAR-LAYOUT"
+            headers["X-Operations-Bonus-Version"]="V308-BONUS-SPECIFIC-TABS-GLOSSARY"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V302] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V302_SIX_SALES_BONUSES=True
-    print("[V307] Bonos: pestañas compactas tipo Configuración, icono visible y paneles sin solapamiento.",flush=True)
+    print("[V308] Bonos: información propia por pestaña y glosario de criterios por metodología.",flush=True)
