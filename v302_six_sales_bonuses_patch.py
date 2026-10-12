@@ -616,6 +616,37 @@ body[data-v302="1"] #analysisNav,body[data-v302="1"] #operativoNav,body[data-v30
 .v304-empty-config{padding:18px;text-align:center;font-size:12px;color:#6d8195}
 @media(max-width:950px){.v304-method-main b{font-size:12px}.v304-method-main span{font-size:9.5px}.v304-main-tabs button{height:31px;font-size:10px}.v304-tools-nav button{font-size:9.5px;height:29px}.v304-top{gap:3px}.v304-mid{gap:3px;margin-top:3px}.v304-comp .head{font-size:9px}.v304-comp .pct{font-size:19px}.v304-comp .pts{font-size:9px}.v304-comp .src{font-size:8px}.v304-ring{width:102px;height:102px}.v304-ring:after{width:72px;height:72px}.v304-ring b{font-size:19px}.v304-ring small{font-size:7px}.v304-score-points{font-size:10px}.v304-score-note{font-size:8px}.v304-ranking .v302-table th,.v304-ranking .v302-table td{font-size:8.5px}.v304-target{grid-template-columns:80px 1fr;padding:6px}.v304-target-num strong{font-size:24px}.v304-mini th,.v304-mini td{font-size:8.5px;padding:4px}.v304-cat h4{font-size:9px}.v304-cat b{font-size:14px}.v304-cat small,.v304-cat-grid span{font-size:7.5px}.v304-detail .v302-table th,.v304-detail .v302-table td{font-size:8px}}
 @media(max-width:640px){.v304-method{padding:5px 6px}.v304-main-tabs{gap:2px}.v304-main-tabs button{font-size:8.5px;height:28px}.v304-tools-nav{justify-content:flex-start}.v304-tools-nav button{font-size:8px;height:27px}.v304-top{grid-template-columns:1.08fr .82fr 1.1fr}.v304-mid{grid-template-columns:.85fr 1.15fr}}
+
+/* V309 · Dashboard final basado en los seis bocetos aprobados */
+.v309-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:7px 0;padding:9px 11px;border:1px solid #dbe5ee;border-radius:10px;background:#fff}
+.v309-meta-copy{min-width:0}.v309-meta-copy b{display:block;font-size:16px;line-height:1.05;color:#123f73}.v309-meta-copy span{display:block;margin-top:3px;font-size:11px;line-height:1.3;color:#58738f;font-weight:700}
+.v309-badges{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}.v309-badge{display:inline-flex;align-items:center;gap:5px;min-height:25px;padding:0 9px;border-radius:999px;background:#edf5ff;color:#155d9c;font-size:9.5px;font-weight:950;white-space:nowrap}.v309-badge.good{background:#e8f8ef;color:#117443}.v309-badge.warn{background:#fff3d9;color:#8a5b00}.v309-badge.bad{background:#ffe8eb;color:#a92236}.v309-badge.info{background:#eef3ff;color:#2d55a2}
+.v309-top{display:grid;grid-template-columns:minmax(0,1.22fr) minmax(260px,.78fr) minmax(360px,1.03fr);gap:8px;align-items:stretch}
+.v309-bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;align-items:stretch}
+.v309-panel{min-width:0;overflow:hidden;border:1px solid #dbe5ee;border-radius:10px;background:#fff}
+.v309-ph{height:35px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px;border-bottom:1px solid #e6edf4;color:#123f73;font-size:11px;font-weight:950}.v309-ph span:last-child{font-size:9.5px;white-space:nowrap}
+.v309-components{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}
+.v309-comp{display:flex;flex-direction:column;min-width:0;min-height:270px;border:1px solid #dce6ef;border-radius:9px;overflow:hidden;background:#fff}
+.v309-comp-head{height:35px;display:flex;align-items:center;justify-content:center;padding:0 5px;color:#fff;font-size:11px;font-weight:950;text-align:center}.v309-comp.sales .v309-comp-head{background:#20aa63}.v309-comp.ddi .v309-comp-head{background:#ff8626}.v309-comp.attendance .v309-comp-head{background:#7147e8}
+.v309-comp-body{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:flex-start;padding:10px 7px 7px;text-align:center}
+.v309-mini-ring{--p:0;--ring-color:#1878e8;width:84px;height:84px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(var(--ring-color) calc(var(--p)*1%),#e9eef3 0)}.v309-mini-ring:after{content:"";position:absolute;width:62px;height:62px;border-radius:50%;background:#fff}.v309-mini-ring b{position:relative;z-index:1;font-size:19px;color:#123f73}
+.v309-comp.sales .v309-mini-ring{--ring-color:#20aa63}.v309-comp.ddi .v309-mini-ring{--ring-color:#ff8626}.v309-comp.attendance .v309-mini-ring{--ring-color:#7147e8}
+.v309-pts{margin-top:7px;font-size:14px;font-weight:950;color:#123f73}.v309-pts small{display:block;margin-top:1px;font-size:9px;color:#6b8095;font-weight:750}
+.v309-rulebox{width:100%;margin-top:7px;padding:6px 5px;border-radius:7px;background:#f4f7fb;color:#315c82;font-size:8.5px;line-height:1.25;font-weight:820;overflow-wrap:anywhere}
+.v309-status{display:inline-flex;align-items:center;margin-top:5px;padding:3px 7px;border-radius:999px;background:#edf3f8;color:#526c83;font-size:8.5px;font-weight:950}.v309-status.good{background:#e6f7ec;color:#137447}.v309-status.warn{background:#fff1d0;color:#916000}.v309-status.bad{background:#ffe7ea;color:#ae2438}
+.v309-source{margin-top:auto;padding-top:6px;font-size:8px;line-height:1.2;color:#71869b;font-weight:750}
+.v309-att-edit{display:flex;gap:4px;width:100%;margin-top:5px}.v309-att-edit input{min-width:0;width:100%;height:27px;border:1px solid #d1ddea;border-radius:6px;padding:0 6px;font-size:9px}.v309-att-edit button{height:27px;border:0;border-radius:6px;background:#7147e8;color:#fff;font-size:8.5px;font-weight:900;padding:0 8px}
+.v309-score{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:305px;padding:11px;text-align:center}.v309-score-ring{--p:0;width:154px;height:154px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(#1277e8 calc(var(--p)*1%),#e8edf2 0)}.v309-score-ring:after{content:"";position:absolute;width:111px;height:111px;border-radius:50%;background:#fff}.v309-score-ring>div{position:relative;z-index:1}.v309-score-ring b{display:block;font-size:29px;line-height:1;color:#123f73}.v309-score-ring span{display:block;margin-top:3px;font-size:9px;color:#5e7891;font-weight:850}.v309-score-points{margin-top:10px;font-size:18px;color:#123f73;font-weight:950}.v309-score-note{width:100%;margin-top:8px;padding:7px;border-radius:7px;background:#f4f7fb;color:#315c82;font-size:8.5px;line-height:1.3;font-weight:800}.v309-score-alert{width:100%;margin-top:7px;padding:7px;border-radius:7px;background:#fff1cc;color:#835700;font-size:9px;line-height:1.3;font-weight:950}
+.v309-rank-wrap{overflow:auto;max-height:305px}.v309-rank{width:100%;border-collapse:collapse;min-width:520px}.v309-rank th,.v309-rank td{padding:5px 5px;border-bottom:1px solid #e8eef4;font-size:9px;text-align:center}.v309-rank th{position:sticky;top:0;background:#f5f8fb;color:#315a7f;font-weight:950}.v309-rank td.left,.v309-rank th.left{text-align:left}.v309-rank tr.selected{background:#eaf4ff}.v309-rank .pctbar{display:flex;align-items:center;gap:4px}.v309-rank .bar{width:47px;height:8px;border-radius:999px;background:#edf1f5;overflow:hidden}.v309-rank .bar i{display:block;height:100%;border-radius:999px;background:#53ca8b}.v309-rank .bar i.mid{background:#ffc84c}.v309-rank .bar i.bad{background:#ff7373}
+.v309-class{display:inline-flex;padding:3px 6px;border-radius:999px;background:#eef3f8;color:#526c83;font-size:8px;font-weight:900}.v309-class.good{background:#e7f7ec;color:#117143}.v309-class.mid{background:#fff1d2;color:#8f6000}.v309-class.bad{background:#ffe7e9;color:#ae2438}
+.v309-table-wrap{overflow:auto;max-height:220px}.v309-table{width:100%;border-collapse:collapse;min-width:520px}.v309-table th,.v309-table td{padding:5px 5px;border-bottom:1px solid #e9eef3;font-size:8.5px;text-align:center}.v309-table th{background:#f5f8fb;color:#315a7f;font-weight:950}.v309-table td.left,.v309-table th.left{text-align:left}.v309-table tfoot td{background:#eef5fb;font-weight:950;color:#123f73}
+.v309-progress{display:flex;align-items:center;gap:5px;min-width:95px}.v309-progress span{flex:1;height:8px;border-radius:999px;background:#edf1f5;overflow:hidden}.v309-progress i{display:block;height:100%;border-radius:999px;background:#58c98e}.v309-progress i.mid{background:#ffc94f}.v309-progress i.bad{background:#ff7777}.v309-progress b{min-width:31px;font-size:8px}
+.v309-empty{padding:18px;text-align:center;color:#74879a;font-size:10px;font-weight:800}
+.v309-subtabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin:0 0 7px}.v309-subtabs button{height:32px;border:1px solid #dce6ef;border-radius:8px;background:#fff;color:#315b80;font-size:10px;font-weight:950}.v309-subtabs button.active{background:#1474e6;border-color:#1474e6;color:#fff}
+.v309-page-note{margin:7px 0;padding:8px 10px;border:1px solid #dce6ef;border-radius:8px;background:#f8fbff;color:#4e6d89;font-size:9.5px;line-height:1.35;font-weight:780}
+.v309-gloss-intro{margin-bottom:7px;padding:9px 10px;border-radius:8px;background:#eef6ff;color:#244f77;font-size:10px;line-height:1.4;font-weight:800}
+@media(max-width:1250px){.v309-top{grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr)}.v309-top .v309-ranking-panel{grid-column:1/-1}.v309-bottom{grid-template-columns:1fr 1fr}.v309-bottom>*:last-child{grid-column:1/-1}}
+@media(max-width:820px){.v309-meta{align-items:flex-start;flex-direction:column}.v309-badges{justify-content:flex-start}.v309-top,.v309-bottom{grid-template-columns:1fr}.v309-top .v309-ranking-panel,.v309-bottom>*:last-child{grid-column:auto}.v309-components{grid-template-columns:repeat(3,minmax(160px,1fr));overflow-x:auto;touch-action:pan-x}.v309-score{min-height:250px}.v309-subtabs{grid-template-columns:repeat(3,minmax(120px,1fr));overflow-x:auto}}
 </style>'''
 
     js=r'''<script id="v302-js">(function(){if(window.__V302_SIX_BONUSES)return;window.__V302_SIX_BONUSES=true;
@@ -668,7 +699,120 @@ function v308SectionGuide(d,section){
   }
   return '<section class="v308-guide"><div><b>'+esc(title)+'</b><span>'+esc(desc)+'</span></div><small>'+esc(rule)+'</small></section>';
 }
-function summary(d){return v304Method(d)+v308SectionGuide(d,'summary')+'<div class="v304-top">'+v304Components(d)+v304Score(d)+v304Ranking(d,false)+'</div><div class="v304-mid">'+v304Target(d)+v304Catalogs(d,'Todos')+'</div>'+v304Details(d,'Todos')}
+
+function v309MethodInfo(d){
+  const b=Number(S.bonus),g=d.glossary||{},cfg=d.configs?.[b]||d.configs?.[String(b)]||{},official=Number(d.official_bonus)===b,m=d.model||{};
+  const tags={
+    1:['Modelo base (original)'],
+    2:['Metodología proporcional','Parámetros configurables'],
+    3:['Ponderación configurable','Comparativo disponible'],
+    4:['Niveles escalonados','Rangos configurables'],
+    5:['Acumulación de puntos','Ranking por puntuación'],
+    6:['Mínimos requeridos','Validación integral']
+  }[b]||[];
+  let state=cfg.active?(m.config_ready===false?'Pendiente de configuración':'Activo'):'Pendiente de configuración';
+  let stateCls=cfg.active&&m.config_ready!==false?'good':'warn';
+  return '<div class="v309-meta"><div class="v309-meta-copy"><b>Bono '+b+'</b><span>'+esc(g.objective||'')+'</span></div><div class="v309-badges"><span class="v309-badge '+stateCls+'">'+esc(state)+'</span>'+(official?'<span class="v309-badge info">🏆 Bono oficial</span>':'')+tags.map((t,i)=>'<span class="v309-badge '+(i?'info':'')+'">'+esc(t)+'</span>').join('')+'</div></div>'
+}
+function v309StatusClass(r){
+  const s=String(r?.status||'').toLowerCase(),p=r?.compliance_pct;
+  if(p==null)return'';
+  if(s.includes('no cumple')||s.includes('sin nivel'))return'bad';
+  if(s.includes('cumple mínimo')||s.includes('nivel asignado')||n(p)>=90)return'good';
+  return n(p)>=70?'warn':'bad'
+}
+function v309Ring(p,clsName){
+  const v=p==null?0:Math.max(0,Math.min(100,n(p)));
+  return '<div class="v309-mini-ring '+(clsName||'')+'" style="--p:'+v+'"><b>'+pc(p)+'</b></div>'
+}
+function v309Components(d){
+  const rows=d.model?.breakdown||[],base=d.base||{},s=base.selected||{},g=d.glossary||{};
+  const src={sales:'Base Muertos/Cambios + Meta',ddi:'Capacidades · DDI e inversión',attendance:'Asistencia'};
+  const order=[['sales','Venta vs Meta'],['ddi','DDI por Cat'],['attendance','Asistencia']];
+  return '<section class="v309-panel"><div class="v309-ph"><span>▥ Desempeño por componente del bono</span><span>Bono '+S.bonus+'</span></div><div class="v309-components">'+order.map(x=>{
+    const r=rows.find(y=>y.key===x[0])||{},gc=(g.criteria||[]).find(y=>y.key===x[0])||{},sc=v309StatusClass(r);
+    let extra='';
+    if(S.bonus===6&&r.minimum!=null)extra='<div class="v309-rulebox">Mínimo requerido: <b>'+pc(r.minimum)+'</b></div>';
+    else if(S.bonus===4)extra='<div class="v309-rulebox">'+esc(gc.parameter||'Rangos por configurar')+'</div>';
+    else extra='<div class="v309-rulebox">'+esc(gc.parameter||'')+'<br>'+esc(gc.criterion_formula||gc.rule||'')+'</div>';
+    let edit='';
+    if(x[0]==='attendance'&&base.can_edit_attendance){
+      edit='<div class="v309-att-edit"><input id="v304Att" type="number" min="0" max="100" step="0.1" value="'+(s.attendance?.pct==null?'':esc(s.attendance.pct))+'"><button id="v304AttSave">Guardar</button></div>';
+    }
+    return '<div class="v309-comp '+x[0]+'"><div class="v309-comp-head">'+esc(x[1])+'</div><div class="v309-comp-body">'+v309Ring(r.compliance_pct,x[0])+'<div class="v309-pts">'+(r.points==null?'Puntos N/D':nf(r.points)+' / '+nf(r.max_points)+' pts')+'<small>'+(r.max_points==null?'':('de '+nf(r.max_points)+' posibles'))+'</small></div><span class="v309-status '+sc+'">'+esc(r.status||'N/D')+'</span>'+extra+'<div class="v309-source">'+esc(src[x[0]])+'</div>'+edit+'</div></div>'
+  }).join('')+'</div></section>'
+}
+function v309Score(d){
+  const m=d.model||{},p=m.compliance_pct,v=p==null?0:Math.max(0,Math.min(100,n(p))),b=Number(S.bonus);
+  let note=m.formula||m.configuration_reason||'';
+  let alert='';
+  if(b===6&&m.config_ready&&m.ready&&String(m.classification||'').toLowerCase().includes('no cumple'))alert='<div class="v309-score-alert">⚠ Resultado parcial: uno o más criterios no cumplen el mínimo autorizado.</div>';
+  if(!m.config_ready)alert='<div class="v309-score-alert">⚙ '+esc(m.configuration_reason||'La metodología requiere configuración autorizada.')+'</div>';
+  return '<section class="v309-panel"><div class="v309-ph"><span>🏆 Resultado del Bono · '+esc(d.selected_store||'')+'</span><span>Bono '+S.bonus+'</span></div><div class="v309-score"><div class="v309-score-ring" style="--p:'+v+'"><div><b>'+pc(p)+'</b><span>'+(m.ready?'Cumplimiento':'Parcial · falta información')+'</span></div></div><div class="v309-score-points">'+nf(m.points)+' / '+nf(m.max_points)+' pts</div>'+alert+'<div class="v309-score-note">'+esc(note)+'</div></div></section>'
+}
+function v309Class(text,p){
+  let s=String(text||'');
+  let c=(s.toLowerCase().includes('no cumple')||s.toLowerCase().includes('crítico')||n(p)<50)?'bad':(s.toLowerCase().includes('riesgo')||n(p)<80)?'mid':'good';
+  return '<span class="v309-class '+c+'">'+esc(s||'N/D')+'</span>'
+}
+function v309Ranking(d,full=false){
+  let a=(d.ranking||[]).slice();if(!full)a=a.slice(0,10);
+  return '<section class="v309-panel v309-ranking-panel"><div class="v309-ph"><span>🏆 Ranking de tiendas · mejor a peor</span><span>Bono '+S.bonus+'</span></div><div class="v309-rank-wrap"><table class="v309-rank"><thead><tr><th>#</th><th class="left">Tienda</th><th>Puntos</th><th>Máximo</th><th>Cumplimiento</th><th>Clasificación</th></tr></thead><tbody>'+a.map(r=>{
+    let p=r.compliance_pct,w=p==null?0:Math.max(0,Math.min(100,n(p))),bar=w>=80?'':w>=60?'mid':'bad';
+    return '<tr class="'+(r.store===d.selected_store?'selected':'')+'" data-v304-store="'+esc(r.store)+'"><td>'+(r.rank??'—')+'</td><td class="left"><b>'+esc(r.store)+'</b></td><td>'+nf(r.points)+'</td><td>'+nf(r.max_points)+'</td><td><div class="pctbar"><span class="bar"><i class="'+bar+'" style="width:'+w+'%"></i></span><b>'+pc(p)+'</b></div></td><td>'+v309Class(r.classification||r.configuration_reason,p)+'</td></tr>'
+  }).join('')+'</tbody></table></div></section>'
+}
+function v309Progress(p){
+  const v=p==null?0:Math.max(0,Math.min(100,n(p))),cl=v>=80?'':v>=60?'mid':'bad';
+  return '<div class="v309-progress"><span><i class="'+cl+'" style="width:'+v+'%"></i></span><b>'+pc(p)+'</b></div>'
+}
+function v309ModelsPanel(d,title='Modelos objetivo destacados',limit=5){
+  const rows=(d.base?.selected?.details||[]).slice(0,limit);
+  return '<section class="v309-panel"><div class="v309-ph"><span>◎ '+esc(title)+'</span><span>Bono '+S.bonus+'</span></div><div class="v309-table-wrap">'+(rows.length?'<table class="v309-table"><thead><tr><th class="left">ID / Modelo</th><th>Catálogo</th><th>DDI inicial</th><th>DDI actual</th><th>Avance</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="left"><b>'+esc(r.id_art)+'</b><br>'+esc(r.model)+'</td><td>'+esc(r.catalog)+'</td><td>'+nf(r.initial_ddi)+'</td><td>'+nf(r.current_ddi)+'</td><td>'+v309Progress(r.progress_pct)+'</td></tr>').join('')+'</tbody></table>':'<div class="v309-empty">Sin modelos objetivo para la selección.</div>')+'</div></section>'
+}
+function v309CatalogPanel(d,title='Resumen por catálogo (DDI)'){
+  const cats=d.base?.selected?.ddi?.catalogs||[];
+  return '<section class="v309-panel"><div class="v309-ph"><span>◇ '+esc(title)+'</span><span>Bono '+S.bonus+'</span></div><div class="v309-table-wrap">'+(cats.length?'<table class="v309-table"><thead><tr><th class="left">Catálogo</th><th>Modelos</th><th>Red. DDI</th><th>Red. inversión</th><th>Avance</th></tr></thead><tbody>'+cats.map(x=>'<tr><td class="left"><b>'+esc(x.catalog)+'</b></td><td>'+nf(x.models)+'</td><td>'+pc(x.ddi_reduction_pct)+'</td><td>'+pc(x.investment_reduction_pct)+'</td><td>'+v309Progress(x.combined_pct)+'</td></tr>').join('')+'</tbody></table>':'<div class="v309-empty">Sin información por catálogo.</div>')+'</div></section>'
+}
+function v309AttendancePanel(d){
+  const r=(d.model?.breakdown||[]).find(x=>x.key==='attendance')||{},s=d.base?.selected?.attendance||{};
+  return '<section class="v309-panel"><div class="v309-ph"><span>♟ Asistencia de personal</span><span>Bono '+S.bonus+'</span></div><div class="v309-table-wrap"><table class="v309-table"><thead><tr><th class="left">Indicador</th><th>Meta</th><th>Real</th><th>Cumplimiento</th><th>Puntos</th></tr></thead><tbody><tr><td class="left"><b>Asistencia general</b></td><td>100%</td><td>'+pc(s.pct)+'</td><td>'+v309Progress(r.compliance_pct)+'</td><td>'+nf(r.points)+' / '+nf(r.max_points)+'</td></tr></tbody></table></div><div class="v302-note">Se muestra únicamente la información real disponible de Asistencia; no se generan subindicadores ficticios.</div></section>'
+}
+function v309CriteriaPanel(d,title){
+  const rows=d.model?.breakdown||[],g=d.glossary||{};
+  return '<section class="v309-panel"><div class="v309-ph"><span>▥ '+esc(title)+'</span><span>Bono '+S.bonus+'</span></div><div class="v309-table-wrap"><table class="v309-table"><thead><tr><th class="left">Criterio</th><th>Parámetro</th><th>Cumplimiento</th><th>Puntos</th><th>Máximo</th></tr></thead><tbody>'+rows.map(r=>{let gc=(g.criteria||[]).find(x=>x.key===r.key)||{};return '<tr><td class="left"><b>'+esc(r.indicator)+'</b></td><td>'+esc(gc.parameter||'—')+'</td><td>'+v309Progress(r.compliance_pct)+'</td><td>'+nf(r.points)+'</td><td>'+nf(r.max_points)+'</td></tr>'}).join('')+'</tbody><tfoot><tr><td class="left">Total</td><td></td><td>'+pc(d.model?.compliance_pct)+'</td><td>'+nf(d.model?.points)+'</td><td>'+nf(d.model?.max_points)+'</td></tr></tfoot></table></div></section>'
+}
+function v309BandsPanel(d){
+  const cfg=d.glossary?.config||{},bands=cfg.bands||{},names={sales:'Venta vs Meta',ddi:'DDI por Cat',attendance:'Asistencia'};
+  let rows=[];
+  for(const k of ['sales','ddi','attendance'])for(const x of (bands[k]||[]))rows.push({k,name:names[k],min:x.min,max:x.max,points:x.points});
+  return '<section class="v309-panel"><div class="v309-ph"><span>▥ Escalas de cumplimiento</span><span>Bono 4</span></div><div class="v309-table-wrap">'+(rows.length?'<table class="v309-table"><thead><tr><th class="left">Criterio</th><th>Desde</th><th>Hasta</th><th>Puntos</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="left"><b>'+esc(r.name)+'</b></td><td>'+pc(r.min)+'</td><td>'+(r.max==null?'Sin tope':pc(r.max))+'</td><td>'+nf(r.points)+'</td></tr>').join('')+'</tbody></table>':'<div class="v309-empty">Los rangos del Bono 4 aún no están configurados. Configúralos desde Configuración para activar este modelo.</div>')+'</div></section>'
+}
+function v309MinimumsPanel(d){
+  const rows=d.model?.breakdown||[],g=d.glossary||{};
+  return '<section class="v309-panel"><div class="v309-ph"><span>▣ Validación de mínimos</span><span>Bono 6</span></div><div class="v309-table-wrap"><table class="v309-table"><thead><tr><th class="left">Componente</th><th>Resultado</th><th>Mínimo requerido</th><th>Estatus</th><th>Impacto</th></tr></thead><tbody>'+rows.map(r=>{let gc=(g.criteria||[]).find(x=>x.key===r.key)||{},met=String(r.status||'').includes('Cumple mínimo');return '<tr><td class="left"><b>'+esc(r.indicator)+'</b></td><td>'+pc(r.compliance_pct)+'</td><td>'+(r.minimum==null?'Pendiente':pc(r.minimum))+'</td><td>'+v309Class(r.status,r.compliance_pct)+'</td><td>'+esc(met?'Se considera en el resultado':'Resultado condicionado')+'</td></tr>'}).join('')+'</tbody></table></div></section>'
+}
+function v309Bottom(d){
+  const b=Number(S.bonus);
+  if(b===1)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
+  if(b===2)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CriteriaPanel(d,'Regla proporcional por criterio')+v309AttendancePanel(d)+'</div>';
+  if(b===3)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Matriz de ponderaciones')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
+  if(b===4)return '<div class="v309-bottom">'+v309BandsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos por nivel (DDI)')+'</div>';
+  if(b===5)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Bolsa de puntos por criterio')+v309CatalogPanel(d,'Resumen por catálogo')+v309ModelsPanel(d,'Mercancía objetivo')+'</div>';
+  return '<div class="v309-bottom">'+v309MinimumsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos observados')+'</div>'
+}
+function v309Summary(d){
+  return v309MethodInfo(d)+'<div class="v309-top">'+v309Components(d)+v309Score(d)+v309Ranking(d,false)+'</div>'+v309Bottom(d)
+}
+function v309ModelsPage(d){
+  return v309MethodInfo(d)+'<div class="v309-page-note">Detalle por ID de la cartera objetivo que alimenta el criterio DDI por Cat del Bono '+S.bonus+'. La metodología del bono determina cómo este avance se convierte en puntos.</div>'+v304Details(d,'Todos')
+}
+function v309CatalogPage(d){
+  if(!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';
+  return v309MethodInfo(d)+'<div class="v309-subtabs">'+['Abrigador','Licencias','Básicos'].map(x=>'<button data-v305-catalog="'+x+'" class="'+(S.catalog===x?'active':'')+'">'+x+'</button>').join('')+'</div><div class="v309-page-note">Catálogo '+esc(S.catalog)+' · modelos objetivo con DDI inicial mayor a 90 días e inversión inicial superior al promedio del catálogo. Se muestran únicamente datos reales de Capacidades.</div><div class="v309-bottom">'+v309CatalogPanel(d,'Resumen de '+S.catalog)+v309ModelsPanel({...d,base:{...d.base,selected:{...(d.base?.selected||{}),details:(d.base?.selected?.details||[]).filter(r=>r.catalog===S.catalog)}}},'Modelos objetivo · '+S.catalog,10)+v309CriteriaPanel(d,'Cómo aporta DDI al Bono '+S.bonus)+'</div>'+v304Details(d,S.catalog)
+}
+function summary(d){return v309Summary(d)}
+
 function sources(d){let b=d.base||{},s=b.selected||{};return '<section class="v302-panel"><div class="v302-ph"><span>Fuentes de información del bono</span><span>No se mezclan datos operativos</span></div><div class="v302-body v302-sourcecards"><div class="v302-sourcecard"><b>Venta vs Meta</b><div>Venta: '+money(s.sales?.actual)+'</div><div>Meta: '+money(s.sales?.goal)+'</div><div>Fuente: Base Muertos/Cambios + METAS 2026</div></div><div class="v302-sourcecard"><b>DDI por Cat</b><div>'+pc(s.ddi?.pct)+'</div><div>Modelos objetivo: '+nf(s.target_models)+'</div><div>Fuente: Capacidades</div></div><div class="v302-sourcecard"><b>Asistencia</b><div>'+pc(s.attendance?.pct)+'</div><div>Fuente: captura autorizada</div></div></div></section>'}
 
 function dataView(d,only='Todos'){return v304Method(d)+v308SectionGuide(d,'models')+'<div class="v304-mid">'+v304Target(d)+v304Catalogs(d,only)+'</div>'+v304Details(d,only)}
@@ -681,7 +825,7 @@ function calcConfig(d){let cfg=d.glossary?.config||{},b=S.bonus;if(b===2||b===5)
 function calculator(d){return '<section class="v302-panel"><div class="v302-ph"><span>Calculadora interactiva · simulación</span><span>No modifica metas ni resultados reales</span></div><div class="v302-body"><div class="v302-calc-grid">'+[['sales','Venta vs Meta'],['ddi','DDI por Cat'],['attendance','Asistencia']].map(x=>'<div class="v302-calc-row"><div><b style="font-size:11px">'+x[1]+'</b></div><div class="v302-field"><label>Meta</label><input data-calc-meta="'+x[0]+'" type="number" value="100"></div><div class="v302-field"><label>Resultado</label><input data-calc-result="'+x[0]+'" type="number" value="100"></div></div>').join('')+'</div>'+calcConfig(d)+'<div style="margin-top:7px"><button class="v302-btn" id="v302Sim">Simular</button></div><div id="v302SimOut"></div></div></section>'}
 function configFields(cfg,b){if(b===1)return '<div class="v302-note">Bono 1 está bloqueado para conservar íntegramente sus fórmulas, ponderaciones, fuentes y resultados históricos.</div>';let common='<div class="v302-field"><label>Estado</label><select id="v302CfgActive"><option value="1" '+(cfg.active?'selected':'')+'>Activo</option><option value="0" '+(!cfg.active?'selected':'')+'>Desactivado</option></select></div>';if(b===2||b===5){let p=cfg.max_points||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-cfg-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Límite de cumplimiento %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??100)+'"></div>'}if(b===3){let w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Límite de cumplimiento %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??100)+'"></div>'}if(b===4)return common+'<div class="v302-field" style="grid-column:1/-1"><label>Rangos autorizados (JSON)</label><textarea id="v302CfgBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>';if(b===6){let mins=cfg.minimums||{},w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-cfg-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización autorizada %</label><input id="v302CfgPenalty" type="number" value="'+esc(cfg.penalty_pct??0)+'"></div>'}return common}
 function configView(d){let cfg=d.glossary?.config||{};return '<section class="v302-panel"><div class="v302-ph"><span>Configuración administrativa · Bono '+S.bonus+'</span><span>Versionada por periodo efectivo</span></div><div class="v302-body"><div class="v302-config-grid"><div class="v302-field"><label>Vigencia desde</label><input id="v302CfgEffective" type="month" value="'+esc(d.month)+'"></div><div class="v302-field"><label>Meta y estándares</label><input disabled value="Definidos por la información y configuración vigente"></div><div class="v302-field"><label>Bono oficial</label><select id="v302CfgOfficial"><option value="0">No cambiar</option><option value="1">Hacer oficial desde la vigencia</option></select></div>'+configFields(cfg,S.bonus)+'</div><div style="margin-top:8px"><button class="v302-btn" id="v302SaveCfg">'+(S.bonus===1?'Seleccionar Bono 1 como oficial':'Guardar nueva versión')+'</button></div><div id="v302CfgMsg"></div></div><div class="v302-note">Cada guardado crea una nueva versión con usuario, fecha y hora. Los periodos anteriores conservan la configuración que les corresponde.</div></section><div id="v302History"></div>'}
-function body(d){if(S.section==='ranking')return v304Method(d)+v308SectionGuide(d,'ranking')+v304Ranking(d,true);if(S.section==='models')return dataView(d,'Todos');if(S.section==='catalogs')return catalogView(d);if(S.section==='compare')return v304Method(d)+compare(d);if(S.section==='glossary')return glossary(d);if(S.section==='config')return configView(d);return summary(d)}
+function body(d){if(S.section==='ranking')return v309MethodInfo(d)+'<div class="v309-page-note">Ranking completo calculado exclusivamente con la metodología del Bono '+S.bonus+'.</div>'+v309Ranking(d,true);if(S.section==='models')return v309ModelsPage(d);if(S.section==='catalogs')return v309CatalogPage(d);if(S.section==='compare')return v309MethodInfo(d)+compare(d);if(S.section==='glossary')return '<div class="v309-gloss-intro">Glosario del Bono '+S.bonus+': criterios, parámetros, fórmula, reglas y ejemplo correspondientes exclusivamente a esta metodología.</div>'+glossary(d);if(S.section==='config')return configView(d);return v309Summary(d)}
 function navShell(d){return '<div class="v307-nav-shell">'+nav(d)+toolsNav(d)+'</div>'}
 function page(d){return '<div class="v302"><div class="v302-head"><div><h2>Bonos</h2><div class="v302-sub">Selecciona Bono 1 a Bono 6 y compara cuál metodología se adapta mejor a la operación comercial.</div></div>'+filters(d)+'</div>'+bonusTabs(d)+navShell(d)+body(d)+'</div>'}
 
@@ -714,11 +858,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             if 'id="v302-js"' not in html:html=html.replace("</body>",js+"</body>",1)
             headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V308-BONUS-SPECIFIC-TABS-GLOSSARY"
+            headers["X-Operations-Bonus-Version"]="V309-BONUS-MOCKUPS-FINAL"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V302] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V302_SIX_SALES_BONUSES=True
-    print("[V308] Bonos: información propia por pestaña y glosario de criterios por metodología.",flush=True)
+    print("[V309] Bonos: seis dashboards diferenciados aplicados según los bocetos aprobados.",flush=True)
