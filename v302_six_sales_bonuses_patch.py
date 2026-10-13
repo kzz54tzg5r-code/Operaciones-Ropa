@@ -20,7 +20,7 @@ CRITERIA=(
     ("ddi","DDI por Cat",30.0),
     ("attendance","Asistencia",20.0),
 )
-METHODS={1:"existing",2:"proportional",3:"weighted",4:"bands",5:"accumulated",6:"integral"}
+METHODS={1:"existing",2:"progressive",3:"weighted_accelerated",4:"bands",5:"balanced",6:"gated"}
 
 def install(m):
     if getattr(m,"_V302_SIX_SALES_BONUSES",False): return
@@ -44,12 +44,30 @@ def install(m):
     base_weights={k:w for k,_label,w in CRITERIA}
     base_points={k:w for k,_label,w in CRITERIA}
     defaults={
+        # Bono 1 es el benchmark y permanece INMUTABLE.
         1:{"method":"existing","active":True,"locked":True,"weights":base_weights,"max_points":base_points},
-        2:{"method":"proportional","active":True,"locked":False,"max_points":base_points,"compliance_cap_pct":100.0},
-        3:{"method":"weighted","active":True,"locked":False,"weights":base_weights,"compliance_cap_pct":100.0},
-        4:{"method":"bands","active":False,"locked":False,"bands":{k:[] for k,_,_ in CRITERIA}},
-        5:{"method":"accumulated","active":True,"locked":False,"max_points":base_points,"compliance_cap_pct":100.0},
-        6:{"method":"integral","active":False,"locked":False,"weights":base_weights,"minimums":{k:None for k,_,_ in CRITERIA},"penalty_pct":0.0},
+        # Bono 2: curva progresiva. Evita premiar igual un 70% de venta que un desempeño cercano a meta
+        # y permite un acelerador controlado sólo después de 100%.
+        2:{"method":"progressive","active":True,"locked":False,"max_points":base_points,
+           "sales_floor_pct":80.0,"sales_target_pct":100.0,"sales_cap_pct":110.0,
+           "attendance_floor_pct":90.0,"compliance_cap_pct":110.0},
+        # Bono 3: ponderación comercial revisada; venta sigue siendo la prioridad, DDI gana peso y
+        # asistencia se trata como disciplina de soporte. Venta puede sobrecumplir hasta 110%.
+        3:{"method":"weighted_accelerated","active":True,"locked":False,
+           "weights":{"sales":50.0,"ddi":35.0,"attendance":15.0},"compliance_cap_pct":110.0},
+        # Bono 4: escalones de desempeño. Evita falsa precisión y hace transparentes los saltos de nivel.
+        4:{"method":"bands","active":True,"locked":False,"bands":{
+            "sales":[{"min":0,"max":80,"points":0},{"min":80,"max":90,"points":10},{"min":90,"max":100,"points":30},{"min":100,"max":None,"points":50}],
+            "ddi":[{"min":0,"max":10,"points":0},{"min":10,"max":25,"points":8},{"min":25,"max":50,"points":15},{"min":50,"max":75,"points":23},{"min":75,"max":None,"points":30}],
+            "attendance":[{"min":0,"max":90,"points":0},{"min":90,"max":95,"points":8},{"min":95,"max":98,"points":14},{"min":98,"max":100,"points":18},{"min":100,"max":None,"points":20}],
+        }},
+        # Bono 5: balance. Parte del 50/30/20, pero aplica un multiplicador ligado al peor criterio
+        # para impedir que un resultado extraordinario compense por completo un componente crítico.
+        5:{"method":"balanced","active":True,"locked":False,"weights":base_weights,
+           "balance_strength_pct":30.0,"compliance_cap_pct":100.0},
+        # Bono 6: mínimos obligatorios. Mantiene la suma ponderada y penaliza cuando falla cualquier gate.
+        6:{"method":"gated","active":True,"locked":False,"weights":base_weights,
+           "minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0},"penalty_pct":30.0},
     }
 
     with m.db() as con:
@@ -80,6 +98,26 @@ def install(m):
         if not con.execute("SELECT 1 FROM sales_bonus_official_versions_v302 LIMIT 1").fetchone():
             con.execute("INSERT INTO sales_bonus_official_versions_v302(effective_from,bonus_no,changed_at,changed_by) VALUES(?,?,?,?)",
                 ("0000-00",1,now_iso(),"system"))
+
+        # V311 · auditoría especialista: crea una nueva versión efectiva desde 2026-10
+        # para Bono 2..6 sin reescribir históricos y SIN tocar Bono 1.
+        proposal_actor="system-v311-specialist-review"
+        proposal_effective="2026-10"
+        for b in (2,3,4,5,6):
+            exists=con.execute(
+                "SELECT 1 FROM sales_bonus_model_versions_v302 WHERE bonus_no=? AND changed_by=? LIMIT 1",
+                (b,proposal_actor)
+            ).fetchone()
+            if not exists:
+                ver=int(con.execute(
+                    "SELECT COALESCE(MAX(version),0)+1 AS v FROM sales_bonus_model_versions_v302 WHERE bonus_no=?",
+                    (b,)
+                ).fetchone()["v"])
+                cfg=dict(defaults[b])
+                con.execute(
+                    "INSERT INTO sales_bonus_model_versions_v302(bonus_no,version,effective_from,active,config_json,changed_at,changed_by) VALUES(?,?,?,?,?,?,?)",
+                    (b,ver,proposal_effective,1,json.dumps(cfg,ensure_ascii=False),now_iso(),proposal_actor)
+                )
 
     def base_endpoint():
         for route in getattr(m.app,"routes",[]):
