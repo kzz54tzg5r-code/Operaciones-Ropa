@@ -20,7 +20,7 @@ CRITERIA=(
     ("ddi","DDI por Cat",30.0),
     ("attendance","Asistencia",20.0),
 )
-METHODS={1:"existing",2:"proportional",3:"weighted",4:"bands",5:"accumulated",6:"integral"}
+METHODS={1:"existing",2:"progressive",3:"weighted_accelerated",4:"bands",5:"balanced",6:"gated"}
 
 def install(m):
     if getattr(m,"_V302_SIX_SALES_BONUSES",False): return
@@ -44,12 +44,30 @@ def install(m):
     base_weights={k:w for k,_label,w in CRITERIA}
     base_points={k:w for k,_label,w in CRITERIA}
     defaults={
+        # Bono 1 es el benchmark y permanece INMUTABLE.
         1:{"method":"existing","active":True,"locked":True,"weights":base_weights,"max_points":base_points},
-        2:{"method":"proportional","active":True,"locked":False,"max_points":base_points,"compliance_cap_pct":100.0},
-        3:{"method":"weighted","active":True,"locked":False,"weights":base_weights,"compliance_cap_pct":100.0},
-        4:{"method":"bands","active":False,"locked":False,"bands":{k:[] for k,_,_ in CRITERIA}},
-        5:{"method":"accumulated","active":True,"locked":False,"max_points":base_points,"compliance_cap_pct":100.0},
-        6:{"method":"integral","active":False,"locked":False,"weights":base_weights,"minimums":{k:None for k,_,_ in CRITERIA},"penalty_pct":0.0},
+        # Bono 2: curva progresiva. Evita premiar igual un 70% de venta que un desempeño cercano a meta
+        # y permite un acelerador controlado sólo después de 100%.
+        2:{"method":"progressive","active":True,"locked":False,"max_points":base_points,
+           "sales_floor_pct":80.0,"sales_target_pct":100.0,"sales_cap_pct":110.0,
+           "attendance_floor_pct":90.0,"compliance_cap_pct":110.0},
+        # Bono 3: ponderación comercial revisada; venta sigue siendo la prioridad, DDI gana peso y
+        # asistencia se trata como disciplina de soporte. Venta puede sobrecumplir hasta 110%.
+        3:{"method":"weighted_accelerated","active":True,"locked":False,
+           "weights":{"sales":50.0,"ddi":35.0,"attendance":15.0},"compliance_cap_pct":110.0},
+        # Bono 4: escalones de desempeño. Evita falsa precisión y hace transparentes los saltos de nivel.
+        4:{"method":"bands","active":True,"locked":False,"bands":{
+            "sales":[{"min":0,"max":80,"points":0},{"min":80,"max":90,"points":10},{"min":90,"max":100,"points":30},{"min":100,"max":None,"points":50}],
+            "ddi":[{"min":0,"max":10,"points":0},{"min":10,"max":25,"points":8},{"min":25,"max":50,"points":15},{"min":50,"max":75,"points":23},{"min":75,"max":None,"points":30}],
+            "attendance":[{"min":0,"max":90,"points":0},{"min":90,"max":95,"points":8},{"min":95,"max":98,"points":14},{"min":98,"max":100,"points":18},{"min":100,"max":None,"points":20}],
+        }},
+        # Bono 5: balance. Parte del 50/30/20, pero aplica un multiplicador ligado al peor criterio
+        # para impedir que un resultado extraordinario compense por completo un componente crítico.
+        5:{"method":"balanced","active":True,"locked":False,"weights":base_weights,
+           "balance_strength_pct":30.0,"compliance_cap_pct":100.0},
+        # Bono 6: mínimos obligatorios. Mantiene la suma ponderada y penaliza cuando falla cualquier gate.
+        6:{"method":"gated","active":True,"locked":False,"weights":base_weights,
+           "minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0},"penalty_pct":30.0},
     }
 
     with m.db() as con:
@@ -80,6 +98,26 @@ def install(m):
         if not con.execute("SELECT 1 FROM sales_bonus_official_versions_v302 LIMIT 1").fetchone():
             con.execute("INSERT INTO sales_bonus_official_versions_v302(effective_from,bonus_no,changed_at,changed_by) VALUES(?,?,?,?)",
                 ("0000-00",1,now_iso(),"system"))
+
+        # V311 · auditoría especialista: crea una nueva versión efectiva desde 2026-10
+        # para Bono 2..6 sin reescribir históricos y SIN tocar Bono 1.
+        proposal_actor="system-v311-specialist-review"
+        proposal_effective="2026-10"
+        for b in (2,3,4,5,6):
+            exists=con.execute(
+                "SELECT 1 FROM sales_bonus_model_versions_v302 WHERE bonus_no=? AND changed_by=? LIMIT 1",
+                (b,proposal_actor)
+            ).fetchone()
+            if not exists:
+                ver=int(con.execute(
+                    "SELECT COALESCE(MAX(version),0)+1 AS v FROM sales_bonus_model_versions_v302 WHERE bonus_no=?",
+                    (b,)
+                ).fetchone()["v"])
+                cfg=dict(defaults[b])
+                con.execute(
+                    "INSERT INTO sales_bonus_model_versions_v302(bonus_no,version,effective_from,active,config_json,changed_at,changed_by) VALUES(?,?,?,?,?,?,?)",
+                    (b,ver,proposal_effective,1,json.dumps(cfg,ensure_ascii=False),now_iso(),proposal_actor)
+                )
 
     def base_endpoint():
         for route in getattr(m.app,"routes",[]):
@@ -139,75 +177,178 @@ def install(m):
         b=int(bonus_no); breakdown=[]; ok_cfg,cfg_reason=config_ready(b,cfg)
         missing=[k for k,_,_ in CRITERIA if pcts.get(k) is None]
         ready_data=not missing
-        total=0.0; max_total=0.0; formula=""; meets_all=True
+        total=0.0; max_total=100.0; formula=""; meets_all=True
+
+        # REGLA ABSOLUTA V311: Bono 1 no se modifica.
         if b==1:
             weights=base_weights
             for k,label,w in CRITERIA:
                 p=pcts.get(k); pts=None if p is None else clamp(p)*w/100.0
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":w,"points":pts,"weight":w,"status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
-            score=num(b1_score); total=score;max_total=100.0;ready=bool(b1_ready)
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":None if p is None else clamp(p),
+                                  "max_points":w,"points":pts,"weight":w,
+                                  "status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
+            score=num(b1_score); total=score; ready=bool(b1_ready)
             return {"bonus_no":1,"name":"Bono 1","points":round(total,2),"max_points":100.0,"compliance_pct":round(score,2),
                     "ready":ready,"config_ready":True,"configuration_reason":"","classification":classify(score,ready),
                     "criteria_total":3,"criteria_met":sum(1 for x in breakdown if x["compliance_pct"] is not None and num(x["compliance_pct"])>=100),
                     "criteria_pending":sum(1 for x in breakdown if x["compliance_pct"] is None or num(x["compliance_pct"])<100),
-                    "breakdown":breakdown,"formula":"Cálculo original conservado: 50% Venta vs Meta + 30% DDI por Cat + 20% Asistencia."}
+                    "breakdown":breakdown,"formula":"Cálculo original conservado: 50% Venta vs Meta + 30% DDI por Cat + 20% Asistencia.",
+                    "expert_status":"Benchmark inmutable"}
+
         if not ok_cfg:
             return {"bonus_no":b,"name":f"Bono {b}","points":None,"max_points":None,"compliance_pct":None,"ready":False,
                     "config_ready":False,"configuration_reason":cfg_reason,"classification":"Pendiente de configuración",
-                    "criteria_total":3,"criteria_met":0,"criteria_pending":3,"breakdown":[],"formula":""}
-        cap=clamp(cfg.get("compliance_cap_pct",100),1,100)
-        if b in (2,5):
-            mps=cfg.get("max_points") or {}
+                    "criteria_total":3,"criteria_met":0,"criteria_pending":3,"breakdown":[],"formula":"",
+                    "expert_status":"Propuesta especialista pendiente"}
+
+        # BONO 2 · CURVA PROGRESIVA
+        # Venta < 80% no genera puntos; 80→100% progresa linealmente; 100→110% tiene acelerador controlado.
+        # Asistencia < 90% no genera puntos; 90→100% progresa. DDI permanece proporcional.
+        if b==2:
+            mps=cfg.get("max_points") or base_points
+            sf=clamp(cfg.get("sales_floor_pct",80),0,99.99)
+            st=max(sf+0.01,num(cfg.get("sales_target_pct",100),100))
+            sc=max(st,num(cfg.get("sales_cap_pct",110),110))
+            af=clamp(cfg.get("attendance_floor_pct",90),0,99.99)
+
+            def sales_curve(p):
+                pv=max(0.0,num(p))
+                if pv<sf:return 0.0
+                if pv<=st:return (pv-sf)/(st-sf)*100.0
+                if sc<=st:return 100.0
+                return 100.0+(min(pv,sc)-st)/(sc-st)*10.0
+
+            def attendance_curve(p):
+                pv=max(0.0,num(p))
+                if pv<af:return 0.0
+                if pv>=100:return 100.0
+                return (pv-af)/(100.0-af)*100.0
+
             for k,label,_w in CRITERIA:
-                mx=max(0.0,num(mps.get(k))); p=pcts.get(k); pts=None if p is None else mx*min(max(num(p),0.0),cap)/100.0
-                max_total+=mx
-                if pts is not None: total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,"status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
-            formula=("Puntos = Puntos máximos × Cumplimiento / 100; suma proporcional de criterios." if b==2
-                     else "Cada criterio acumula puntos hasta su máximo; el total es la suma de puntos ganados.")
+                mx=max(0.0,num(mps.get(k))); p=pcts.get(k)
+                if p is None:
+                    scored=None;pts=None;status="N/D"
+                else:
+                    if k=="sales":scored=sales_curve(p)
+                    elif k=="attendance":scored=attendance_curve(p)
+                    else:scored=clamp(p)
+                    pts=mx*scored/100.0
+                    if k=="sales" and num(p)<sf:status="Bajo umbral"
+                    elif k=="attendance" and num(p)<af:status="Bajo umbral"
+                    elif num(p)>=100:status="Cumple"
+                    else:status="En avance"
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,"status":status})
+            total=sum(num(x.get("points")) for x in breakdown if x.get("points") is not None)
+            max_total=sum(max(0.0,num((mps or {}).get(k))) for k,_,_ in CRITERIA) or 100.0
+            formula=(f"Venta: <{sf:g}%=0; {sf:g}–{st:g}% progresivo; >{st:g}% acelerador hasta {sc:g}%. "
+                     f"DDI proporcional. Asistencia: <{af:g}%=0; {af:g}–100% progresiva.")
+
+        # BONO 3 · PONDERACIÓN CON SOBRECUMPLIMIENTO CONTROLADO EN VENTA
         elif b==3:
-            ws=cfg.get("weights") or {}
+            ws=cfg.get("weights") or {"sales":50.0,"ddi":35.0,"attendance":15.0}
+            cap=max(100.0,num(cfg.get("compliance_cap_pct",110),110))
             for k,label,_w in CRITERIA:
-                w=max(0.0,num(ws.get(k)));p=pcts.get(k);pts=None if p is None else min(max(num(p),0.0),cap)*w/100.0
-                max_total+=w
-                if pts is not None:total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":w,"points":None if pts is None else round(pts,2),"weight":w,"status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
-            formula="Aporte = Cumplimiento × Ponderación / 100; total normalizado por la suma de ponderaciones."
+                w=max(0.0,num(ws.get(k)));p=pcts.get(k)
+                scored=None if p is None else min(max(num(p),0.0),cap if k=="sales" else 100.0)
+                pts=None if scored is None else scored*w/100.0
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":w,"points":None if pts is None else round(pts,2),"weight":w,
+                                  "status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "En avance")})
+            total=sum(num(x.get("points")) for x in breakdown if x.get("points") is not None)
+            max_total=sum(max(0.0,num(ws.get(k))) for k,_,_ in CRITERIA) or 100.0
+            formula=(f"Aporte = cumplimiento × peso / 100. Pesos actuales: Venta {num(ws.get('sales')):g}%, "
+                     f"DDI {num(ws.get('ddi')):g}%, Asistencia {num(ws.get('attendance')):g}%. "
+                     f"Sólo Venta puede sobrecumplir hasta {cap:g}%.")
+
+        # BONO 4 · ESCALONES / BANDAS
         elif b==4:
             bands=cfg.get("bands") or {}
+            max_total=0.0
             for k,label,_w in CRITERIA:
                 p=pcts.get(k);rows=bands.get(k) or [];mx=max([num(x.get("points")) for x in rows] or [0]);pts=None
+                band_label=""
                 if p is not None:
                     pv=num(p);candidates=[]
                     for band in rows:
                         lo=num(band.get("min"),0); hi=band.get("max")
                         if pv>=lo and (hi is None or hi=="" or pv<num(hi)):
-                            candidates.append(num(band.get("points")))
-                    pts=max(candidates) if candidates else 0.0
+                            candidates.append((num(band.get("points")),lo,hi))
+                    if candidates:
+                        pts,lo,hi=max(candidates,key=lambda x:x[0])
+                        band_label=f"{lo:g}%–{'∞' if hi in (None,'') else f'{num(hi):g}%'}"
+                    else:pts=0.0
                 max_total+=mx
-                if pts is not None:total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,"status":"N/D" if p is None else ("Nivel asignado" if pts else "Sin nivel")})
-            formula="Cada cumplimiento cae en un rango autorizado y recibe los puntos definidos para ese nivel."
-        else:
-            ws=cfg.get("weights") or {}; mins=cfg.get("minimums") or {}
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":p,
+                                  "max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,
+                                  "band":band_label,"status":"N/D" if p is None else ("Nivel asignado" if pts else "Sin nivel")})
+            total=sum(num(x.get("points")) for x in breakdown if x.get("points") is not None)
+            formula="Cada criterio recibe los puntos del rango alcanzado. El modelo evita falsa precisión y hace explícitos los saltos de desempeño."
+
+        # BONO 5 · BALANCE / ANTI-COMPENSACIÓN
+        # Parte del 50/30/20, pero el peor criterio reduce proporcionalmente el resultado global.
+        elif b==5:
+            ws=cfg.get("weights") or base_weights
+            strength=clamp(cfg.get("balance_strength_pct",30),0,100)/100.0
+            base_total=0.0
+            valid=[]
+            max_total=sum(max(0.0,num(ws.get(k))) for k,_,_ in CRITERIA) or 100.0
             for k,label,_w in CRITERIA:
-                w=max(0.0,num(ws.get(k)));p=pcts.get(k);minimum=num(mins.get(k));pts=None if p is None else clamp(p)*w/100.0
+                w=max(0.0,num(ws.get(k)));p=pcts.get(k)
+                scored=None if p is None else clamp(p)
+                raw=None if scored is None else scored*w/100.0
+                if scored is not None:valid.append(scored);base_total+=raw
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":w,"raw_points":None if raw is None else round(raw,2),
+                                  "points":None,"weight":w,
+                                  "status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "En balance")})
+            weakest=min(valid) if len(valid)==3 else None
+            multiplier=(1.0-strength)+strength*((weakest or 0.0)/100.0) if weakest is not None else None
+            total=base_total*(multiplier if multiplier is not None else 1.0)
+            for row in breakdown:
+                if row.get("raw_points") is not None:
+                    row["points"]=round(num(row.get("raw_points"))*(multiplier if multiplier is not None else 1.0),2)
+                    row["balance_multiplier"]=None if multiplier is None else round(multiplier,4)
+            formula=(f"Puntaje base ponderado × multiplicador de balance. Multiplicador = "
+                     f"{(1-strength):.2f} + {strength:.2f} × (peor criterio/100). "
+                     f"Fuerza anti-compensación: {strength*100:g}%.")
+
+        # BONO 6 · GATES / MÍNIMOS
+        else:
+            ws=cfg.get("weights") or base_weights; mins=cfg.get("minimums") or {}
+            max_total=sum(max(0.0,num(ws.get(k))) for k,_,_ in CRITERIA) or 100.0
+            base_total=0.0
+            for k,label,_w in CRITERIA:
+                w=max(0.0,num(ws.get(k)));p=pcts.get(k);minimum=num(mins.get(k));scored=None if p is None else clamp(p)
+                pts=None if scored is None else scored*w/100.0
                 met=(p is not None and num(p)>=minimum);meets_all=meets_all and met
-                max_total+=w
-                if pts is not None:total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":w,"points":None if pts is None else round(pts,2),"weight":w,"minimum":minimum,"status":"N/D" if p is None else ("Cumple mínimo" if met else "No cumple mínimo")})
-            penalty=clamp(cfg.get("penalty_pct",0),0,100)
-            if ready_data and not meets_all and penalty>0: total*=1-penalty/100.0
-            formula="Se calculan aportes ponderados y se validan mínimos autorizados; sólo se aplica penalización si fue configurada."
+                if pts is not None:base_total+=pts
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":w,"points":None if pts is None else round(pts,2),"weight":w,"minimum":minimum,
+                                  "status":"N/D" if p is None else ("Cumple mínimo" if met else "No cumple mínimo")})
+            penalty=clamp(cfg.get("penalty_pct",30),0,100)
+            total=base_total
+            if ready_data and not meets_all and penalty>0:
+                total=base_total*(1-penalty/100.0)
+                factor=(1-penalty/100.0)
+                for row in breakdown:
+                    if row.get("points") is not None:row["points"]=round(num(row.get("points"))*factor,2)
+            formula=(f"Puntaje base 50/30/20 con mínimos obligatorios: Venta {num(mins.get('sales')):g}%, "
+                     f"DDI {num(mins.get('ddi')):g}%, Asistencia {num(mins.get('attendance')):g}%. "
+                     f"Si falla al menos un mínimo, se aplica penalización de {penalty:g}%.")
+
         final_pct=(total/max_total*100.0) if max_total>0 else 0.0
         ready=bool(ok_cfg and ready_data and max_total>0)
         classification=("No cumple mínimos" if b==6 and ready and not meets_all else classify(final_pct,ready))
-        return {"bonus_no":b,"name":f"Bono {b}","points":round(total,2) if max_total>0 else None,"max_points":round(max_total,2) if max_total>0 else None,
-                "compliance_pct":round(final_pct,2) if max_total>0 else None,"ready":ready,"config_ready":ok_cfg,"configuration_reason":cfg_reason,
-                "classification":classification,"criteria_total":3,
+        return {"bonus_no":b,"name":f"Bono {b}","points":round(total,2) if max_total>0 else None,
+                "max_points":round(max_total,2) if max_total>0 else None,
+                "compliance_pct":round(final_pct,2) if max_total>0 else None,"ready":ready,
+                "config_ready":ok_cfg,"configuration_reason":cfg_reason,"classification":classification,
+                "criteria_total":3,
                 "criteria_met":sum(1 for x in breakdown if x.get("status") in ("Cumple","Nivel asignado","Cumple mínimo")),
                 "criteria_pending":sum(1 for x in breakdown if x.get("status") not in ("Cumple","Nivel asignado","Cumple mínimo")),
-                "breakdown":breakdown,"formula":formula}
+                "breakdown":breakdown,"formula":formula,
+                "expert_status":"Propuesta especialista experimental · Bono 1 continúa como oficial/benchmark"}
 
 
     def enrich_breakdown(base,model):
@@ -269,38 +410,38 @@ def install(m):
             )
         elif b==2:
             common.update(
-                objective="Convertir el nivel real de cumplimiento de cada indicador en puntos proporcionales para reconocer avances parciales.",
-                methodology="Cada indicador obtiene una parte de sus puntos máximos en proporción directa a su porcentaje de cumplimiento.",
-                difference="Reconoce de forma lineal cada punto porcentual de avance hasta el límite autorizado.",
-                formula="Puntos criterio = Puntos máximos × min(Cumplimiento, límite) / 100. Total = suma de puntos."
+                objective="Premiar avance comercial útil sin regalar puntos a desempeños claramente insuficientes y permitiendo un acelerador controlado en venta.",
+                methodology="Curva progresiva: Venta no genera puntos debajo del umbral configurado; entre umbral y meta progresa linealmente y después de 100% puede acelerar hasta un tope. Asistencia también exige un piso antes de generar puntos. DDI permanece proporcional.",
+                difference="Introduce umbrales y acelerador controlado; evita que cumplimientos bajos generen el mismo valor marginal que los cercanos a meta.",
+                formula="Venta: curva por umbral/meta/tope. DDI: proporcional. Asistencia: curva desde su piso hasta 100%. Total = suma de puntos."
             )
         elif b==3:
             common.update(
-                objective="Priorizar de manera configurable los indicadores comerciales mediante ponderaciones porcentuales autorizadas.",
-                methodology="El cumplimiento individual de cada indicador se multiplica por su peso configurado y los aportes se suman para obtener el resultado final.",
-                difference="Permite modificar la importancia relativa de Venta vs Meta, DDI por Cat y Asistencia sin cambiar sus fuentes.",
-                formula="Aporte = min(Cumplimiento,límite) × Peso / 100. % final = suma de aportes / suma de pesos × 100."
+                objective="Dar mayor importancia a la salud del inventario sin perder el liderazgo de Venta vs Meta y permitiendo sobrecumplimiento comercial controlado.",
+                methodology="Ponderación revisada de especialista: Venta conserva el mayor peso, DDI incrementa su relevancia y Asistencia funciona como disciplina de soporte. Sólo Venta puede sobrecumplir hasta el tope configurado.",
+                difference="No replica el 50/30/20 del Bono 1: usa pesos propios y permite aceleración únicamente en Venta.",
+                formula="Aporte = cumplimiento limitado por criterio × peso / 100. Sólo Venta puede exceder 100% hasta el tope configurado."
             )
         elif b==4:
             common.update(
-                objective="Reconocer niveles definidos de desempeño asignando puntos según el rango de cumplimiento alcanzado en cada indicador.",
-                methodology="Cada porcentaje de cumplimiento se ubica en un rango autorizado y recibe los puntos establecidos para ese nivel.",
-                difference="No asigna puntos de forma lineal; utiliza escalones configurables de cumplimiento.",
-                formula="Puntos criterio = puntos del rango donde cae el cumplimiento. Total = suma de puntos de los tres criterios."
+                objective="Reconocer saltos claros de desempeño y facilitar que las tiendas entiendan qué nivel deben alcanzar para ganar más puntos.",
+                methodology="Sistema escalonado: cada criterio cae en un rango y recibe una cantidad fija de puntos. Los rangos distinguen desempeño crítico, avance, cumplimiento y alto desempeño.",
+                difference="Evita falsa precisión: una diferencia mínima dentro del mismo rango no cambia el premio; el cambio ocurre al cruzar un nivel autorizado.",
+                formula="Puntos criterio = puntos del rango alcanzado. Total = suma de los tres criterios."
             )
         elif b==5:
             common.update(
-                objective="Medir el desempeño mediante acumulación de puntos ganados frente al total disponible en los tres indicadores.",
-                methodology="Cada indicador tiene un máximo de puntos y acumula una parte de ellos según el cumplimiento obtenido.",
-                difference="Hace visible cuántos puntos se ganaron y cuántos estaban disponibles, facilitando el ranking por puntos acumulados.",
-                formula="Puntos acumulados = Σ(Puntos máximos criterio × Cumplimiento limitado / 100)."
+                objective="Evitar que un indicador sobresaliente compense por completo otro indicador crítico.",
+                methodology="Modelo de balance: primero calcula el puntaje base ponderado y después aplica un multiplicador ligado al peor criterio. Mientras más débil sea el componente más rezagado, menor es el puntaje final.",
+                difference="Penaliza la descompensación entre Venta, DDI y Asistencia sin usar un gate rígido.",
+                formula="Puntaje final = Puntaje base ponderado × [(1−fuerza) + fuerza × (peor criterio / 100)]."
             )
         else:
             common.update(
-                objective="Evaluar el resultado comercial integral y, además, comprobar que cada indicador cumpla los mínimos autorizados.",
-                methodology="Calcula los aportes individuales, valida los mínimos por indicador y sólo aplica condiciones o penalizaciones previamente configuradas.",
-                difference="Combina una calificación total con requisitos mínimos obligatorios por indicador.",
-                formula="Puntaje base = suma ponderada. Se verifica cada mínimo; una penalización sólo se aplica si fue autorizada en configuración."
+                objective="Asegurar que una tienda no alcance un bono alto si falla un requisito comercial mínimo.",
+                methodology="Modelo con gates: calcula la suma ponderada y valida mínimos obligatorios de Venta, DDI y Asistencia. Si falla al menos uno, aplica la penalización autorizada.",
+                difference="Convierte los mínimos en condición real de calidad; un indicador excelente ya no compensa completamente un incumplimiento crítico.",
+                formula="Puntaje base = suma ponderada. Si algún criterio no alcanza su mínimo, Puntaje final = Puntaje base × (1 − penalización)."
             )
         # V308: cada bono conserva las mismas tres dimensiones comerciales,
         # pero el glosario documenta la regla concreta con la que ESA metodología
@@ -316,14 +457,19 @@ def install(m):
             if b==1:
                 return f"Peso fijo {fixed_weights[k]:g}%"
             if b==2:
-                return f"Máximo {num(cfg_points.get(k)):g} pts · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+                if k=="sales":
+                    return (f"Umbral {num(cfg.get('sales_floor_pct',80)):g}% · meta {num(cfg.get('sales_target_pct',100)):g}% · "
+                            f"tope {num(cfg.get('sales_cap_pct',110)):g}% · máximo {num(cfg_points.get(k)):g} pts")
+                if k=="attendance":
+                    return f"Piso {num(cfg.get('attendance_floor_pct',90)):g}% · máximo {num(cfg_points.get(k)):g} pts"
+                return f"Proporcional · máximo {num(cfg_points.get(k)):g} pts"
             if b==3:
-                return f"Peso {num(cfg_weights.get(k)):g}% · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+                return f"Peso {num(cfg_weights.get(k)):g}%" + (f" · tope {num(cfg.get('compliance_cap_pct',110)):g}%" if k=="sales" else " · tope 100%")
             if b==4:
                 rows=cfg_bands.get(k) or []
-                return (f"{len(rows)} rango(s) autorizado(s)" if rows else "Rangos pendientes de configurar")
+                return (f"{len(rows)} nivel(es) configurados" if rows else "Rangos pendientes de configurar")
             if b==5:
-                return f"Bolsa {num(cfg_points.get(k)):g} pts · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+                return f"Peso {num(cfg_weights.get(k) or fixed_weights[k]):g}% · fuerza anti-compensación {num(cfg.get('balance_strength_pct',30)):g}%"
             return (f"Peso {num(cfg_weights.get(k)):g}% · mínimo "
                     + ("pendiente" if cfg_mins.get(k) is None else f"{num(cfg_mins.get(k)):g}%"))
 
@@ -332,27 +478,36 @@ def install(m):
             if b==1:
                 return f"{label} aporta su cumplimiento limitado a 100% multiplicado por {fixed_weights[k]:g}%."
             if b==2:
-                return f"{label} genera puntos proporcionales: máximo del criterio × cumplimiento / 100."
+                if k=="sales":
+                    return f"{label} usa curva progresiva con umbral, meta y acelerador controlado."
+                if k=="attendance":
+                    return f"{label} no genera puntos debajo del piso configurado y progresa hasta 100%."
+                return f"{label} genera puntos proporcionales a su avance real."
             if b==3:
-                return f"{label} se pondera por el peso autorizado; su aporte es cumplimiento × peso / 100."
+                return f"{label} se pondera por el peso del Bono 3; sólo Venta puede sobrecumplir."
             if b==4:
-                return f"{label} no puntúa linealmente: el cumplimiento cae en un rango y toma los puntos de ese nivel."
+                return f"{label} toma los puntos del nivel donde cae el cumplimiento."
             if b==5:
-                return f"{label} acumula puntos dentro de su bolsa máxima hasta alcanzar el tope configurado."
-            return f"{label} genera un aporte ponderado y además debe superar el mínimo autorizado del criterio."
+                return f"{label} aporta al puntaje base y además participa en el multiplicador determinado por el peor criterio."
+            return f"{label} aporta al puntaje base y debe superar su mínimo para evitar la penalización global."
 
         def _criterion_formula(k):
             if b==1:
                 return f"min(Cumplimiento,100) × {fixed_weights[k]:g}/100"
             if b==2:
-                return "Puntos máximos × min(Cumplimiento,límite) / 100"
+                if k=="sales":
+                    return "Curva: 0 bajo umbral; lineal hasta 100%; acelerador después de meta"
+                if k=="attendance":
+                    return "0 bajo piso; lineal desde piso hasta 100%"
+                return "Puntos máximos × min(Cumplimiento,100) / 100"
             if b==3:
-                return "min(Cumplimiento,límite) × Peso / 100"
+                return "min(Cumplimiento,tope del criterio) × Peso / 100"
             if b==4:
-                return "Puntos del rango donde se ubica el cumplimiento"
+                return "Puntos fijos del rango alcanzado"
             if b==5:
-                return "Bolsa máxima × min(Cumplimiento,límite) / 100"
-            return "Cumplimiento × Peso / 100 + validación de mínimo"
+                return "Aporte base × multiplicador global de balance"
+            return "Cumplimiento × Peso / 100; luego validación de mínimos y penalización"
+
 
         for criterion in common["criteria"]:
             k=criterion["key"]
@@ -420,38 +575,63 @@ def install(m):
                 "user":str(actor.get("username") or "")}
 
     def validate_config(b,cfg):
-        if b==1: raise HTTPException(400,"Bono 1 conserva su configuración original y no puede modificarse")
+        if b==1:
+            raise HTTPException(400,"Bono 1 conserva su configuración original y no puede modificarse")
         out={**defaults[b],**(cfg or {})};out["method"]=METHODS[b];out["locked"]=False
         out["active"]=bool(out.get("active"))
-        if b in (2,5):
-            pts=out.get("max_points") or {}
-            if any(num(pts.get(k),-1)<0 for k,_,_ in CRITERIA):raise HTTPException(400,"Puntos máximos inválidos")
+
+        if b==2:
+            pts=out.get("max_points") or base_points
+            if any(num(pts.get(k),-1)<0 for k,_,_ in CRITERIA):
+                raise HTTPException(400,"Puntos máximos inválidos")
             out["max_points"]={k:round(num(pts.get(k)),4) for k,_,_ in CRITERIA}
-            out["compliance_cap_pct"]=clamp(out.get("compliance_cap_pct",100),1,100)
+            sf=clamp(out.get("sales_floor_pct",80),0,99.99)
+            st=max(sf+0.01,num(out.get("sales_target_pct",100),100))
+            sc=max(st,num(out.get("sales_cap_pct",110),110))
+            af=clamp(out.get("attendance_floor_pct",90),0,99.99)
+            out.update(sales_floor_pct=round(sf,2),sales_target_pct=round(st,2),sales_cap_pct=round(sc,2),
+                       attendance_floor_pct=round(af,2),compliance_cap_pct=round(sc,2))
+
         if b==3:
-            ws=out.get("weights") or {}
-            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:raise HTTPException(400,"Las ponderaciones deben sumar más de cero")
+            ws=out.get("weights") or {"sales":50.0,"ddi":35.0,"attendance":15.0}
+            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:
+                raise HTTPException(400,"Las ponderaciones deben sumar más de cero")
             out["weights"]={k:round(max(0,num(ws.get(k))),4) for k,_,_ in CRITERIA}
-            out["compliance_cap_pct"]=clamp(out.get("compliance_cap_pct",100),1,100)
+            out["compliance_cap_pct"]=round(max(100.0,num(out.get("compliance_cap_pct",110),110)),2)
+
         if b==4:
             bands=out.get("bands") or {}
             clean={}
             for k,_,_ in CRITERIA:
                 rows=[]
                 for x in bands.get(k) or []:
-                    lo=num(x.get("min"));hi=x.get("max");pts=max(0,num(x.get("points")))
+                    lo=max(0,num(x.get("min")));hi=x.get("max");pts=max(0,num(x.get("points")))
                     hi_val=None if hi in (None,"") else num(hi)
-                    if hi_val is not None and hi_val<=lo:raise HTTPException(400,f"Rango inválido en {k}")
-                    rows.append({"min":lo,"max":hi_val,"points":pts})
+                    if hi_val is not None and hi_val<=lo:
+                        raise HTTPException(400,f"Rango inválido en {k}")
+                    rows.append({"min":round(lo,2),"max":None if hi_val is None else round(hi_val,2),"points":round(pts,2)})
+                rows.sort(key=lambda x:x["min"])
                 clean[k]=rows
             out["bands"]=clean
+
+        if b==5:
+            ws=out.get("weights") or base_weights
+            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:
+                raise HTTPException(400,"Los pesos del Bono 5 deben sumar más de cero")
+            out["weights"]={k:round(max(0,num(ws.get(k))),4) for k,_,_ in CRITERIA}
+            out["balance_strength_pct"]=round(clamp(out.get("balance_strength_pct",30),0,100),2)
+            out["compliance_cap_pct"]=100.0
+
         if b==6:
             mins=out.get("minimums") or {}
-            out["minimums"]={k:(None if mins.get(k) in (None,"") else max(0,num(mins.get(k)))) for k,_,_ in CRITERIA}
-            out["penalty_pct"]=clamp(out.get("penalty_pct",0),0,100)
+            out["minimums"]={k:(None if mins.get(k) in (None,"") else round(max(0,num(mins.get(k))),2)) for k,_,_ in CRITERIA}
+            out["penalty_pct"]=round(clamp(out.get("penalty_pct",30),0,100),2)
             ws=out.get("weights") or base_weights
+            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:
+                raise HTTPException(400,"Los pesos del Bono 6 deben sumar más de cero")
             out["weights"]={k:round(max(0,num(ws.get(k))),4) for k,_,_ in CRITERIA}
         return out
+
 
     @m.app.post("/api/bonuses-v302/config")
     async def save_bonus_config_v302(request:Request):
@@ -495,13 +675,22 @@ def install(m):
         result=calc_model(b,pcts,cfg,b1,len([x for x in pcts.values() if x is not None])==3)
         return {"bonus_no":b,"result":result,"steps":steps+[result.get("formula") or ""],"simulation":True}
 
-    # Prueba interna de aritmética sin datos reales.
+    # V311 · pruebas internas de aritmética y diferenciación sin datos reales.
     try:
-        _t=calc_model(2,{"sales":100,"ddi":100,"attendance":100},defaults[2],100,True)
-        assert abs(num(_t.get("points"))-100)<1e-6 and _t.get("ready")
-        print("[V302-SELFTEST] engine=ok · Bono1 comercial identificado · Bono Operativo V279 intacto",flush=True)
+        sample={"sales":95,"ddi":50,"attendance":98}
+        results=[]
+        for _b in BONUS_NOS:
+            cfg=defaults[_b]
+            _r=calc_model(_b,sample,cfg,b1_score=82.1,b1_ready=True)
+            results.append(round(num(_r.get("points")),-1))
+        assert calc_model(1,{"sales":100,"ddi":100,"attendance":100},defaults[1],100,True).get("points")==100
+        for _b in (2,3,4,5,6):
+            _full=calc_model(_b,{"sales":100,"ddi":100,"attendance":100},defaults[_b],100,True)
+            assert abs(num(_full.get("points"))-100)<1e-6 and _full.get("ready")
+        assert len(set(results[1:]))>=4
+        print("[V311-SELFTEST] Bono1 intacto · Bono2..6 diferenciados · Bono Operativo V279 intacto · aritmética=ok",flush=True)
     except Exception as exc:
-        print(f"[V302-SELFTEST] failed: {type(exc).__name__}: {exc}",flush=True)
+        print(f"[V311-SELFTEST] failed: {type(exc).__name__}: {exc}",flush=True)
 
 
     css=r'''<style id="v302-css">
@@ -704,12 +893,12 @@ function v308SectionGuide(d,section){
 function v309MethodInfo(d){
   const b=Number(S.bonus),g=d.glossary||{},cfg=d.configs?.[b]||d.configs?.[String(b)]||{},official=Number(d.official_bonus)===b,m=d.model||{};
   const tags={
-    1:['Modelo base (original)'],
-    2:['Metodología proporcional','Parámetros configurables'],
-    3:['Ponderación configurable','Comparativo disponible'],
+    1:['Modelo base · inmutable'],
+    2:['Curva progresiva','Acelerador controlado'],
+    3:['Ponderación 50/35/15','Venta hasta 110%'],
     4:['Niveles escalonados','Rangos configurables'],
-    5:['Acumulación de puntos','Ranking por puntuación'],
-    6:['Mínimos requeridos','Validación integral']
+    5:['Balance anti-compensación','Peor criterio influye'],
+    6:['Gates mínimos','Penalización si falla un mínimo']
   }[b]||[];
   let state=cfg.active?(m.config_ready===false?'Pendiente de configuración':'Activo'):'Pendiente de configuración';
   let stateCls=cfg.active&&m.config_ready!==false?'good':'warn';
@@ -796,10 +985,10 @@ function v309MinimumsPanel(d){
 function v309Bottom(d){
   const b=Number(S.bonus);
   if(b===1)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
-  if(b===2)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CriteriaPanel(d,'Regla proporcional por criterio')+v309AttendancePanel(d)+'</div>';
-  if(b===3)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Matriz de ponderaciones')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
+  if(b===2)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CriteriaPanel(d,'Curvas, umbrales y puntos')+v309AttendancePanel(d)+'</div>';
+  if(b===3)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Matriz 50/35/15 + acelerador')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
   if(b===4)return '<div class="v309-bottom">'+v309BandsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos por nivel (DDI)')+'</div>';
-  if(b===5)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Bolsa de puntos por criterio')+v309CatalogPanel(d,'Resumen por catálogo')+v309ModelsPanel(d,'Mercancía objetivo')+'</div>';
+  if(b===5)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Balance y anti-compensación')+v309CatalogPanel(d,'Resumen por catálogo')+v309ModelsPanel(d,'Mercancía objetivo')+'</div>';
   return '<div class="v309-bottom">'+v309MinimumsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos observados')+'</div>'
 }
 function v309Summary(d){
@@ -826,22 +1015,48 @@ function compare(d){let a=d.comparison||[];let ready=a.filter(x=>x.compliance_pc
 function glossaryTabs(){return '<div class="v302-bonus-tabs">'+[1,2,3,4,5,6].map(i=>'<button data-v302-bonus="'+i+'" class="'+(S.bonus===i?'active':'')+'">Bono '+i+'</button>').join('')+'</div>'}
 function examplePanel(d){let g=d.glossary||{},e=g.example||{},ins=g.example_inputs||{};return '<section class="v302-panel"><div class="v302-ph"><span>Ejemplo práctico · Bono '+S.bonus+'</span><span>'+esc(e.classification||'')+'</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th class="left">Criterio</th><th>Meta</th><th>Real</th><th>Cumplimiento</th><th>Parámetro del bono</th><th>Puntos posibles</th><th>Puntos obtenidos</th></tr></thead><tbody>'+(e.breakdown||[]).map(r=>{let gc=(g.criteria||[]).find(x=>x.key===r.key)||{};return '<tr><td class="left"><b>'+esc(r.indicator)+'</b></td><td>100</td><td>'+nf(ins[r.key])+'</td><td>'+pc(r.compliance_pct)+'</td><td>'+esc(gc.parameter||'—')+'</td><td>'+nf(r.max_points)+'</td><td>'+nf(r.points)+'</td></tr>'}).join('')+'</tbody></table></div><div class="v302-note">'+esc(g.example_note||'')+' Total: '+nf(e.points)+' / '+nf(e.max_points)+' · '+pc(e.compliance_pct)+(e.configuration_reason?' · '+esc(e.configuration_reason):'')+'</div></section>'}
 function glossary(d){let g=d.glossary||{},m=d.model||{};return '<div class="v302-gloss">'+glossaryTabs()+'<div class="v302-gloss-grid"><section class="v302-panel"><div class="v302-ph"><span>'+esc(g.name||'')+'</span><span>Metodología propia del Bono '+S.bonus+'</span></div><div class="v302-body"><div class="method"><h3>Descripción general</h3><p><b>Objetivo:</b> '+esc(g.objective||'')+'</p><p><b>Metodología:</b> '+esc(g.methodology||'')+'</p><p><b>Evaluados:</b> '+esc(g.evaluated||'')+'</p><p><b>Periodo:</b> '+esc(g.period||'')+'</p><p><b>Diferencia:</b> '+esc(g.difference||'')+'</p><p><b>Fórmula total:</b> '+esc(g.formula||'')+'</p></div><h3>Fuentes</h3><ul>'+(g.sources||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul><h3>Reglas y excepciones</h3><ul>'+(g.rules||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div></section><section class="v302-panel"><div class="v302-ph"><span>Criterios del Bono '+S.bonus+'</span><span>Regla, parámetro y cálculo</span></div><div class="v302-scroll"><table class="v302-table v308-gloss-table"><thead><tr><th class="left">Criterio</th><th class="left">Qué evalúa</th><th class="left">Regla en Bono '+S.bonus+'</th><th>Parámetro</th><th>Meta</th><th>Actual</th><th>Puntos</th></tr></thead><tbody>'+(g.criteria||[]).map(c=>{let r=(m.breakdown||[]).find(x=>x.key===c.key)||{};return '<tr><td class="left"><b>'+esc(c.name)+'</b><br><small>'+esc(c.source)+'</small></td><td class="left">'+esc(c.meaning)+'</td><td class="left"><b>'+esc(c.rule||'')+'</b><br><small>'+esc(c.criterion_formula||'')+'</small></td><td>'+esc(c.parameter||'')+'</td><td>'+esc(c.meta)+'</td><td>'+pc(r.compliance_pct)+'</td><td>'+nf(r.points)+' / '+nf(r.max_points)+'</td></tr>'}).join('')+'</tbody></table></div><div class="v302-note">Los tres criterios comerciales pueden ser los mismos, pero la forma de convertirlos a puntos es exclusiva de cada Bono. Si falta información se muestra N/D y no se transforma en incumplimiento.</div></section></div>'+examplePanel(d)+calculator(d)+'</div>'}
-function calcConfig(d){let cfg=d.glossary?.config||{},b=S.bonus;if(b===2||b===5){let p=cfg.max_points||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-calc-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'</div>'}if(b===3){let w=cfg.weights||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-calc-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'</div>'}if(b===4){return '<div class="v302-field"><label>Rangos de simulación (JSON por criterio)</label><textarea id="v302CalcBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>'}if(b===6){let mins=cfg.minimums||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-calc-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización autorizada %</label><input id="v302CalcPenalty" type="number" value="'+esc(cfg.penalty_pct??0)+'"></div></div>'}return '<div class="v302-note">Bono 1 usa exactamente su cálculo original; la simulación no modifica información real.</div>'}
+function calcConfig(d){let cfg=d.glossary?.config||{},b=S.bonus;
+if(b===2){let p=cfg.max_points||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-calc-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Umbral Venta %</label><input id="v302CalcSalesFloor" type="number" value="'+esc(cfg.sales_floor_pct??80)+'"></div><div class="v302-field"><label>Meta Venta %</label><input id="v302CalcSalesTarget" type="number" value="'+esc(cfg.sales_target_pct??100)+'"></div><div class="v302-field"><label>Tope Venta %</label><input id="v302CalcSalesCap" type="number" value="'+esc(cfg.sales_cap_pct??110)+'"></div><div class="v302-field"><label>Piso Asistencia %</label><input id="v302CalcAttFloor" type="number" value="'+esc(cfg.attendance_floor_pct??90)+'"></div></div>'}
+if(b===3){let w=cfg.weights||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-calc-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Tope de Venta %</label><input id="v302CalcCap" type="number" value="'+esc(cfg.compliance_cap_pct??110)+'"></div></div>'}
+if(b===4){return '<div class="v302-field"><label>Rangos de simulación (JSON por criterio)</label><textarea id="v302CalcBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>'}
+if(b===5){let w=cfg.weights||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso base · '+k+'</label><input data-calc-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Fuerza anti-compensación %</label><input id="v302CalcBalanceStrength" type="number" value="'+esc(cfg.balance_strength_pct??30)+'"></div></div>'}
+if(b===6){let mins=cfg.minimums||{},w=cfg.weights||{};return '<div class="v302-calc-grid">'+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-calc-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso · '+k+'</label><input data-calc-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización por gate %</label><input id="v302CalcPenalty" type="number" value="'+esc(cfg.penalty_pct??30)+'"></div></div>'}
+return '<div class="v302-note">Bono 1 usa exactamente su cálculo original; la simulación no modifica información real.</div>'}
 function calculator(d){return '<section class="v302-panel"><div class="v302-ph"><span>Calculadora interactiva · simulación</span><span>No modifica metas ni resultados reales</span></div><div class="v302-body"><div class="v302-calc-grid">'+[['sales','Venta vs Meta'],['ddi','DDI por Cat'],['attendance','Asistencia']].map(x=>'<div class="v302-calc-row"><div><b style="font-size:11px">'+x[1]+'</b></div><div class="v302-field"><label>Meta</label><input data-calc-meta="'+x[0]+'" type="number" value="100"></div><div class="v302-field"><label>Resultado</label><input data-calc-result="'+x[0]+'" type="number" value="100"></div></div>').join('')+'</div>'+calcConfig(d)+'<div style="margin-top:7px"><button class="v302-btn" id="v302Sim">Simular</button></div><div id="v302SimOut"></div></div></section>'}
-function configFields(cfg,b){if(b===1)return '<div class="v302-note">Bono 1 está bloqueado para conservar íntegramente sus fórmulas, ponderaciones, fuentes y resultados históricos.</div>';let common='<div class="v302-field"><label>Estado</label><select id="v302CfgActive"><option value="1" '+(cfg.active?'selected':'')+'>Activo</option><option value="0" '+(!cfg.active?'selected':'')+'>Desactivado</option></select></div>';if(b===2||b===5){let p=cfg.max_points||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-cfg-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Límite de cumplimiento %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??100)+'"></div>'}if(b===3){let w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Límite de cumplimiento %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??100)+'"></div>'}if(b===4)return common+'<div class="v302-field" style="grid-column:1/-1"><label>Rangos autorizados (JSON)</label><textarea id="v302CfgBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>';if(b===6){let mins=cfg.minimums||{},w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-cfg-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización autorizada %</label><input id="v302CfgPenalty" type="number" value="'+esc(cfg.penalty_pct??0)+'"></div>'}return common}
+function configFields(cfg,b){
+if(b===1)return '<div class="v302-note">Bono 1 está bloqueado para conservar íntegramente sus fórmulas, ponderaciones, fuentes y resultados históricos.</div>';
+let common='<div class="v302-field"><label>Estado</label><select id="v302CfgActive"><option value="1" '+(cfg.active?'selected':'')+'>Activo</option><option value="0" '+(!cfg.active?'selected':'')+'>Desactivado</option></select></div>';
+if(b===2){let p=cfg.max_points||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Puntos máximos · '+k+'</label><input data-cfg-max="'+k+'" type="number" value="'+esc(p[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Umbral Venta %</label><input id="v302CfgSalesFloor" type="number" value="'+esc(cfg.sales_floor_pct??80)+'"></div><div class="v302-field"><label>Meta Venta %</label><input id="v302CfgSalesTarget" type="number" value="'+esc(cfg.sales_target_pct??100)+'"></div><div class="v302-field"><label>Tope Venta %</label><input id="v302CfgSalesCap" type="number" value="'+esc(cfg.sales_cap_pct??110)+'"></div><div class="v302-field"><label>Piso Asistencia %</label><input id="v302CfgAttFloor" type="number" value="'+esc(cfg.attendance_floor_pct??90)+'"></div>'}
+if(b===3){let w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Ponderación · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Tope de Venta %</label><input id="v302CfgCap" type="number" value="'+esc(cfg.compliance_cap_pct??110)+'"></div>'}
+if(b===4)return common+'<div class="v302-field" style="grid-column:1/-1"><label>Rangos por criterio (JSON)</label><textarea id="v302CfgBands">'+esc(JSON.stringify(cfg.bands||{},null,2))+'</textarea></div>';
+if(b===5){let w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso base · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Fuerza anti-compensación %</label><input id="v302CfgBalanceStrength" type="number" value="'+esc(cfg.balance_strength_pct??30)+'"></div>'}
+if(b===6){let mins=cfg.minimums||{},w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-cfg-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización por gate %</label><input id="v302CfgPenalty" type="number" value="'+esc(cfg.penalty_pct??30)+'"></div>'}
+return common}
 function configView(d){let cfg=d.glossary?.config||{};return '<section class="v302-panel"><div class="v302-ph"><span>Configuración administrativa · Bono '+S.bonus+'</span><span>Versionada por periodo efectivo</span></div><div class="v302-body"><div class="v302-config-grid"><div class="v302-field"><label>Vigencia desde</label><input id="v302CfgEffective" type="month" value="'+esc(d.month)+'"></div><div class="v302-field"><label>Meta y estándares</label><input disabled value="Definidos por la información y configuración vigente"></div><div class="v302-field"><label>Bono oficial</label><select id="v302CfgOfficial"><option value="0">No cambiar</option><option value="1">Hacer oficial desde la vigencia</option></select></div>'+configFields(cfg,S.bonus)+'</div><div style="margin-top:8px"><button class="v302-btn" id="v302SaveCfg">'+(S.bonus===1?'Seleccionar Bono 1 como oficial':'Guardar nueva versión')+'</button></div><div id="v302CfgMsg"></div></div><div class="v302-note">Cada guardado crea una nueva versión con usuario, fecha y hora. Los periodos anteriores conservan la configuración que les corresponde.</div></section><div id="v302History"></div>'}
 function body(d){if(S.section==='ranking')return v309MethodInfo(d)+'<div class="v309-page-note">Ranking completo calculado exclusivamente con la metodología del Bono '+S.bonus+'.</div>'+v309Ranking(d,true);if(S.section==='models'||S.section==='catalogs')return v309ModelsPage(d);if(S.section==='compare')return v309MethodInfo(d)+compare(d);if(S.section==='glossary')return '<div class="v309-gloss-intro">Glosario del Bono '+S.bonus+': criterios, parámetros, fórmula, reglas y ejemplo correspondientes exclusivamente a esta metodología.</div>'+glossary(d);if(S.section==='config')return configView(d);return v309Summary(d)}
 function navShell(d){return '<div class="v307-nav-shell">'+nav(d)+toolsNav(d)+'</div>'}
 function page(d){return '<div class="v302"><div class="v302-head"><div><h2>Bonos</h2><div class="v302-sub">Selecciona Bono 1 a Bono 6 y compara cuál metodología se adapta mejor a la operación comercial.</div></div>'+filters(d)+'</div>'+bonusTabs(d)+navShell(d)+body(d)+'</div>'}
 
-function calcPayload(){let inputs={};for(let k of ['sales','ddi','attendance'])inputs[k]={meta:n(q('[data-calc-meta="'+k+'"]')?.value),result:n(q('[data-calc-result="'+k+'"]')?.value)};let cfg={};if(S.bonus===2||S.bonus===5){cfg.max_points={};qa('[data-calc-max]').forEach(x=>cfg.max_points[x.dataset.calcMax]=n(x.value));cfg.compliance_cap_pct=100;cfg.active=true}if(S.bonus===3){cfg.weights={};qa('[data-calc-weight]').forEach(x=>cfg.weights[x.dataset.calcWeight]=n(x.value));cfg.compliance_cap_pct=100;cfg.active=true}if(S.bonus===4){try{cfg.bands=JSON.parse(q('#v302CalcBands')?.value||'{}')}catch(_){throw new Error('JSON de rangos inválido')}cfg.active=true}if(S.bonus===6){cfg.minimums={};qa('[data-calc-min]').forEach(x=>cfg.minimums[x.dataset.calcMin]=x.value===''?null:n(x.value));cfg.penalty_pct=n(q('#v302CalcPenalty')?.value);cfg.weights=S.data?.glossary?.config?.weights||{sales:50,ddi:30,attendance:20};cfg.active=true}return {bonus_no:S.bonus,month:S.month,inputs,config:cfg}}
+function calcPayload(){let inputs={};for(let k of ['sales','ddi','attendance'])inputs[k]={meta:n(q('[data-calc-meta="'+k+'"]')?.value),result:n(q('[data-calc-result="'+k+'"]')?.value)};let cfg={active:true};
+if(S.bonus===2){cfg.max_points={};qa('[data-calc-max]').forEach(x=>cfg.max_points[x.dataset.calcMax]=n(x.value));cfg.sales_floor_pct=n(q('#v302CalcSalesFloor')?.value||80);cfg.sales_target_pct=n(q('#v302CalcSalesTarget')?.value||100);cfg.sales_cap_pct=n(q('#v302CalcSalesCap')?.value||110);cfg.attendance_floor_pct=n(q('#v302CalcAttFloor')?.value||90)}
+if(S.bonus===3){cfg.weights={};qa('[data-calc-weight]').forEach(x=>cfg.weights[x.dataset.calcWeight]=n(x.value));cfg.compliance_cap_pct=n(q('#v302CalcCap')?.value||110)}
+if(S.bonus===4){try{cfg.bands=JSON.parse(q('#v302CalcBands')?.value||'{}')}catch(_){throw new Error('JSON de rangos inválido')}}
+if(S.bonus===5){cfg.weights={};qa('[data-calc-weight]').forEach(x=>cfg.weights[x.dataset.calcWeight]=n(x.value));cfg.balance_strength_pct=n(q('#v302CalcBalanceStrength')?.value||30)}
+if(S.bonus===6){cfg.minimums={};qa('[data-calc-min]').forEach(x=>cfg.minimums[x.dataset.calcMin]=x.value===''?null:n(x.value));cfg.weights={};qa('[data-calc-weight]').forEach(x=>cfg.weights[x.dataset.calcWeight]=n(x.value));cfg.penalty_pct=n(q('#v302CalcPenalty')?.value||30)}
+return {bonus_no:S.bonus,month:S.month,inputs,config:cfg}}
 async function simulate(){let out=q('#v302SimOut');if(out)out.innerHTML='<div class="v302-loading">Calculando simulación…</div>';try{let d=await A('/api/bonuses-v302/simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(calcPayload())}),r=d.result||{};if(out)out.innerHTML='<div class="v302-grid2" style="margin-top:7px"><div class="v302-panel"><div class="v302-ph"><span>Resultado simulado</span><span>'+esc(r.classification||'')+'</span></div><div class="v302-body"><b style="font-size:22px">'+nf(r.points)+' / '+nf(r.max_points)+'</b><div style="font-size:12px;margin-top:4px">'+pc(r.compliance_pct)+'</div></div></div><div class="v302-panel"><div class="v302-ph"><span>Paso a paso</span><span>Fórmula aplicada</span></div><div class="v302-body">'+(d.steps||[]).map(x=>'<div style="font-size:11px;margin:4px 0">'+esc(x)+'</div>').join('')+'</div></div></div>'+breakdown({name:'Simulación',breakdown:r.breakdown||[],formula:r.formula||''})}catch(e){if(out)out.innerHTML='<div class="v302-note">'+esc(e.message||e)+'</div>'}}
-function cfgPayload(){let cfg={active:q('#v302CfgActive')?.value!=='0'};if(S.bonus===2||S.bonus===5){cfg.max_points={};qa('[data-cfg-max]').forEach(x=>cfg.max_points[x.dataset.cfgMax]=n(x.value));cfg.compliance_cap_pct=n(q('#v302CfgCap')?.value||100)}if(S.bonus===3){cfg.weights={};qa('[data-cfg-weight]').forEach(x=>cfg.weights[x.dataset.cfgWeight]=n(x.value));cfg.compliance_cap_pct=n(q('#v302CfgCap')?.value||100)}if(S.bonus===4){try{cfg.bands=JSON.parse(q('#v302CfgBands')?.value||'{}')}catch(_){throw new Error('JSON de rangos inválido')}}if(S.bonus===6){cfg.minimums={};qa('[data-cfg-min]').forEach(x=>cfg.minimums[x.dataset.cfgMin]=x.value===''?null:n(x.value));cfg.weights={};qa('[data-cfg-weight]').forEach(x=>cfg.weights[x.dataset.cfgWeight]=n(x.value));cfg.penalty_pct=n(q('#v302CfgPenalty')?.value||0)}return {bonus_no:S.bonus,effective_from:q('#v302CfgEffective')?.value||S.month,make_official:q('#v302CfgOfficial')?.value==='1',config:cfg}}
+function cfgPayload(){let cfg={active:q('#v302CfgActive')?.value!=='0'};
+if(S.bonus===2){cfg.max_points={};qa('[data-cfg-max]').forEach(x=>cfg.max_points[x.dataset.cfgMax]=n(x.value));cfg.sales_floor_pct=n(q('#v302CfgSalesFloor')?.value||80);cfg.sales_target_pct=n(q('#v302CfgSalesTarget')?.value||100);cfg.sales_cap_pct=n(q('#v302CfgSalesCap')?.value||110);cfg.attendance_floor_pct=n(q('#v302CfgAttFloor')?.value||90)}
+if(S.bonus===3){cfg.weights={};qa('[data-cfg-weight]').forEach(x=>cfg.weights[x.dataset.cfgWeight]=n(x.value));cfg.compliance_cap_pct=n(q('#v302CfgCap')?.value||110)}
+if(S.bonus===4){try{cfg.bands=JSON.parse(q('#v302CfgBands')?.value||'{}')}catch(_){throw new Error('JSON de rangos inválido')}}
+if(S.bonus===5){cfg.weights={};qa('[data-cfg-weight]').forEach(x=>cfg.weights[x.dataset.cfgWeight]=n(x.value));cfg.balance_strength_pct=n(q('#v302CfgBalanceStrength')?.value||30)}
+if(S.bonus===6){cfg.minimums={};qa('[data-cfg-min]').forEach(x=>cfg.minimums[x.dataset.cfgMin]=x.value===''?null:n(x.value));cfg.weights={};qa('[data-cfg-weight]').forEach(x=>cfg.weights[x.dataset.cfgWeight]=n(x.value));cfg.penalty_pct=n(q('#v302CfgPenalty')?.value||30)}
+return {bonus_no:S.bonus,effective_from:q('#v302CfgEffective')?.value||S.month,make_official:q('#v302CfgOfficial')?.value==='1',config:cfg}}
 async function saveCfg(){let msg=q('#v302CfgMsg'),btn=q('#v302SaveCfg');try{if(btn){btn.disabled=true;btn.textContent='Guardando…'}let payload=cfgPayload(),d=await A('/api/bonuses-v302/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(msg)msg.innerHTML='<div class="v302-note">Versión '+esc(d.version)+' guardada · vigente '+esc(d.effective_from)+'</div>';S.configData=null;await load()}catch(e){if(msg)msg.innerHTML='<div class="v302-note">'+esc(e.message||e)+'</div>'}finally{if(btn){btn.disabled=false;btn.textContent='Guardar nueva versión'}}}
 async function makeB1Official(){let msg=q('#v302CfgMsg');try{let eff=q('#v302CfgEffective')?.value||S.month,d=await A('/api/bonuses-v302/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bonus_no:1,effective_from:eff,make_official:true,config:{}})});if(msg)msg.innerHTML='<div class="v302-note">Bono 1 seleccionado como oficial desde '+esc(eff)+'</div>';await load()}catch(e){if(msg)msg.innerHTML='<div class="v302-note">'+esc(e.message||e)+'</div>'}}
 async function history(){if(!S.data?.can_admin)return;let host=q('#v302History');if(!host)return;host.innerHTML='<div class="v302-loading">Cargando historial…</div>';try{let d=await A('/api/bonuses-v302/config?month='+encodeURIComponent(S.month));S.configData=d;host.innerHTML='<div class="v302-grid2"><section class="v302-panel"><div class="v302-ph"><span>Historial de configuraciones</span><span>Usuario · fecha · versión</span></div><div class="v302-history"><table class="v302-table"><thead><tr><th>Bono</th><th>Versión</th><th>Vigencia</th><th>Estado</th><th>Fecha</th><th>Usuario</th></tr></thead><tbody>'+(d.history||[]).map(x=>'<tr><td>Bono '+x.bonus_no+'</td><td>'+x.version+'</td><td>'+esc(x.effective_from)+'</td><td>'+(x.active?'Activo':'Desactivado')+'</td><td>'+esc(x.changed_at)+'</td><td>'+esc(x.changed_by)+'</td></tr>').join('')+'</tbody></table></div></section><section class="v302-panel"><div class="v302-ph"><span>Historial de bono oficial</span><span>Actual: Bono '+esc(d.official_bonus)+'</span></div><div class="v302-history"><table class="v302-table"><thead><tr><th>Vigencia</th><th>Bono</th><th>Fecha</th><th>Usuario</th></tr></thead><tbody>'+(d.official_history||[]).map(x=>'<tr><td>'+esc(x.effective_from)+'</td><td>Bono '+x.bonus_no+'</td><td>'+esc(x.changed_at)+'</td><td>'+esc(x.changed_by)+'</td></tr>').join('')+'</tbody></table></div></section></div>'}catch(e){host.innerHTML='<div class="v302-note">'+esc(e.message||e)+'</div>'}}
 let calcTimer=null;
-function bind(d){q('#v302Store')?.addEventListener('change',e=>{S.store=e.target.value;load()});q('#v302Month')?.addEventListener('change',e=>{S.month=e.target.value;load()});qa('[data-v302-bonus]').forEach(b=>b.addEventListener('click',()=>{S.bonus=Number(b.dataset.v302Bonus);load()}));qa('[data-v302-section]').forEach(b=>b.addEventListener('click',()=>{S.section=b.dataset.v302Section==='catalogs'?'models':b.dataset.v302Section;if(S.section==='models'&&!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';render();if(S.section==='config')history()}));qa('[data-v305-catalog]').forEach(b=>b.addEventListener('click',()=>{S.catalog=b.dataset.v305Catalog;render()}));qa('[data-v304-store]').forEach(r=>r.addEventListener('click',()=>{S.store=r.dataset.v304Store;S.section='summary';load()}));q('#v304AttSave')?.addEventListener('click',saveAttendanceV304);q('#v302Sim')?.addEventListener('click',simulate);qa('[data-calc-meta],[data-calc-result],[data-calc-max],[data-calc-weight],[data-calc-min],#v302CalcPenalty,#v302CalcBands').forEach(x=>x.addEventListener('input',()=>{clearTimeout(calcTimer);calcTimer=setTimeout(simulate,450)}));q('#v302SaveCfg')?.addEventListener('click',S.bonus===1?makeB1Official:saveCfg)}
+function bind(d){q('#v302Store')?.addEventListener('change',e=>{S.store=e.target.value;load()});q('#v302Month')?.addEventListener('change',e=>{S.month=e.target.value;load()});qa('[data-v302-bonus]').forEach(b=>b.addEventListener('click',()=>{S.bonus=Number(b.dataset.v302Bonus);load()}));qa('[data-v302-section]').forEach(b=>b.addEventListener('click',()=>{S.section=b.dataset.v302Section==='catalogs'?'models':b.dataset.v302Section;if(S.section==='models'&&!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';render();if(S.section==='config')history()}));qa('[data-v305-catalog]').forEach(b=>b.addEventListener('click',()=>{S.catalog=b.dataset.v305Catalog;render()}));qa('[data-v304-store]').forEach(r=>r.addEventListener('click',()=>{S.store=r.dataset.v304Store;S.section='summary';load()}));q('#v304AttSave')?.addEventListener('click',saveAttendanceV304);q('#v302Sim')?.addEventListener('click',simulate);qa('[data-calc-meta],[data-calc-result],[data-calc-max],[data-calc-weight],[data-calc-min],#v302CalcPenalty,#v302CalcBands,#v302CalcSalesFloor,#v302CalcSalesTarget,#v302CalcSalesCap,#v302CalcAttFloor,#v302CalcCap,#v302CalcBalanceStrength').forEach(x=>x.addEventListener('input',()=>{clearTimeout(calcTimer);calcTimer=setTimeout(simulate,450)}));q('#v302SaveCfg')?.addEventListener('click',S.bonus===1?makeB1Official:saveCfg)}
 async function saveAttendanceV304(){let v=Number(q('#v304Att')?.value);if(!Number.isFinite(v)||v<0||v>100)return;let b=q('#v304AttSave');if(b){b.disabled=true;b.textContent='…'}try{await A('/api/operation/sales-bonus-v293/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({month:S.month,store:S.store,attendance_pct:v})});await load()}catch(e){alert(e.message||e)}finally{if(b){b.disabled=false;b.textContent='Guardar'}}}
 function render(){activate();let h=q('#v302Host');if(!h||!S.data)return;h.innerHTML=page(S.data);bind(S.data);if(S.section==='config')history()}
 async function load(){let seq=++S.seq;S.busy=true;activate();let h=q('#v302Host');if(h&&!S.data)h.innerHTML='<div class="v302-loading">Cargando Bonos…</div>';try{let p=new URLSearchParams({bonus:String(S.bonus)});if(S.month)p.set('month',S.month);if(S.store)p.set('store',S.store);let d=await A('/api/bonuses-v302?'+p);if(seq!==S.seq)return;S.data=d;S.month=d.month;S.store=d.selected_store;render()}catch(e){if(seq===S.seq&&h)h.innerHTML='<div class="v302-empty">No fue posible cargar Bonos: '+esc(e.message||e)+'</div>'}finally{if(seq===S.seq)S.busy=false}}
@@ -863,11 +1078,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             if 'id="v302-js"' not in html:html=html.replace("</body>",js+"</body>",1)
             headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V310-MODELS-INCLUDES-CATALOGS"
+            headers["X-Operations-Bonus-Version"]="V311-SPECIALIST-REVIEWED-BONUSES"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V302] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V302_SIX_SALES_BONUSES=True
-    print("[V310] Bonos: Abrigador/Licencias/Básicos integrados dentro de Modelos a detalle.",flush=True)
+    print("[V311] Bonos: Bono1 inmutable; Bono2..6 rediseñados con metodologías especialistas diferenciadas.",flush=True)

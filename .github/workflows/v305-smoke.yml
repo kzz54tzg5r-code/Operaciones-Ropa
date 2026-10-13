@@ -70,18 +70,23 @@ jobs:
           assert "v308SectionGuide" in src302
           assert "criterion[\"rule\"]=_rule_text(k)" in src302
           assert "Criterios del Bono" in src302
-          assert "V310-MODELS-INCLUDES-CATALOGS" in src302
+          assert "V311-SPECIALIST-REVIEWED-BONUSES" in src302
           assert "function v309Summary(d)" in src302
           assert "function v309Bottom(d)" in src302
-          assert "Regla proporcional por criterio" in src302
-          assert "Matriz de ponderaciones" in src302
+          assert "Curvas, umbrales y puntos" in src302
+          assert "Matriz 50/35/15 + acelerador" in src302
           assert "Escalas de cumplimiento" in src302
-          assert "Bolsa de puntos por criterio" in src302
+          assert "Balance y anti-compensación" in src302
           assert "Validación de mínimos" in src302
           assert "data-v305-catalog" in src302
           assert "Modelos a detalle · " in src302
           assert "function v309CatalogPage(d){return v309ModelsPage(d)}" in src302
-          print("V305/V306/V307/V308/V309/V310 structural assertions OK")
+          assert "system-v311-specialist-review" in src302
+          assert "sales_floor_pct" in src302
+          assert "balance_strength_pct" in src302
+          assert '"minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0}' in src302
+          assert "Bono1 inmutable" in src302
+          print("V305/V306/V307/V308/V309/V310/V311 structural assertions OK")
           PY
           node --check /tmp/v302.js
           node --check /tmp/v305.js
