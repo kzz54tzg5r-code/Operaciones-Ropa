@@ -235,6 +235,7 @@ from v293_sales_bonus_patch import install as _install_v293_sales_bonus_patch
 from v302_six_sales_bonuses_patch import install as _install_v302_six_sales_bonuses_patch
 from v305_report_master_visibility_patch import install as _install_v305_report_master_visibility_patch
 from v312_final_sales_bonuses_patch import install as _install_v312_final_sales_bonuses_patch
+from v313_bonus_visual_and_cut_patch import install as _install_v313_bonus_visual_and_cut_patch
 
 _v121_operation_module.Request = _FastAPIRequest
 
@@ -422,4 +423,6 @@ _install_v302_six_sales_bonuses_patch(web_app)
 _install_v305_report_master_visibility_patch(web_app)
 # V312: metodología final seleccionada de Bonos por Venta; supersede la vista experimental V311.
 _install_v312_final_sales_bonuses_patch(web_app)
+# V313: diseño final por bono + cortes base/actual visibles.
+_install_v313_bonus_visual_and_cut_patch(web_app)
 app = web_app.app

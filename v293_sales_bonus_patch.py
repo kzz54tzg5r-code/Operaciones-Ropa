@@ -18,7 +18,7 @@ import re
 import threading
 import unicodedata
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -242,10 +242,10 @@ def install(m):
         return out
 
     def opening_capacity_entry(month):
-        """Corte que fija la cartera del mes: último disponible al iniciar el mes.
+        """Corte base mensual: el más cercano al inicio sin adelantarse al mes.
 
-        Ejemplo: para octubre, un corte 29/09 es la apertura correcta. Si no
-        existe ningún corte previo, usa el primero disponible dentro del mes.
+        Para octubre 2026, si existe 29/09/2026, ése es el corte base. Sólo si
+        no hay ningún corte anterior o del día 1 se usa el primer corte posterior.
         """
         yy, mm = (int(x) for x in month.split("-"))
         month_start = date(yy, mm, 1)
@@ -253,17 +253,27 @@ def install(m):
         prior = [x for x in all_entries if x[0] <= month_start]
         if prior:
             return prior[-1]
-        exact = [x for x in all_entries if x[0].year == yy and x[0].month == mm]
-        return exact[0] if exact else None
+        after = [x for x in all_entries if x[0] > month_start]
+        return after[0] if after else None
 
     def current_capacity_entry(month):
-        """Último corte conocido hasta el mes consultado, sin usar datos futuros."""
+        """Corte actual: último procesado después del corte base y nunca futuro.
+
+        En el mes en curso llega como máximo a hoy; en meses históricos llega
+        como máximo al último día de ese mes. Así, al subir hoy un segundo corte
+        de octubre, Bonos compara automáticamente base vs corte actual.
+        """
         yy, mm = (int(x) for x in month.split("-"))
-        candidates = [
-            x for x in _capacity_all_entries()
-            if (x[0].year, x[0].month) <= (yy, mm)
-        ]
-        return candidates[-1] if candidates else None
+        opening = opening_capacity_entry(month)
+        if not opening:
+            return None
+        opening_date = opening[0]
+        next_month = date(yy + (1 if mm == 12 else 0), 1 if mm == 12 else mm + 1, 1)
+        month_end = next_month - timedelta(days=1)
+        today = datetime.now(MX).date()
+        limit = min(today, month_end) if (yy, mm) <= (today.year, today.month) else month_end
+        candidates = [x for x in _capacity_all_entries() if opening_date <= x[0] <= limit]
+        return candidates[-1] if candidates else opening
 
     def period_for_entry(entry):
         if not entry:

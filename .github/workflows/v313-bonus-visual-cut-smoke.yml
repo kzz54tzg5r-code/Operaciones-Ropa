@@ -1,0 +1,38 @@
+name: V313 Bonus Visual and Cut Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v293_sales_bonus_patch.py"
+      - "v313_bonus_visual_and_cut_patch.py"
+      - "server_entry.py"
+      - ".github/workflows/v313-bonus-visual-cut-smoke.yml"
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile v293_sales_bonus_patch.py v313_bonus_visual_and_cut_patch.py server_entry.py
+      - name: Verify business rules and design markers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          a=Path("v293_sales_bonus_patch.py").read_text(encoding="utf-8")
+          b=Path("v313_bonus_visual_and_cut_patch.py").read_text(encoding="utf-8")
+          assert "último disponible al iniciar el mes" not in a
+          assert "opening_date <= x[0] <= limit" in a
+          assert "V313-BONUS-VISUAL-CUTS" in b
+          assert "Matriz integral · diseño aprobado" in b
+          assert "Escalones de reducción DDI" in b
+          assert "Se requieren 2 de 3" in b
+          assert "Mejora contra sí misma" in b
+          assert "4 cortes semanales consecutivos" in b
+          assert "sin gráficas de línea" in b.lower()
+          assert "source_dates" in b
+          print("V313 assertions OK")
+          PY
