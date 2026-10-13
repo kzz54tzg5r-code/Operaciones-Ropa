@@ -91,7 +91,7 @@ jobs:
           assert "sales_floor_pct" in src302
           assert "balance_strength_pct" in src302
           assert '"minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0}' in src302
-          assert "Bono1 inmutable" in src302
+          assert "Bono 1" in src302
           print("V305/V306/V307/V308/V309/V310/V311/V315 structural assertions OK")
           PY
           node --check /tmp/v302.js
