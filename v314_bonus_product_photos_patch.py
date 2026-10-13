@@ -99,6 +99,13 @@ function boot(){
  apply();
 }
 document.addEventListener('DOMContentLoaded',boot);
+var retries=0;
+var rootWatcher=new MutationObserver(function(){
+  var root=document.getElementById('v313Host');
+  if(root){boot();apply();if(root.dataset.v314Observing==='1')rootWatcher.disconnect();}
+  else if(++retries>200)rootWatcher.disconnect();
+});
+rootWatcher.observe(document.documentElement,{childList:true,subtree:true});
 [1000,2500,5000].forEach(function(t){setTimeout(boot,t)});
 })();</script>"""
 
