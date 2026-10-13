@@ -1,0 +1,42 @@
+name: V312 Final Bonus Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v293_sales_bonus_patch.py"
+      - "v312_final_sales_bonuses_patch.py"
+      - "server_entry.py"
+      - ".github/workflows/v312-final-bonuses-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python
+        run: python -m py_compile v293_sales_bonus_patch.py v312_final_sales_bonuses_patch.py server_entry.py
+      - name: Verify final bonus rules
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path("v312_final_sales_bonuses_patch.py").read_text(encoding="utf-8")
+          assert "V312-FINAL-BONUS-METHODS" in src
+          assert "Bono 1 permanece exactamente" in src
+          assert "reducción DDI mínima 50%" in src
+          assert "B3_RUBROS_REQUIRED=2" in src
+          assert "B4_SCORE_MIN=80.0" in src
+          assert "B6_WEEKS_REQUIRED=4" in src
+          assert "1 falta descalifica" in src
+          assert "El costo del bono se calcula aparte" in src
+          assert "v312-bars" in src
+          assert "<canvas" not in src
+          v293=Path("v293_sales_bonus_patch.py").read_text(encoding="utf-8")
+          assert "_sales_bonus_weekly_inventory_v293" in v293
+          assert "ddi_days_reduction_pct" in v293
+          print("V312 structural assertions OK")
+          PY

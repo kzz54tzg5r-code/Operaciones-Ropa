@@ -790,6 +790,37 @@ def install(m):
             pass
         return entry, current, sales, sales_pieces, sales_available, sales_pending, bool(capacity_pending)
 
+    def _inventory_summary_from_details(items):
+        """V312 · Resumen real de reducción sobre la misma cartera objetivo."""
+        rows = list(items or [])
+        if not rows:
+            return {
+                "initial_ddi": None, "current_ddi": None, "ddi_reduction_pct": None,
+                "initial_existence": None, "current_existence": None, "existence_reduction_pct": None,
+                "initial_investment": None, "current_investment": None, "investment_reduction_pct": None,
+                "initial_models": 0, "current_models": 0, "models_reduction_pct": None,
+            }
+        def red(initial, current):
+            return ((initial-current)/initial*100.0) if initial and initial > 0 else None
+        initial_ddi = sum(num(x.get("initial_ddi")) for x in rows) / len(rows)
+        current_ddi = sum(num(x.get("current_ddi")) for x in rows) / len(rows)
+        initial_existence = sum(num(x.get("initial_existence")) for x in rows)
+        current_existence = sum(num(x.get("current_existence")) for x in rows)
+        initial_investment = sum(num(x.get("initial_investment")) for x in rows)
+        current_investment = sum(num(x.get("current_investment")) for x in rows)
+        initial_models = sum(1 for x in rows if num(x.get("initial_existence")) > 0)
+        current_models = sum(1 for x in rows if num(x.get("current_existence")) > 0)
+        return {
+            "initial_ddi": round(initial_ddi,1), "current_ddi": round(current_ddi,1),
+            "ddi_reduction_pct": None if red(initial_ddi,current_ddi) is None else round(red(initial_ddi,current_ddi),1),
+            "initial_existence": round(initial_existence,1), "current_existence": round(current_existence,1),
+            "existence_reduction_pct": None if red(initial_existence,current_existence) is None else round(red(initial_existence,current_existence),1),
+            "initial_investment": round(initial_investment,2), "current_investment": round(current_investment,2),
+            "investment_reduction_pct": None if red(initial_investment,current_investment) is None else round(red(initial_investment,current_investment),1),
+            "initial_models": int(initial_models), "current_models": int(current_models),
+            "models_reduction_pct": None if red(initial_models,current_models) is None else round(red(initial_models,current_models),1),
+        }
+
     def build_store_metric(store, month, rows, current, sales, sales_pieces, sales_available, attendance, snapshot, current_entry):
         details = []
         by_cat = {c: [] for c in CATALOGS}
@@ -848,6 +879,20 @@ def install(m):
             })
         ddi_component_raw = sum(component_values) / len(component_values) if component_values else 0.0
         ddi_component = ddi_component_raw if current_entry is not None else None
+        # V312: además del indicador legado de Bono 1, conserva reducciones reales
+        # de DDI, existencia, inversión y número de modelos. Bono 1 no cambia.
+        for cat_row in catalog_summary:
+            cat_items = by_cat.get(str(cat_row.get("catalog") or ""), [])
+            cat_inv = _inventory_summary_from_details(cat_items)
+            cat_row.update({
+                "initial_ddi_avg": cat_inv.get("initial_ddi"),
+                "current_ddi_avg": cat_inv.get("current_ddi"),
+                "ddi_days_reduction_pct": cat_inv.get("ddi_reduction_pct"),
+                "existence_reduction_pct_real": cat_inv.get("existence_reduction_pct"),
+                "investment_reduction_pct_real": cat_inv.get("investment_reduction_pct"),
+                "models_reduction_pct": cat_inv.get("models_reduction_pct"),
+            })
+        inventory = _inventory_summary_from_details(details)
         goal = store_goal(store, month)
         actual_sales = num(sales.get(store))
         actual_sales_pieces = num(sales_pieces.get(store))
@@ -883,6 +928,7 @@ def install(m):
                 "source": "Capacidades",
             },
             "attendance": {"pct": None if attendance_pct is None else round(attendance_pct, 1), "updated_at": str((att or {}).get("updated_at") or ""), "updated_by": str((att or {}).get("updated_by") or "")},
+            "inventory": inventory,
             "score": round(score, 1),
             "score_ready": ready,
             "target_models": len(details),
@@ -893,6 +939,98 @@ def install(m):
             },
             "details": details,
         }
+
+    def _current_map_for_capacity_entry(entry, stores, targets):
+        """Mapa de la misma cartera objetivo en un corte de Capacidades."""
+        if not entry:
+            return {}, False
+        try:
+            entry_date = m._capacity_report_date(entry).isoformat()
+        except Exception:
+            entry_date = ""
+        source_dates = {str(row.get("source_date") or "") for row in (targets or [])}
+        if source_dates == {entry_date}:
+            current = {}
+            for row in targets or []:
+                current[(str(row.get("store") or ""), str(row.get("id_art") or ""))] = {
+                    "ddi": num(row.get("initial_ddi")),
+                    "existence": num(row.get("initial_existence")),
+                    "investment": num(row.get("initial_investment")),
+                }
+            return current, False
+        frame, pending = load_frame(entry)
+        if frame is None or frame.empty:
+            return {}, bool(pending)
+        work = scope_frame(frame, stores)
+        current = {}
+        ids_by_store = defaultdict(set)
+        for row in targets or []:
+            ids_by_store[str(row.get("store") or "")].add(str(row.get("id_art") or ""))
+        if ids_by_store and not work.empty and "ID_ART" in work.columns:
+            w = work.copy()
+            store_list = all_stores()
+            w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, store_list))
+            w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+            valid = pd.Series(False, index=w.index)
+            for store, ids in ids_by_store.items():
+                if ids:
+                    valid = valid | ((w["store"] == store) & w["id_art"].isin(ids))
+            w = w.loc[valid]
+            if not w.empty:
+                w["ddi"] = pd.to_numeric(w.get("DDI", 0), errors="coerce").fillna(0.0)
+                w["existence"] = pd.to_numeric(w.get("Existencia", 0), errors="coerce").fillna(0.0)
+                w["investment"] = pd.to_numeric(w.get("Inversión", 0), errors="coerce").fillna(0.0)
+                agg = w.groupby(["store","id_art"], sort=False, observed=True).agg(
+                    ddi=("ddi","max"), existence=("existence","max"), investment=("investment","max")
+                ).reset_index()
+                current = {(str(x["store"]),str(x["id_art"])):{
+                    "ddi":num(x["ddi"]),"existence":num(x["existence"]),"investment":num(x["investment"])
+                } for x in agg.to_dict("records")}
+        try:
+            del work, frame
+            m._release_process_memory()
+        except Exception:
+            pass
+        return current, bool(pending)
+
+    def weekly_inventory_series(month, stores):
+        """Último corte de cada semana ISO del mes, máximo cuatro semanas."""
+        stores = [x for x in (stores or []) if x]
+        targets = target_rows(month, stores)
+        by_store = defaultdict(list)
+        for row in targets:
+            by_store[str(row.get("store") or "")].append(row)
+        week_last = {}
+        for d, stamp, entry in capacity_entries(month):
+            iso = d.isocalendar()
+            week_last[(iso.year, iso.week)] = (d, stamp, entry)
+        picks = sorted(week_last.values(), key=lambda x:(x[0],x[1]))[-4:]
+        out = {s:[] for s in stores}
+        pending_any = False
+        for d, _stamp, entry in picks:
+            current, pending = _current_map_for_capacity_entry(entry, stores, targets)
+            pending_any = pending_any or pending
+            if pending and not current:
+                continue
+            for store in stores:
+                pseudo = []
+                for row in by_store.get(store, []):
+                    ident = str(row.get("id_art") or "")
+                    cur = current.get((store,ident))
+                    pseudo.append({
+                        "initial_ddi":num(row.get("initial_ddi")),
+                        "current_ddi":num((cur or {}).get("ddi")) if cur is not None else 0.0,
+                        "initial_existence":num(row.get("initial_existence")),
+                        "current_existence":num((cur or {}).get("existence")) if cur is not None else 0.0,
+                        "initial_investment":num(row.get("initial_investment")),
+                        "current_investment":num((cur or {}).get("investment")) if cur is not None else 0.0,
+                    })
+                inv = _inventory_summary_from_details(pseudo)
+                iso = d.isocalendar()
+                out[store].append({
+                    "week":f"Sem {iso.week:02d}","iso_week":int(iso.week),"date":d.isoformat(),"inventory":inv
+                })
+        return {"stores":out,"checkpoint_count":len(picks),"pending":pending_any}
 
     def monthly_payload(actor, month, selected_store):
         stores = actor_stores(actor)
@@ -927,7 +1065,10 @@ def install(m):
             "selected_store": selected,
             "selected": selected_metric,
             "ranking": [{
-                "rank": x["rank"], "store": x["store"], "sales_pct": x["sales"]["pct"], "ddi_pct": x["ddi"]["pct"],
+                "rank": x["rank"], "store": x["store"], "sales_pct": x["sales"]["pct"],
+                "sales_actual": x["sales"]["actual"], "sales_goal": x["sales"]["goal"],
+                "ddi_pct": x["ddi"]["pct"], "catalogs": x["ddi"].get("catalogs") or [],
+                "inventory": x.get("inventory") or {},
                 "attendance_pct": x["attendance"]["pct"], "score": x["score"], "score_ready": x["score_ready"],
                 "target_models": x["target_models"],
             } for x in ranking],
@@ -952,6 +1093,8 @@ def install(m):
                 "capacity": bool(capacity_pending),
             },
         }
+
+    m._sales_bonus_weekly_inventory_v293 = weekly_inventory_series
 
     @m.app.get("/api/operation/sales-bonus-v293")
     def sales_bonus_v293(request: Request, month: str = "", store: str = ""):
