@@ -688,7 +688,7 @@ def install(m):
             _full=calc_model(_b,{"sales":100,"ddi":100,"attendance":100},defaults[_b],100,True)
             assert abs(num(_full.get("points"))-100)<1e-6 and _full.get("ready")
         assert len(set(results[1:]))>=4
-        print("[V311-SELFTEST] Bono1 intacto · Bono2..6 diferenciados · aritmética=ok",flush=True)
+        print("[V311-SELFTEST] Bono1 intacto · Bono2..6 diferenciados · Bono Operativo V279 intacto · aritmética=ok",flush=True)
     except Exception as exc:
         print(f"[V311-SELFTEST] failed: {type(exc).__name__}: {exc}",flush=True)
 
