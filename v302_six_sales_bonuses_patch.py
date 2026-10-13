@@ -534,6 +534,104 @@ def install(m):
         if endpoint is None: raise HTTPException(503,"Bono 1 no está disponible")
         return endpoint(request=request,month=month,store=store)
 
+    def _red_pct(initial,current):
+        initial=num(initial);current=num(current)
+        return None if initial<=0 else round((initial-current)/initial*100.0,1)
+
+    def company_summary_for(base):
+        rows=list(base.get("ranking") or [])
+        sales_rows=[r for r in rows if num(r.get("sales_goal"))>0]
+        sales_actual=sum(num(r.get("sales_actual")) for r in sales_rows)
+        sales_goal=sum(num(r.get("sales_goal")) for r in sales_rows)
+        attendance=[num(r.get("attendance_pct")) for r in rows if r.get("attendance_pct") is not None]
+        target_models=sum(int(num(r.get("target_models"))) for r in rows)
+
+        inv_initial=sum(num((r.get("inventory") or {}).get("initial_investment")) for r in rows)
+        inv_current=sum(num((r.get("inventory") or {}).get("current_investment")) for r in rows)
+        exist_initial=sum(num((r.get("inventory") or {}).get("initial_existence")) for r in rows)
+        exist_current=sum(num((r.get("inventory") or {}).get("current_existence")) for r in rows)
+        models_initial=sum(int(num((r.get("inventory") or {}).get("initial_models"))) for r in rows)
+        models_current=sum(int(num((r.get("inventory") or {}).get("current_models"))) for r in rows)
+
+        ddi_weight=0.0; ddi_initial_sum=0.0; ddi_current_sum=0.0
+        for r in rows:
+            inv=r.get("inventory") or {}
+            w=max(0.0,num(inv.get("initial_models") or r.get("target_models")))
+            if w>0 and inv.get("initial_ddi") is not None and inv.get("current_ddi") is not None:
+                ddi_weight+=w
+                ddi_initial_sum+=num(inv.get("initial_ddi"))*w
+                ddi_current_sum+=num(inv.get("current_ddi"))*w
+        ddi_initial=(ddi_initial_sum/ddi_weight) if ddi_weight>0 else None
+        ddi_current=(ddi_current_sum/ddi_weight) if ddi_weight>0 else None
+
+        cats={}
+        for cat in ("Abrigador","Licencias","Básicos"):
+            models=0.0; ddi_days=0.0; inv_red=0.0; legacy=0.0; weight_days=0.0;weight_inv=0.0;weight_legacy=0.0
+            for r in rows:
+                row=next((x for x in (r.get("catalogs") or []) if str(x.get("catalog") or "")==cat),None)
+                if not row: continue
+                w=max(0.0,num(row.get("models")))
+                models+=w
+                if row.get("ddi_days_reduction_pct") is not None and w>0:
+                    ddi_days+=num(row.get("ddi_days_reduction_pct"))*w;weight_days+=w
+                if row.get("investment_reduction_pct_real") is not None and w>0:
+                    inv_red+=num(row.get("investment_reduction_pct_real"))*w;weight_inv+=w
+                if row.get("combined_pct") is not None and w>0:
+                    legacy+=num(row.get("combined_pct"))*w;weight_legacy+=w
+            cats[cat]={
+                "catalog":cat,"models":int(models),
+                "ddi_reduction_pct":None if weight_days<=0 else round(ddi_days/weight_days,1),
+                "investment_reduction_pct":None if weight_inv<=0 else round(inv_red/weight_inv,1),
+                "bonus1_ddi_component_pct":None if weight_legacy<=0 else round(legacy/weight_legacy,1),
+            }
+
+        complete=sum(1 for r in rows if bool(r.get("score_ready")))
+        return {
+            "stores_total":len(rows),"stores_complete":complete,"stores_incomplete":max(0,len(rows)-complete),
+            "sales_actual":round(sales_actual,2),"sales_goal":round(sales_goal,2),
+            "sales_pct":None if sales_goal<=0 else round(sales_actual/sales_goal*100.0,1),
+            "attendance_pct":None if not attendance else round(sum(attendance)/len(attendance),1),
+            "target_models":target_models,
+            "ddi_initial":None if ddi_initial is None else round(ddi_initial,1),
+            "ddi_current":None if ddi_current is None else round(ddi_current,1),
+            "ddi_reduction_pct":None if ddi_initial is None else _red_pct(ddi_initial,ddi_current),
+            "initial_investment":round(inv_initial,2),"current_investment":round(inv_current,2),
+            "investment_reduction_pct":_red_pct(inv_initial,inv_current),
+            "initial_existence":round(exist_initial,1),"current_existence":round(exist_current,1),
+            "existence_reduction_pct":_red_pct(exist_initial,exist_current),
+            "initial_models":models_initial,"current_models":models_current,
+            "models_reduction_pct":_red_pct(models_initial,models_current),
+            "catalogs":[cats[x] for x in ("Abrigador","Licencias","Básicos")],
+        }
+
+    def company_comparison_for(rankings):
+        avgs={}
+        for i in BONUS_NOS:
+            valid=[x for x in (rankings.get(i) or []) if x.get("ready") and x.get("compliance_pct") is not None]
+            avgs[i]=None if not valid else sum(num(x.get("compliance_pct")) for x in valid)/len(valid)
+        base_avg=avgs.get(1)
+        out=[]
+        for i in BONUS_NOS:
+            rows=rankings.get(i) or []
+            valid=[x for x in rows if x.get("ready") and x.get("compliance_pct") is not None]
+            avg=avgs.get(i)
+            best=valid[0] if valid else {}
+            buckets={"excellent":0,"good":0,"risk":0,"critical":0}
+            for x in valid:
+                p=num(x.get("compliance_pct"))
+                if p>=90:buckets["excellent"]+=1
+                elif p>=70:buckets["good"]+=1
+                elif p>=50:buckets["risk"]+=1
+                else:buckets["critical"]+=1
+            out.append({
+                "bonus_no":i,"name":f"Bono {i}","average_pct":None if avg is None else round(avg,2),
+                "stores_ready":len(valid),"stores_incomplete":max(0,len(rows)-len(valid)),
+                "excellent":buckets["excellent"],"good":buckets["good"],"risk":buckets["risk"],"critical":buckets["critical"],
+                "best_store":str(best.get("store") or ""),"best_pct":best.get("compliance_pct"),
+                "delta_vs_bonus1":None if avg is None or base_avg is None else round(avg-base_avg,2),
+            })
+        return out
+
     def full_payload(request,month,store,bonus_no):
         month=month_key(month);b=int(bonus_no or 1)
         if b not in BONUS_NOS:b=1
@@ -551,11 +649,16 @@ def install(m):
                                "compliance_pct":model.get("compliance_pct"),"rank":rank,"ready":model.get("ready"),
                                "classification":model.get("classification"),"configuration_reason":model.get("configuration_reason",""),
                                "active":bool(cfgs[i].get("active"))})
+        company_summary=company_summary_for(base)
+        company_comparison=company_comparison_for(rankings)
         actor=m.require_user(request);role=str(actor.get("role") or "").lower()
         return {"month":month,"bonus_no":b,"name":f"Bono {b}","official_bonus":official_for(month),"can_admin":role in ADMIN,
                 "stores":base.get("stores") or [],"months":base.get("months") or [],"selected_store":base.get("selected_store"),
-                "model":selected,"ranking":rankings[b],"comparison":comparison,"configs":{i:{"active":bool(cfgs[i].get("active")),"version":cfgs[i].get("version"),"effective_from":cfgs[i].get("effective_from")} for i in BONUS_NOS},
+                "model":selected,"ranking":rankings[b],"comparison":comparison,
+                "company_summary":company_summary,"company_comparison":company_comparison,
+                "configs":{i:{"active":bool(cfgs[i].get("active")),"version":cfgs[i].get("version"),"effective_from":cfgs[i].get("effective_from")} for i in BONUS_NOS},
                 "base":base,"glossary":glossary_for(b,cfgs[b])}
+
 
     @m.app.get("/api/bonuses-v302")
     def get_bonuses_v302(request:Request,month:str="",store:str="",bonus:int=1):
@@ -837,6 +940,23 @@ body[data-v302="1"] #analysisNav,body[data-v302="1"] #operativoNav,body[data-v30
 .v309-gloss-intro{margin-bottom:7px;padding:9px 10px;border-radius:8px;background:#eef6ff;color:#244f77;font-size:10px;line-height:1.4;font-weight:800}
 @media(max-width:1250px){.v309-top{grid-template-columns:minmax(0,1.25fr) minmax(260px,.75fr)}.v309-top .v309-ranking-panel{grid-column:1/-1}.v309-bottom{grid-template-columns:1fr 1fr}.v309-bottom>*:last-child{grid-column:1/-1}}
 @media(max-width:820px){.v309-meta{align-items:flex-start;flex-direction:column}.v309-badges{justify-content:flex-start}.v309-top,.v309-bottom{grid-template-columns:1fr}.v309-top .v309-ranking-panel,.v309-bottom>*:last-child{grid-column:auto}.v309-components{grid-template-columns:repeat(3,minmax(160px,1fr));overflow-x:auto;touch-action:pan-x}.v309-score{min-height:250px}.v309-subtabs{grid-template-columns:repeat(3,minmax(120px,1fr));overflow-x:auto}}
+
+/* V315 · Resumen General = Compañía + Panorama por tienda + navegación robusta */
+.v315-scope{height:34px;display:flex;align-items:center;gap:7px;padding:0 11px;border:1px solid #ccd9e7;border-radius:8px;background:#eef6ff;color:#124b82;font-size:11px;font-weight:950}
+.v315-company-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin:7px 0;padding:10px 12px;border:1px solid #dbe6ef;border-radius:10px;background:linear-gradient(135deg,#f8fbff,#eef6ff)}
+.v315-company-head b{display:block;font-size:17px;color:#123f73}.v315-company-head span{display:block;margin-top:3px;font-size:10px;line-height:1.35;color:#5a748d;font-weight:780}
+.v315-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:7px 0}
+.v315-kpi{min-width:0;padding:9px 8px;border:1px solid #dbe6ef;border-radius:9px;background:#fff}.v315-kpi span{display:block;font-size:8px;color:#6b8196;font-weight:850}.v315-kpi b{display:block;margin-top:4px;font-size:17px;line-height:1.05;color:#123f73}.v315-kpi small{display:block;margin-top:3px;font-size:7.5px;line-height:1.25;color:#7890a5;font-weight:760}
+.v315-company-grid{display:grid;grid-template-columns:.78fr 1.22fr;gap:8px;margin-top:8px}.v315-company-grid.equal{grid-template-columns:1fr 1fr}
+.v315-impact{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;padding:10px}.v315-impact-ring{--p:0;width:140px;height:140px;border-radius:50%;display:grid;place-items:center;position:relative;background:conic-gradient(#1878e8 calc(var(--p)*1%),#e8edf2 0)}.v315-impact-ring:after{content:"";position:absolute;width:101px;height:101px;border-radius:50%;background:#fff}.v315-impact-ring div{position:relative;z-index:1;text-align:center}.v315-impact-ring b{display:block;font-size:28px;color:#123f73}.v315-impact-ring span{display:block;font-size:8px;color:#6d8296;font-weight:850}
+.v315-buckets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.v315-bucket{padding:7px;border-radius:8px;background:#f5f8fb}.v315-bucket span{display:block;font-size:8px;color:#6b8095;font-weight:850}.v315-bucket b{display:block;margin-top:2px;font-size:16px;color:#123f73}
+.v315-health{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px}.v315-health-card{padding:9px;border:1px solid #e0e9f1;border-radius:8px;background:#fbfdff}.v315-health-card span{display:block;font-size:8px;color:#6c8297;font-weight:850}.v315-health-card b{display:block;margin-top:3px;font-size:15px;color:#123f73}.v315-health-card small{display:block;margin-top:3px;font-size:7.5px;color:#7b90a3;font-weight:760}
+.v315-catgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}.v315-cat{padding:9px;border:1px solid #dfe8f0;border-radius:8px;background:#fff}.v315-cat b{display:block;font-size:11px;color:#123f73}.v315-cat strong{display:block;margin-top:5px;font-size:18px;color:#155f9d}.v315-cat span{display:block;margin-top:3px;font-size:8px;color:#6d8297;font-weight:800}
+.v315-delta.pos{color:#14824e}.v315-delta.neg{color:#b52c3d}.v315-delta.zero{color:#667e94}
+.v315-panorama-banner{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;padding:8px 10px;border:1px solid #dce6ef;border-radius:8px;background:#f8fbff;color:#315c82;font-size:10px;font-weight:850}
+.v304-main-tabs.v315-four-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1200px){.v315-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.v315-company-grid{grid-template-columns:1fr}.v315-health{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:820px){.v315-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v315-impact{grid-template-columns:1fr}.v315-impact-ring{margin:auto}.v315-health{grid-template-columns:1fr 1fr}.v315-catgrid{grid-template-columns:repeat(3,minmax(130px,1fr));overflow-x:auto}.v304-main-tabs.v315-four-tabs{grid-template-columns:repeat(4,minmax(135px,1fr));overflow-x:auto;touch-action:pan-x}}
 </style>'''
 
     js=r'''<script id="v302-js">(function(){if(window.__V302_SIX_BONUSES)return;window.__V302_SIX_BONUSES=true;
@@ -849,11 +969,11 @@ function cls(v){if(v==null)return'v302-na';v=n(v);return v>=90?'v302-ok':v>=70?'
 function ensurePage(){let main=q('main.main'),p=q('#page-bonuses');if(main&&!p){p=document.createElement('section');p.className='page';p.id='page-bonuses';main.appendChild(p)}if(p&&!q('#v302Host',p))p.innerHTML='<div id="v302Host"></div>';return p}
 function activate(){ensurePage();try{MAIN='bonuses'}catch(_){}document.body.dataset.v302='1';qa('[data-main]').forEach(x=>x.classList.toggle('active',x.dataset.main==='bonuses'));qa('.page').forEach(x=>x.classList.toggle('active',x.id==='page-bonuses'));let t=q('#heroTitle'),s=q('#heroSub');if(t)t.textContent='Bonos';if(s)s.textContent='Seis opciones de bono para evaluar el desempeño comercial de la tienda'}
 function statusPill(d){let cfg=d.configs?.[S.bonus]||d.configs?.[String(S.bonus)]||{},official=Number(d.official_bonus)===Number(S.bonus);return '<div class="v302-statusline"><span class="v302-pill '+(cfg.active?'':'off')+'">'+(cfg.active?'Activo':'No autorizado')+'</span>'+(official?'<span class="v302-pill">Bono oficial</span>':'')+'<span>Versión '+esc(cfg.version??'—')+' · efectiva '+esc(cfg.effective_from||'—')+'</span></div>'}
-function filters(d){return '<div class="v302-filters"><div class="v302-field"><label>Tienda</label><select id="v302Store">'+(d.stores||[]).map(x=>'<option '+(x===d.selected_store?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div><div class="v302-field"><label>Periodo</label><select id="v302Month">'+(d.months||[]).map(x=>'<option value="'+esc(x.value)+'" '+(x.value===d.month?'selected':'')+'>'+esc(x.label)+'</option>').join('')+'</select></div></div>'}
-function bonusTabs(d){return '<div class="v302-bonus-tabs">'+[1,2,3,4,5,6].map(i=>{let cfg=d.configs?.[i]||d.configs?.[String(i)]||{};return '<button data-v302-bonus="'+i+'" class="'+(S.bonus===i?'active ':'')+(cfg.active?'':'inactive')+'">Bono '+i+'</button>'}).join('')+'</div>'}
-function nav(d){let xs=[['summary','Resumen general'],['ranking','Ranking de tiendas'],['models','Modelos a detalle']],active=S.section==='catalogs'?'models':S.section;return '<div class="v304-main-tabs v310-three-tabs">'+xs.map(x=>'<button data-v302-section="'+x[0]+'" class="'+(active===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'}
+function filters(d){let storeView=['store','models','catalogs'].includes(S.section);let period='<div class="v302-field"><label>Periodo</label><select id="v302Month">'+(d.months||[]).map(x=>'<option value="'+esc(x.value)+'" '+(x.value===d.month?'selected':'')+'>'+esc(x.label)+'</option>').join('')+'</select></div>';if(!storeView)return '<div class="v302-filters"><div><label style="display:block;font-size:11px;font-weight:950;color:#64788d;margin:0 0 2px">Alcance</label><div class="v315-scope">▦ Compañía · todas las tiendas</div></div>'+period+'</div>';return '<div class="v302-filters"><div class="v302-field"><label>Tienda</label><select id="v302Store">'+(d.stores||[]).map(x=>'<option '+(x===d.selected_store?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+period+'</div>'}
+function bonusTabs(d){return '<div class="v302-bonus-tabs">'+[1,2,3,4,5,6].map(i=>{let cfg=d.configs?.[i]||d.configs?.[String(i)]||{};return '<button type="button" data-v302-bonus="'+i+'" aria-pressed="'+(S.bonus===i?'true':'false')+'" class="'+(S.bonus===i?'active ':'')+(cfg.active?'':'inactive')+'">Bono '+i+'</button>'}).join('')+'</div>'}
+function nav(d){let xs=[['summary','Resumen general'],['ranking','Ranking de tiendas'],['store','Panorama por tienda'],['models','Modelos a detalle']],active=S.section==='catalogs'?'models':S.section;return '<div class="v304-main-tabs v315-four-tabs">'+xs.map(x=>'<button type="button" data-v302-section="'+x[0]+'" aria-current="'+(active===x[0]?'page':'false')+'" class="'+(active===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'}
 function catalogTabs(){let xs=['Abrigador','Licencias','Básicos'];return '<div class="v305-catalog-tabs">'+xs.map(x=>'<button type="button" data-v305-catalog="'+x+'" class="'+(S.catalog===x?'active':'')+'">'+x+'</button>').join('')+'</div>'}
-function toolsNav(d){let xs=[['compare','Comparativo de Bonos'],['glossary','Glosario de Bonos']];if(d.can_admin)xs.push(['config','Configuración']);return '<div class="v304-tools-nav">'+xs.map(x=>'<button data-v302-section="'+x[0]+'" class="'+(S.section===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'}
+function toolsNav(d){let xs=[['compare','Comparativo de Bonos'],['glossary','Glosario de Bonos']];if(d.can_admin)xs.push(['config','Configuración']);return '<div class="v304-tools-nav">'+xs.map(x=>'<button type="button" data-v302-section="'+x[0]+'" aria-current="'+(S.section===x[0]?'page':'false')+'" class="'+(S.section===x[0]?'active':'')+'">'+x[1]+'</button>').join('')+'</div>'}
 function cards(m){let xs=[['Puntaje obtenido',m.points==null?'N/D':nf(m.points)],['Puntos máximos',m.max_points==null?'N/D':nf(m.max_points)],['Cumplimiento',pc(m.compliance_pct)],['Criterios evaluados',m.criteria_total??3],['Criterios cumplidos',m.criteria_met??0],['Pendientes / incumplidos',m.criteria_pending??0],['Clasificación',m.classification||'N/D']];return '<div class="v302-cards">'+xs.map(x=>'<div class="v302-card"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div>'}
 function breakdown(m){let rows=m.breakdown||[];return '<section class="v302-panel"><div class="v302-ph"><span>Desglose de indicadores</span><span>'+esc(m.name||'')+'</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th class="left">Indicador</th><th>Meta</th><th>Resultado</th><th>Cumplimiento %</th><th>Peso</th><th>Puntos máximos</th><th>Puntos obtenidos</th><th>Estatus</th></tr></thead><tbody>'+rows.map(r=>'<tr><td class="left"><b>'+esc(r.indicator)+'</b><br><small>'+esc(r.source||'')+'</small></td><td>'+fmt(r.meta,r.unit)+'</td><td>'+fmt(r.result,r.unit)+'</td><td class="'+cls(r.compliance_pct)+'">'+pc(r.compliance_pct)+'</td><td>'+(r.weight==null?'—':pc(r.weight))+'</td><td>'+nf(r.max_points)+'</td><td>'+nf(r.points)+'</td><td>'+esc(r.status||'')+'</td></tr>').join('')+'</tbody></table></div><div class="v302-note">'+esc(m.formula||m.configuration_reason||'')+'</div></section>'}
 function miniRanking(d,limit=8){let a=(d.ranking||[]).slice(0,limit||999);return '<section class="v302-panel"><div class="v302-ph"><span>Ranking global por tienda</span><span>Mejor a peor</span></div><div class="v302-scroll"><table class="v302-table"><thead><tr><th>#</th><th class="left">Tienda</th><th>Puntos</th><th>Máximo</th><th>Cumplimiento</th><th>Clasificación</th></tr></thead><tbody>'+a.map(r=>'<tr><td>'+(r.rank??'—')+'</td><td class="left"><b>'+esc(r.store)+'</b></td><td>'+nf(r.points)+'</td><td>'+nf(r.max_points)+'</td><td class="'+cls(r.compliance_pct)+'">'+pc(r.compliance_pct)+'</td><td>'+esc(r.classification||'')+'</td></tr>').join('')+'</tbody></table></div></section>'}
@@ -991,6 +1111,24 @@ function v309Bottom(d){
   if(b===5)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Balance y anti-compensación')+v309CatalogPanel(d,'Resumen por catálogo')+v309ModelsPanel(d,'Mercancía objetivo')+'</div>';
   return '<div class="v309-bottom">'+v309MinimumsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos observados')+'</div>'
 }
+function v315Delta(v){if(v==null)return '<span class="v315-delta zero">N/D</span>';let cls=n(v)>0?'pos':n(v)<0?'neg':'zero';return '<span class="v315-delta '+cls+'">'+(n(v)>0?'+':'')+nf(v)+' pts</span>'}
+function v315CompanyHeader(d){let c=d.company_summary||{},x=(d.company_comparison||[]).find(r=>Number(r.bonus_no)===Number(S.bonus))||{};return '<div class="v315-company-head"><div><b>Resumen general · Compañía</b><span>Vista macro de todas las tiendas. Primero se mide el impacto global del Bono '+S.bonus+' y después se puede bajar al Panorama por tienda.</span></div><div class="v309-badges"><span class="v309-badge info">Bono '+S.bonus+'</span><span class="v309-badge good">'+esc(c.stores_complete||0)+' con información completa</span><span class="v309-badge">'+esc(c.stores_total||0)+' tiendas</span><span class="v309-badge info">Promedio '+pc(x.average_pct)+'</span></div></div>'}
+function v315CompanyKpis(d){let c=d.company_summary||{};let items=[
+ ['Tiendas evaluadas',c.stores_total,(c.stores_complete||0)+' completas · '+(c.stores_incomplete||0)+' incompletas'],
+ ['Venta compañía vs Meta',pc(c.sales_pct),money(c.sales_actual)+' / '+money(c.sales_goal)],
+ ['DDI crítico compañía',c.ddi_current==null?'N/D':nf(c.ddi_current)+' días','Inicial '+(c.ddi_initial==null?'N/D':nf(c.ddi_initial)+' días')+' · Red. '+pc(c.ddi_reduction_pct)],
+ ['Inversión objetivo',money(c.current_investment),'Inicial '+money(c.initial_investment)+' · Red. '+pc(c.investment_reduction_pct)],
+ ['Existencia objetivo',nf(c.current_existence)+' pzs','Inicial '+nf(c.initial_existence)+' · Red. '+pc(c.existence_reduction_pct)],
+ ['Asistencia promedio',pc(c.attendance_pct),'Promedio de tiendas con captura'],
+ ['Modelos objetivo',nf(c.target_models),'Iniciales '+nf(c.initial_models)+' · actuales '+nf(c.current_models)]
+];return '<div class="v315-kpis">'+items.map(x=>'<div class="v315-kpi"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div>').join('')+'</div>'}
+function v315CompanyImpact(d){let x=(d.company_comparison||[]).find(r=>Number(r.bonus_no)===Number(S.bonus))||{},p=x.average_pct==null?0:Math.max(0,Math.min(100,n(x.average_pct)));return '<section class="v309-panel"><div class="v309-ph"><span>Impacto del Bono '+S.bonus+' en la compañía</span><span>'+esc(x.stores_ready||0)+' tiendas evaluables</span></div><div class="v315-impact"><div class="v315-impact-ring" style="--p:'+p+'"><div><b>'+pc(x.average_pct)+'</b><span>Promedio compañía</span></div></div><div class="v315-buckets"><div class="v315-bucket"><span>Excelente</span><b>'+nf(x.excellent)+'</b></div><div class="v315-bucket"><span>Bueno</span><b>'+nf(x.good)+'</b></div><div class="v315-bucket"><span>Riesgo</span><b>'+nf(x.risk)+'</b></div><div class="v315-bucket"><span>Crítico</span><b>'+nf(x.critical)+'</b></div><div class="v315-bucket"><span>Mejor tienda</span><b style="font-size:12px">'+esc(x.best_store||'N/D')+'</b></div><div class="v315-bucket"><span>Cambio vs Bono 1</span><b style="font-size:12px">'+v315Delta(x.delta_vs_bonus1)+'</b></div></div></div></section>'}
+function v315CompanyComparisonTable(d){let a=d.company_comparison||[];return '<section class="v309-panel"><div class="v309-ph"><span>Impacto de las seis metodologías</span><span>Bono 1 = benchmark</span></div><div class="v309-rank-wrap"><table class="v309-rank"><thead><tr><th class="left">Bono</th><th>Prom. compañía</th><th>Completas</th><th>Excelente</th><th>Bueno</th><th>Riesgo</th><th>Crítico</th><th class="left">Mejor tienda</th><th>Δ vs B1</th></tr></thead><tbody>'+a.map(x=>'<tr class="'+(Number(x.bonus_no)===Number(S.bonus)?'selected':'')+'"><td class="left"><b>'+esc(x.name)+'</b></td><td>'+pc(x.average_pct)+'</td><td>'+nf(x.stores_ready)+'</td><td>'+nf(x.excellent)+'</td><td>'+nf(x.good)+'</td><td>'+nf(x.risk)+'</td><td>'+nf(x.critical)+'</td><td class="left">'+esc(x.best_store||'—')+'</td><td>'+v315Delta(x.delta_vs_bonus1)+'</td></tr>').join('')+'</tbody></table></div></section>'}
+function v315CompanyHealth(d){let c=d.company_summary||{};let xs=[['Reducción DDI',pc(c.ddi_reduction_pct),(c.ddi_initial==null?'N/D':nf(c.ddi_initial))+' → '+(c.ddi_current==null?'N/D':nf(c.ddi_current))+' días'],['Reducción inversión',pc(c.investment_reduction_pct),money(c.initial_investment)+' → '+money(c.current_investment)],['Reducción existencia',pc(c.existence_reduction_pct),nf(c.initial_existence)+' → '+nf(c.current_existence)+' pzs'],['Reducción modelos',pc(c.models_reduction_pct),nf(c.initial_models)+' → '+nf(c.current_models)+' modelos']];return '<section class="v309-panel"><div class="v309-ph"><span>Salud de mercancía crítica · Compañía</span><span>misma cartera objetivo</span></div><div class="v315-health">'+xs.map(x=>'<div class="v315-health-card"><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b><small>'+esc(x[2])+'</small></div>').join('')+'</div></section>'}
+function v315CompanyCatalogs(d){let a=d.company_summary?.catalogs||[];return '<section class="v309-panel"><div class="v309-ph"><span>Panorama por catálogo · Compañía</span><span>promedio ponderado por modelos</span></div><div class="v315-catgrid">'+a.map(x=>'<div class="v315-cat"><b>'+esc(x.catalog)+'</b><strong>'+nf(x.models)+' modelos</strong><span>Red. DDI: '+pc(x.ddi_reduction_pct)+'</span><span>Red. inversión: '+pc(x.investment_reduction_pct)+'</span><span>Componente B1: '+pc(x.bonus1_ddi_component_pct)+'</span></div>').join('')+'</div></section>'}
+function v315CompanySummary(d){return v315CompanyHeader(d)+v315CompanyKpis(d)+'<div class="v315-company-grid">'+v315CompanyImpact(d)+v315CompanyComparisonTable(d)+'</div><div class="v315-company-grid equal">'+v315CompanyHealth(d)+v315CompanyCatalogs(d)+'</div><div style="margin-top:8px">'+v309Ranking(d,false)+'</div>'}
+function v315StorePanorama(d){return '<div class="v315-panorama-banner"><span>Panorama por tienda · <b>'+esc(d.selected_store||'')+'</b></span><span>Selecciona otra tienda en el filtro o desde el ranking de compañía.</span></div>'+v309Summary(d)}
+function v315CompanyComparisonPage(d){return v315CompanyHeader(d)+'<div class="v315-company-grid">'+v315CompanyComparisonTable(d)+v315CompanyImpact(d)+'</div><div style="margin-top:8px">'+v315CompanyHealth(d)+'</div>'}
 function v309Summary(d){
   return v309MethodInfo(d)+'<div class="v309-top">'+v309Components(d)+v309Score(d)+v309Ranking(d,false)+'</div>'+v309Bottom(d)
 }
@@ -1033,9 +1171,9 @@ if(b===5){let w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k
 if(b===6){let mins=cfg.minimums||{},w=cfg.weights||{};return common+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Mínimo · '+k+'</label><input data-cfg-min="'+k+'" type="number" value="'+esc(mins[k]??'')+'"></div>').join('')+['sales','ddi','attendance'].map(k=>'<div class="v302-field"><label>Peso · '+k+'</label><input data-cfg-weight="'+k+'" type="number" value="'+esc(w[k]??'')+'"></div>').join('')+'<div class="v302-field"><label>Penalización por gate %</label><input id="v302CfgPenalty" type="number" value="'+esc(cfg.penalty_pct??30)+'"></div>'}
 return common}
 function configView(d){let cfg=d.glossary?.config||{};return '<section class="v302-panel"><div class="v302-ph"><span>Configuración administrativa · Bono '+S.bonus+'</span><span>Versionada por periodo efectivo</span></div><div class="v302-body"><div class="v302-config-grid"><div class="v302-field"><label>Vigencia desde</label><input id="v302CfgEffective" type="month" value="'+esc(d.month)+'"></div><div class="v302-field"><label>Meta y estándares</label><input disabled value="Definidos por la información y configuración vigente"></div><div class="v302-field"><label>Bono oficial</label><select id="v302CfgOfficial"><option value="0">No cambiar</option><option value="1">Hacer oficial desde la vigencia</option></select></div>'+configFields(cfg,S.bonus)+'</div><div style="margin-top:8px"><button class="v302-btn" id="v302SaveCfg">'+(S.bonus===1?'Seleccionar Bono 1 como oficial':'Guardar nueva versión')+'</button></div><div id="v302CfgMsg"></div></div><div class="v302-note">Cada guardado crea una nueva versión con usuario, fecha y hora. Los periodos anteriores conservan la configuración que les corresponde.</div></section><div id="v302History"></div>'}
-function body(d){if(S.section==='ranking')return v309MethodInfo(d)+'<div class="v309-page-note">Ranking completo calculado exclusivamente con la metodología del Bono '+S.bonus+'.</div>'+v309Ranking(d,true);if(S.section==='models'||S.section==='catalogs')return v309ModelsPage(d);if(S.section==='compare')return v309MethodInfo(d)+compare(d);if(S.section==='glossary')return '<div class="v309-gloss-intro">Glosario del Bono '+S.bonus+': criterios, parámetros, fórmula, reglas y ejemplo correspondientes exclusivamente a esta metodología.</div>'+glossary(d);if(S.section==='config')return configView(d);return v309Summary(d)}
+function body(d){if(S.section==='ranking')return v315CompanyHeader(d)+'<div class="v309-page-note">Ranking completo de todas las tiendas con la metodología del Bono '+S.bonus+'. Haz clic en una tienda para abrir su Panorama por tienda.</div>'+v309Ranking(d,true);if(S.section==='store')return v315StorePanorama(d);if(S.section==='models'||S.section==='catalogs')return v309ModelsPage(d);if(S.section==='compare')return v315CompanyComparisonPage(d);if(S.section==='glossary')return '<div class="v309-gloss-intro">Glosario del Bono '+S.bonus+': criterios, parámetros, fórmula, reglas y ejemplo correspondientes exclusivamente a esta metodología.</div>'+glossary(d);if(S.section==='config')return configView(d);return v315CompanySummary(d)}
 function navShell(d){return '<div class="v307-nav-shell">'+nav(d)+toolsNav(d)+'</div>'}
-function page(d){return '<div class="v302"><div class="v302-head"><div><h2>Bonos</h2><div class="v302-sub">Selecciona Bono 1 a Bono 6 y compara cuál metodología se adapta mejor a la operación comercial.</div></div>'+filters(d)+'</div>'+bonusTabs(d)+navShell(d)+body(d)+'</div>'}
+function page(d){return '<div class="v302"><div class="v302-head"><div><h2>Bonos</h2><div class="v302-sub">Resumen General muestra primero la compañía; desde Ranking o Panorama por tienda puedes bajar al detalle de cada tienda.</div></div>'+filters(d)+'</div>'+bonusTabs(d)+navShell(d)+body(d)+'</div>'}
 
 function calcPayload(){let inputs={};for(let k of ['sales','ddi','attendance'])inputs[k]={meta:n(q('[data-calc-meta="'+k+'"]')?.value),result:n(q('[data-calc-result="'+k+'"]')?.value)};let cfg={active:true};
 if(S.bonus===2){cfg.max_points={};qa('[data-calc-max]').forEach(x=>cfg.max_points[x.dataset.calcMax]=n(x.value));cfg.sales_floor_pct=n(q('#v302CalcSalesFloor')?.value||80);cfg.sales_target_pct=n(q('#v302CalcSalesTarget')?.value||100);cfg.sales_cap_pct=n(q('#v302CalcSalesCap')?.value||110);cfg.attendance_floor_pct=n(q('#v302CalcAttFloor')?.value||90)}
@@ -1056,7 +1194,9 @@ async function saveCfg(){let msg=q('#v302CfgMsg'),btn=q('#v302SaveCfg');try{if(b
 async function makeB1Official(){let msg=q('#v302CfgMsg');try{let eff=q('#v302CfgEffective')?.value||S.month,d=await A('/api/bonuses-v302/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({bonus_no:1,effective_from:eff,make_official:true,config:{}})});if(msg)msg.innerHTML='<div class="v302-note">Bono 1 seleccionado como oficial desde '+esc(eff)+'</div>';await load()}catch(e){if(msg)msg.innerHTML='<div class="v302-note">'+esc(e.message||e)+'</div>'}}
 async function history(){if(!S.data?.can_admin)return;let host=q('#v302History');if(!host)return;host.innerHTML='<div class="v302-loading">Cargando historial…</div>';try{let d=await A('/api/bonuses-v302/config?month='+encodeURIComponent(S.month));S.configData=d;host.innerHTML='<div class="v302-grid2"><section class="v302-panel"><div class="v302-ph"><span>Historial de configuraciones</span><span>Usuario · fecha · versión</span></div><div class="v302-history"><table class="v302-table"><thead><tr><th>Bono</th><th>Versión</th><th>Vigencia</th><th>Estado</th><th>Fecha</th><th>Usuario</th></tr></thead><tbody>'+(d.history||[]).map(x=>'<tr><td>Bono '+x.bonus_no+'</td><td>'+x.version+'</td><td>'+esc(x.effective_from)+'</td><td>'+(x.active?'Activo':'Desactivado')+'</td><td>'+esc(x.changed_at)+'</td><td>'+esc(x.changed_by)+'</td></tr>').join('')+'</tbody></table></div></section><section class="v302-panel"><div class="v302-ph"><span>Historial de bono oficial</span><span>Actual: Bono '+esc(d.official_bonus)+'</span></div><div class="v302-history"><table class="v302-table"><thead><tr><th>Vigencia</th><th>Bono</th><th>Fecha</th><th>Usuario</th></tr></thead><tbody>'+(d.official_history||[]).map(x=>'<tr><td>'+esc(x.effective_from)+'</td><td>Bono '+x.bonus_no+'</td><td>'+esc(x.changed_at)+'</td><td>'+esc(x.changed_by)+'</td></tr>').join('')+'</tbody></table></div></section></div>'}catch(e){host.innerHTML='<div class="v302-note">'+esc(e.message||e)+'</div>'}}
 let calcTimer=null;
-function bind(d){q('#v302Store')?.addEventListener('change',e=>{S.store=e.target.value;load()});q('#v302Month')?.addEventListener('change',e=>{S.month=e.target.value;load()});qa('[data-v302-bonus]').forEach(b=>b.addEventListener('click',()=>{S.bonus=Number(b.dataset.v302Bonus);load()}));qa('[data-v302-section]').forEach(b=>b.addEventListener('click',()=>{S.section=b.dataset.v302Section==='catalogs'?'models':b.dataset.v302Section;if(S.section==='models'&&!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';render();if(S.section==='config')history()}));qa('[data-v305-catalog]').forEach(b=>b.addEventListener('click',()=>{S.catalog=b.dataset.v305Catalog;render()}));qa('[data-v304-store]').forEach(r=>r.addEventListener('click',()=>{S.store=r.dataset.v304Store;S.section='summary';load()}));q('#v304AttSave')?.addEventListener('click',saveAttendanceV304);q('#v302Sim')?.addEventListener('click',simulate);qa('[data-calc-meta],[data-calc-result],[data-calc-max],[data-calc-weight],[data-calc-min],#v302CalcPenalty,#v302CalcBands,#v302CalcSalesFloor,#v302CalcSalesTarget,#v302CalcSalesCap,#v302CalcAttFloor,#v302CalcCap,#v302CalcBalanceStrength').forEach(x=>x.addEventListener('input',()=>{clearTimeout(calcTimer);calcTimer=setTimeout(simulate,450)}));q('#v302SaveCfg')?.addEventListener('click',S.bonus===1?makeB1Official:saveCfg)}
+const V315_SECTIONS=new Set(['summary','ranking','store','models','compare','glossary','config']);
+function goSection(sec){sec=sec==='catalogs'?'models':sec;if(!V315_SECTIONS.has(sec))sec='summary';S.section=sec;if(S.section==='models'&&!['Abrigador','Licencias','Básicos'].includes(S.catalog))S.catalog='Abrigador';render();if(S.section==='config')history()}
+function bind(d){q('#v302Store')?.addEventListener('change',e=>{S.store=e.target.value;load()});q('#v302Month')?.addEventListener('change',e=>{S.month=e.target.value;load()});qa('[data-v302-bonus]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();S.bonus=Number(b.dataset.v302Bonus);load()}));qa('[data-v302-section]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();goSection(b.dataset.v302Section)}));qa('[data-v305-catalog]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();S.catalog=b.dataset.v305Catalog;render()}));qa('[data-v304-store]').forEach(r=>r.addEventListener('click',e=>{e.preventDefault();S.store=r.dataset.v304Store;S.section='store';load()}));q('#v304AttSave')?.addEventListener('click',saveAttendanceV304);q('#v302Sim')?.addEventListener('click',simulate);qa('[data-calc-meta],[data-calc-result],[data-calc-max],[data-calc-weight],[data-calc-min],#v302CalcPenalty,#v302CalcBands,#v302CalcSalesFloor,#v302CalcSalesTarget,#v302CalcSalesCap,#v302CalcAttFloor,#v302CalcCap,#v302CalcBalanceStrength').forEach(x=>x.addEventListener('input',()=>{clearTimeout(calcTimer);calcTimer=setTimeout(simulate,450)}));q('#v302SaveCfg')?.addEventListener('click',S.bonus===1?makeB1Official:saveCfg)}
 async function saveAttendanceV304(){let v=Number(q('#v304Att')?.value);if(!Number.isFinite(v)||v<0||v>100)return;let b=q('#v304AttSave');if(b){b.disabled=true;b.textContent='…'}try{await A('/api/operation/sales-bonus-v293/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({month:S.month,store:S.store,attendance_pct:v})});await load()}catch(e){alert(e.message||e)}finally{if(b){b.disabled=false;b.textContent='Guardar'}}}
 function render(){activate();let h=q('#v302Host');if(!h||!S.data)return;h.innerHTML=page(S.data);bind(S.data);if(S.section==='config')history()}
 async function load(){let seq=++S.seq;S.busy=true;activate();let h=q('#v302Host');if(h&&!S.data)h.innerHTML='<div class="v302-loading">Cargando Bonos…</div>';try{let p=new URLSearchParams({bonus:String(S.bonus)});if(S.month)p.set('month',S.month);if(S.store)p.set('store',S.store);let d=await A('/api/bonuses-v302?'+p);if(seq!==S.seq)return;S.data=d;S.month=d.month;S.store=d.selected_store;render()}catch(e){if(seq===S.seq&&h)h.innerHTML='<div class="v302-empty">No fue posible cargar Bonos: '+esc(e.message||e)+'</div>'}finally{if(seq===S.seq)S.busy=false}}
@@ -1078,11 +1218,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             if 'id="v302-js"' not in html:html=html.replace("</body>",js+"</body>",1)
             headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V311-SPECIALIST-REVIEWED-BONUSES"
+            headers["X-Operations-Bonus-Version"]="V315-COMPANY-SUMMARY-PANORAMA-TABS"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V302] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V302_SIX_SALES_BONUSES=True
-    print("[V311] Bonos: Bono1 inmutable; Bono2..6 rediseñados con metodologías especialistas diferenciadas.",flush=True)
+    print("[V315] Bonos: Resumen General a nivel compañía, Panorama por tienda y navegación completa.",flush=True)

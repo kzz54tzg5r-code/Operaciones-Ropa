@@ -1,0 +1,33 @@
+name: V315 Bonus Tabs Runtime
+
+on:
+  pull_request:
+    paths:
+      - "v302_six_sales_bonuses_patch.py"
+      - "tests/ui/bonuses.test.cjs"
+      - "tests/ui/runtime-fixture.cjs"
+      - ".github/workflows/v315-bonus-tabs-runtime.yml"
+  push:
+    branches: [main]
+    paths:
+      - "v302_six_sales_bonuses_patch.py"
+      - "tests/ui/bonuses.test.cjs"
+      - "tests/ui/runtime-fixture.cjs"
+      - ".github/workflows/v315-bonus-tabs-runtime.yml"
+  workflow_dispatch:
+
+jobs:
+  bonus-tabs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/ui/package-lock.json
+      - name: Install UI test dependencies
+        run: npm --prefix tests/ui ci
+      - name: Open every Bonus tab
+        run: timeout 25s node --test tests/ui/bonuses.test.cjs

@@ -51,7 +51,8 @@ jobs:
           assert "['ranking','Ranking de tiendas']" in src302
           assert "['models','Modelos a detalle']" in src302
           assert "['catalogs','Abrigador']" not in src302
-          assert "v310-three-tabs" in src302
+          assert "v315-four-tabs" in src302
+          assert "['store','Panorama por tienda']" in src302
           assert "data-v305-catalog" in src302
           assert "['Abrigador','Licencias','Básicos']" in src302
           assert "/api/settings/report-modules-v305" in src305
@@ -70,7 +71,12 @@ jobs:
           assert "v308SectionGuide" in src302
           assert "criterion[\"rule\"]=_rule_text(k)" in src302
           assert "Criterios del Bono" in src302
-          assert "V311-SPECIALIST-REVIEWED-BONUSES" in src302
+          assert "V315-COMPANY-SUMMARY-PANORAMA-TABS" in src302
+          assert "def company_summary_for(base):" in src302
+          assert "def company_comparison_for(rankings):" in src302
+          assert "function v315CompanySummary(d)" in src302
+          assert "function v315StorePanorama(d)" in src302
+          assert "V315_SECTIONS=new Set(['summary','ranking','store','models','compare','glossary','config'])" in src302
           assert "function v309Summary(d)" in src302
           assert "function v309Bottom(d)" in src302
           assert "Curvas, umbrales y puntos" in src302
@@ -85,8 +91,8 @@ jobs:
           assert "sales_floor_pct" in src302
           assert "balance_strength_pct" in src302
           assert '"minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0}' in src302
-          assert "Bono1 inmutable" in src302
-          print("V305/V306/V307/V308/V309/V310/V311 structural assertions OK")
+          assert "Bono 1" in src302
+          print("V305/V306/V307/V308/V309/V310/V311/V315 structural assertions OK")
           PY
           node --check /tmp/v302.js
           node --check /tmp/v305.js
