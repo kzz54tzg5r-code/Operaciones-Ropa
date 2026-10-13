@@ -84,7 +84,7 @@ jobs:
           assert "system-v311-specialist-review" in src302
           assert "sales_floor_pct" in src302
           assert "balance_strength_pct" in src302
-          assert "minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0}.__class__ is dict if False else True
+          assert '"minimums":{"sales":90.0,"ddi":25.0,"attendance":95.0}' in src302
           assert "Bono1 inmutable" in src302
           print("V305/V306/V307/V308/V309/V310/V311 structural assertions OK")
           PY
