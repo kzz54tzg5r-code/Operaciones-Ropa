@@ -534,6 +534,104 @@ def install(m):
         if endpoint is None: raise HTTPException(503,"Bono 1 no está disponible")
         return endpoint(request=request,month=month,store=store)
 
+    def _red_pct(initial,current):
+        initial=num(initial);current=num(current)
+        return None if initial<=0 else round((initial-current)/initial*100.0,1)
+
+    def company_summary_for(base):
+        rows=list(base.get("ranking") or [])
+        sales_rows=[r for r in rows if num(r.get("sales_goal"))>0]
+        sales_actual=sum(num(r.get("sales_actual")) for r in sales_rows)
+        sales_goal=sum(num(r.get("sales_goal")) for r in sales_rows)
+        attendance=[num(r.get("attendance_pct")) for r in rows if r.get("attendance_pct") is not None]
+        target_models=sum(int(num(r.get("target_models"))) for r in rows)
+
+        inv_initial=sum(num((r.get("inventory") or {}).get("initial_investment")) for r in rows)
+        inv_current=sum(num((r.get("inventory") or {}).get("current_investment")) for r in rows)
+        exist_initial=sum(num((r.get("inventory") or {}).get("initial_existence")) for r in rows)
+        exist_current=sum(num((r.get("inventory") or {}).get("current_existence")) for r in rows)
+        models_initial=sum(int(num((r.get("inventory") or {}).get("initial_models"))) for r in rows)
+        models_current=sum(int(num((r.get("inventory") or {}).get("current_models"))) for r in rows)
+
+        ddi_weight=0.0; ddi_initial_sum=0.0; ddi_current_sum=0.0
+        for r in rows:
+            inv=r.get("inventory") or {}
+            w=max(0.0,num(inv.get("initial_models") or r.get("target_models")))
+            if w>0 and inv.get("initial_ddi") is not None and inv.get("current_ddi") is not None:
+                ddi_weight+=w
+                ddi_initial_sum+=num(inv.get("initial_ddi"))*w
+                ddi_current_sum+=num(inv.get("current_ddi"))*w
+        ddi_initial=(ddi_initial_sum/ddi_weight) if ddi_weight>0 else None
+        ddi_current=(ddi_current_sum/ddi_weight) if ddi_weight>0 else None
+
+        cats={}
+        for cat in ("Abrigador","Licencias","Básicos"):
+            models=0.0; ddi_days=0.0; inv_red=0.0; legacy=0.0; weight_days=0.0;weight_inv=0.0;weight_legacy=0.0
+            for r in rows:
+                row=next((x for x in (r.get("catalogs") or []) if str(x.get("catalog") or "")==cat),None)
+                if not row: continue
+                w=max(0.0,num(row.get("models")))
+                models+=w
+                if row.get("ddi_days_reduction_pct") is not None and w>0:
+                    ddi_days+=num(row.get("ddi_days_reduction_pct"))*w;weight_days+=w
+                if row.get("investment_reduction_pct_real") is not None and w>0:
+                    inv_red+=num(row.get("investment_reduction_pct_real"))*w;weight_inv+=w
+                if row.get("combined_pct") is not None and w>0:
+                    legacy+=num(row.get("combined_pct"))*w;weight_legacy+=w
+            cats[cat]={
+                "catalog":cat,"models":int(models),
+                "ddi_reduction_pct":None if weight_days<=0 else round(ddi_days/weight_days,1),
+                "investment_reduction_pct":None if weight_inv<=0 else round(inv_red/weight_inv,1),
+                "bonus1_ddi_component_pct":None if weight_legacy<=0 else round(legacy/weight_legacy,1),
+            }
+
+        complete=sum(1 for r in rows if bool(r.get("score_ready")))
+        return {
+            "stores_total":len(rows),"stores_complete":complete,"stores_incomplete":max(0,len(rows)-complete),
+            "sales_actual":round(sales_actual,2),"sales_goal":round(sales_goal,2),
+            "sales_pct":None if sales_goal<=0 else round(sales_actual/sales_goal*100.0,1),
+            "attendance_pct":None if not attendance else round(sum(attendance)/len(attendance),1),
+            "target_models":target_models,
+            "ddi_initial":None if ddi_initial is None else round(ddi_initial,1),
+            "ddi_current":None if ddi_current is None else round(ddi_current,1),
+            "ddi_reduction_pct":None if ddi_initial is None else _red_pct(ddi_initial,ddi_current),
+            "initial_investment":round(inv_initial,2),"current_investment":round(inv_current,2),
+            "investment_reduction_pct":_red_pct(inv_initial,inv_current),
+            "initial_existence":round(exist_initial,1),"current_existence":round(exist_current,1),
+            "existence_reduction_pct":_red_pct(exist_initial,exist_current),
+            "initial_models":models_initial,"current_models":models_current,
+            "models_reduction_pct":_red_pct(models_initial,models_current),
+            "catalogs":[cats[x] for x in ("Abrigador","Licencias","Básicos")],
+        }
+
+    def company_comparison_for(rankings):
+        avgs={}
+        for i in BONUS_NOS:
+            valid=[x for x in (rankings.get(i) or []) if x.get("ready") and x.get("compliance_pct") is not None]
+            avgs[i]=None if not valid else sum(num(x.get("compliance_pct")) for x in valid)/len(valid)
+        base_avg=avgs.get(1)
+        out=[]
+        for i in BONUS_NOS:
+            rows=rankings.get(i) or []
+            valid=[x for x in rows if x.get("ready") and x.get("compliance_pct") is not None]
+            avg=avgs.get(i)
+            best=valid[0] if valid else {}
+            buckets={"excellent":0,"good":0,"risk":0,"critical":0}
+            for x in valid:
+                p=num(x.get("compliance_pct"))
+                if p>=90:buckets["excellent"]+=1
+                elif p>=70:buckets["good"]+=1
+                elif p>=50:buckets["risk"]+=1
+                else:buckets["critical"]+=1
+            out.append({
+                "bonus_no":i,"name":f"Bono {i}","average_pct":None if avg is None else round(avg,2),
+                "stores_ready":len(valid),"stores_incomplete":max(0,len(rows)-len(valid)),
+                "excellent":buckets["excellent"],"good":buckets["good"],"risk":buckets["risk"],"critical":buckets["critical"],
+                "best_store":str(best.get("store") or ""),"best_pct":best.get("compliance_pct"),
+                "delta_vs_bonus1":None if avg is None or base_avg is None else round(avg-base_avg,2),
+            })
+        return out
+
     def full_payload(request,month,store,bonus_no):
         month=month_key(month);b=int(bonus_no or 1)
         if b not in BONUS_NOS:b=1
@@ -551,11 +649,16 @@ def install(m):
                                "compliance_pct":model.get("compliance_pct"),"rank":rank,"ready":model.get("ready"),
                                "classification":model.get("classification"),"configuration_reason":model.get("configuration_reason",""),
                                "active":bool(cfgs[i].get("active"))})
+        company_summary=company_summary_for(base)
+        company_comparison=company_comparison_for(rankings)
         actor=m.require_user(request);role=str(actor.get("role") or "").lower()
         return {"month":month,"bonus_no":b,"name":f"Bono {b}","official_bonus":official_for(month),"can_admin":role in ADMIN,
                 "stores":base.get("stores") or [],"months":base.get("months") or [],"selected_store":base.get("selected_store"),
-                "model":selected,"ranking":rankings[b],"comparison":comparison,"configs":{i:{"active":bool(cfgs[i].get("active")),"version":cfgs[i].get("version"),"effective_from":cfgs[i].get("effective_from")} for i in BONUS_NOS},
+                "model":selected,"ranking":rankings[b],"comparison":comparison,
+                "company_summary":company_summary,"company_comparison":company_comparison,
+                "configs":{i:{"active":bool(cfgs[i].get("active")),"version":cfgs[i].get("version"),"effective_from":cfgs[i].get("effective_from")} for i in BONUS_NOS},
                 "base":base,"glossary":glossary_for(b,cfgs[b])}
+
 
     @m.app.get("/api/bonuses-v302")
     def get_bonuses_v302(request:Request,month:str="",store:str="",bonus:int=1):
