@@ -177,75 +177,178 @@ def install(m):
         b=int(bonus_no); breakdown=[]; ok_cfg,cfg_reason=config_ready(b,cfg)
         missing=[k for k,_,_ in CRITERIA if pcts.get(k) is None]
         ready_data=not missing
-        total=0.0; max_total=0.0; formula=""; meets_all=True
+        total=0.0; max_total=100.0; formula=""; meets_all=True
+
+        # REGLA ABSOLUTA V311: Bono 1 no se modifica.
         if b==1:
             weights=base_weights
             for k,label,w in CRITERIA:
                 p=pcts.get(k); pts=None if p is None else clamp(p)*w/100.0
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":w,"points":pts,"weight":w,"status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
-            score=num(b1_score); total=score;max_total=100.0;ready=bool(b1_ready)
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":None if p is None else clamp(p),
+                                  "max_points":w,"points":pts,"weight":w,
+                                  "status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
+            score=num(b1_score); total=score; ready=bool(b1_ready)
             return {"bonus_no":1,"name":"Bono 1","points":round(total,2),"max_points":100.0,"compliance_pct":round(score,2),
                     "ready":ready,"config_ready":True,"configuration_reason":"","classification":classify(score,ready),
                     "criteria_total":3,"criteria_met":sum(1 for x in breakdown if x["compliance_pct"] is not None and num(x["compliance_pct"])>=100),
                     "criteria_pending":sum(1 for x in breakdown if x["compliance_pct"] is None or num(x["compliance_pct"])<100),
-                    "breakdown":breakdown,"formula":"Cálculo original conservado: 50% Venta vs Meta + 30% DDI por Cat + 20% Asistencia."}
+                    "breakdown":breakdown,"formula":"Cálculo original conservado: 50% Venta vs Meta + 30% DDI por Cat + 20% Asistencia.",
+                    "expert_status":"Benchmark inmutable"}
+
         if not ok_cfg:
             return {"bonus_no":b,"name":f"Bono {b}","points":None,"max_points":None,"compliance_pct":None,"ready":False,
                     "config_ready":False,"configuration_reason":cfg_reason,"classification":"Pendiente de configuración",
-                    "criteria_total":3,"criteria_met":0,"criteria_pending":3,"breakdown":[],"formula":""}
-        cap=clamp(cfg.get("compliance_cap_pct",100),1,100)
-        if b in (2,5):
-            mps=cfg.get("max_points") or {}
+                    "criteria_total":3,"criteria_met":0,"criteria_pending":3,"breakdown":[],"formula":"",
+                    "expert_status":"Propuesta especialista pendiente"}
+
+        # BONO 2 · CURVA PROGRESIVA
+        # Venta < 80% no genera puntos; 80→100% progresa linealmente; 100→110% tiene acelerador controlado.
+        # Asistencia < 90% no genera puntos; 90→100% progresa. DDI permanece proporcional.
+        if b==2:
+            mps=cfg.get("max_points") or base_points
+            sf=clamp(cfg.get("sales_floor_pct",80),0,99.99)
+            st=max(sf+0.01,num(cfg.get("sales_target_pct",100),100))
+            sc=max(st,num(cfg.get("sales_cap_pct",110),110))
+            af=clamp(cfg.get("attendance_floor_pct",90),0,99.99)
+
+            def sales_curve(p):
+                pv=max(0.0,num(p))
+                if pv<sf:return 0.0
+                if pv<=st:return (pv-sf)/(st-sf)*100.0
+                if sc<=st:return 100.0
+                return 100.0+(min(pv,sc)-st)/(sc-st)*10.0
+
+            def attendance_curve(p):
+                pv=max(0.0,num(p))
+                if pv<af:return 0.0
+                if pv>=100:return 100.0
+                return (pv-af)/(100.0-af)*100.0
+
             for k,label,_w in CRITERIA:
-                mx=max(0.0,num(mps.get(k))); p=pcts.get(k); pts=None if p is None else mx*min(max(num(p),0.0),cap)/100.0
-                max_total+=mx
-                if pts is not None: total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,"status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
-            formula=("Puntos = Puntos máximos × Cumplimiento / 100; suma proporcional de criterios." if b==2
-                     else "Cada criterio acumula puntos hasta su máximo; el total es la suma de puntos ganados.")
+                mx=max(0.0,num(mps.get(k))); p=pcts.get(k)
+                if p is None:
+                    scored=None;pts=None;status="N/D"
+                else:
+                    if k=="sales":scored=sales_curve(p)
+                    elif k=="attendance":scored=attendance_curve(p)
+                    else:scored=clamp(p)
+                    pts=mx*scored/100.0
+                    if k=="sales" and num(p)<sf:status="Bajo umbral"
+                    elif k=="attendance" and num(p)<af:status="Bajo umbral"
+                    elif num(p)>=100:status="Cumple"
+                    else:status="En avance"
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,"status":status})
+            total=sum(num(x.get("points")) for x in breakdown if x.get("points") is not None)
+            max_total=sum(max(0.0,num((mps or {}).get(k))) for k,_,_ in CRITERIA) or 100.0
+            formula=(f"Venta: <{sf:g}%=0; {sf:g}–{st:g}% progresivo; >{st:g}% acelerador hasta {sc:g}%. "
+                     f"DDI proporcional. Asistencia: <{af:g}%=0; {af:g}–100% progresiva.")
+
+        # BONO 3 · PONDERACIÓN CON SOBRECUMPLIMIENTO CONTROLADO EN VENTA
         elif b==3:
-            ws=cfg.get("weights") or {}
+            ws=cfg.get("weights") or {"sales":50.0,"ddi":35.0,"attendance":15.0}
+            cap=max(100.0,num(cfg.get("compliance_cap_pct",110),110))
             for k,label,_w in CRITERIA:
-                w=max(0.0,num(ws.get(k)));p=pcts.get(k);pts=None if p is None else min(max(num(p),0.0),cap)*w/100.0
-                max_total+=w
-                if pts is not None:total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":w,"points":None if pts is None else round(pts,2),"weight":w,"status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "Pendiente")})
-            formula="Aporte = Cumplimiento × Ponderación / 100; total normalizado por la suma de ponderaciones."
+                w=max(0.0,num(ws.get(k)));p=pcts.get(k)
+                scored=None if p is None else min(max(num(p),0.0),cap if k=="sales" else 100.0)
+                pts=None if scored is None else scored*w/100.0
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":w,"points":None if pts is None else round(pts,2),"weight":w,
+                                  "status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "En avance")})
+            total=sum(num(x.get("points")) for x in breakdown if x.get("points") is not None)
+            max_total=sum(max(0.0,num(ws.get(k))) for k,_,_ in CRITERIA) or 100.0
+            formula=(f"Aporte = cumplimiento × peso / 100. Pesos actuales: Venta {num(ws.get('sales')):g}%, "
+                     f"DDI {num(ws.get('ddi')):g}%, Asistencia {num(ws.get('attendance')):g}%. "
+                     f"Sólo Venta puede sobrecumplir hasta {cap:g}%.")
+
+        # BONO 4 · ESCALONES / BANDAS
         elif b==4:
             bands=cfg.get("bands") or {}
+            max_total=0.0
             for k,label,_w in CRITERIA:
                 p=pcts.get(k);rows=bands.get(k) or [];mx=max([num(x.get("points")) for x in rows] or [0]);pts=None
+                band_label=""
                 if p is not None:
                     pv=num(p);candidates=[]
                     for band in rows:
                         lo=num(band.get("min"),0); hi=band.get("max")
                         if pv>=lo and (hi is None or hi=="" or pv<num(hi)):
-                            candidates.append(num(band.get("points")))
-                    pts=max(candidates) if candidates else 0.0
+                            candidates.append((num(band.get("points")),lo,hi))
+                    if candidates:
+                        pts,lo,hi=max(candidates,key=lambda x:x[0])
+                        band_label=f"{lo:g}%–{'∞' if hi in (None,'') else f'{num(hi):g}%'}"
+                    else:pts=0.0
                 max_total+=mx
-                if pts is not None:total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,"status":"N/D" if p is None else ("Nivel asignado" if pts else "Sin nivel")})
-            formula="Cada cumplimiento cae en un rango autorizado y recibe los puntos definidos para ese nivel."
-        else:
-            ws=cfg.get("weights") or {}; mins=cfg.get("minimums") or {}
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":p,
+                                  "max_points":mx,"points":None if pts is None else round(pts,2),"weight":None,
+                                  "band":band_label,"status":"N/D" if p is None else ("Nivel asignado" if pts else "Sin nivel")})
+            total=sum(num(x.get("points")) for x in breakdown if x.get("points") is not None)
+            formula="Cada criterio recibe los puntos del rango alcanzado. El modelo evita falsa precisión y hace explícitos los saltos de desempeño."
+
+        # BONO 5 · BALANCE / ANTI-COMPENSACIÓN
+        # Parte del 50/30/20, pero el peor criterio reduce proporcionalmente el resultado global.
+        elif b==5:
+            ws=cfg.get("weights") or base_weights
+            strength=clamp(cfg.get("balance_strength_pct",30),0,100)/100.0
+            base_total=0.0
+            valid=[]
+            max_total=sum(max(0.0,num(ws.get(k))) for k,_,_ in CRITERIA) or 100.0
             for k,label,_w in CRITERIA:
-                w=max(0.0,num(ws.get(k)));p=pcts.get(k);minimum=num(mins.get(k));pts=None if p is None else clamp(p)*w/100.0
+                w=max(0.0,num(ws.get(k)));p=pcts.get(k)
+                scored=None if p is None else clamp(p)
+                raw=None if scored is None else scored*w/100.0
+                if scored is not None:valid.append(scored);base_total+=raw
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":w,"raw_points":None if raw is None else round(raw,2),
+                                  "points":None,"weight":w,
+                                  "status":"N/D" if p is None else ("Cumple" if num(p)>=100 else "En balance")})
+            weakest=min(valid) if len(valid)==3 else None
+            multiplier=(1.0-strength)+strength*((weakest or 0.0)/100.0) if weakest is not None else None
+            total=base_total*(multiplier if multiplier is not None else 1.0)
+            for row in breakdown:
+                if row.get("raw_points") is not None:
+                    row["points"]=round(num(row.get("raw_points"))*(multiplier if multiplier is not None else 1.0),2)
+                    row["balance_multiplier"]=None if multiplier is None else round(multiplier,4)
+            formula=(f"Puntaje base ponderado × multiplicador de balance. Multiplicador = "
+                     f"{(1-strength):.2f} + {strength:.2f} × (peor criterio/100). "
+                     f"Fuerza anti-compensación: {strength*100:g}%.")
+
+        # BONO 6 · GATES / MÍNIMOS
+        else:
+            ws=cfg.get("weights") or base_weights; mins=cfg.get("minimums") or {}
+            max_total=sum(max(0.0,num(ws.get(k))) for k,_,_ in CRITERIA) or 100.0
+            base_total=0.0
+            for k,label,_w in CRITERIA:
+                w=max(0.0,num(ws.get(k)));p=pcts.get(k);minimum=num(mins.get(k));scored=None if p is None else clamp(p)
+                pts=None if scored is None else scored*w/100.0
                 met=(p is not None and num(p)>=minimum);meets_all=meets_all and met
-                max_total+=w
-                if pts is not None:total+=pts
-                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"max_points":w,"points":None if pts is None else round(pts,2),"weight":w,"minimum":minimum,"status":"N/D" if p is None else ("Cumple mínimo" if met else "No cumple mínimo")})
-            penalty=clamp(cfg.get("penalty_pct",0),0,100)
-            if ready_data and not meets_all and penalty>0: total*=1-penalty/100.0
-            formula="Se calculan aportes ponderados y se validan mínimos autorizados; sólo se aplica penalización si fue configurada."
+                if pts is not None:base_total+=pts
+                breakdown.append({"key":k,"indicator":label,"compliance_pct":p,"scored_pct":scored,
+                                  "max_points":w,"points":None if pts is None else round(pts,2),"weight":w,"minimum":minimum,
+                                  "status":"N/D" if p is None else ("Cumple mínimo" if met else "No cumple mínimo")})
+            penalty=clamp(cfg.get("penalty_pct",30),0,100)
+            total=base_total
+            if ready_data and not meets_all and penalty>0:
+                total=base_total*(1-penalty/100.0)
+                factor=(1-penalty/100.0)
+                for row in breakdown:
+                    if row.get("points") is not None:row["points"]=round(num(row.get("points"))*factor,2)
+            formula=(f"Puntaje base 50/30/20 con mínimos obligatorios: Venta {num(mins.get('sales')):g}%, "
+                     f"DDI {num(mins.get('ddi')):g}%, Asistencia {num(mins.get('attendance')):g}%. "
+                     f"Si falla al menos un mínimo, se aplica penalización de {penalty:g}%.")
+
         final_pct=(total/max_total*100.0) if max_total>0 else 0.0
         ready=bool(ok_cfg and ready_data and max_total>0)
         classification=("No cumple mínimos" if b==6 and ready and not meets_all else classify(final_pct,ready))
-        return {"bonus_no":b,"name":f"Bono {b}","points":round(total,2) if max_total>0 else None,"max_points":round(max_total,2) if max_total>0 else None,
-                "compliance_pct":round(final_pct,2) if max_total>0 else None,"ready":ready,"config_ready":ok_cfg,"configuration_reason":cfg_reason,
-                "classification":classification,"criteria_total":3,
+        return {"bonus_no":b,"name":f"Bono {b}","points":round(total,2) if max_total>0 else None,
+                "max_points":round(max_total,2) if max_total>0 else None,
+                "compliance_pct":round(final_pct,2) if max_total>0 else None,"ready":ready,
+                "config_ready":ok_cfg,"configuration_reason":cfg_reason,"classification":classification,
+                "criteria_total":3,
                 "criteria_met":sum(1 for x in breakdown if x.get("status") in ("Cumple","Nivel asignado","Cumple mínimo")),
                 "criteria_pending":sum(1 for x in breakdown if x.get("status") not in ("Cumple","Nivel asignado","Cumple mínimo")),
-                "breakdown":breakdown,"formula":formula}
+                "breakdown":breakdown,"formula":formula,
+                "expert_status":"Propuesta especialista experimental · Bono 1 continúa como oficial/benchmark"}
 
 
     def enrich_breakdown(base,model):
