@@ -1,3 +1,4 @@
+// V315 dedicated navigation/runtime smoke for Bonos
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {spawnSync}=require('node:child_process');
