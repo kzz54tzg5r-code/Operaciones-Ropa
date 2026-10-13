@@ -121,6 +121,53 @@ test('reports load after repeated initialization, tab changes and filters',{time
 });
 
 
+test('V315 Bonus tabs all open and company summary drills into a store',{timeout:90000},async t=>{
+  const runtime=createRuntime(html,path.join(output,'web'));
+  const {window:w,errors,requests}=runtime,d=w.document;
+  const waitFor=async selector=>{for(let i=0;i<40;i++){const el=d.querySelector(selector);if(el)return el;await wait(100)}throw new Error('Missing '+selector)};
+  const click=async selector=>{const el=await waitFor(selector);el.click();await wait(250);t.diagnostic('Opened '+selector);return el};
+  try{
+    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
+    await wait(2700);
+    await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
+    await wait(350);
+    await click('[data-main="bonuses"]');
+    await wait(350);
+    assert.equal(d.querySelector('.page.active')?.id,'page-bonuses');
+    assert.match(d.getElementById('v302Host').textContent,/Resumen general · Compañía/);
+    assert.equal(d.getElementById('v302Store'),null,'company summary must not force a store filter');
+    assert.ok(d.getElementById('v302Month'),'company summary keeps the period filter');
+
+    for(let i=1;i<=6;i++){
+      await click('[data-v302-bonus="'+i+'"]');
+      assert.ok(requests.some(x=>x.path==='/api/bonuses-v302' && x.query.get('bonus')===String(i)),'Bono '+i+' must load its payload');
+      assert.match(d.getElementById('v302Host').textContent,new RegExp('Bono '+i));
+    }
+
+    const sections=[
+      ['summary',/Resumen general · Compañía/],
+      ['ranking',/Ranking completo de todas las tiendas/],
+      ['store',/Panorama por tienda/],
+      ['models',/Modelos a detalle/],
+      ['compare',/Impacto de las seis metodologías/],
+      ['glossary',/Glosario del Bono/],
+      ['config',/Configuración administrativa/]
+    ];
+    for(const [section,pattern] of sections){
+      await click('[data-v302-section="'+section+'"]');
+      assert.match(d.getElementById('v302Host').textContent,pattern,'section '+section+' must render');
+    }
+
+    await click('[data-v302-section="ranking"]');
+    const row=await waitFor('[data-v304-store="Iztapalapa"]');
+    row.click();await wait(300);
+    assert.match(d.getElementById('v302Host').textContent,/Panorama por tienda/);
+    assert.ok(d.getElementById('v302Store'),'store panorama must expose the store selector');
+    assert.equal(d.getElementById('v302Store').value,'Iztapalapa');
+    assert.deepEqual(errors,[],'Bonus navigation must not raise browser errors');
+  }finally{runtime.close()}
+});
+
 test('V289 keeps its device-fit stylesheet after earlier responsive layers',()=>{
   const prior=html.indexOf('id="v288-operation-daily-option5-css"');
   const current=html.indexOf('id="v289-device-fit-css"');
