@@ -893,12 +893,12 @@ function v308SectionGuide(d,section){
 function v309MethodInfo(d){
   const b=Number(S.bonus),g=d.glossary||{},cfg=d.configs?.[b]||d.configs?.[String(b)]||{},official=Number(d.official_bonus)===b,m=d.model||{};
   const tags={
-    1:['Modelo base (original)'],
-    2:['Metodología proporcional','Parámetros configurables'],
-    3:['Ponderación configurable','Comparativo disponible'],
+    1:['Modelo base · inmutable'],
+    2:['Curva progresiva','Acelerador controlado'],
+    3:['Ponderación 50/35/15','Venta hasta 110%'],
     4:['Niveles escalonados','Rangos configurables'],
-    5:['Acumulación de puntos','Ranking por puntuación'],
-    6:['Mínimos requeridos','Validación integral']
+    5:['Balance anti-compensación','Peor criterio influye'],
+    6:['Gates mínimos','Penalización si falla un mínimo']
   }[b]||[];
   let state=cfg.active?(m.config_ready===false?'Pendiente de configuración':'Activo'):'Pendiente de configuración';
   let stateCls=cfg.active&&m.config_ready!==false?'good':'warn';
@@ -985,10 +985,10 @@ function v309MinimumsPanel(d){
 function v309Bottom(d){
   const b=Number(S.bonus);
   if(b===1)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
-  if(b===2)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CriteriaPanel(d,'Regla proporcional por criterio')+v309AttendancePanel(d)+'</div>';
-  if(b===3)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Matriz de ponderaciones')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
+  if(b===2)return '<div class="v309-bottom">'+v309ModelsPanel(d,'Modelos objetivo destacados')+v309CriteriaPanel(d,'Curvas, umbrales y puntos')+v309AttendancePanel(d)+'</div>';
+  if(b===3)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Matriz 50/35/15 + acelerador')+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309AttendancePanel(d)+'</div>';
   if(b===4)return '<div class="v309-bottom">'+v309BandsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos por nivel (DDI)')+'</div>';
-  if(b===5)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Bolsa de puntos por criterio')+v309CatalogPanel(d,'Resumen por catálogo')+v309ModelsPanel(d,'Mercancía objetivo')+'</div>';
+  if(b===5)return '<div class="v309-bottom">'+v309CriteriaPanel(d,'Balance y anti-compensación')+v309CatalogPanel(d,'Resumen por catálogo')+v309ModelsPanel(d,'Mercancía objetivo')+'</div>';
   return '<div class="v309-bottom">'+v309MinimumsPanel(d)+v309CatalogPanel(d,'Resumen por catálogo (DDI)')+v309ModelsPanel(d,'Modelos observados')+'</div>'
 }
 function v309Summary(d){
@@ -1078,11 +1078,11 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(boot,250),{once:true
             if 'id="v302-js"' not in html:html=html.replace("</body>",js+"</body>",1)
             headers=dict(getattr(response,"headers",{}) or {});headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V310-MODELS-INCLUDES-CATALOGS"
+            headers["X-Operations-Bonus-Version"]="V311-SPECIALIST-REVIEWED-BONUSES"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V302] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V302_SIX_SALES_BONUSES=True
-    print("[V310] Bonos: Abrigador/Licencias/Básicos integrados dentro de Modelos a detalle.",flush=True)
+    print("[V311] Bonos: Bono1 inmutable; Bono2..6 rediseñados con metodologías especialistas diferenciadas.",flush=True)
