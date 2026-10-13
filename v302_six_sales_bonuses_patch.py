@@ -561,38 +561,63 @@ def install(m):
                 "user":str(actor.get("username") or "")}
 
     def validate_config(b,cfg):
-        if b==1: raise HTTPException(400,"Bono 1 conserva su configuración original y no puede modificarse")
+        if b==1:
+            raise HTTPException(400,"Bono 1 conserva su configuración original y no puede modificarse")
         out={**defaults[b],**(cfg or {})};out["method"]=METHODS[b];out["locked"]=False
         out["active"]=bool(out.get("active"))
-        if b in (2,5):
-            pts=out.get("max_points") or {}
-            if any(num(pts.get(k),-1)<0 for k,_,_ in CRITERIA):raise HTTPException(400,"Puntos máximos inválidos")
+
+        if b==2:
+            pts=out.get("max_points") or base_points
+            if any(num(pts.get(k),-1)<0 for k,_,_ in CRITERIA):
+                raise HTTPException(400,"Puntos máximos inválidos")
             out["max_points"]={k:round(num(pts.get(k)),4) for k,_,_ in CRITERIA}
-            out["compliance_cap_pct"]=clamp(out.get("compliance_cap_pct",100),1,100)
+            sf=clamp(out.get("sales_floor_pct",80),0,99.99)
+            st=max(sf+0.01,num(out.get("sales_target_pct",100),100))
+            sc=max(st,num(out.get("sales_cap_pct",110),110))
+            af=clamp(out.get("attendance_floor_pct",90),0,99.99)
+            out.update(sales_floor_pct=round(sf,2),sales_target_pct=round(st,2),sales_cap_pct=round(sc,2),
+                       attendance_floor_pct=round(af,2),compliance_cap_pct=round(sc,2))
+
         if b==3:
-            ws=out.get("weights") or {}
-            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:raise HTTPException(400,"Las ponderaciones deben sumar más de cero")
+            ws=out.get("weights") or {"sales":50.0,"ddi":35.0,"attendance":15.0}
+            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:
+                raise HTTPException(400,"Las ponderaciones deben sumar más de cero")
             out["weights"]={k:round(max(0,num(ws.get(k))),4) for k,_,_ in CRITERIA}
-            out["compliance_cap_pct"]=clamp(out.get("compliance_cap_pct",100),1,100)
+            out["compliance_cap_pct"]=round(max(100.0,num(out.get("compliance_cap_pct",110),110)),2)
+
         if b==4:
             bands=out.get("bands") or {}
             clean={}
             for k,_,_ in CRITERIA:
                 rows=[]
                 for x in bands.get(k) or []:
-                    lo=num(x.get("min"));hi=x.get("max");pts=max(0,num(x.get("points")))
+                    lo=max(0,num(x.get("min")));hi=x.get("max");pts=max(0,num(x.get("points")))
                     hi_val=None if hi in (None,"") else num(hi)
-                    if hi_val is not None and hi_val<=lo:raise HTTPException(400,f"Rango inválido en {k}")
-                    rows.append({"min":lo,"max":hi_val,"points":pts})
+                    if hi_val is not None and hi_val<=lo:
+                        raise HTTPException(400,f"Rango inválido en {k}")
+                    rows.append({"min":round(lo,2),"max":None if hi_val is None else round(hi_val,2),"points":round(pts,2)})
+                rows.sort(key=lambda x:x["min"])
                 clean[k]=rows
             out["bands"]=clean
+
+        if b==5:
+            ws=out.get("weights") or base_weights
+            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:
+                raise HTTPException(400,"Los pesos del Bono 5 deben sumar más de cero")
+            out["weights"]={k:round(max(0,num(ws.get(k))),4) for k,_,_ in CRITERIA}
+            out["balance_strength_pct"]=round(clamp(out.get("balance_strength_pct",30),0,100),2)
+            out["compliance_cap_pct"]=100.0
+
         if b==6:
             mins=out.get("minimums") or {}
-            out["minimums"]={k:(None if mins.get(k) in (None,"") else max(0,num(mins.get(k)))) for k,_,_ in CRITERIA}
-            out["penalty_pct"]=clamp(out.get("penalty_pct",0),0,100)
+            out["minimums"]={k:(None if mins.get(k) in (None,"") else round(max(0,num(mins.get(k))),2)) for k,_,_ in CRITERIA}
+            out["penalty_pct"]=round(clamp(out.get("penalty_pct",30),0,100),2)
             ws=out.get("weights") or base_weights
+            if sum(max(0,num(ws.get(k))) for k,_,_ in CRITERIA)<=0:
+                raise HTTPException(400,"Los pesos del Bono 6 deben sumar más de cero")
             out["weights"]={k:round(max(0,num(ws.get(k))),4) for k,_,_ in CRITERIA}
         return out
+
 
     @m.app.post("/api/bonuses-v302/config")
     async def save_bonus_config_v302(request:Request):
@@ -636,13 +661,22 @@ def install(m):
         result=calc_model(b,pcts,cfg,b1,len([x for x in pcts.values() if x is not None])==3)
         return {"bonus_no":b,"result":result,"steps":steps+[result.get("formula") or ""],"simulation":True}
 
-    # Prueba interna de aritmética sin datos reales.
+    # V311 · pruebas internas de aritmética y diferenciación sin datos reales.
     try:
-        _t=calc_model(2,{"sales":100,"ddi":100,"attendance":100},defaults[2],100,True)
-        assert abs(num(_t.get("points"))-100)<1e-6 and _t.get("ready")
-        print("[V302-SELFTEST] engine=ok · Bono1 comercial identificado · Bono Operativo V279 intacto",flush=True)
+        sample={"sales":95,"ddi":50,"attendance":98}
+        results=[]
+        for _b in BONUS_NOS:
+            cfg=defaults[_b]
+            _r=calc_model(_b,sample,cfg,b1_score=82.1,b1_ready=True)
+            results.append(round(num(_r.get("points")),-1))
+        assert calc_model(1,{"sales":100,"ddi":100,"attendance":100},defaults[1],100,True).get("points")==100
+        for _b in (2,3,4,5,6):
+            _full=calc_model(_b,{"sales":100,"ddi":100,"attendance":100},defaults[_b],100,True)
+            assert abs(num(_full.get("points"))-100)<1e-6 and _full.get("ready")
+        assert len(set(results[1:]))>=4
+        print("[V311-SELFTEST] Bono1 intacto · Bono2..6 diferenciados · aritmética=ok",flush=True)
     except Exception as exc:
-        print(f"[V302-SELFTEST] failed: {type(exc).__name__}: {exc}",flush=True)
+        print(f"[V311-SELFTEST] failed: {type(exc).__name__}: {exc}",flush=True)
 
 
     css=r'''<style id="v302-css">
