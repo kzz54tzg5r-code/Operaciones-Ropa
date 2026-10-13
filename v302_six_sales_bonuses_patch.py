@@ -410,38 +410,38 @@ def install(m):
             )
         elif b==2:
             common.update(
-                objective="Convertir el nivel real de cumplimiento de cada indicador en puntos proporcionales para reconocer avances parciales.",
-                methodology="Cada indicador obtiene una parte de sus puntos máximos en proporción directa a su porcentaje de cumplimiento.",
-                difference="Reconoce de forma lineal cada punto porcentual de avance hasta el límite autorizado.",
-                formula="Puntos criterio = Puntos máximos × min(Cumplimiento, límite) / 100. Total = suma de puntos."
+                objective="Premiar avance comercial útil sin regalar puntos a desempeños claramente insuficientes y permitiendo un acelerador controlado en venta.",
+                methodology="Curva progresiva: Venta no genera puntos debajo del umbral configurado; entre umbral y meta progresa linealmente y después de 100% puede acelerar hasta un tope. Asistencia también exige un piso antes de generar puntos. DDI permanece proporcional.",
+                difference="Introduce umbrales y acelerador controlado; evita que cumplimientos bajos generen el mismo valor marginal que los cercanos a meta.",
+                formula="Venta: curva por umbral/meta/tope. DDI: proporcional. Asistencia: curva desde su piso hasta 100%. Total = suma de puntos."
             )
         elif b==3:
             common.update(
-                objective="Priorizar de manera configurable los indicadores comerciales mediante ponderaciones porcentuales autorizadas.",
-                methodology="El cumplimiento individual de cada indicador se multiplica por su peso configurado y los aportes se suman para obtener el resultado final.",
-                difference="Permite modificar la importancia relativa de Venta vs Meta, DDI por Cat y Asistencia sin cambiar sus fuentes.",
-                formula="Aporte = min(Cumplimiento,límite) × Peso / 100. % final = suma de aportes / suma de pesos × 100."
+                objective="Dar mayor importancia a la salud del inventario sin perder el liderazgo de Venta vs Meta y permitiendo sobrecumplimiento comercial controlado.",
+                methodology="Ponderación revisada de especialista: Venta conserva el mayor peso, DDI incrementa su relevancia y Asistencia funciona como disciplina de soporte. Sólo Venta puede sobrecumplir hasta el tope configurado.",
+                difference="No replica el 50/30/20 del Bono 1: usa pesos propios y permite aceleración únicamente en Venta.",
+                formula="Aporte = cumplimiento limitado por criterio × peso / 100. Sólo Venta puede exceder 100% hasta el tope configurado."
             )
         elif b==4:
             common.update(
-                objective="Reconocer niveles definidos de desempeño asignando puntos según el rango de cumplimiento alcanzado en cada indicador.",
-                methodology="Cada porcentaje de cumplimiento se ubica en un rango autorizado y recibe los puntos establecidos para ese nivel.",
-                difference="No asigna puntos de forma lineal; utiliza escalones configurables de cumplimiento.",
-                formula="Puntos criterio = puntos del rango donde cae el cumplimiento. Total = suma de puntos de los tres criterios."
+                objective="Reconocer saltos claros de desempeño y facilitar que las tiendas entiendan qué nivel deben alcanzar para ganar más puntos.",
+                methodology="Sistema escalonado: cada criterio cae en un rango y recibe una cantidad fija de puntos. Los rangos distinguen desempeño crítico, avance, cumplimiento y alto desempeño.",
+                difference="Evita falsa precisión: una diferencia mínima dentro del mismo rango no cambia el premio; el cambio ocurre al cruzar un nivel autorizado.",
+                formula="Puntos criterio = puntos del rango alcanzado. Total = suma de los tres criterios."
             )
         elif b==5:
             common.update(
-                objective="Medir el desempeño mediante acumulación de puntos ganados frente al total disponible en los tres indicadores.",
-                methodology="Cada indicador tiene un máximo de puntos y acumula una parte de ellos según el cumplimiento obtenido.",
-                difference="Hace visible cuántos puntos se ganaron y cuántos estaban disponibles, facilitando el ranking por puntos acumulados.",
-                formula="Puntos acumulados = Σ(Puntos máximos criterio × Cumplimiento limitado / 100)."
+                objective="Evitar que un indicador sobresaliente compense por completo otro indicador crítico.",
+                methodology="Modelo de balance: primero calcula el puntaje base ponderado y después aplica un multiplicador ligado al peor criterio. Mientras más débil sea el componente más rezagado, menor es el puntaje final.",
+                difference="Penaliza la descompensación entre Venta, DDI y Asistencia sin usar un gate rígido.",
+                formula="Puntaje final = Puntaje base ponderado × [(1−fuerza) + fuerza × (peor criterio / 100)]."
             )
         else:
             common.update(
-                objective="Evaluar el resultado comercial integral y, además, comprobar que cada indicador cumpla los mínimos autorizados.",
-                methodology="Calcula los aportes individuales, valida los mínimos por indicador y sólo aplica condiciones o penalizaciones previamente configuradas.",
-                difference="Combina una calificación total con requisitos mínimos obligatorios por indicador.",
-                formula="Puntaje base = suma ponderada. Se verifica cada mínimo; una penalización sólo se aplica si fue autorizada en configuración."
+                objective="Asegurar que una tienda no alcance un bono alto si falla un requisito comercial mínimo.",
+                methodology="Modelo con gates: calcula la suma ponderada y valida mínimos obligatorios de Venta, DDI y Asistencia. Si falla al menos uno, aplica la penalización autorizada.",
+                difference="Convierte los mínimos en condición real de calidad; un indicador excelente ya no compensa completamente un incumplimiento crítico.",
+                formula="Puntaje base = suma ponderada. Si algún criterio no alcanza su mínimo, Puntaje final = Puntaje base × (1 − penalización)."
             )
         # V308: cada bono conserva las mismas tres dimensiones comerciales,
         # pero el glosario documenta la regla concreta con la que ESA metodología
@@ -457,14 +457,19 @@ def install(m):
             if b==1:
                 return f"Peso fijo {fixed_weights[k]:g}%"
             if b==2:
-                return f"Máximo {num(cfg_points.get(k)):g} pts · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+                if k=="sales":
+                    return (f"Umbral {num(cfg.get('sales_floor_pct',80)):g}% · meta {num(cfg.get('sales_target_pct',100)):g}% · "
+                            f"tope {num(cfg.get('sales_cap_pct',110)):g}% · máximo {num(cfg_points.get(k)):g} pts")
+                if k=="attendance":
+                    return f"Piso {num(cfg.get('attendance_floor_pct',90)):g}% · máximo {num(cfg_points.get(k)):g} pts"
+                return f"Proporcional · máximo {num(cfg_points.get(k)):g} pts"
             if b==3:
-                return f"Peso {num(cfg_weights.get(k)):g}% · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+                return f"Peso {num(cfg_weights.get(k)):g}%" + (f" · tope {num(cfg.get('compliance_cap_pct',110)):g}%" if k=="sales" else " · tope 100%")
             if b==4:
                 rows=cfg_bands.get(k) or []
-                return (f"{len(rows)} rango(s) autorizado(s)" if rows else "Rangos pendientes de configurar")
+                return (f"{len(rows)} nivel(es) configurados" if rows else "Rangos pendientes de configurar")
             if b==5:
-                return f"Bolsa {num(cfg_points.get(k)):g} pts · límite {num(cfg.get('compliance_cap_pct',100)):g}%"
+                return f"Peso {num(cfg_weights.get(k) or fixed_weights[k]):g}% · fuerza anti-compensación {num(cfg.get('balance_strength_pct',30)):g}%"
             return (f"Peso {num(cfg_weights.get(k)):g}% · mínimo "
                     + ("pendiente" if cfg_mins.get(k) is None else f"{num(cfg_mins.get(k)):g}%"))
 
@@ -473,27 +478,36 @@ def install(m):
             if b==1:
                 return f"{label} aporta su cumplimiento limitado a 100% multiplicado por {fixed_weights[k]:g}%."
             if b==2:
-                return f"{label} genera puntos proporcionales: máximo del criterio × cumplimiento / 100."
+                if k=="sales":
+                    return f"{label} usa curva progresiva con umbral, meta y acelerador controlado."
+                if k=="attendance":
+                    return f"{label} no genera puntos debajo del piso configurado y progresa hasta 100%."
+                return f"{label} genera puntos proporcionales a su avance real."
             if b==3:
-                return f"{label} se pondera por el peso autorizado; su aporte es cumplimiento × peso / 100."
+                return f"{label} se pondera por el peso del Bono 3; sólo Venta puede sobrecumplir."
             if b==4:
-                return f"{label} no puntúa linealmente: el cumplimiento cae en un rango y toma los puntos de ese nivel."
+                return f"{label} toma los puntos del nivel donde cae el cumplimiento."
             if b==5:
-                return f"{label} acumula puntos dentro de su bolsa máxima hasta alcanzar el tope configurado."
-            return f"{label} genera un aporte ponderado y además debe superar el mínimo autorizado del criterio."
+                return f"{label} aporta al puntaje base y además participa en el multiplicador determinado por el peor criterio."
+            return f"{label} aporta al puntaje base y debe superar su mínimo para evitar la penalización global."
 
         def _criterion_formula(k):
             if b==1:
                 return f"min(Cumplimiento,100) × {fixed_weights[k]:g}/100"
             if b==2:
-                return "Puntos máximos × min(Cumplimiento,límite) / 100"
+                if k=="sales":
+                    return "Curva: 0 bajo umbral; lineal hasta 100%; acelerador después de meta"
+                if k=="attendance":
+                    return "0 bajo piso; lineal desde piso hasta 100%"
+                return "Puntos máximos × min(Cumplimiento,100) / 100"
             if b==3:
-                return "min(Cumplimiento,límite) × Peso / 100"
+                return "min(Cumplimiento,tope del criterio) × Peso / 100"
             if b==4:
-                return "Puntos del rango donde se ubica el cumplimiento"
+                return "Puntos fijos del rango alcanzado"
             if b==5:
-                return "Bolsa máxima × min(Cumplimiento,límite) / 100"
-            return "Cumplimiento × Peso / 100 + validación de mínimo"
+                return "Aporte base × multiplicador global de balance"
+            return "Cumplimiento × Peso / 100; luego validación de mínimos y penalización"
+
 
         for criterion in common["criteria"]:
             k=criterion["key"]
