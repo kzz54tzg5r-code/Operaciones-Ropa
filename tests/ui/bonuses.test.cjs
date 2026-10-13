@@ -32,8 +32,8 @@ test('V315 all Bonus tabs are reachable and ranking drills into store panorama',
     return el;
   };
   try{
-    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
-    await wait(3000);
+    if(d.readyState!=='complete')await Promise.race([new Promise(resolve=>w.addEventListener('load',resolve,{once:true})),wait(3000)]);
+    await wait(2600);
     await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
     await wait(500);
     await click('[data-main="bonuses"]');
