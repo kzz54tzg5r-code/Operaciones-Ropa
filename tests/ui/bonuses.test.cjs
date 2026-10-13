@@ -48,26 +48,26 @@ test('V315 opens all Bonus tabs and drills from company ranking to store panoram
     }
 
     const sections=[
-      ['summary',/Resumen general · Compañía/],
-      ['ranking',/Ranking completo de todas las tiendas/],
-      ['store',/Panorama por tienda/],
-      ['models',/Modelos a detalle/],
-      ['compare',/Impacto de las seis metodologías/],
-      ['glossary',/Glosario del Bono/],
-      ['config',/Configuración administrativa/]
+      ['summary','.v315-company-head',/Resumen general · Compañía/],
+      ['ranking','[data-v304-store="Iztapalapa"]',/Ranking completo de todas las tiendas/],
+      ['store','.v315-panorama-banner',/Panorama por tienda/],
+      ['models','.v309-subtabs',/Modelos a detalle/],
+      ['compare','.v315-company-grid',/Impacto de las seis metodologías/],
+      ['glossary','.v309-gloss-intro',/Glosario del Bono/],
+      ['config','#v302CfgEffective',/Configuración administrativa/]
     ];
-    for(const [section,pattern] of sections){
+    for(const [section,selector,pattern] of sections){
       await click('[data-v302-section="'+section+'"]');
-      await waitFor('#v302Host',pattern);
-      assert.ok(d.querySelector('[data-v302-section="'+section+'"]'));
+      await waitFor(selector);
+      assert.match(d.getElementById('v302Host').textContent,pattern,'section '+section);
     }
 
     await click('[data-v302-section="ranking"]');
     const row=await waitFor('[data-v304-store="Iztapalapa"]');
     row.click();
-    await waitFor('#v302Host',/Panorama por tienda/);
-    assert.ok(d.getElementById('v302Store'),'store panorama exposes store selector');
-    assert.equal(d.getElementById('v302Store').value,'Iztapalapa');
+    const storeSelect=await waitFor('#v302Store');
+    await waitFor('.v315-panorama-banner',/Panorama por tienda/);
+    assert.equal(storeSelect.value,'Iztapalapa');
     assert.deepEqual(errors,[],'Bonus navigation must not raise browser errors');
   } finally {
     runtime.close();
