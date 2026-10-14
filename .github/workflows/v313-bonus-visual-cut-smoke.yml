@@ -1,4 +1,4 @@
-name: V313 Bonus Visual and Cut Smoke
+name: V316 Bonus Cut Selection and Design Smoke
 on:
   push:
     branches: [main]
@@ -26,7 +26,16 @@ jobs:
           b=Path("v313_bonus_visual_and_cut_patch.py").read_text(encoding="utf-8")
           assert "último disponible al iniciar el mes" not in a
           assert "opening_date <= x[0] <= limit" in a
-          assert "V313-BONUS-VISUAL-CUTS" in b
+          assert "Elige el corte de Capacidades más cercano al primer día del periodo" in a
+          assert "(month_start - x[0]).days <= 7" in a
+          assert "source_date=? AND store IN" in a
+          assert "current_display_entry" in a
+          assert "V316-BONUS-CUTS-AND-DESIGN" in b
+          assert "Desempeño por Tienda" in b
+          assert "Colaboradores" in b
+          assert "Detalle por rubro" in b
+          assert "Preparando la cartera inicial" in b
+          assert "S.refreshCount<10" in b
           assert "Matriz integral · diseño aprobado" in b
           assert "Escalones de reducción DDI" in b
           assert "Se requieren 2 de 3" in b
