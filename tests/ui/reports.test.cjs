@@ -68,7 +68,7 @@ test('reports load after repeated initialization, tab changes and filters',{time
   const content=()=>d.getElementById('operativoDynamicContent').textContent;
   const click=async selector=>{const button=d.querySelector(selector);assert.ok(button,selector);button.click();await wait(350);t.diagnostic('Opened '+selector)};
   try{
-    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
+    await waitForLoad(w);
     await wait(2700); // Includes all delayed V199/V200 setup calls.
     await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
     await wait(300);
@@ -129,7 +129,7 @@ test('V315 Bonus tabs all open and company summary drills into a store',{timeout
   const waitFor=async selector=>{for(let i=0;i<40;i++){const el=d.querySelector(selector);if(el)return el;await wait(100)}throw new Error('Missing '+selector)};
   const click=async selector=>{const el=await waitFor(selector);el.click();await wait(250);t.diagnostic('Opened '+selector);return el};
   try{
-    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
+    await waitForLoad(w);
     await wait(2700);
     await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
     await wait(350);
