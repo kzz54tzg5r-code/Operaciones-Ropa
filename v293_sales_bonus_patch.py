@@ -545,7 +545,7 @@ def install(m):
         w = work.copy()
         store_list = all_stores()
         w["store"] = w.get("Tienda", "").astype(str).map(lambda x: canon_store(x, store_list))
-        w["id_art"] = w["ID_ART"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True).str.strip()
+        w["id_art"] = w["ID_ART"].astype(str).fillna("").str.replace(r"\.0$", "", regex=True).str.strip()
         w = w[~w["id_art"].isin(["", "nan", "None"])]
         if w.empty:
             return pd.DataFrame(columns=["store", "id_art", "model", "catalog", "ddi", "existence", "investment"])
@@ -556,7 +556,7 @@ def install(m):
         w["ddi"] = pd.to_numeric(w.get("DDI", 0), errors="coerce").replace([math.inf, -math.inf], pd.NA).fillna(0.0)
         w["existence"] = pd.to_numeric(w.get("Existencia", 0), errors="coerce").fillna(0.0)
         w["investment"] = pd.to_numeric(w.get("Inversión", 0), errors="coerce").fillna(0.0)
-        w["model"] = w.get("Modelo", w["id_art"]).fillna("").astype(str).str.strip()
+        w["model"] = w.get("Modelo", w["id_art"]).astype(str).fillna("").str.strip()
         grouped = w.groupby(["store", "id_art", "catalog"], sort=False, observed=True).agg(
             model=("model", "first"),
             ddi=("ddi", "max"),
