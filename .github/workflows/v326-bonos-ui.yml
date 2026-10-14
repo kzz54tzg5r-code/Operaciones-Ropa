@@ -1,0 +1,23 @@
+name: V326 Bonos Detail Export and Scroll Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v313_bonus_visual_and_cut_patch.py"
+      - "tests/ui/bonuses-v326.test.cjs"
+      - ".github/workflows/v326-bonos-ui.yml"
+  workflow_dispatch:
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check PWA detail interactions
+        run: |
+          cd tests/ui
+          npm install --no-audit --no-fund
+          node --test bonuses-v326.test.cjs
