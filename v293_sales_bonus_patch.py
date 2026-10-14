@@ -66,6 +66,19 @@ def classify_bonus_catalogs_from_source(raw_values: pd.Series) -> pd.Series:
     return out
 
 
+def select_vigente_bonus_catalog_rows(work: pd.DataFrame) -> pd.DataFrame:
+    """Conserva sólo tipo catálogo VIGENTE para definir la cartera inicial."""
+    if work is None or work.empty or "Tipo catálogo" not in work.columns:
+        return pd.DataFrame(columns=(list(work.columns) if work is not None else []))
+    raw = work["Tipo catálogo"].astype(str).fillna("")
+    status = raw.map(lambda v: "".join(
+        ch for ch in unicodedata.normalize("NFKD", str(v))
+        if not unicodedata.combining(ch)
+    ).upper().strip())
+    return work.loc[status.eq("VIGENTE")].copy()
+
+
+
 def install(m):
     if getattr(m, "_V293_SALES_BONUS", False):
         return
@@ -724,12 +737,10 @@ def install(m):
             if "Tipo catálogo" not in work.columns:
                 print(f"[V326-CATALOG] FALTA tipo catálogo en {month}; cartera previa intacta",flush=True)
                 return
-            raw_status = work["Tipo catálogo"].astype(str).fillna("")
-            normalized_status = raw_status.map(fold).str.strip()
-            vigente = normalized_status.eq("VIGENTE")
+            initial_rows = len(work)
+            work = select_vigente_bonus_catalog_rows(work)
             print(f"[V326-CATALOG] mes={month} fuente={source_date.isoformat()} "
-                  f"filas_antes={len(work)} vigentes={int(vigente.sum())}", flush=True)
-            work = work.loc[vigente].copy()
+                  f"filas_antes={initial_rows} vigentes={len(work)}", flush=True)
             models = aggregate_models(work)
             # Evitar sobrescribir cortes con 0 elegibles si la fuente oficial no se leyó.
             if "Catálogo comercial" not in work.columns or not bool(work["Catálogo comercial"].astype(str).fillna("").str.strip().ne("").any()):
