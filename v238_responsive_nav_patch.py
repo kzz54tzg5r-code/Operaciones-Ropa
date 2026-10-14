@@ -224,7 +224,7 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
   const clamp=(a,v,b)=>Math.max(a,Math.min(v,b));
-  let applying=false,raf=0;
+  let applying=false,raf=0,observerTimer=0;
 
   const PATHS={
     dashboard:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
@@ -453,7 +453,11 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
 
   const observer=new MutationObserver(muts=>{
     if(applying)return;
-    if(muts.some(m=>m.type==='childList'||(m.type==='attributes'&&['class','hidden','aria-hidden','data-main'].includes(m.attributeName))))setTimeout(apply,0);
+    if(!muts.some(m=>m.type==='childList'||(m.type==='attributes'&&['class','hidden','aria-hidden','data-main'].includes(m.attributeName))))return;
+    // Una renderización puede cambiar muchos nodos. Consolidar las mutaciones
+    // en una sola pasada evita saturar el hilo principal durante la navegación.
+    if(observerTimer)clearTimeout(observerTimer);
+    observerTimer=setTimeout(()=>{observerTimer=0;apply()},35);
   });
 
   function init(){

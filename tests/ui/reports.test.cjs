@@ -12,6 +12,7 @@ assert.equal(generated.status,0,generated.stdout+'\n'+generated.stderr);
 const html=fs.readFileSync(path.join(output,'page.html'),'utf8');
 after(()=>fs.rmSync(output,{recursive:true,force:true}));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const settleDocument=async w=>{if(w.document.readyState!=='complete')await wait(100);};
 
 // Raw index.html alone misses the scripts added by the production installers.
 test('all scripts in the served production page parse',()=>{
@@ -43,19 +44,22 @@ test('daily percentage cards settle without triggering their observer forever',a
   }finally{observer.disconnect();runtime.close()}
 });
 
-test('navigation decoration settles after its own observed class changes',async()=>{
-  const script=html.match(/<script id="v207-contextual-report-headers-js">([\s\S]*?)<\/script>/)[1];
-  const runtime=createRuntime(`<body data-v163-module="operativo"><nav id="operativoNav"><button class="active" data-opview="Reporte Mensual">Reporte Mensual</button></nav><script>${script}</script></body>`,path.join(output,'web'));
-  const {window:w}=runtime;
+test('responsive navigation decoration settles after its own observed class changes',async()=>{
+  const match=html.match(/<script id="v238-responsive-nav-js">([\s\S]*?)<\/script>/);
+  assert.ok(match,'V238 responsive navigation script must be present in the served production page');
+  const script=match[1];
+  const runtime=createRuntime(`<body data-v163-module="operativo"><main class="main"><nav id="operativoNav"><button class="active" data-opview="Reporte Mensual">Reporte Mensual</button></nav></main><script>${script}</script></body>`,path.join(output,'web'));
+  const {window:w}=runtime,d=w.document;
   let mutations=0;
   const observer=new w.MutationObserver(()=>mutations++);
-  observer.observe(w.document.body,{subtree:true,childList:true,attributes:true});
+  observer.observe(d.body,{subtree:true,childList:true,attributes:true});
   try{
-    await wait(200);
-    assert.match(w.document.getElementById('v207Context-cm').textContent,/Mensual/i);
+    await wait(2700); // V238 repite el ajuste hasta 2500 ms tras inicializarse.
+    assert.ok(d.querySelector('#operativoNav .v238-tab-icon'));
+    assert.match(d.querySelector('#operativoNav .v238-tab-label')?.textContent||'',/Mensual/i);
     const settled=mutations;
     await wait(200);
-    assert.equal(mutations,settled,'navigation observers must become idle');
+    assert.equal(mutations,settled,'responsive navigation observers must become idle');
     assert.deepEqual(runtime.errors,[]);
   }finally{observer.disconnect();runtime.close()}
 });
@@ -66,9 +70,17 @@ test('reports load after repeated initialization, tab changes and filters',{time
   const content=()=>d.getElementById('operativoDynamicContent').textContent;
   const click=async selector=>{const button=d.querySelector(selector);assert.ok(button,selector);button.click();await wait(350);t.diagnostic('Opened '+selector)};
   try{
-    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
+    await settleDocument(w);
     await wait(2700); // Includes all delayed V199/V200 setup calls.
-    await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
+    const enterResult=await new Promise(resolve=>{
+      const timer=setTimeout(()=>resolve({timeout:true}),15000);
+      Promise.resolve(w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false})).then(
+        ()=>{clearTimeout(timer);resolve({ok:true})},
+        e=>{clearTimeout(timer);resolve({ok:false,error:String(e)})}
+      );
+    });
+    assert.ok(!enterResult.timeout,'enter() did not finish within 15s. Requests: '+requests.map(x=>x.path).join(', '));
+    assert.ok(enterResult.ok,'enter() rejected: '+enterResult.error);
     await wait(300);
     assert.match(content(),/Detalle operativo/);
     assert.ok(requests.some(x=>x.path==='/api/operations'));
@@ -88,7 +100,10 @@ test('reports load after repeated initialization, tab changes and filters',{time
     // V198 deliberately removes the legacy comparison. Loading must still finish.
     assert.equal(d.getElementById('macroRankingTitle'),null);
     assert.equal(d.getElementById('bars'),null);
-    assert.ok(d.getElementById('v213AnalysisFilterCard'));
+    assert.ok(d.getElementById('globalFilters'),'the existing commercial filter container remains available');
+    assert.ok(d.getElementById('week'),'the period filter remains available');
+    assert.ok(d.getElementById('store'),'the store filter remains available');
+    assert.ok(d.getElementById('section'),'the section filter remains available');
 
     await click('.side [data-main="operation"]');
     assert.match(content(),/Llegada Origen/);
@@ -127,9 +142,17 @@ test('V315 Bonus tabs all open and company summary drills into a store',{timeout
   const waitFor=async selector=>{for(let i=0;i<40;i++){const el=d.querySelector(selector);if(el)return el;await wait(100)}throw new Error('Missing '+selector)};
   const click=async selector=>{const el=await waitFor(selector);el.click();await wait(250);t.diagnostic('Opened '+selector);return el};
   try{
-    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
+    await settleDocument(w);
     await wait(2700);
-    await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
+    const enterResult=await new Promise(resolve=>{
+      const timer=setTimeout(()=>resolve({timeout:true}),15000);
+      Promise.resolve(w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false})).then(
+        ()=>{clearTimeout(timer);resolve({ok:true})},
+        e=>{clearTimeout(timer);resolve({ok:false,error:String(e)})}
+      );
+    });
+    assert.ok(!enterResult.timeout,'enter() did not finish within 15s. Requests: '+requests.map(x=>x.path).join(', '));
+    assert.ok(enterResult.ok,'enter() rejected: '+enterResult.error);
     await wait(350);
     await click('[data-main="bonuses"]');
     await wait(350);

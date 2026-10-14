@@ -255,6 +255,21 @@ var history=rows?"<div class=\"v321-history-wrap\"><table class=\"v321-history\"
 host.innerHTML=current+"<h3 style=\"margin:14px 0 5px;font-size:12px\">Histórico de cortes iniciales por mes</h3>"+history;
 }).catch(function(err){if(q("#v321InitialHistory"))q("#v321InitialHistory").innerHTML="<div class=\"v321-state err\">No se pudo consultar el histórico: "+esc(err.message||err)+"</div>"});
 }
+function pollInitialCutJob(jobId,startedAt,status){
+ return api("/api/upload/jobs/"+encodeURIComponent(jobId)).then(function(job){
+  if(job.module!=="bonus_initial_capacity")throw new Error("El servidor devolvió un folio de carga no válido.");
+  if(job.status==="complete")return job.result||{};
+  if(job.status==="error")throw new Error(job.error||job.message||"No se pudo procesar el corte inicial.");
+  var progress=Math.max(0,Math.min(99,Number(job.progress)||10));
+  var message=(job.message||"Procesando el corte inicial.")+" ("+progress+"%)";
+  S.initialStatus={kind:"",text:message};
+  if(status){status.className="v321-state";status.textContent=message}
+  if(Date.now()-startedAt>15*60*1000){
+   throw new Error("La carga aún no confirmó su resultado. No vuelvas a subir el archivo todavía; revisa el histórico en unos minutos. Folio: "+jobId);
+  }
+  return new Promise(function(resolve){setTimeout(resolve,1800)}).then(function(){return pollInitialCutJob(jobId,startedAt,status)});
+ });
+}
 function uploadInitialCut(){
 var file=q("#v321InitialFile")&&q("#v321InitialFile").files[0];
 var month=q("#v321InitialMonth")?q("#v321InitialMonth").value:String(S.month||"");
@@ -264,7 +279,7 @@ if(!/\.xlsx?$/.test(file.name.toLowerCase())){if(status){status.className="v321-
 var form=new FormData();form.append("month",month);form.append("file",file);
 if(button){button.disabled=true;button.textContent="Procesando…"}
 if(status){status.className="v321-state";status.textContent="Procesando el Excel y asignándolo al periodo seleccionado…"}
-fetch("/api/bonuses/initial-capacity",{method:"POST",credentials:"same-origin",body:form}).then(function(response){return response.text().then(function(raw){var data={};try{data=JSON.parse(raw)}catch(_e){data={detail:raw}}if(!response.ok)throw new Error(data.detail||data.message||("HTTP "+response.status));return data})}).then(function(data){
+fetch("/api/bonuses/initial-capacity",{method:"POST",credentials:"same-origin",body:form}).then(function(response){return response.text().then(function(raw){var data={};try{data=JSON.parse(raw)}catch(_e){data={detail:raw}}if(!response.ok)throw new Error(data.detail||data.message||("HTTP "+response.status));if(data.job_id)return pollInitialCutJob(data.job_id,Date.now(),status);return data})}).then(function(data){
 S.initialStatus={kind:"ok",text:data.message+" Archivo: "+data.file+" · Fecha: "+dateMx(data.report_date)+" · Filas: "+nf(data.rows)+" · Tiendas: "+nf(data.stores)};
 if(status){status.className="v321-state ok";status.textContent=S.initialStatus.text}
 S.month=month;S.refreshCount=0;

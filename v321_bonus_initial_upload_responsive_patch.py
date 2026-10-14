@@ -10,7 +10,7 @@ import re
 import secrets
 from datetime import datetime
 from fastapi import File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 ADMIN = ("superadmin", "admin")
 
@@ -59,7 +59,113 @@ def install(m):
         selected = next((x for x in items if x["month"] == month), None)
         return {"items": items, "selected": selected, "month": month}
 
-    @m.app.post("/api/bonuses/initial-capacity")
+    def _run_bonus_initial_cut_job(job_id: str, entry: dict, filename: str, month: str, username: str) -> None:
+        with m._UPLOAD_JOB_LOCK:
+            if job_id in m._ACTIVE_UPLOAD_JOBS:
+                return
+            m._ACTIVE_UPLOAD_JOBS.add(job_id)
+        try:
+            m._update_upload_job(
+                job_id, status="processing", progress=20,
+                message=f"Procesando el corte inicial de {month}. La pantalla seguirá disponible.",
+                started_at=datetime.now().isoformat(timespec="seconds"),
+            )
+            result = m._process_capacity_entry(entry, filename)
+            if not result.get("ok"):
+                raise ValueError(str(result.get("message") or "No se pudo procesar el Excel."))
+
+            manifest = m.load_manifest()
+            entry_id = str(entry.get("id") or "")
+            processed = next(
+                (dict(x) for x in (manifest.get("capacities") or [])
+                 if str(x.get("id") or "") == entry_id
+                 and str(x.get("status") or "").lower() == "procesado"),
+                None,
+            )
+            if not processed:
+                processed = next(
+                    (dict(x) for x in (manifest.get("bonus_initial_capacity_entries") or [])
+                     if str(x.get("id") or "") == entry_id
+                     and str(x.get("status") or "").lower() == "procesado"),
+                    None,
+                )
+            if not processed:
+                raise RuntimeError("El Excel terminó sin quedar registrado como procesado; no se asignó al mes.")
+
+            # Una fuente nueva queda separada del catálogo comercial normal.
+            # Si ya existía como Capacidades comercial procesada, se conserva su registro.
+            if not entry.get("duplicate"):
+                source_path = m.resolve_entry_path(processed)
+                target_dir = m.Path(m.COMMERCIAL_DATA_ROOT) / "bonus_initial_capacity"
+                target_dir.mkdir(parents=True, exist_ok=True)
+                target_path = target_dir / (
+                    str(processed.get("id") or "initial") + "_" +
+                    m.Path(processed.get("name") or filename).name
+                )
+                try:
+                    if source_path.exists() and source_path.resolve() != target_path.resolve():
+                        m.shutil.move(str(source_path), str(target_path))
+                    if not target_path.exists():
+                        raise FileNotFoundError("No se pudo mover el Excel al histórico aislado de Bonos.")
+                except Exception as exc:
+                    raise RuntimeError(f"No se pudo aislar el corte inicial: {str(exc)[:250]}") from exc
+
+                processed["path"] = str(target_path.relative_to(m.COMMERCIAL_DATA_ROOT))
+                manifest["capacities"] = [
+                    dict(x) for x in (manifest.get("capacities") or [])
+                    if str(x.get("id") or "") != entry_id
+                ]
+                bonus_entries = manifest.setdefault("bonus_initial_capacity_entries", [])
+                existing_index = next(
+                    (i for i, x in enumerate(bonus_entries) if str(x.get("id") or "") == entry_id),
+                    None,
+                )
+                processed["bonus_initial_only"] = True
+                if existing_index is None:
+                    bonus_entries.append(processed)
+                else:
+                    updated_entry = dict(bonus_entries[existing_index])
+                    updated_entry.update(processed)
+                    bonus_entries[existing_index] = updated_entry
+                    processed = updated_entry
+
+            cuts = manifest.setdefault("bonus_initial_cuts", {})
+            previous = cuts.get(month)
+            cuts[month] = entry_id
+            m.save_manifest(manifest)
+
+            payload = {
+                "ok": True,
+                "month": month,
+                "entry_id": entry_id,
+                "file": str(processed.get("name") or filename),
+                "report_date": str(processed.get("report_date") or ""),
+                "rows": result.get("rows", processed.get("rows")),
+                "stores": result.get("stores", len(processed.get("stores") or [])),
+                "replaced_previous": bool(previous and str(previous) != entry_id),
+                "message": "Corte inicial procesado y asociado al periodo seleccionado.",
+            }
+            m._finish_upload_job(job_id, payload)
+            print(
+                f"[V321] Corte inicial de Bonos asignado: mes={month} archivo={payload['file']} usuario={username}",
+                flush=True,
+            )
+        except Exception as exc:
+            m._update_upload_job(
+                job_id, status="error", progress=100,
+                message="No se pudo procesar el corte inicial. La asignación anterior del mes se conserva.",
+                error=f"{type(exc).__name__}: {exc}",
+                finished_at=datetime.now().isoformat(timespec="seconds"),
+            )
+            print(f"[V321] Error en corte inicial: {type(exc).__name__}: {exc}", flush=True)
+        finally:
+            with m._UPLOAD_JOB_LOCK:
+                m._ACTIVE_UPLOAD_JOBS.discard(job_id)
+
+    # web_app.py usa este registro para poder reanudar la carga si Railway reinicia.
+    m._run_bonus_initial_cut_job = _run_bonus_initial_cut_job
+
+    @m.app.post("/api/bonuses/initial-capacity", status_code=202)
     async def upload_bonus_initial_capacity(
         request: Request,
         month: str = Form(...),
@@ -83,85 +189,35 @@ def install(m):
             except Exception:
                 pass
 
-        try:
-            result = await asyncio.to_thread(m._process_capacity_entry, entry, filename)
-        except Exception as exc:
-            raise HTTPException(400, f"No se pudo procesar el corte inicial: {str(exc)[:350]}")
+        source_path = m.resolve_entry_path(entry)
+        if not source_path.exists():
+            raise HTTPException(409, "El archivo recibido no quedó disponible en el almacenamiento persistente.")
 
-        if not result.get("ok"):
-            raise HTTPException(400, str(result.get("message") or "No se pudo procesar el Excel."))
-
-        manifest = m.load_manifest()
-        processed = next(
-            (dict(x) for x in (manifest.get("capacities") or [])
-             if str(x.get("id") or "") == str(entry.get("id") or "")),
-            None,
+        job = m._create_upload_job(
+            "bonus_initial_capacity", filename, source_path, str(actor.get("username") or "admin")
         )
-        if not processed or str(processed.get("status") or "").lower() != "procesado":
-            # Una misma fuente puede haberse registrado previamente como corte inicial.
-            processed = next(
-                (dict(x) for x in (manifest.get("bonus_initial_capacity_entries") or [])
-                 if str(x.get("id") or "") == str(entry.get("id") or "")),
-                None,
-            )
-        if not processed or str(processed.get("status") or "").lower() != "procesado":
-            raise HTTPException(409, "El Excel no quedó procesado; el corte inicial no se asignó al mes.")
-
-        # Si el archivo es nuevo para el sistema, sepáralo de las Capacidades
-        # comerciales para que no cambie por accidente el reporte activo general.
-        # Si ya existía como archivo normal de Capacidades, conserva su registro normal.
-        if not entry.get("duplicate"):
-            # Mover el archivo fuera de commercial/capacidades. storage.discover_existing_files
-            # escanea esa carpeta y, si se dejara ahí, lo volvería a registrar como fuente
-            # comercial general en el siguiente reinicio.
-            source_path = m.resolve_entry_path(processed)
-            target_dir = m.Path(m.COMMERCIAL_DATA_ROOT) / "bonus_initial_capacity"
-            target_dir.mkdir(parents=True, exist_ok=True)
-            target_path = target_dir / (str(processed.get("id") or "initial") + "_" + m.Path(processed.get("name") or filename).name)
-            try:
-                if source_path.exists() and source_path.resolve() != target_path.resolve():
-                    m.shutil.move(str(source_path), str(target_path))
-                if not target_path.exists():
-                    raise FileNotFoundError("No se pudo mover el Excel al histórico aislado de Bonos.")
-            except Exception as exc:
-                raise HTTPException(500, f"No se pudo aislar el corte inicial: {str(exc)[:250]}")
-            processed["path"] = str(target_path.relative_to(m.COMMERCIAL_DATA_ROOT))
-            manifest["capacities"] = [
-                dict(x) for x in (manifest.get("capacities") or [])
-                if str(x.get("id") or "") != str(processed.get("id") or "")
-            ]
-            bonus_entries = manifest.setdefault("bonus_initial_capacity_entries", [])
-            existing_bonus = next(
-                (x for x in bonus_entries if str(x.get("id") or "") == str(processed.get("id") or "")),
-                None,
-            )
-            if existing_bonus is None:
-                processed["bonus_initial_only"] = True
-                bonus_entries.append(processed)
-            else:
-                processed = dict(existing_bonus)
-
-        cuts = manifest.setdefault("bonus_initial_cuts", {})
-        previous = cuts.get(month)
-        cuts[month] = str(processed.get("id") or "")
-        m.save_manifest(manifest)
-
-        print(
-            f"[V321] Corte inicial de Bonos asignado: mes={month} archivo={processed.get('name')} "
-            f"usuario={actor.get('username', 'admin')}",
-            flush=True,
+        m._update_upload_job(
+            job["id"], progress=10,
+            message=f"Corte inicial recibido; mes={month}. Preparando procesamiento.",
+            result_json=m.json.dumps(
+                {"month": month, "entry_id": str(entry.get("id") or "")},
+                ensure_ascii=False,
+            ),
         )
-        return {
-            "ok": True,
-            "month": month,
-            "entry_id": str(processed.get("id") or ""),
-            "file": str(processed.get("name") or filename),
-            "report_date": str(processed.get("report_date") or ""),
-            "rows": result.get("rows"),
-            "stores": result.get("stores"),
-            "replaced_previous": bool(previous and str(previous) != str(processed.get("id") or "")),
-            "message": "Corte inicial procesado y asociado al periodo seleccionado.",
-        }
+        m.threading.Thread(
+            target=_run_bonus_initial_cut_job,
+            args=(job["id"], entry, filename, month, str(actor.get("username") or "admin")),
+            daemon=True,
+            name=f"bonus-initial-{job['id'][:8]}",
+        ).start()
+        return JSONResponse(
+            status_code=202,
+            content={
+                "ok": True, "job_id": job["id"], "module": "bonus_initial_capacity",
+                "status": "queued", "progress": 10, "month": month, "file": filename,
+                "message": "Archivo recibido. El corte inicial se está procesando en segundo plano.",
+            },
+        )
 
     css = r"""<style id="v321-bonus-responsive-css">
 /* Bonos V313: anular el ancho mínimo de 980px que rompía el móvil. */

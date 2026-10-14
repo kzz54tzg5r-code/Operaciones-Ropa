@@ -3,346 +3,66 @@ name: Web UI syntax check
 on:
   pull_request:
     paths:
-      - "web/index.html"
-      - "web/design_system.css"
-      - "web/design_system.js"
-      - "web/report_tab_carousel.js"
-      - "web/report_tab_mundial_v7.js"
-      - "web/report_tab_icon_rail_v1.js"
-      - "v194_mobile_ui_final_patch.py"
+      - "web/**"
+      - "v*.py"
       - "server_entry.py"
+      - "web_app.py"
+      - "tests/ui/**"
       - ".github/workflows/web-ui-syntax.yml"
   workflow_dispatch:
 
 jobs:
   syntax:
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_web.txt
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Validate inline JavaScript and mobile summary
+      - name: Install production runtime dependencies
+        run: python -m pip install -r requirements_web.txt httpx==0.28.1
+      - name: Compile responsive and production entry modules
+        run: |
+          python -m py_compile server_entry.py v194_mobile_ui_final_patch.py v195_report_navigation_restore_patch.py v196_android_single_finger_scroll_patch.py v286_scroll_type_authority_patch.py v289_device_fit_patch.py v321_bonus_initial_upload_responsive_patch.py v322_universal_responsive_audit_patch.py
+      - name: Validate current JavaScript assets
+        run: |
+          node --check web/design_system.js
+          node --check web/report_tab_carousel.js
+          node --check web/report_tab_mundial_v7.js
+          node --check web/report_tab_icon_rail_v1.js
+          node --check web/pwa_install.js
+          node --check web/pwa_brand.js
+      - name: Render the real production middleware chain
+        run: |
+          mkdir -p /tmp/operaciones-ropa-ui-syntax
+          python tests/ui/render_production_page.py /tmp/operaciones-ropa-ui-syntax
+      - name: Parse served inline scripts and check final responsive authority
         run: |
           python - <<'PY'
           import re
           from pathlib import Path
 
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          assert 'class="monthly-cross-mobile"' in html
-          assert '.monthly-cross-desktop{display:none!important}' in html
-          assert 'TOTAL GENERAL · TOTAL PZS' in html
-          assert '/static/design_system.css' in html
-          assert '/static/design_system.js' in html
+          html = Path("/tmp/operaciones-ropa-ui-syntax/page.html").read_text(encoding="utf-8")
+          assert 'id="v321-bonus-responsive-css"' in html, "V321 bonus UI missing"
+          assert 'id="v322-universal-responsive-css"' in html, "V322 responsive authority missing"
+          assert html.index('id="v321-bonus-responsive-css"') < html.index('id="v322-universal-responsive-css"'), "V322 must be the final CSS authority"
+          assert 'viewport-fit=cover' in html
+          assert "touch-action: pan-x pan-y pinch-zoom !important" in html
+          assert "user-scalable=no" not in html, "browser zoom must remain accessible"
 
           scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, flags=re.S|re.I)
           if not scripts:
-              raise SystemExit("No inline scripts found")
-          out = Path("/tmp/inline-scripts")
+              raise SystemExit("No inline scripts found in served production page")
+          out = Path("/tmp/operaciones-ropa-inline-scripts")
           out.mkdir(exist_ok=True)
           for i, script in enumerate(scripts):
               (out / f"script-{i}.js").write_text(script, encoding="utf-8")
-          print(f"Extracted {len(scripts)} inline scripts")
+          print(f"Rendered production page and extracted {len(scripts)} inline scripts")
           PY
-          for f in /tmp/inline-scripts/*.js; do node --check "$f"; done
-          node --check web/design_system.js
-          node --check web/report_tab_carousel.js
-          node --check web/report_tab_mundial_v7.js
-          node --check web/report_tab_icon_rail_v1.js
-          python - <<'PY'
-          from pathlib import Path
-          js = Path("web/design_system.js").read_text(encoding="utf-8")
-          assert "characterData:true" not in js, "Safari DOM loop guard: characterData observer remains"
-          assert "attributeFilter:['class']" not in js, "Safari DOM loop guard: class observer remains"
-          assert "if (out.textContent !== next)" in js, "Safari DOM loop guard missing idempotent summary"
-          print("Safari DOM loop guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          css = Path("web/design_system.css").read_text(encoding="utf-8")
-          js = Path("web/design_system.js").read_text(encoding="utf-8")
-          assert 'design_system.css?v=20260928-mobile-v5' in html
-          assert 'design_system.js?v=20260928-mobile-v5' in html
-          assert html.index('id="operativoNav"') < html.index('id="globalFilters"'), "Tabs must precede global filters"
-          assert "MOBILE EXPERIENCE V4" in css
-          assert "const enforceTopOrder = () =>" in js
-          print("Mobile V4 layout guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/design_system.js").read_text(encoding="utf-8")
-          patch = Path("v194_mobile_ui_final_patch.py").read_text(encoding="utf-8")
-          entry = Path("server_entry.py").read_text(encoding="utf-8")
-          compile(patch, "v194_mobile_ui_final_patch.py", "exec")
-          assert 'apple-mobile-web-app-status-bar-style" content="default"' in html
-          assert 'class="or-report-filter-card"' in html
-          assert 'or-tab-icon' in js
-          assert "v194-mobile-ui-final-css" in patch
-          assert entry.index("_install_v194_mobile_ui_final_patch(web_app)") > entry.index("_install_pwa_patch(web_app)")
-          print("V194 final visual guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          ds = Path("web/design_system.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v8' in html
-          assert 'scroll-snap-type:x mandatory' in js
-          assert "commercial.sellthrough" in js
-          assert "data.v125Tab" in js or "dataset.v125Tab" in js
-          assert "rt-carousel-arrow" in js
-          assert "nearest.click()" in js
-          assert "activateFirst" in js
-          assert "closest('.rt-carousel-shell')" in ds
-          assert "#metricSwitch" in js and "#paretoGroupSwitch" in js
-          print("ReportTabCarousel guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          v161 = Path("v161_unified_boceto_filters_cards_patch.py").read_text(encoding="utf-8")
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v8' in html
-          assert 'body[data-v163-module="operativo"] #operativoNav.rt-carousel' in car
-          assert 'display:flex!important' in car
-          assert 'body[data-v163-module="operativo"] #v161FilterBar' in car
-          assert "mod==='cambios'" in v161
-          assert "or-fixed-period" in car
-          assert "'Reporte Semanal':'Semana ISO'" in car
-          assert "'Reporte Mensual':'Mes'" in car
-          assert "'Operación Diaria':'Fecha'" in car
-          print("Single filter + carousel V2 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          v163 = Path("v163_module_nav_cleanup_patch.py").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v8' in html
-          assert '<div style="margin-left:auto;display:flex;gap:5px">' not in html
-          assert 'viewport.style.setProperty(\'display\',\'flex\',\'important\')' in car
-          assert '#operativoNav.rt-carousel:not(.hidden)' in v163
-          assert '#analysisNav.rt-carousel:not(.hidden)' in v163
-          assert '.v125-tabs.rt-carousel:not(.hidden)' in v163
-          assert '#operativoNav:not(.hidden):not(.rt-carousel)' in v163
-          print("Carousel V3 single-row guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v8' in html
-          assert "touch-action:pan-y pinch-zoom!important" in car
-          assert "viewport.addEventListener('touchmove'" in car
-          assert "{passive:false}" in car
-          assert "event.preventDefault()" in car
-          assert "state.touchMode='horizontal'" in car
-          assert "state.suppressClickUntil" in car
-          assert "scroll-snap-type','none','important'" in car
-          assert "scroll-snap-type','x mandatory','important'" in car
-          print("iOS touch-drag V4 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_mundial_v5.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in html
-          assert "rt-mundial-stage" in js
-          assert "rt-worldcup-pedestal" in js
-          assert "rt-worldcup-current" in js
-          assert "const scale=.64 + (.36*focus)" in js
-          assert "const y=18 - (24*focus)" in js
-          assert "requestAnimationFrame(()=>updateCoverflow(viewport))" in js
-          print("Mundial coverflow V5 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_mundial_v6.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in html
-          assert 'report_tab_mundial_v5.js' not in html
-          assert "rt-mundial-base" in js
-          assert "rt-mundial-face" in js
-          assert "rt-mundial-current" in js
-          assert "clip-path:inset(50%)" in js
-          assert "const scale=.68 + .32*focus" in js
-          assert "cards(viewport).forEach(buildCard)" in js
-          print("Mundial exact V6 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_mundial_v7.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in html
-          assert 'report_tab_mundial_v6.js' not in html
-          assert 'width:196px!important' in js
-          assert 'height:131px!important' in js
-          assert '--rt-card-w:220px!important' in js
-          assert 'const scale=.56 + .44*focus' in js
-          assert '.rt-m7-face .rt-tab-icon svg' in js
-          assert 'display:block!important' in js
-          assert 'rt-m7-current-label' in js
-          assert "OPVIEW_LABELS" in js and "KEY_LABELS" in js
-          print("Mundial pixel-match V7 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v10' in html
-          assert "TARGET_ID='operativoNav'" in js
-          assert "rt-icon-rail-v1" in js
-          assert "width:44px!important" in js
-          assert "width:52px!important" in js
-          assert "rt-icon-rail-v1-current" in js
-          assert "rt-icon-rail-v1-indicator" in js
-          assert "shell.classList.remove('rt-mundial-stage','rt-mundial-v6','rt-mundial-v7')" in js
-          print("Icon Rail option 1 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v8' in html
-          assert "buttons.find(b=>b.classList.contains('active'))" in js
-          assert "state.userCenteredButton=nearest" in js
-          assert "state.userAnchored=true" in js
-          assert "centerButton(viewport,btn,'smooth')" in js
-          assert "Una carga de datos, cambio de filtros o render interno NO debe" in js
-          assert "if(delta>4) centerButton(viewport,state.userCenteredButton,'auto')" in js
-          assert "if(needsActive) syncActive(viewport,{center:true" not in js
-          print("Sticky centered tab guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v10' in html
-          assert "userSelectedButton" in js
-          assert "rt-icon-user-active" in js
-          assert "state.userSelectedButton=btn" in js
-          assert "applyVisualSelection(state)" in js
-          assert "btn.parentElement!==viewport" in js
-          assert "state.userSelectedButton=null" in js
-          print("Icon Rail visual selection V2 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v10' in html
-          assert "function circularizeAround" in js
-          assert "state.logicalButtons" in js
-          assert "btn.dataset.rtRingOrder" in js
-          assert "before=Math.floor(visible.length/2)" in js
-          assert "visible[(idx+step+visible.length)%visible.length]" in js
-          assert "rt-icon-has-user-selection" in js
-          assert "window.ReportTabIconRailV1=api" in js
-          assert "window.ReportTabIconRailV3=api" in js
-          print("Circular icon rail V3 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v10' in html
-          assert "el.toggleAttribute('hidden',!visible)" in html
-          assert "report-tabs-visibility-changed" in html
-          assert "#operativoNav.rt-carousel>button.hidden" in js
-          assert "#analysisNav.rt-carousel>button.hidden" in js
-          assert ".v125-tabs.rt-carousel>button.hidden" in js
-          assert "display:none!important" in js
-          assert "logicalCards(state)" in js
-          assert "document.addEventListener('report-tabs-visibility-changed'" in js
-          print("Strict tab visibility guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          js = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v10' in html
-          assert "function oneStepTarget" in js
-          assert "function bindOneStepSwipe" in js
-          assert "function animateScrollTo" in js
-          assert "function animateSelectionTo" in js
-          assert "const committed=!cancelled && (Math.abs(dx)>=20 || Math.abs(velocity)>=0.28)" in js
-          assert "const elastic=Math.min(7,overshoot*.08)" in js
-          assert "La tarjeta acompaña al dedo durante TODO el gesto." in js
-          assert "overflow-anchor:none!important" in js
-          assert "window.ReportTabIconRailV6=api" in js
-          assert "window.ReportTabIconRailV7=api" in js
-          assert "Las pestañas inactivas muestran su nombre pequeño" in js
-          print("Fluid one-step swipe + labels V7 guard OK")
-          PY
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          car = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          icon = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          patch = Path("v194_mobile_ui_final_patch.py").read_text(encoding="utf-8")
-          assert "'operations.center': ['Centro Operativo', 'dashboard']" in car
-          assert "CONSOLIDATED_OPERATION_TABS" in car
-          assert 'data-tab-key="operations.day"' in html
-          assert 'data-tab-key="operations.week"' in html
-          assert 'data-tab-key="operations.month"' in html
-          assert html.count('hidden aria-hidden="true" data-opview=') >= 3
-          assert "#operPeriodApply.or-filter-apply-v5{\n  grid-column:span 2!important;" in patch
-          assert "#operPeriodApply.or-filter-apply-v5{grid-column:span 1!important}" in patch
-          assert "font-size:7.5px!important" in icon
-          print("Operational nav + compact Consultar guard OK")
-          PY
-
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          rail = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          entry = Path("server_entry.py").read_text(encoding="utf-8")
-          patch = Path("v195_report_navigation_restore_patch.py").read_text(encoding="utf-8")
-          compile(patch, "v195_report_navigation_restore_patch.py", "exec")
-          assert "function applyTabVisibility(){\n  $$('[data-tab-key]').forEach" in html
-          assert "let OP_RENDER_SEQ=0;" in html
-          assert "if(isStale())return;" in html
-          assert "TARGET_IDS=['operativoNav','analysisNav']" in rail
-          assert "window.ReportTabIconRailV8=api" in rail
-          assert "_install_v195_report_navigation_restore_patch(web_app)" in entry
-          assert "opsDropzone" in patch and "analysis-upload" in patch
-          print("V195 report navigation restore guard OK")
-          PY
-
-          python - <<'PY'
-          from pathlib import Path
-          html = Path("web/index.html").read_text(encoding="utf-8")
-          carousel = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          rail = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          mundial = Path("web/report_tab_mundial_v7.js").read_text(encoding="utf-8")
-          assert "20260928-carousel-v8" in html
-          assert "20260928-iconrail-v10" in html
-          assert "20260928-mundial-disabled-v8" in html
-          assert 'data-sub="analysis-upload" data-tab-key="commercial.upload"' in html
-          assert "'commercial.upload': ['Carga de datos', 'upload']" in carousel
-          assert "TARGET_IDS=['operativoNav','analysisNav']" in rail
-          assert "disabled:true" in mundial
-          assert "rt-worldcup-pedestal" in mundial
-          assert "$$('[data-opview]').forEach(b=>b.onclick=async()=>{" in html
-          assert "$$('[data-sub]').forEach(b=>b.onclick=()=>goSub(b.dataset.sub));" in html
-          print("Unified operational/commercial tab navigation guard OK")
-          PY
-
-          python - <<'PY'
-          from pathlib import Path
-          carousel = Path("web/report_tab_carousel.js").read_text(encoding="utf-8")
-          rail = Path("web/report_tab_icon_rail_v1.js").read_text(encoding="utf-8")
-          entry = Path("server_entry.py").read_text(encoding="utf-8")
-          patch = Path("v196_android_single_finger_scroll_patch.py").read_text(encoding="utf-8")
-          compile(patch, "v196_android_single_finger_scroll_patch.py", "exec")
-          assert "if(viewport.classList.contains('rt-icon-rail-v1')) return;" in carousel
-          assert "ax>ay*1.35" in rail
-          assert "window.ReportTabIconRailV10=api" in rail
-          assert "event.stopImmediatePropagation();" not in rail[rail.index("function bindOneStepSwipe"):rail.index("function enhance")]
-          assert "_install_v196_android_single_finger_scroll_patch(web_app)" in entry
-          assert "android-one-finger-scroll" in patch
-          assert "overscroll-behavior-y:auto!important" in patch
-          print("V196 Android one-finger scroll guard OK")
-          PY
+          for f in /tmp/operaciones-ropa-inline-scripts/*.js; do node --check "$f"; done

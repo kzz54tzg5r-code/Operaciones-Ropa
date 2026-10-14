@@ -431,4 +431,7 @@ _install_v314_bonus_product_photos_patch(web_app)
 # V321: carga mensual del corte inicial de Bonos + corrección responsive específica.
 from v321_bonus_initial_upload_responsive_patch import install as _install_v321_bonus_initial_upload_responsive_patch
 _install_v321_bonus_initial_upload_responsive_patch(web_app)
+# V322: autoridad responsive universal tras auditar las capas V47–V321.
+from v322_universal_responsive_audit_patch import install as _install_v322_universal_responsive_audit_patch
+_install_v322_universal_responsive_audit_patch(web_app)
 app = web_app.app
