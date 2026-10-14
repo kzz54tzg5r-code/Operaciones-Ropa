@@ -6375,7 +6375,7 @@ def _resume_pending_upload_jobs() -> int:
                 None,
             )
             worker=globals().get("_run_bonus_initial_cut_job")
-            valid_month=bool(re.fullmatch(r"\\d{4}-(0[1-9]|1[0-2])",month))
+            valid_month=bool(re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])",month))
             if not valid_month or not entry or not callable(worker):
                 _fail_upload_job(job["id"],RuntimeError("No se pudo recuperar el mes o el archivo del corte inicial. Vuelve a seleccionar el Excel y el mes."))
                 continue
