@@ -120,7 +120,7 @@ def install(m):
         final["processing"]=dict(base.get("processing") or {})
         final["current_source_period"]=base.get("current_source_period")
         final["current_source_date"]=base.get("current_source_date")
-        final["version"]="V313-BONUS-VISUAL-CUTS"
+        final["version"]="V316-BONUS-CUTS-AND-DESIGN"
         final["cut_rule"]="Corte inicial = último corte procesado disponible al inicio del mes; corte actual = último corte procesado hasta hoy."
         return final
 
@@ -130,7 +130,7 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v313{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#0b3268;max-width:1600px;margin:0 auto;padding-bottom:14px}
 .v313 *{box-sizing:border-box}.v313-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:8px}.v313 h2{font-size:21px;margin:0}.v313-sub{font-size:10px;color:#69809b;margin-top:2px}
 .v313-filters{display:flex;gap:7px}.v313-field label{display:block;font-size:8px;font-weight:900;color:#71849b;margin:0 0 2px}.v313-field select{height:30px;min-width:150px;border:1px solid #ccd9e8;border-radius:7px;background:white;color:#123968;font-size:10px;font-weight:800;padding:0 28px 0 8px}
-.v313-bonus,.v313-tabs{display:grid;gap:5px;margin:6px 0}.v313-bonus{grid-template-columns:repeat(6,1fr)}.v313-tabs{grid-template-columns:repeat(4,1fr)}
+.v313-bonus,.v313-tabs{display:grid;gap:5px;margin:6px 0}.v313-bonus{grid-template-columns:repeat(6,1fr)}.v313-tabs{grid-template-columns:repeat(4,1fr)}.v313-tabs.v313-tabs-b2{grid-template-columns:repeat(5,minmax(0,1fr))}.v313-tabs.v313-tabs-b3{grid-template-columns:repeat(7,minmax(0,1fr))}
 .v313-bonus button,.v313-tabs button,.v313-subtabs button{height:32px;border:1px solid #d3dfec;border-radius:7px;background:#fff;color:#0d3b73;font-size:10px;font-weight:900}.v313-bonus button.active,.v313-tabs button.active,.v313-subtabs button.active{background:#1475ee;color:#fff;border-color:#1475ee}
 .v313-cutbar{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.35fr;gap:6px;margin:7px 0}.v313-cut{border:1px solid #d5e2ef;background:#fff;border-radius:9px;padding:7px 9px;min-height:53px}.v313-cut span{display:block;font-size:8px;color:#68809b;font-weight:800}.v313-cut b{display:block;font-size:12px;margin-top:3px}.v313-cut.current{background:#eef7ff;border-color:#b8d8fb}.v313-cut.ok b{color:#15925b}.v313-cut.wait b{color:#d28a00}
 .v313-hero{border-radius:10px;padding:10px 12px;color:#fff;background:linear-gradient(100deg,#074caa,#1480ef);display:flex;justify-content:space-between;align-items:center;gap:10px;margin:7px 0}.v313-hero b{font-size:13px}.v313-hero span{font-size:9px;opacity:.95}.v313-hero .tag{background:rgba(255,255,255,.18);padding:5px 8px;border-radius:99px;font-weight:900;white-space:nowrap}
@@ -143,13 +143,13 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v313-matrixcards{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.v313-mcard{border:1px solid #dbe6f1;border-radius:9px;padding:9px;text-align:center}.v313-mcard span{display:block;font-size:8px;color:#607995;font-weight:800}.v313-mcard b{font-size:20px;display:block;margin:4px 0}.v313-mcard small{font-size:8px}.v313-check{display:inline-flex;width:19px;height:19px;align-items:center;justify-content:center;border-radius:5px;background:#e8f8ee;color:#15945b;font-weight:900}.v313-check.no{background:#ffecef;color:#d93c4d}
 .v313-weeks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.v313-week{border:1px solid #dbe6f1;border-radius:9px;padding:8px;text-align:center}.v313-week b{display:block;font-size:11px}.v313-week .dot{margin:7px auto;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#edf2f7;color:#6c7d90;font-weight:900}.v313-week.pass .dot{background:#e6f8ed;color:#15945b}.v313-week.fail .dot{background:#ffecee;color:#d93a4a}.v313-week small{font-size:8px;color:#71839a}
 .v313-scroll{overflow:auto;max-width:100%;-webkit-overflow-scrolling:touch}.v313-table{width:100%;border-collapse:collapse;font-size:9px;white-space:nowrap}.v313-table th{background:#f3f7fb;color:#315676}.v313-table th,.v313-table td{padding:5px 6px;border-bottom:1px solid #edf1f5;text-align:center}.v313-table .left{text-align:left}.v313-status{display:inline-block;padding:3px 7px;border-radius:99px;background:#e7f7ed;color:#138c51;font-weight:900}.v313-status.no{background:#ffedef;color:#d93647}.v313-status.na{background:#eef2f6;color:#748497}
-.v313-subtabs{display:flex;gap:5px;margin:7px 0}.v313-note{font-size:9px;color:#466583;background:#eef6ff;border-radius:7px;padding:7px 9px;margin-top:7px}.v313-gate{display:flex;align-items:center;justify-content:center;min-height:110px;text-align:center}.v313-gate b{font-size:34px;display:block}.v313-gate span{font-size:9px}.v313-pairs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.v313-pair{border:1px solid #dbe6f1;border-radius:8px;padding:8px}.v313-pair b{display:block;font-size:11px}.v313-pair .nums{display:flex;justify-content:space-between;font-size:9px;margin-top:7px}.v313-pair .delta{font-size:15px;margin-top:5px;font-weight:900}
+.v313-subtabs{display:flex;gap:5px;margin:7px 0}.v313-note{font-size:9px;color:#466583;background:#eef6ff;border-radius:7px;padding:7px 9px;margin-top:7px}.v313-empty{margin:9px;padding:12px;border:1px dashed #b9cce0;border-radius:8px;background:#f7faff;color:#3b5b7c;font-size:10px;white-space:normal}.v313-empty b{display:block;color:#153f73;font-size:11px;margin-bottom:4px}.v313-empty p{margin:4px 0}.v313-gate{display:flex;align-items:center;justify-content:center;min-height:110px;text-align:center}.v313-gate b{font-size:34px;display:block}.v313-gate span{font-size:9px}.v313-pairs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.v313-pair{border:1px solid #dbe6f1;border-radius:8px;padding:8px}.v313-pair b{display:block;font-size:11px}.v313-pair .nums{display:flex;justify-content:space-between;font-size:9px;margin-top:7px}.v313-pair .delta{font-size:15px;margin-top:5px;font-weight:900}
 @media(max-width:900px){.v313{min-width:980px}.v313-kpis{grid-template-columns:repeat(6,minmax(120px,1fr))}.v313-main{grid-template-columns:1.2fr .8fr}}
 </style>''';
 
     js=r'''<script id="v313-js">(function(){
 if(window.__V313_BONUS_VISUAL_CUTS)return;window.__V313_BONUS_VISUAL_CUTS=true;
-var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0};
+var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null};
 function q(s,r){return(r||document).querySelector(s)}function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){var x=Number(v);return Number.isFinite(x)?x:0}function pc(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})+"%"}function nf(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})}
@@ -160,8 +160,29 @@ function ensure(){var p=q("#page-bonuses"),main=q("main.main");if(main&&!p){p=do
 function activate(){ensure();try{MAIN="bonuses"}catch(_e){}document.body.dataset.v313="1";document.body.removeAttribute("data-v302");document.body.removeAttribute("data-v312");qa("[data-main]").forEach(function(x){x.classList.toggle("active",x.dataset.main==="bonuses")});qa(".page").forEach(function(x){x.classList.toggle("active",x.id==="page-bonuses")});var t=q("#heroTitle"),s=q("#heroSub");if(t)t.textContent="Bonos";if(s)s.textContent="Indicadores para habilitar el bono de colaboradores"}
 function filters(d){return"<div class=\"v313-filters\"><div class=\"v313-field\"><label>Periodo</label><select id=\"v313Month\">"+(d.months||[]).map(function(x){return"<option value=\""+esc(x.value)+"\" "+(x.value===d.month?"selected":"")+">"+esc(x.label)+"</option>"}).join("")+"</select></div><div class=\"v313-field\"><label>Tienda</label><select id=\"v313Store\">"+(d.stores||[]).map(function(x){return"<option "+(x===d.selected_store?"selected":"")+">"+esc(x)+"</option>"}).join("")+"</select></div></div>"}
 function bonusTabs(){return"<div class=\"v313-bonus\">"+[1,2,3,4,5,6].map(function(i){return"<button data-v313-bonus=\""+i+"\" class=\""+(S.bonus===i?"active":"")+"\">Bono "+i+"</button>"}).join("")+"</div>"}
-function tabs(){var xs=[["summary","Resumen General"],["ranking","Ranking de Tiendas"],["panorama","Panorama por Tienda"],["models","Modelos a Detalle"]];return"<div class=\"v313-tabs\">"+xs.map(function(x){return"<button data-v313-section=\""+x[0]+"\" class=\""+(S.section===x[0]?"active":"")+"\">"+x[1]+"</button>"}).join("")+"</div>"}
-function cutbar(d){var sd=d.source_dates||{},opening=sd.opening_capacity,current=sd.current_capacity,processing=d.processing||{},same=opening&&current&&String(opening)===String(current);return"<div class=\"v313-cutbar\"><div class=\"v313-cut\"><span>Regla de comparación</span><b>Inicio del mes → corte actual</b></div><div class=\"v313-cut ok\"><span>Corte inicial congelado</span><b>"+dateMx(opening)+"</b></div><div class=\"v313-cut current "+(same?"wait":"ok")+"\"><span>Corte actual</span><b>"+(processing.capacity?"Procesando…":dateMx(current))+"</b></div><div class=\"v313-cut\"><span>Avance</span><b>"+(same?"Esperando un corte posterior":"Comparación activa")+"</b></div></div>"}
+function tabs(){
+var xs,cls="";
+if(S.bonus===2){
+ cls=" v313-tabs-b2";
+ xs=[["summary","Resumen General"],["ranking","Ranking de Tiendas"],["panorama","Desempeño por Tienda"],["collaborators","Colaboradores"],["models","Modelos a Detalle"]];
+}else if(S.bonus===3){
+ cls=" v313-tabs-b3";
+ xs=[["summary","Resumen General"],["ranking","Ranking de Tiendas"],["rubros","Rubros críticos"],["stores","Tiendas"],["catalogLic","Licencias"],["catalogBas","Básicos"],["details","Detalle por rubro"]];
+}else{
+ xs=[["summary","Resumen General"],["ranking","Ranking de Tiendas"],["panorama","Panorama por Tienda"],["models","Modelos a Detalle"]];
+}
+return"<div class=\"v313-tabs"+cls+"\">"+xs.map(function(x){return"<button data-v313-section=\""+x[0]+"\" class=\""+(S.section===x[0]?"active":"")+"\">"+x[1]+"</button>"}).join("")+"</div>"
+}
+
+
+function cutbar(d){
+var sd=d.source_dates||{},opening=sd.opening_capacity,current=sd.current_capacity,processing=d.processing||{};
+var hasOpening=!!opening,hasCurrent=!!current,same=hasOpening&&hasCurrent&&String(opening)===String(current);
+var status=!hasOpening?"Falta corte inicial":!hasCurrent?"Falta corte actual":same?(processing.capacity?"Preparando cartera inicial":"Esperando segundo corte"):(processing.capacity?"Procesando comparación":"Comparación activa");
+return"<div class=\"v313-cutbar\"><div class=\"v313-cut\"><span>Regla de comparación</span><b>Corte más cercano al inicio → corte actual</b></div><div class=\"v313-cut "+(hasOpening?"ok":"wait")+"\"><span>Corte inicial seleccionado</span><b>"+dateMx(opening)+"</b></div><div class=\"v313-cut current "+(!hasCurrent||same?"wait":"ok")+"\"><span>Corte actual</span><b>"+dateMx(current)+"</b></div><div class=\"v313-cut\"><span>Avance</span><b>"+status+"</b></div></div>"
+}
+
+
 function hero(d){var names={1:"Modelo actual · 50/30/20",2:"Reducción DDI · escalones",3:"Rubros críticos · 2 de 3",4:"Matriz integral · imagen 1",5:"Mejora contra sí misma · 3 de 4",6:"Cumplimiento sostenido · 4 semanas"};return"<div class=\"v313-hero\"><div><b>Bono "+S.bonus+" · "+names[S.bonus]+"</b><br><span>"+esc((d.selected&&d.selected.formula)||({1:"Bono 1 conserva exactamente su cálculo original.",2:"Venta ≥100% + reducción DDI mínima 50%.",3:"Venta ≥100% + mínimo 2 de 3 rubros con DDI reducido ≥50%.",4:"Venta ≥100% + matriz DDI / Existencia / Inversión / Modelos.",5:"Venta ≥100% + mejora en mínimo 3 de 4 indicadores.",6:"Venta ≥100% + cuatro cortes semanales consecutivos."})[S.bonus])+"</span></div><span class=\"tag\">"+esc(d.selected_store)+"</span></div>"}
 function kpi(label,val,note,cls){return"<div class=\"v313-kpi\"><span>"+esc(label)+"</span><b class=\""+(cls||"")+"\">"+esc(val)+"</b><small>"+esc(note||"")+"</small></div>"}
 function topKpis(d){var s=d.summary||{},inv=s.inventory||{},out=[];out.push(kpi("Venta vs Meta",pc(s.sales_pct),"Meta obligatoria 100%",s.sales_pct==null?"warn":n(s.sales_pct)>=100?"good":"bad"));if(S.bonus===1){var l=d.legacy_components||{};out.push(kpi("DDI por Cat",pc(l.ddi_pct),"Peso 30%"));out.push(kpi("Asistencia",pc(l.attendance_pct),"Peso 20%"));out.push(kpi("Resultado promedio",pc(l.legacy_score_avg),"Sólo scores completos"));out.push(kpi("Tiendas con score",nf(l.stores_with_score)+" de "+nf(s.stores_total),"Bono 1"));out.push(kpi("Corte actual",dateMx((d.source_dates||{}).current_capacity),"Capacidades"));return out.join("")}out.push(kpi("DDI inicial",nf(inv.initial_ddi),"Corte inicial"));out.push(kpi("DDI actual",nf(inv.current_ddi),"Último corte"));out.push(kpi("Reducción DDI",pc(inv.ddi_reduction_pct),"Objetivo base ≥50%",inv.ddi_reduction_pct!=null&&n(inv.ddi_reduction_pct)>=50?"good":"bad"));out.push(kpi("Tiendas habilitadas",nf(s.stores_enabled)+" de "+nf(s.stores_total),"Según Bono "+S.bonus));out.push(kpi("Asistencia",pc(s.attendance_reference),"Referencia · no suma puntos","warn"));return out.join("")}
@@ -177,12 +198,79 @@ function indicator(e){if(!e)return"N/D";if(S.bonus===1)return pc(e.indicator);if
 function ranking(d,limit){var a=(d.ranking||[]).slice();if(limit)a=a.slice(0,limit);return"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Ranking de Tiendas · Bono "+S.bonus+"</span><span>Mejor a peor</span></div><div class=\"v313-scroll\"><table class=\"v313-table\"><thead><tr><th>#</th><th class=\"left\">Tienda</th><th>Venta</th><th>Indicador</th><th>Asistencia ref.</th><th>Estado</th></tr></thead><tbody>"+a.map(function(e){return"<tr data-v313-store=\""+esc(e.store)+"\" style=\"cursor:pointer\"><td>"+(e.rank==null?"—":e.rank)+"</td><td class=\"left\"><b>"+esc(e.store)+"</b></td><td>"+pc(e.sales_pct)+"</td><td>"+esc(indicator(e))+"</td><td>"+pc(e.attendance_reference)+"</td><td><span class=\"v313-status "+(!e.ready?"na":e.eligible?"":"no")+"\">"+esc(e.classification)+"</span></td></tr>"}).join("")+"</tbody></table></div></section>"}
 function summary(d){return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div><div class=\"v313-main\"><div>"+visual(d)+"</div><div>"+ranking(d,10)+"<div class=\"v313-note\">Asistencia en Bonos 2–6 es sólo referencia; 1 falta descalifica al colaborador en la validación individual. El costo del bono no se calcula en esta pantalla.</div></div></div>"}
 function panorama(d){if(d.selected_store==="Compañía")return cutbar(d)+hero(d)+"<div class=\"v313-note\">Selecciona una tienda para ver su panorama completo.</div>"+ranking(d,0);return summary(d)}
-function models(d){if(d.selected_store==="Compañía")return cutbar(d)+hero(d)+"<div class=\"v313-note\">Selecciona una tienda para consultar sus modelos.</div>"+ranking(d,0);var rows=(d.details||[]).filter(function(x){return x.catalog===S.catalog});return cutbar(d)+hero(d)+"<div class=\"v313-subtabs\">"+CAT().map(function(c){return"<button data-v313-cat=\""+c+"\" class=\""+(S.catalog===c?"active":"")+"\">"+c+"</button>"}).join("")+"</div><section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(S.catalog)+"</span><span>"+esc(d.selected_store)+"</span></div><div class=\"v313-scroll\"><table class=\"v313-table\"><thead><tr><th class=\"left\">ID</th><th class=\"left\">Modelo</th><th>DDI inicial</th><th>DDI actual</th><th>Red. DDI</th><th>Exist. inicial</th><th>Exist. actual</th><th>Inv. inicial</th><th>Inv. actual</th><th>Red. inversión</th></tr></thead><tbody>"+rows.map(function(r){return"<tr><td class=\"left\"><b>"+esc(r.id_art)+"</b></td><td class=\"left\">"+esc(r.model)+"</td><td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+pc(r.ddi_reduction_pct)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.initial_investment)+"</td><td>"+money(r.current_investment)+"</td><td>"+pc(r.investment_reduction_pct)+"</td></tr>"}).join("")+"</tbody></table></div></section>"}
-function body(d){if(S.section==="ranking")return cutbar(d)+hero(d)+ranking(d,0);if(S.section==="panorama")return panorama(d);if(S.section==="models")return models(d);return summary(d)}
+function modelTable(d,rows,title,showCatalog,subtabsHtml){
+if(d.selected_store==="Compañía")return cutbar(d)+hero(d)+"<div class=\"v313-note\">Selecciona una tienda para consultar los modelos de su cartera.</div>"+ranking(d,0);
+var all=d.details||[],processing=d.processing||{},sd=d.source_dates||{},emptyTitle="",emptyText="";
+if(!rows.length){
+ if(processing.capacity){emptyTitle="Preparando la cartera inicial";emptyText="Capacidades está reconstruyendo el listado para el corte seleccionado. Esta pantalla se actualizará automáticamente cuando termine."}
+ else if(!sd.opening_capacity){emptyTitle="Falta un corte inicial válido";emptyText="No se usará una Capacidades antigua de otro mes. Carga el corte más cercano al inicio de "+esc((d.period_label||d.month||"este periodo"))+" para construir la comparación."}
+ else if(!all.length){emptyTitle="No hay modelos elegibles para esta tienda";emptyText="La cartera se forma con modelos de los rubros Abrigador, Licencias y Básicos que tienen DDI inicial >90 e inversión superior al promedio de su catálogo."}
+ else{emptyTitle="Sin modelos en "+title;emptyText="No hay modelos de este rubro que cumplan los criterios de la cartera inicial. Revisa los demás rubros o la clasificación del archivo de Capacidades."}
+}
+var head="<th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>DDI inicial</th><th>DDI actual</th><th>Red. DDI</th><th>Exist. inicial</th><th>Exist. actual</th><th>Inv. inicial</th><th>Inv. actual</th><th>Red. inversión</th>";
+var bodyRows=rows.map(function(r){return"<tr><td class=\"left\"><b>"+esc(r.id_art)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+pc(r.ddi_reduction_pct)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.initial_investment)+"</td><td>"+money(r.current_investment)+"</td><td>"+pc(r.investment_reduction_pct)+"</td></tr>"}).join("");
+return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div><div class=\"v313-scroll\"><table class=\"v313-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
+}
+function models(d,onlyCatalog){
+if(onlyCatalog)S.catalog=onlyCatalog;
+var all=d.details||[],rows=all.filter(function(x){return x.catalog===S.catalog});
+var tabsHtml=onlyCatalog?"":"<div class=\"v313-subtabs\">"+CAT().map(function(c){return"<button data-v313-cat=\""+c+"\" class=\""+(S.catalog===c?"active":"")+"\">"+c+"</button>"}).join("")+"</div>";
+return modelTable(d,rows,S.catalog,false,tabsHtml)
+}
+function allModels(d){
+var rows=(d.details||[]).slice().sort(function(a,b){return String(a.catalog||"").localeCompare(String(b.catalog||""))||String(a.id_art||"").localeCompare(String(b.id_art||""))});
+return modelTable(d,rows,"Todos los rubros",true,"")
+}
+function collaborators(d){
+var rows=Array.isArray(d.collaborators)?d.collaborators:[];
+var content=rows.length?rows.map(function(x){return"<div class=\"v313-note\">"+esc(x.name||x.colaborador||x.employee||"Colaborador")+" · "+esc(x.store||d.selected_store||"")+" · "+esc(x.status||"Pendiente de validación individual")+"</div>"}).join(""):"<div class=\"v313-empty\"><b>La elegibilidad individual aún no está disponible en esta consulta</b><p>El servicio de Bonos devuelve indicadores por tienda y modelos, pero no el padrón individual con ventas y faltas. No se inventarán colaboradores ni porcentajes.</p><p>Regla conservada: venta mínima del 100%; la asistencia sólo es referencia y una falta descalifica al colaborador. El costo se calcula aparte.</p></div>";
+return cutbar(d)+hero(d)+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Colaboradores · Bono 2</span><span>Validación individual</span></div>"+content+"</section>"
+}
+function rubrosPage(d){
+return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div><div class=\"v313-main\"><div>"+rubrosB3(d)+"</div><div>"+ranking(d,10)+"</div></div>"
+}
+
+
+function body(d){
+if(S.section==="ranking"||S.section==="stores")return cutbar(d)+hero(d)+ranking(d,0);
+if(S.section==="panorama")return panorama(d);
+if(S.section==="collaborators")return collaborators(d);
+if(S.section==="rubros")return rubrosPage(d);
+if(S.section==="catalogLic")return models(d,"Licencias");
+if(S.section==="catalogBas")return models(d,"Básicos");
+if(S.section==="details")return allModels(d);
+if(S.section==="models")return models(d);
+return summary(d)
+}
+
+
 function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">Comparación real entre corte inicial y corte actual · sin gráficas de línea</div></div>"+filters(d)+"</div>"+bonusTabs()+tabs()+body(d)+"</div>"}
-function bind(){q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;load()});q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;load()});qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";load()})});qa("[data-v313-section]").forEach(function(b){b.addEventListener("click",function(){S.section=b.dataset.v313Section;render()})});qa("[data-v313-store]").forEach(function(r){r.addEventListener("click",function(){S.store=r.dataset.v313Store;S.section="panorama";load()})});qa("[data-v313-cat]").forEach(function(b){b.addEventListener("click",function(){S.catalog=b.dataset.v313Cat;render()})})}
+function bind(){
+q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
+q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;S.refreshCount=0;load()});
+qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";S.catalog="Abrigador";S.refreshCount=0;load()})});
+qa("[data-v313-section]").forEach(function(b){b.addEventListener("click",function(){S.section=b.dataset.v313Section;if(S.section==="catalogLic")S.catalog="Licencias";if(S.section==="catalogBas")S.catalog="Básicos";render()})});
+qa("[data-v313-store]").forEach(function(r){r.addEventListener("click",function(){S.store=r.dataset.v313Store;S.section=S.bonus===3?"rubros":"panorama";S.refreshCount=0;load()})});
+qa("[data-v313-cat]").forEach(function(b){b.addEventListener("click",function(){S.catalog=b.dataset.v313Cat;render()})})
+}
+
+
 function render(){activate();var h=q("#v313Host");if(h&&S.data){h.innerHTML=page(S.data);bind()}}
-function load(){var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);api("/api/bonuses-v313?"+p.toString()).then(function(d){if(seq!==S.seq)return;S.data=d;S.month=d.month;S.store=d.selected_store;render()}).catch(function(e){var h=q("#v313Host");if(h)h.innerHTML="<div class=\"v313-note\">No fue posible cargar Bonos: "+esc(e.message||e)+"</div>"})}
+function load(){
+if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}
+var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);
+api("/api/bonuses-v313?"+p.toString()).then(function(d){
+ if(seq!==S.seq)return;
+ S.data=d;S.month=d.month;S.store=d.selected_store;render();
+ var processing=d.processing||{};
+ if((processing.capacity||processing.sales||d.weekly_pending)&&S.refreshCount<10){
+  S.refreshCount++;
+  S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},1800);
+ }else{S.refreshCount=0}
+}).catch(function(e){var h=q("#v313Host");if(h)h.innerHTML="<div class=\"v313-note\">No fue posible cargar Bonos: "+esc(e.message||e)+"</div>"})
+}
+
+
 function bindMenu(el){if(!el)return;var c=el.cloneNode(true);el.replaceWith(c);c.dataset.v313Bound="1";c.dataset.v312Bound="1";c.dataset.v302Bound="1";c.dataset.v293Bound="1";c.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();activate();load()},true)}
 function boot(){var s=q("#sidebar [data-main=\"bonuses\"]"),m=q("#mobileMainNav [data-main=\"bonuses\"]");if(s&&!s.dataset.v313Bound)bindMenu(s);if(m&&!m.dataset.v313Bound)bindMenu(m)}
 document.addEventListener("DOMContentLoaded",function(){setTimeout(boot,850)},{once:true});[900,1800,3300].forEach(function(ms){setTimeout(boot,ms)});
@@ -203,11 +291,11 @@ document.addEventListener("click",function(e){var x=e.target.closest&&e.target.c
             headers=dict(getattr(response,"headers",{}) or {})
             headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V313-BONUS-VISUAL-CUTS"
+            headers["X-Operations-Bonus-Version"]="V316-BONUS-CUTS-AND-DESIGN"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V313] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V313_BONUS_VISUAL_CUTS=True
-    print("[V313] Bonos: corte inicial/corte actual visibles y diseño específico por Bono 1..6.",flush=True)
+    print("[V316] Bonos: corte inicial válido, estados de carga, tabs aprobadas y detalle con estado vacío.",flush=True)

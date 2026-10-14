@@ -242,19 +242,29 @@ def install(m):
         return out
 
     def opening_capacity_entry(month):
-        """Corte base mensual: el más cercano al inicio sin adelantarse al mes.
+        """Elige el corte de Capacidades más cercano al primer día del periodo.
 
-        Para octubre 2026, si existe 29/09/2026, ése es el corte base. Sólo si
-        no hay ningún corte anterior o del día 1 se usa el primer corte posterior.
+        Se admite un corte previo sólo dentro de los siete días anteriores al mes.
+        Si existe información dentro del mes, también compite el primer corte del
+        mes y gana el de menor distancia al día 1. Nunca reutiliza en silencio una
+        base de otro mes que esté separada por semanas o meses.
         """
         yy, mm = (int(x) for x in month.split("-"))
         month_start = date(yy, mm, 1)
+        next_month = date(yy + (1 if mm == 12 else 0), 1 if mm == 12 else mm + 1, 1)
+        month_end = next_month - timedelta(days=1)
+        today = datetime.now(MX).date()
+        limit = min(today, month_end) if (yy, mm) <= (today.year, today.month) else month_end
         all_entries = _capacity_all_entries()
-        prior = [x for x in all_entries if x[0] <= month_start]
-        if prior:
-            return prior[-1]
-        after = [x for x in all_entries if x[0] > month_start]
-        return after[0] if after else None
+        near_prior = [
+            x for x in all_entries
+            if x[0] < month_start and (month_start - x[0]).days <= 7
+        ]
+        in_month = [x for x in all_entries if month_start <= x[0] <= limit]
+        candidates = near_prior + in_month
+        if not candidates:
+            return None
+        return min(candidates, key=lambda x: (abs((x[0] - month_start).days), x[0], x[1]))
 
     def current_capacity_entry(month):
         """Corte actual: último procesado después del corte base y nunca futuro.
@@ -708,22 +718,30 @@ def install(m):
     def target_rows(month, stores):
         if not stores:
             return []
+        opening = opening_capacity_entry(month)
+        if not opening:
+            return []
+        expected_source_date = opening[0].isoformat()
         marks = ",".join("?" for _ in stores)
         with m.db() as con:
             rows = con.execute(
-                f"SELECT * FROM sales_bonus_targets_v293 WHERE month=? AND store IN ({marks}) ORDER BY store,catalog,id_art",
-                (month, *stores),
+                f"SELECT * FROM sales_bonus_targets_v293 WHERE month=? AND source_date=? AND store IN ({marks}) ORDER BY store,catalog,id_art",
+                (month, expected_source_date, *stores),
             ).fetchall()
         return [dict(r) for r in rows]
 
     def snapshot_rows(month, stores):
         if not stores:
             return {}
+        opening = opening_capacity_entry(month)
+        if not opening:
+            return {}
+        expected_source_date = opening[0].isoformat()
         marks = ",".join("?" for _ in stores)
         with m.db() as con:
             rows = con.execute(
-                f"SELECT * FROM sales_bonus_snapshot_v293 WHERE month=? AND store IN ({marks})",
-                (month, *stores),
+                f"SELECT * FROM sales_bonus_snapshot_v293 WHERE month=? AND source_date=? AND store IN ({marks})",
+                (month, expected_source_date, *stores),
             ).fetchall()
         return {str(r["store"]): dict(r) for r in rows}
 
@@ -1049,6 +1067,8 @@ def install(m):
         snapshots = snapshot_rows(month, stores)
         attendance = attendance_rows(month, stores)
         current_entry, current, sales, sales_pieces, sales_available, sales_pending, capacity_pending = current_maps(month, stores, targets)
+        current_display_pick = current_capacity_entry(month)
+        current_display_entry = current_display_pick[2] if current_display_pick else None
         capacity_pending = bool(capacity_pending or snapshot_state.get("pending"))
         by_store = defaultdict(list)
         for row in targets:
@@ -1082,8 +1102,8 @@ def install(m):
                 "attendance_pct": x["attendance"]["pct"], "score": x["score"], "score_ready": x["score_ready"],
                 "target_models": x["target_models"],
             } for x in ranking],
-            "current_source_period": period_for_entry(current_entry),
-            "current_source_date": m._capacity_report_date(current_entry).isoformat() if current_entry else "",
+            "current_source_period": period_for_entry(current_display_entry),
+            "current_source_date": m._capacity_report_date(current_display_entry).isoformat() if current_display_entry else "",
             "can_edit_attendance": str(actor.get("role") or "").lower() in ADMIN,
             "weights": {"sales": 50, "ddi": 30, "attendance": 20},
             "rules": {"ddi_gt": 90, "investment": "Mayor al promedio del catálogo por tienda", "snapshot": "Listado fijo mensual"},
@@ -1095,7 +1115,7 @@ def install(m):
             },
             "source_dates": {
                 "opening_capacity": str((snapshot_state.get("entry") and m._capacity_report_date(snapshot_state.get("entry")).isoformat()) or ""),
-                "current_capacity": m._capacity_report_date(current_entry).isoformat() if current_entry else "",
+                "current_capacity": m._capacity_report_date(current_display_entry).isoformat() if current_display_entry else "",
                 "base_muertos_latest": str(max((m.load_operations_meta() or {}).get("available_dates") or [""]) or ""),
             },
             "processing": {
