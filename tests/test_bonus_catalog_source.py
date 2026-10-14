@@ -2,7 +2,7 @@
 import pandas as pd
 
 from commercial.parsers import _normalize_capacity_source
-from v293_sales_bonus_patch import classify_bonus_catalogs_from_source
+from v293_sales_bonus_patch import classify_bonus_catalogs_from_source, select_vigente_bonus_catalog_rows
 
 
 def test_real_capacidades_catalog_columns(tmp_path):
@@ -88,3 +88,14 @@ def test_catalogs_do_not_depend_on_tipo_catalogo_or_subcategoria(tmp_path):
     assert classify_bonus_catalogs_from_source(frame["Catálogo comercial"]).tolist() == [
         "Abrigador", "Licencias", "Básicos",
     ]
+
+
+def test_opening_bonus_cohort_includes_only_vigente_after_normalization():
+    frame=pd.DataFrame({
+        "ID_ART":["1","2","3","4","5"],
+        "Tipo catálogo":pd.Categorical(["VIGENTE","DESCONTINUADO","  vigente ","PROXIMO A SALIR","IMPULSO"]),
+        "Catálogo comercial":["COL IMP | ABRIGADOR | 2026","LICENCIAS | DIG | 2026","BASICOS | DIG","LICENCIAS | DIG","BASICOS | DIG"],
+    })
+    selected=select_vigente_bonus_catalog_rows(frame)
+    assert selected["ID_ART"].tolist()==["1","3"]
+    assert classify_bonus_catalogs_from_source(selected["Catálogo comercial"]).tolist()==["Abrigador","Básicos"]
