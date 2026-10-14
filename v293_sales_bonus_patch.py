@@ -39,6 +39,27 @@ MONTH_LABELS = {
 _META_CACHE = None
 
 
+def classify_bonus_catalogs_from_source(raw_values: pd.Series) -> pd.Series:
+    """Clasificación por la columna original CATALOGO (no por tipo de prenda).
+
+    Ejemplos:
+    LICENCIAS | DIG | PRI-VER | 2026 | 1E -> Licencias
+    ABRIGADOR | DIG | PRI-VER | 2026    -> Abrigador
+    BASICOS | DIG | PRI-VER | 2026     -> Básicos
+    """
+    raw = raw_values.fillna("").astype(str)
+    token = raw.str.split("|", n=1, regex=False).str[0]
+    token = token.map(lambda v: "".join(
+        c for c in unicodedata.normalize("NFKD", str(v))
+        if not unicodedata.combining(c)
+    ).upper().strip())
+    result = pd.Series("", index=raw.index, dtype="object")
+    result.loc[token.str.match(r"^ABRIGADOR(?:A|ES|AS)?(?:\s|$)", na=False)] = "Abrigador"
+    result.loc[token.str.match(r"^LICENCIAS?(?:\s|$)", na=False)] = "Licencias"
+    result.loc[token.str.match(r"^BASICOS?(?:\s|$)", na=False)] = "Básicos"
+    return result
+
+
 def install(m):
     if getattr(m, "_V293_SALES_BONUS", False):
         return
@@ -516,14 +537,7 @@ def install(m):
         if "Catálogo comercial" not in work.columns:
             print("[V325-CATALOG] Falta columna oficial CATALOGO: no se asignan rubros por aproximacion",flush=True)
             return out
-        # Los valores posteriores a "|" son campaña/temporada, no rubro.
-        raw = work["Catálogo comercial"].fillna("").astype(str)
-        labels = raw.str.split("|", n=1, regex=False).str[0].map(fold).str.strip()
-        out.loc[labels.str.match(r"^ABRIGADOR(?:A|ES|AS)?(?:\s|$)",na=False)] = "Abrigador"
-        out.loc[labels.str.match(r"^LICENCIAS?(?:\s|$)",na=False)] = "Licencias"
-        out.loc[labels.str.match(r"^BASICOS?(?:\s|$)",na=False)] = "Básicos"
-        # Fuente sin categoría reconocible = no elegible, nunca se fuerza a Abrigador.
-        return out
+        return classify_bonus_catalogs_from_source(work["Catálogo comercial"])
 
     def aggregate_models(work):
         if work.empty or "ID_ART" not in work.columns:
