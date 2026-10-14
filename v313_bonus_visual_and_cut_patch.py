@@ -149,7 +149,7 @@ body[data-v313="1"] #v312Host{display:none!important}
 
     js=r'''<script id="v313-js">(function(){
 if(window.__V313_BONUS_VISUAL_CUTS)return;window.__V313_BONUS_VISUAL_CUTS=true;
-var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null};
+var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null};
 function q(s,r){return(r||document).querySelector(s)}function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){var x=Number(v);return Number.isFinite(x)?x:0}function pc(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})+"%"}function nf(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})}
@@ -239,7 +239,7 @@ return"<div class=\"v313-hero\"><div><b>Corte inicial mensual</b><br><span>Asign
 "<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Cargar corte inicial</span><span>Capacidades · Excel</span></div><div class=\"v313-body\">"+
 "<div class=\"v313-note\">El corte inicial define el punto de partida para los Bonos 2–6. Elige el mes, selecciona el Excel más cercano al inicio de ese mes y guarda. Cada mes tiene su propia asignación; no se usará una base antigua de otro periodo automáticamente.</div>"+
 "<div class=\"v313-upload-grid\" style=\"margin-top:12px\"><div><label for=\"v321InitialMonth\">Mes del bono</label><select id=\"v321InitialMonth\">"+opts+"</select></div><div><label for=\"v321InitialFile\">Archivo de Capacidades inicial (.xlsx / .xls)</label><input id=\"v321InitialFile\" type=\"file\" accept=\".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"></div><div><button type=\"button\" class=\"v321-upload-button\" id=\"v321UploadButton\">Procesar y guardar</button></div></div>"+
-"<div id=\"v321UploadStatus\" class=\"v321-state\" role=\"status\">Selecciona el mes y el archivo inicial que deseas asociar.</div>"+
+"<div id=\"v321UploadStatus\" class=\"v321-state "+esc((S.initialStatus||{}).kind||"")+"\" role=\"status\">"+esc((S.initialStatus||{}).text||"Selecciona el mes y el archivo inicial que deseas asociar.")+"</div>"+
 "<div id=\"v321InitialHistory\"><div class=\"v313-empty\">Consultando los cortes iniciales guardados…</div></div></div></section>"+
 "<section class=\"v313-panel\" style=\"margin-top:8px\"><div class=\"v313-ph\"><span>Reglas de resguardo</span><span>Histórico por mes</span></div><div class=\"v313-body\"><div class=\"v313-note\">• El corte inicial queda asociado sólo al mes seleccionado.<br>• Cargar un nuevo archivo para el mismo mes reemplaza su asignación, pero no borra el archivo anterior del histórico general.<br>• La carga no modifica la fórmula del Bono 1 ni los criterios de los Bonos 2–6.<br>• Para comparar resultados, también debe existir un corte actual procesado.</div></div></section>";
 }
@@ -265,11 +265,12 @@ var form=new FormData();form.append("month",month);form.append("file",file);
 if(button){button.disabled=true;button.textContent="Procesando…"}
 if(status){status.className="v321-state";status.textContent="Procesando el Excel y asignándolo al periodo seleccionado…"}
 fetch("/api/bonuses/initial-capacity",{method:"POST",credentials:"same-origin",body:form}).then(function(response){return response.text().then(function(raw){var data={};try{data=JSON.parse(raw)}catch(_e){data={detail:raw}}if(!response.ok)throw new Error(data.detail||data.message||("HTTP "+response.status));return data})}).then(function(data){
-if(status){status.className="v321-state ok";status.textContent=data.message+" Archivo: "+data.file+" · Fecha: "+dateMx(data.report_date)+" · Filas: "+nf(data.rows)+" · Tiendas: "+nf(data.stores)}
+S.initialStatus={kind:"ok",text:data.message+" Archivo: "+data.file+" · Fecha: "+dateMx(data.report_date)+" · Filas: "+nf(data.rows)+" · Tiendas: "+nf(data.stores)};
+if(status){status.className="v321-state ok";status.textContent=S.initialStatus.text}
 S.month=month;S.refreshCount=0;
 var period=q("#v313Month");if(period)period.value=month;
 load();
-}).catch(function(err){if(status){status.className="v321-state err";status.textContent="No se pudo guardar el corte inicial: "+(err.message||err)}}).finally(function(){if(button){button.disabled=false;button.textContent="Procesar y guardar"}});
+}).catch(function(err){S.initialStatus={kind:"err",text:"No se pudo guardar el corte inicial: "+(err.message||err)};if(status){status.className="v321-state err";status.textContent=S.initialStatus.text}}).finally(function(){if(button){button.disabled=false;button.textContent="Procesar y guardar"}});
 }
 function body(d){
 if(S.section==="initial-upload")return initialUpload(d);
@@ -291,7 +292,7 @@ q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.
 q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;S.refreshCount=0;load()});
 qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";S.catalog="Abrigador";S.refreshCount=0;load()})});
 q("[data-v313-initial]")?.addEventListener("click",function(){S.section="initial-upload";render()});
-q("#v321InitialMonth")?.addEventListener("change",function(e){S.month=e.target.value;var p=q("#v313Month");if(p)p.value=S.month;S.refreshCount=0;load()});
+q("#v321InitialMonth")?.addEventListener("change",function(e){S.month=e.target.value;S.initialStatus=null;var p=q("#v313Month");if(p)p.value=S.month;S.refreshCount=0;load()});
 q("#v321UploadButton")?.addEventListener("click",uploadInitialCut);
 qa("[data-v313-section]").forEach(function(b){b.addEventListener("click",function(){S.section=b.dataset.v313Section;if(S.section==="catalogLic")S.catalog="Licencias";if(S.section==="catalogBas")S.catalog="Básicos";render()})});
 qa("[data-v313-store]").forEach(function(r){r.addEventListener("click",function(){S.store=r.dataset.v313Store;S.section=S.bonus===3?"rubros":"panorama";S.refreshCount=0;load()})});
