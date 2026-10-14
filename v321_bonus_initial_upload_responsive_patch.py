@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import errno
+import hashlib
 import re
 import secrets
 import shutil
@@ -191,19 +192,47 @@ def install(m):
             # Verificar espacio antes de copiar al volumen y crear el caché
             # normalizado. En un volumen lleno es mejor responder 507 que 500.
             free = shutil.disk_usage(m.COMMERCIAL_DATA_ROOT).free
-            minimum_free = size + 128 * 1024 * 1024
+
+            # Si la misma fuente ya está procesada y su caché existe, no
+            # necesitará otro archivo de 56 MB para un nuevo corte mensual.
+            def existing_processed_source():
+                digest = hashlib.sha256()
+                with stage_path.open("rb") as stream:
+                    for part in iter(lambda: stream.read(1024 * 1024), b""):
+                        digest.update(part)
+                manifest = m.load_manifest()
+                entries = list(manifest.get("capacities") or []) + list(
+                    manifest.get("bonus_initial_capacity_entries") or []
+                )
+                for candidate in entries:
+                    if candidate.get("sha256") != digest.hexdigest():
+                        continue
+                    if str(candidate.get("status") or "").lower() != "procesado":
+                        continue
+                    if not m.resolve_entry_path(candidate).is_file():
+                        continue
+                    relative = str(candidate.get("cache_file") or "").strip()
+                    cache = ((m.DATA_ROOT / relative) if relative else
+                             m._capacity_cache_path(str(candidate.get("id") or "")))
+                    if cache.is_file():
+                        return True
+                return False
+
+            already_cached = await asyncio.to_thread(existing_processed_source)
+            minimum_free = (4 * 1024 * 1024 if already_cached
+                            else size + 64 * 1024 * 1024)
             if free < minimum_free:
                 raise HTTPException(
                     status_code=507,
                     detail=(
-                        "No hay espacio suficiente en Railway para este corte inicial. "
+                        "El volumen de Railway no tiene espacio para procesar "
+                        "este nuevo corte inicial. "
                         f"Disponibles: {free // (1024 * 1024)} MB; "
-                        f"recomendados al menos {minimum_free // (1024 * 1024)} MB. "
-                        "Amplía el volumen persistente operaciones-ropa-data "
-                        "sin borrar su contenido y vuelve a intentar la carga."
+                        f"necesarios al menos {minimum_free // (1024 * 1024)} MB. "
+                        "La aplicación conserva los históricos sin borrarlos."
                     ),
                 )
-            entry = await asyncio.to_thread(m._save_capacity_source_path, stage_path, filename)
+            entry = await asyncio.to_thread(m._save_capacity_source_path, stage_path, filename, True)
         except OSError as exc:
             if exc.errno == errno.ENOSPC:
                 raise HTTPException(
