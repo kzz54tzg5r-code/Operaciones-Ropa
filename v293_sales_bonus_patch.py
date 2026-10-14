@@ -263,21 +263,33 @@ def install(m):
         today = datetime.now(MX).date()
         limit = min(today, month_end) if (yy, mm) <= (today.year, today.month) else month_end
         all_entries = _capacity_all_entries()
-
-        # La asignación mensual explícita creada por V321 manda sobre cualquier
-        # inferencia por nombre/fecha del archivo.
+        initial_map = {}
         try:
             manifest_path = Path(m.COMMERCIAL_DATA_ROOT) / "manifest.json"
             manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
-            assigned = (manifest.get("bonus_initial_cuts") or {}).get(month)
-            if isinstance(assigned, dict):
-                assigned = assigned.get("entry_id")
-            if assigned:
-                selected = next((x for x in all_entries if str(x[2].get("id") or "") == str(assigned)), None)
-                if selected:
-                    return selected
+            initial_map = dict(manifest.get("bonus_initial_cuts") or {})
         except Exception as exc:
-            print(f"[V321] No se pudo leer la asignación de corte inicial {month}: {type(exc).__name__}", flush=True)
+            print(f"[V321] No se pudo leer el histórico de cortes iniciales: {type(exc).__name__}", flush=True)
+
+        # La asignación mensual explícita creada por V321 manda sobre cualquier
+        # inferencia por nombre/fecha del archivo. Los cortes iniciales de otros
+        # meses no compiten como candidatos automáticos para el periodo consultado.
+        assigned = initial_map.get(month)
+        if isinstance(assigned, dict):
+            assigned = assigned.get("entry_id")
+        if assigned:
+            selected = next((x for x in all_entries if str(x[2].get("id") or "") == str(assigned)), None)
+            if selected:
+                return selected
+
+        other_initial_ids = set()
+        for period, value in initial_map.items():
+            if str(period) == str(month):
+                continue
+            entry_id = value.get("entry_id") if isinstance(value, dict) else value
+            if entry_id:
+                other_initial_ids.add(str(entry_id))
+        all_entries = [x for x in all_entries if str(x[2].get("id") or "") not in other_initial_ids]
 
         near_prior = [
             x for x in all_entries
@@ -309,9 +321,20 @@ def install(m):
         today = datetime.now(MX).date()
         limit = min(today, month_end) if (yy, mm) <= (today.year, today.month) else month_end
         all_entries = _capacity_all_entries()
+        assigned_ids = set()
+        try:
+            manifest_path = Path(m.COMMERCIAL_DATA_ROOT) / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+            for value in (manifest.get("bonus_initial_cuts") or {}).values():
+                entry_id = value.get("entry_id") if isinstance(value, dict) else value
+                if entry_id:
+                    assigned_ids.add(str(entry_id))
+        except Exception:
+            pass
         eligible = [
             x for x in all_entries
-            if str(x[2].get("id") or "") != opening_id
+            if str(x[2].get("id") or "") not in assigned_ids
+            and str(x[2].get("id") or "") != opening_id
             and x[0] <= limit
             and x[0] >= month_start - timedelta(days=7)
         ]
