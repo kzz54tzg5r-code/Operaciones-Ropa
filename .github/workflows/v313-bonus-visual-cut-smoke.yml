@@ -47,6 +47,8 @@ jobs:
           assert "initial-upload" in b
           assert "/api/bonuses/initial-capacity" in b
           assert "bonus_initial_cuts" in d
+          assert "bonus_initial_capacity_entries" in d
+          assert "bonus_initial_only" in d
           assert "v321-bonus-responsive-css" in d
           assert "min-width:0!important" in d
           assert "repeat(7,minmax(0,1fr))" in d
