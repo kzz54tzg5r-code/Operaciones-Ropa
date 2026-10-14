@@ -6,8 +6,11 @@ el histórico general de Capacidades. Los seis bonos y sus cálculos se conserva
 from __future__ import annotations
 
 import asyncio
+import errno
 import re
 import secrets
+import shutil
+import tempfile
 from datetime import datetime
 from fastapi import File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -177,12 +180,40 @@ def install(m):
         suffix = m.Path(filename).suffix.lower()
         if suffix not in (".xlsx", ".xls"):
             raise HTTPException(400, "Selecciona un archivo Excel .xlsx o .xls.")
-        stage_path = m.STAGING_DIR / f"bonus_initial_{secrets.token_hex(8)}{suffix}"
+        # Evitar un segundo archivo de 56 MB dentro del volumen persistente:
+        # el original se conserva en /data/commercial/capacidades.
+        stage_path = m.Path(tempfile.gettempdir()) / f"bonus_initial_{secrets.token_hex(12)}{suffix}"
         try:
             size = await m._save_upload_stream(file, stage_path)
             if not size:
                 raise HTTPException(400, "El archivo está vacío.")
+
+            # Verificar espacio antes de copiar al volumen y crear el caché
+            # normalizado. En un volumen lleno es mejor responder 507 que 500.
+            free = shutil.disk_usage(m.COMMERCIAL_DATA_ROOT).free
+            minimum_free = size + 128 * 1024 * 1024
+            if free < minimum_free:
+                raise HTTPException(
+                    status_code=507,
+                    detail=(
+                        "No hay espacio suficiente en Railway para este corte inicial. "
+                        f"Disponibles: {free // (1024 * 1024)} MB; "
+                        f"recomendados al menos {minimum_free // (1024 * 1024)} MB. "
+                        "Amplía el volumen persistente operaciones-ropa-data "
+                        "sin borrar su contenido y vuelve a intentar la carga."
+                    ),
+                )
             entry = await asyncio.to_thread(m._save_capacity_source_path, stage_path, filename)
+        except OSError as exc:
+            if exc.errno == errno.ENOSPC:
+                raise HTTPException(
+                    status_code=507,
+                    detail=(
+                        "El almacenamiento del servidor está lleno. "
+                        "Amplía el volumen en Railway sin borrar los históricos."
+                    ),
+                ) from exc
+            raise
         finally:
             try:
                 stage_path.unlink(missing_ok=True)
