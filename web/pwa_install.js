@@ -10,6 +10,7 @@
   let lastVersionCheck = 0;
   let updateVisible = false;
   let pendingVersion = null;
+  let pendingVersionAt = 0;
   let refreshing = false;
   let pendingWrites = 0;
   let lastInteraction = Date.now();
@@ -134,6 +135,7 @@
   };
 
   const showUpdateBanner = newVersion => {
+    if (pendingVersion !== newVersion) pendingVersionAt = Date.now();
     pendingVersion = newVersion;
     if (updateVisible) return;
     updateVisible = true;
@@ -228,10 +230,11 @@
   // Revisión periódica mientras la aplicación permanece abierta.
   window.setInterval(() => {
     if (document.visibilityState === 'visible') checkVersion();
-  }, 120000);
+  }, 60000);
 
   window.setInterval(() => {
     if (pendingVersion && document.visibilityState === 'visible' &&
+        Date.now() - pendingVersionAt >= 120000 &&
         Date.now() - lastInteraction >= 30000 && safeToRefresh()) {
       refreshAndReload(document.querySelector('.or-update-banner button'), true);
     }
