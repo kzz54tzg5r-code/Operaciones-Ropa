@@ -124,10 +124,8 @@ function apply(){
    tr.insertBefore(td,first);
   });
  });
- exportControls(root);
- var t=Array.from(root.querySelectorAll('table')).find(function(x){return /DDI inicial/.test(x.textContent||'')});
- if(t){var body=t.querySelector('tbody');if(body){body.style.display='block';body.style.maxHeight='650px';body.style.overflowY='auto';t.querySelector('thead').style.display='table';t.querySelector('thead').style.width='100%';body.style.width='100%';}}
- var header=root.querySelector('.v313-head');if(header&&!header.querySelector('[data-v314-refresh]')){var b=document.createElement('button');b.dataset.v314Refresh='1';b.textContent='↻ Actualizar';b.type='button';b.style.cssText='border:1px solid #a8c9ed;border-radius:7px;padding:9px 14px;background:#fff;color:#134779;font-weight:700;cursor:pointer';b.onclick=function(){location.reload()};header.appendChild(b)}
+ // La vista V322 ya controla fotos, botones y desplazamiento directamente.
+
 }
 function boot(){
  var root=document.getElementById('v313Host');if(!root)return;
