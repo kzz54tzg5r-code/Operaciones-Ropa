@@ -43,8 +43,8 @@ def install(m):
                 df=_normalize_capacity_source(raw,source)
                 del raw
                 print(f"[V323-CATALOG-AUDIT] fuente={source.name} filas_muestra={len(df)} campos={list(df.columns)}",flush=True)
-            for store in ("Olivar", "Ixtapaluca"):
-                subset=df.loc[df["Tienda"].fillna("").astype(str).str.casefold()==store.casefold()]
+            for store in ("Muestra", "Olivar", "Ixtapaluca"):
+                subset=(df if store=="Muestra" else df.loc[df["Tienda"].fillna("").astype(str).str.casefold()==store.casefold()])
                 print(f"[V323-CATALOG-AUDIT] tienda={store} filas={len(subset)}",flush=True)
                 for field in ("Marca","Categoría","Subcategoría","Tipo catálogo"):
                     if field not in subset.columns:continue
