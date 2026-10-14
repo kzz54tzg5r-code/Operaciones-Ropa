@@ -43,3 +43,15 @@ def test_licencia_overrides_abrigador_by_source_not_subcategoria():
     assert classify_bonus_catalogs_from_source(raw).tolist() == [
         "Licencias", "Básicos", "Abrigador", "",
     ]
+
+
+def test_catalog_classifier_accepts_compressed_categorical_series():
+    # El lector streaming almacena textos repetidos como pd.Categorical.
+    compressed = pd.Series(pd.Categorical([
+        "LICENCIAS | DIG | PRI-VER | 2026 | 1E",
+        "BASICOS | DIG | 2026",
+        "ABRIGADOR | DIG | 2026",
+    ]))
+    assert classify_bonus_catalogs_from_source(compressed).tolist() == [
+        "Licencias", "Básicos", "Abrigador",
+    ]
