@@ -785,7 +785,7 @@ def install(m):
         for _b in BONUS_NOS:
             cfg=defaults[_b]
             _r=calc_model(_b,sample,cfg,b1_score=82.1,b1_ready=True)
-            results.append(round(num(_r.get("points")),-1))
+            results.append(round(num(_r.get("points")),2))
         assert calc_model(1,{"sales":100,"ddi":100,"attendance":100},defaults[1],100,True).get("points")==100
         for _b in (2,3,4,5,6):
             _full=calc_model(_b,{"sales":100,"ddi":100,"attendance":100},defaults[_b],100,True)

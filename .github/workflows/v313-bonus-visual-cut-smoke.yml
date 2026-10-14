@@ -1,9 +1,10 @@
-name: V319 Bonus Cut Identity and Design Smoke
+name: V320 Bonus Cuts, Design and Methods Smoke
 on:
   push:
     branches: [main]
     paths:
       - "v293_sales_bonus_patch.py"
+      - "v302_six_sales_bonuses_patch.py"
       - "v313_bonus_visual_and_cut_patch.py"
       - "server_entry.py"
       - ".github/workflows/v313-bonus-visual-cut-smoke.yml"
@@ -17,13 +18,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile
-        run: python -m py_compile v293_sales_bonus_patch.py v313_bonus_visual_and_cut_patch.py server_entry.py
+        run: python -m py_compile v293_sales_bonus_patch.py v302_six_sales_bonuses_patch.py v313_bonus_visual_and_cut_patch.py server_entry.py
       - name: Verify business rules and design markers
         run: |
           python - <<'PY'
           from pathlib import Path
           a=Path("v293_sales_bonus_patch.py").read_text(encoding="utf-8")
           b=Path("v313_bonus_visual_and_cut_patch.py").read_text(encoding="utf-8")
+          c=Path("v302_six_sales_bonuses_patch.py").read_text(encoding="utf-8")
           assert "último disponible al iniciar el mes" not in a
           assert "opening_date <= x[0] <= limit" in a
           assert "Elige el corte de Capacidades más cercano al primer día del periodo" in a
@@ -46,5 +48,7 @@ jobs:
           assert "4 cortes semanales consecutivos" in b
           assert "sin gráficas de línea" in b.lower()
           assert "source_dates" in b
-          print("V319 assertions OK")
+          assert 'results.append(round(num(_r.get("points")),2))' in c
+          assert "len(set(results[1:]))>=4" in c
+          print("V320 assertions OK")
           PY
