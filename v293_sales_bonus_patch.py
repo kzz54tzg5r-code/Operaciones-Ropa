@@ -47,7 +47,7 @@ def classify_bonus_catalogs_from_source(raw_values: pd.Series) -> pd.Series:
     ABRIGADOR | DIG | PRI-VER | 2026    -> Abrigador
     BASICOS | DIG | PRI-VER | 2026     -> Básicos
     """
-    raw = raw_values.fillna("").astype(str)
+    raw = raw_values.astype(str).fillna("")
     token = raw.str.split("|", n=1, regex=False).str[0]
     token = token.map(lambda v: "".join(
         c for c in unicodedata.normalize("NFKD", str(v))
@@ -714,7 +714,7 @@ def install(m):
             work = scope_frame(frame, stores)
             models = aggregate_models(work)
             # Evitar sobrescribir cortes con 0 elegibles si la fuente oficial no se leyó.
-            if "Catálogo comercial" not in work.columns or not bool(work["Catálogo comercial"].fillna("").astype(str).str.strip().ne("").any()):
+            if "Catálogo comercial" not in work.columns or not bool(work["Catálogo comercial"].astype(str).fillna("").str.strip().ne("").any()):
                 print(f"[V325-CATALOG] ERROR: falta CATALOGO real en la fuente, se conserva snapshot de {month}",flush=True)
                 return
             # Diagnóstico por rubro y por columna de origen, sin exponer IDs.
@@ -722,7 +722,7 @@ def install(m):
                   f"clasificados={len(models)} distribucion={models['catalog'].value_counts().to_dict() if not models.empty else {}}", flush=True)
             for field in ("Catálogo comercial", "Catálogo genérico", "Tipo catálogo", "Categoría", "Subcategoría"):
                 if field in work.columns:
-                    top = {str(k)[:60]:int(v) for k,v in work[field].fillna("").astype(str).value_counts().head(8).items()}
+                    top = {str(k)[:60]:int(v) for k,v in work[field].astype(str).fillna("").value_counts().head(8).items()}
                     print(f"[V322-CATALOG] campo={field} top={top}",flush=True)
             now = datetime.now(MX).isoformat(timespec="seconds")
             source_period = period_for_entry(entry)
