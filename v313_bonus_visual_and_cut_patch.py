@@ -151,7 +151,7 @@ body[data-v313="1"] #v312Host{display:none!important}
 #v313UpdateBtn:hover,.v313-model-downloads button:hover{background:#eaf4ff}
 .v313-model-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 10px;background:#fafcff;font-size:9px;color:#49617f}
 .v313-model-downloads{display:flex;gap:7px}.v313-model-downloads button{font-size:10px;font-weight:850;color:#115292;border:1px solid #bad1ea;border-radius:7px;padding:8px 12px;background:#fff;cursor:pointer}
-.v313-model-scroll{max-height:min(calc(30 * 43px + 32px),72vh);overflow:auto;overscroll-behavior:contain}
+.v313-model-scroll{max-height:calc(30 * 43px + 32px);overflow:auto;overscroll-behavior:contain}
 .v313-model-table{min-width:880px}.v313-model-table thead th{position:sticky;top:0;z-index:2;background:#eaf3fb}
 .v313-model-table tbody tr{height:43px}.v313-model-table .v314-photo{width:32px;height:36px;object-fit:contain;cursor:zoom-in}
 .v313-model-table .v314-photo-cell{width:46px;min-width:46px;padding:3px}
