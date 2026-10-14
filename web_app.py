@@ -199,6 +199,46 @@ def _log_storage_inventory() -> None:
     except OSError:
         free=-1
     print(f"[STORAGE] Desglose MB={sizes}; libre_MB={free}",flush=True)
+    # Identificar únicamente categorías y tamaños, no datos de usuarios.
+    try:
+        children={}
+        for child in DATA_ROOT.iterdir():
+            if child.is_file():
+                size=child.stat().st_size
+                category=("operativo_vigente" if child==OPS_FILE else
+                          "excel_operativo_vigente" if child.suffix.lower() in (".xlsx",".xls") else
+                          "bd_principal" if child==DB else
+                          "otros_archivos")
+            elif child.is_dir():
+                size=sum(p.stat().st_size for p in child.rglob("*") if p.is_file())
+                category=("historial_operativo" if child==OPERATIONS_HISTORY_DIR.parent else
+                          "comercial" if child==COMMERCIAL_DATA_ROOT else
+                          "caches_capacidad" if child==CAPACITY_NORMALIZED_DIR else
+                          "temporales" if child==STAGING_DIR else "otros_directorios")
+            else:
+                continue
+            children[category]=children.get(category,0)+size
+        items={k:round(v/(1024*1024),1) for k,v in sorted(children.items())}
+        print(f"[STORAGE] Totales raíz MB={items}",flush=True)
+        for folder,label in ((COMMERCIAL_DATA_ROOT,"comercial"),
+                             (DATA_ROOT/"history","historial")):
+            if folder.is_dir():
+                breakdown={}
+                for path in folder.iterdir():
+                    if path.is_dir():
+                        n=sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
+                    elif path.is_file():
+                        n=path.stat().st_size
+                    else:
+                        continue
+                    # No emitir nombres de archivos, sólo categorías.
+                    group=(path.name if path.is_dir() else "archivos_raiz")
+                    breakdown[group]=breakdown.get(group,0)+n
+                print(f"[STORAGE] Totales {label} MB="
+                      f"{ {k:round(v/(1024*1024),1) for k,v in breakdown.items()} }",
+                      flush=True)
+    except Exception as exc:
+        print(f"[STORAGE] Inventario general no disponible: {type(exc).__name__}",flush=True)
 
 
 def _cleanup_current_operation_staging():
