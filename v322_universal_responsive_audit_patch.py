@@ -161,6 +161,9 @@ def install(m):
     .v281-tw, .rr243-tablewrap, .v313-scroll, .v321-history-wrap,
     .lingerie-table-wrap
   ) {
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
   }
