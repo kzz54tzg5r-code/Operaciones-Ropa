@@ -68,7 +68,7 @@ def install(m):
     js = """<script id="v314-bonus-photos-js">(function(){
 if(window.__V314_BONUS_PHOTOS)return;window.__V314_BONUS_PHOTOS=true;
 function exportControls(root){
- var panel=root.querySelector('.v313-panel');
+ 
  var table=Array.from(root.querySelectorAll('table')).find(function(t){return /DDI inicial/.test(t.textContent||'')&&/Inv. actual/.test(t.textContent||'')});
  if(!table)return;
  var bar=table.closest('.v313-panel')||table.parentElement;
@@ -90,7 +90,7 @@ function exportControls(root){
   w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>@page{size:A4 landscape;margin:8mm}body{font-family:Arial;font-size:9px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:3px}th{background:#eaf2fc}</style></head><body><h2>'+title+'</h2>'+cloned.outerHTML+'</body></html>');
   w.document.close();w.onload=function(){w.focus();w.print()};
  });
- bar.insertBefore(div,table);
+ table.parentElement.insertBefore(div,table);
 }
 function apply(){
  var root=document.getElementById('v313Host');if(!root)return;
@@ -125,6 +125,9 @@ function apply(){
   });
  });
  exportControls(root);
+ var t=Array.from(root.querySelectorAll('table')).find(function(x){return /DDI inicial/.test(x.textContent||'')});
+ if(t){var body=t.querySelector('tbody');if(body){body.style.display='block';body.style.maxHeight='650px';body.style.overflowY='auto';t.querySelector('thead').style.display='table';t.querySelector('thead').style.width='100%';body.style.width='100%';}}
+ var header=root.querySelector('.v313-head');if(header&&!header.querySelector('[data-v314-refresh]')){var b=document.createElement('button');b.dataset.v314Refresh='1';b.textContent='↻ Actualizar';b.type='button';b.style.cssText='border:1px solid #a8c9ed;border-radius:7px;padding:9px 14px;background:#fff;color:#134779;font-weight:700;cursor:pointer';b.onclick=function(){location.reload()};header.appendChild(b)}
 }
 function boot(){
  var root=document.getElementById('v313Host');if(!root)return;
