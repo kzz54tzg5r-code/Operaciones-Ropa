@@ -12,6 +12,7 @@ assert.equal(generated.status,0,generated.stdout+'\n'+generated.stderr);
 const html=fs.readFileSync(path.join(output,'page.html'),'utf8');
 after(()=>fs.rmSync(output,{recursive:true,force:true}));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const waitForLoad=async w=>{if(w.document.readyState==='complete')return;await waitForLoad(w);};
 
 // Raw index.html alone misses the scripts added by the production installers.
 test('all scripts in the served production page parse',()=>{
@@ -44,15 +45,16 @@ test('daily percentage cards settle without triggering their observer forever',a
 });
 
 test('navigation decoration settles after its own observed class changes',async()=>{
-  const script=html.match(/<script id="v207-contextual-report-headers-js">([\s\S]*?)<\/script>/)[1];
+  const script=html.match(/<script id="v238-responsive-nav-js">([\s\S]*?)<\/script>/)[1];
   const runtime=createRuntime(`<body data-v163-module="operativo"><nav id="operativoNav"><button class="active" data-opview="Reporte Mensual">Reporte Mensual</button></nav><script>${script}</script></body>`,path.join(output,'web'));
   const {window:w}=runtime;
   let mutations=0;
   const observer=new w.MutationObserver(()=>mutations++);
   observer.observe(w.document.body,{subtree:true,childList:true,attributes:true});
   try{
-    await wait(200);
-    assert.match(w.document.getElementById('v207Context-cm').textContent,/Mensual/i);
+    await wait(2700); // V238 termina sus inicializaciones diferidas antes de medir estabilidad.
+    assert.ok(d.querySelector('#operativoNav .v238-tab-icon'));
+    assert.match(d.querySelector('#operativoNav .v238-tab-label')?.textContent||'',/Mensual/i);
     const settled=mutations;
     await wait(200);
     assert.equal(mutations,settled,'navigation observers must become idle');
