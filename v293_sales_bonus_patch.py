@@ -214,7 +214,10 @@ def install(m):
         try:
             payload = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
             entries = [
-                dict(x) for x in (payload.get("capacities") or [])
+                dict(x) for x in (
+                    list(payload.get("capacities") or [])
+                    + list(payload.get("bonus_initial_capacity_entries") or [])
+                )
                 if str(x.get("status") or "").strip().lower() == "procesado"
             ]
         except Exception as exc:
@@ -289,7 +292,11 @@ def install(m):
             entry_id = value.get("entry_id") if isinstance(value, dict) else value
             if entry_id:
                 other_initial_ids.add(str(entry_id))
-        all_entries = [x for x in all_entries if str(x[2].get("id") or "") not in other_initial_ids]
+        all_entries = [
+            x for x in all_entries
+            if str(x[2].get("id") or "") not in other_initial_ids
+            and not bool(x[2].get("bonus_initial_only"))
+        ]
 
         near_prior = [
             x for x in all_entries
@@ -334,6 +341,7 @@ def install(m):
         eligible = [
             x for x in all_entries
             if str(x[2].get("id") or "") not in assigned_ids
+            and not bool(x[2].get("bonus_initial_only"))
             and str(x[2].get("id") or "") != opening_id
             and x[0] <= limit
             and x[0] >= month_start - timedelta(days=7)
