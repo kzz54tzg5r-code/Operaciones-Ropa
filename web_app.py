@@ -369,7 +369,12 @@ def _save_capacity_source_path(source: Path, original_name: str, include_bonus_i
     target=CAPACITY_DIR/safe_name;target.parent.mkdir(parents=True,exist_ok=True)
     if target.exists():
         target=target.with_name(f"{target.stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}{target.suffix}")
-    shutil.copy2(source,target)
+    # En caso de volumen lleno, no dejar un XLSX incompleto ocupando espacio.
+    try:
+        shutil.copy2(source,target)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
     entry={
         # commercial.storage.resolve_entry_path() ya antepone la raíz
         # .../commercial. Guardar la ruta respecto a esa raíz evita construir
