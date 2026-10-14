@@ -26,7 +26,7 @@ jobs:
           import re
           from pathlib import Path
           source = Path("v313_bonus_visual_and_cut_patch.py").read_text()
-          match = re.search(r"js\\s*=\\s*r'''<script id=\"v313-js\">([\\s\\S]*?)</script>'''", source)
+          match = re.search(r"js\s*=\s*r'''<script id=\"v313-js\">([\s\S]*?)</script>'''", source)
           if not match:
               raise SystemExit("No se encontró el JavaScript de V313")
           Path("/tmp/v313-upload.js").write_text(match.group(1))
