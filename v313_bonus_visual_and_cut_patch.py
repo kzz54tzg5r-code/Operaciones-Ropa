@@ -149,11 +149,12 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v313-head-right{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}
 #v313UpdateBtn{background:#fff;color:#0b417a;border:1px solid #bad1ea;border-radius:8px;padding:8px 12px;font-weight:850;font-size:10px;cursor:pointer;height:31px}
 #v313UpdateBtn:hover,.v313-model-downloads button:hover{background:#eaf4ff}
+.v313-return-btn{background:#eaf2ff;color:#124475;border:1px solid #b9d1ec;border-radius:7px;padding:8px 10px;font-weight:850;font-size:10px;cursor:pointer}.v313-return-btn:hover{background:#dceafd}.v313-export-notice{padding:8px 11px;background:#eef6ff;color:#114276;font-size:11px;border-radius:5px;margin:4px 10px}.v313-export-notice.error{background:#fff0ef;color:#922f34}.v313-export-notice[hidden]{display:none!important}.v313-model-downloads button:disabled{opacity:.5;cursor:not-allowed}
 .v313-model-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 10px;background:#fafcff;font-size:9px;color:#49617f}
 .v313-model-downloads{display:flex;gap:7px}.v313-model-downloads button{font-size:10px;font-weight:850;color:#115292;border:1px solid #bad1ea;border-radius:7px;padding:8px 12px;background:#fff;cursor:pointer}
-.v313-model-scroll{max-height:min(calc(30 * 43px + 32px),calc(100dvh - 380px));min-height:0;overflow-y:auto!important;overflow-x:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin}
+.v313-model-scroll{height:auto;max-height:min(calc(30 * 43px + 32px),calc(100dvh - 350px));min-height:0;overflow-y:scroll!important;overflow-x:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:#7b9cc1 #f1f5f9;contain:layout;position:relative}
 .v313-model-table{min-width:880px}.v313-model-table thead th{position:sticky;top:0;z-index:2;background:#eaf3fb}
-.v313-model-table tbody tr{height:43px}.v313-model-table .v314-photo{width:32px;height:36px;object-fit:contain;cursor:zoom-in}
+.v313-model-scroll::-webkit-scrollbar{width:11px;height:11px}.v313-model-scroll::-webkit-scrollbar-thumb{background:#86a9d3;border-radius:10px;border:2px solid #f1f5f9}.v313-model-table tbody tr{height:43px}.v313-model-table .v314-photo{width:32px;height:36px;object-fit:contain;cursor:zoom-in}
 .v313-model-table .v314-photo-cell{width:46px;min-width:46px;padding:3px}
 .v313-photo-missing{font-size:8px;color:#8293a9}.v313-photo-overlay{position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.91);display:flex;align-items:center;justify-content:center;padding:65px 16px 20px}
 .v313-photo-overlay img{max-height:100%;max-width:100%;object-fit:contain}.v313-photo-overlay button{position:absolute;top:14px;left:14px;border:0;border-radius:8px;padding:12px 16px;background:#fff;color:#12497e;font-weight:900;cursor:pointer}
@@ -162,7 +163,7 @@ body[data-v313="1"] #v312Host{display:none!important}
 
     js=r'''<script id="v313-js">(function(){
 if(window.__V313_BONUS_VISUAL_CUTS)return;window.__V313_BONUS_VISUAL_CUTS=true;
-var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null};
+var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{}};
 function q(s,r){return(r||document).querySelector(s)}function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){var x=Number(v);return Number.isFinite(x)?x:0}function pc(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})+"%"}function nf(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})}
@@ -222,8 +223,8 @@ if(!rows.length){
 }
 var head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>DDI inicial</th><th>DDI actual</th><th>Red. DDI</th><th>Exist. inicial</th><th>Exist. actual</th><th>Inv. inicial</th><th>Inv. actual</th><th>Red. inversión</th>";
 var bodyRows=rows.map(function(r){var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id),photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";return"<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+pc(r.ddi_reduction_pct)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.initial_investment)+"</td><td>"+money(r.current_investment)+"</td><td>"+pc(r.investment_reduction_pct)+"</td></tr>"}).join("");
-var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><span>"+nf(rows.length)+" modelos · desplazamiento interno (30 filas)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-download=\"xlsx\">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\">↓ Descargar PDF</button></div></div>";
-return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div>"+actions+"<div class=\"v313-scroll v313-model-scroll\"><table class=\"v313-table v313-model-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
+var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · desplázate sobre la tabla (máx. 30 visibles)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↑</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↓</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
+return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div>"+actions+"<div class=\"v313-scroll v313-model-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Listado de modelos, usa rueda o dedo para desplazar\"><table class=\"v313-table v313-model-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
 }
 function models(d,onlyCatalog){
 if(onlyCatalog)S.catalog=onlyCatalog;
@@ -331,7 +332,43 @@ q("#v313UpdateBtn")?.addEventListener("click",async function(){
     alert("No fue posible consultar las actualizaciones. Revisa la conexión e inténtalo de nuevo.");
   }finally{btn.disabled=false;btn.textContent="↻ Actualizar"}
 });
-qa("[data-v313-download]").forEach(function(b){b.addEventListener("click",function(){var d=S.data||{};var rows=(d.details||[]).filter(function(r){return S.section==="details"||S.section==="allModels"||S.section==="rubrosTodos"?true:r.catalog===S.catalog});if(!rows.length){alert("No hay modelos de este catálogo para descargar.");return}var p=new URLSearchParams({month:S.month,store:S.store,bonus:String(S.bonus),catalog:S.catalog,format:b.dataset.v313Download});window.location.assign("/api/bonuses/models-export?"+p.toString())})});
+function showExportNotice(message,isError){
+  var el=q("#v313ExportNotice");if(!el)return;
+  el.hidden=false;el.classList.toggle("error",!!isError);el.textContent=message;
+}
+function detailRows(){var a=((S.data||{}).details||[]);return S.section==="details"?a:a.filter(function(r){return r.catalog===S.catalog})}
+qa("[data-v313-download]").forEach(function(b){b.addEventListener("click",async function(){
+  var rows=detailRows(),fmt=b.dataset.v313Download,all= S.section==="details";
+  if(!rows.length){showExportNotice("Sin modelos disponibles para descargar en este catálogo. Comprueba Tipo catálogo VIGENTE y los criterios del corte inicial.",true);return}
+  var p=new URLSearchParams({month:S.month,store:S.store,bonus:String(S.bonus),catalog:all?"Todos":S.catalog,format:fmt});
+  var buttons=qa("[data-v313-download]");buttons.forEach(function(x){x.disabled=true});
+  showExportNotice("Preparando "+(fmt==="xlsx"?"Excel":"PDF")+" con "+rows.length+" modelos. Permanece en este listado mientras se genera el archivo…",false);
+  try{
+    var response=await fetch("/api/bonuses/models-export?"+p.toString(),{credentials:"same-origin",cache:"no-store"});
+    if(!response.ok){
+      var errorText=await response.text(),detail="";try{var parsed=JSON.parse(errorText);detail=String(parsed.detail||parsed.message||"")}catch(_e){detail=errorText.slice(0,200)}
+      throw new Error(detail||"Error HTTP "+response.status);
+    }
+    var blob=await response.blob();
+    if(!blob.size)throw new Error("El archivo de exportación llegó vacío");
+    var disposition=response.headers.get("Content-Disposition")||"";
+    var match=/filename="?([^";]+)"?/i.exec(disposition);
+    var filename=match&&match[1]?match[1]:("Bonos_"+S.store+"_"+(all?"Todos":S.catalog)+"_"+S.month+"."+(fmt==="xlsx"?"xlsx":"pdf"));
+    var url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+    setTimeout(function(){URL.revokeObjectURL(url)},60000);
+    showExportNotice("Descarga preparada: "+filename+". El listado permanece abierto.",false);
+  }catch(e){showExportNotice("No se pudo descargar: "+(e.message||e)+". No se perdió tu consulta.",true)}
+  finally{buttons.forEach(function(x){x.disabled=detailRows().length===0})}
+})});
+q("[data-v313-return]")?.addEventListener("click",function(){S.section="summary";render()});
+q("[data-v313-scroll-up]")?.addEventListener("click",function(){q(".v313-model-scroll")?.scrollBy({top:-1290,behavior:"smooth"})});
+q("[data-v313-scroll-down]")?.addEventListener("click",function(){q(".v313-model-scroll")?.scrollBy({top:1290,behavior:"smooth"})});
+var scroller=q(".v313-model-scroll");if(scroller){
+ var scrollKey=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
+ scroller.scrollTop=S.modelScroll[scrollKey]||0;
+ scroller.addEventListener("scroll",function(){S.modelScroll[scrollKey]=scroller.scrollTop},{passive:true});
+}
 qa(".v313-photo").forEach(function(im){im.addEventListener("click",function(){var bg=document.createElement("div");bg.className="v313-photo-overlay";var large=document.createElement("img");large.src=im.src;large.alt=im.alt;var close=document.createElement("button");close.type="button";close.textContent="← Regresar al listado";function done(){bg.remove();document.removeEventListener("keydown",escape)}function escape(e){if(e.key==="Escape")done()}close.onclick=done;bg.onclick=function(e){if(e.target===bg)done()};bg.append(close,large);document.body.append(bg);document.addEventListener("keydown",escape)})});
 q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
 q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;S.refreshCount=0;load()});
