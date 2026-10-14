@@ -259,6 +259,7 @@ def _visual_location(pasillo, subcategory, category, section) -> tuple[str, str,
 _CAPACITY_RAW_HEADERS = {
     "TIENDA", "SUCURSAL", "TIENDA/SUCURSAL",
     "SECCION", "SECCIÓN", "CATEGORIA", "CATEGORÍA", "SUBCATEGORIA", "SUBCATEGORÍA",
+    "CATALOGO", "CATÁLOGO", "CATALOGO GENERICO", "CATÁLOGO GENÉRICO",
     "PASILLO", "UBICACION", "UBICACIÓN", "MODELO", "ID_ART", "ID ART", "ID", "CODIGO",
     "MARCA PRICE", "MARCA", "PRECIO MAYOREO", "COSTO", "COSTO UNITARIO",
     "PRECIO MENUDEO", "PRECIO VENTA", "PRECIO", "PRECIO OFERTA",
@@ -474,6 +475,11 @@ def _normalize_capacity_source(source: pd.DataFrame, path: str | Path) -> pd.Dat
     out["Sección"] = section_detail.map(_section_group)
     out["Categoría"] = category.astype(str).str.strip()
     out["Subcategoría"] = subcategory.astype(str).str.strip()
+    # Columna C del Excel Capacidades: CATALOGO es el rubro comercial REAL.
+    # NO equivale a TIPO CATALOGO MAX VIG ni a CATEGORIA/SUBCATEGORIA.
+    # Ejemplo: "LICENCIAS | DIG | PRI-VER | 2026 | 1E".
+    out["Catálogo comercial"] = _series(source, ["CATALOGO", "CATÁLOGO"], "").fillna("").astype(str).str.strip()
+    out["Catálogo genérico"] = _series(source, ["CATALOGO GENERICO", "CATÁLOGO GENÉRICO"], "").fillna("").astype(str).str.strip()
     out["Pasillo"] = aisle.astype(str).replace("nan", "").str.strip()
     visual = [
         _visual_location(p, s, c, sec)
