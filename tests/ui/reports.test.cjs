@@ -12,7 +12,7 @@ assert.equal(generated.status,0,generated.stdout+'\n'+generated.stderr);
 const html=fs.readFileSync(path.join(output,'page.html'),'utf8');
 after(()=>fs.rmSync(output,{recursive:true,force:true}));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const waitForLoad=async w=>{if(w.document.readyState==='complete')return;await waitForLoad(w);};
+const waitForLoad=async w=>{if(w.document.readyState==='complete')return;await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));};
 
 // Raw index.html alone misses the scripts added by the production installers.
 test('all scripts in the served production page parse',()=>{
