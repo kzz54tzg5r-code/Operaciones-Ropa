@@ -3139,13 +3139,18 @@ def _load_capacity_cache(entry: dict) -> pd.DataFrame:
                 frame=_prepare_capacity_frame(frame)
                 target=_capacity_cache_path(str(entry.get("id") or ""))
                 if old_schema!=CAPACITY_CACHE_SCHEMA or cache_path!=target:
-                    _save_compressed_capacity_cache(frame,target)
-                    update_entry("capacities",str(entry.get("id") or ""),cache_file=str(target.relative_to(DATA_ROOT)))
-                    # La versión .pkl antigua ya fue sustituida por una copia
-                    # comprimida íntegra; sólo se retira este cache regenerable.
-                    if (cache_path.parent==CAPACITY_NORMALIZED_DIR
-                            and cache_path!=target and cache_path.suffix==".pkl"):
-                        cache_path.unlink(missing_ok=True)
+                    try:
+                        _save_compressed_capacity_cache(frame,target)
+                        update_entry("capacities",str(entry.get("id") or ""),cache_file=str(target.relative_to(DATA_ROOT)))
+                        # Se retira únicamente el cache .pkl luego de verificar
+                        # la nueva versión; nunca el Excel ni el histórico.
+                        if (cache_path.parent==CAPACITY_NORMALIZED_DIR
+                                and cache_path!=target and cache_path.suffix==".pkl"):
+                            cache_path.unlink(missing_ok=True)
+                    except (OSError, ValueError) as exc:
+                        # Si aún no hay espacio para migrar, el pickle válido
+                        # anterior sigue disponible para los reportes.
+                        print(f"[CAPACITY] Se conservó cache anterior: {type(exc).__name__}: {exc}",flush=True)
                 return frame
     except Exception as exc:
         print(f"[V44] Cache capacidades no disponible: {type(exc).__name__}: {exc}")
