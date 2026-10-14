@@ -12,7 +12,7 @@ assert.equal(generated.status,0,generated.stdout+'\n'+generated.stderr);
 const html=fs.readFileSync(path.join(output,'page.html'),'utf8');
 after(()=>fs.rmSync(output,{recursive:true,force:true}));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const waitForLoad=async w=>{if(w.document.readyState==='complete')return;await waitForLoad(w);};
+const waitForLoad=async w=>{if(w.document.readyState==='complete')return;await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));};
 
 // Raw index.html alone misses the scripts added by the production installers.
 test('all scripts in the served production page parse',()=>{
@@ -45,7 +45,7 @@ test('daily percentage cards settle without triggering their observer forever',a
 });
 
 test('responsive navigation decoration settles after its own observed class changes',async()=>{
-  const match=html.match(/<script id="v238-responsive-nav-js">([\\s\\S]*?)<\\/script>/);
+  const match=html.match(/<script id="v238-responsive-nav-js">([\s\S]*?)<\/script>/);
   assert.ok(match,'V238 responsive navigation script must be present in the served production page');
   const script=match[1];
   const runtime=createRuntime(`<body data-v163-module="operativo"><main class="main"><nav id="operativoNav"><button class="active" data-opview="Reporte Mensual">Reporte Mensual</button></nav></main><script>${script}</script></body>`,path.join(output,'web'));
@@ -70,7 +70,7 @@ test('reports load after repeated initialization, tab changes and filters',{time
   const content=()=>d.getElementById('operativoDynamicContent').textContent;
   const click=async selector=>{const button=d.querySelector(selector);assert.ok(button,selector);button.click();await wait(350);t.diagnostic('Opened '+selector)};
   try{
-    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
+    await waitForLoad(w);
     await wait(2700); // Includes all delayed V199/V200 setup calls.
     await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
     await wait(300);
