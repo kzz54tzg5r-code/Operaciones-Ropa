@@ -6345,11 +6345,13 @@ def _resume_pending_upload_jobs() -> int:
     """Retoma cargas desde el disco persistente después de un reinicio."""
     with db() as con:
         pending=con.execute(
-            "SELECT id,module,filename,source_path,created_by,resume_count FROM upload_jobs "
+            "SELECT id,module,filename,source_path,created_by,resume_count,result_json FROM upload_jobs "
             "WHERE status='queued' ORDER BY created_at"
         ).fetchall()
     resumed=0
-    capacity_entries=load_manifest().get("capacities",[])
+    manifest=load_manifest()
+    capacity_entries=list(manifest.get("capacities") or [])
+    bonus_initial_entries=list(manifest.get("bonus_initial_capacity_entries") or [])
     for row in pending:
         job=dict(row); source=Path(str(job.get("source_path") or ""))
         if int(job.get("resume_count") or 0)>=2:
@@ -6359,22 +6361,47 @@ def _resume_pending_upload_jobs() -> int:
             )
             print(f"[UPLOAD] ciclo de reinicios detenido para {job['module']} {job['id'][:8]}",flush=True)
             continue
-        if not source.exists():
-            _fail_upload_job(job["id"],FileNotFoundError("El archivo temporal recuperable no existe"))
-            continue
-        if job["module"]=="operations":
-            target=_run_operations_job
-            args=(job["id"],source,job["filename"],job["created_by"])
-        elif job["module"]=="capacity":
-            entry=next((item for item in capacity_entries if resolve_entry_path(item)==source),None)
-            if entry is None:
-                _fail_upload_job(job["id"],FileNotFoundError("No se encontró la versión de capacidades resguardada"))
+
+        if job["module"]=="bonus_initial_capacity":
+            try:
+                meta=json.loads(str(job.get("result_json") or "{}"))
+            except Exception:
+                meta={}
+            month=str(meta.get("month") or "")
+            entry_id=str(meta.get("entry_id") or "")
+            entry=next(
+                (item for item in capacity_entries+bonus_initial_entries
+                 if str(item.get("id") or "")==entry_id),
+                None,
+            )
+            worker=globals().get("_run_bonus_initial_cut_job")
+            valid_month=bool(re.fullmatch(r"\\d{4}-(0[1-9]|1[0-2])",month))
+            if not valid_month or not entry or not callable(worker):
+                _fail_upload_job(job["id"],RuntimeError("No se pudo recuperar el mes o el archivo del corte inicial. Vuelve a seleccionar el Excel y el mes."))
                 continue
-            target=_run_capacity_job
-            args=(job["id"],entry,job["filename"])
+            entry_source=resolve_entry_path(entry)
+            if not entry_source.exists():
+                _fail_upload_job(job["id"],FileNotFoundError("El Excel resguardado del corte inicial ya no existe"))
+                continue
+            target=worker
+            args=(job["id"],entry,job["filename"],month,job["created_by"])
         else:
-            _fail_upload_job(job["id"],ValueError(f"Tipo de carga desconocido: {job['module']}"))
-            continue
+            if not source.exists():
+                _fail_upload_job(job["id"],FileNotFoundError("El archivo temporal recuperable no existe"))
+                continue
+            if job["module"]=="operations":
+                target=_run_operations_job
+                args=(job["id"],source,job["filename"],job["created_by"])
+            elif job["module"]=="capacity":
+                entry=next((item for item in capacity_entries if resolve_entry_path(item)==source),None)
+                if entry is None:
+                    _fail_upload_job(job["id"],FileNotFoundError("No se encontró la versión de capacidades resguardada"))
+                    continue
+                target=_run_capacity_job
+                args=(job["id"],entry,job["filename"])
+            else:
+                _fail_upload_job(job["id"],ValueError(f"Tipo de carga desconocido: {job['module']}"))
+                continue
         threading.Thread(target=target,args=args,daemon=True,name=f"resume-{job['module']}-{job['id'][:8]}").start()
         resumed+=1
     return resumed
