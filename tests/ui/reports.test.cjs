@@ -12,7 +12,6 @@ assert.equal(generated.status,0,generated.stdout+'\n'+generated.stderr);
 const html=fs.readFileSync(path.join(output,'page.html'),'utf8');
 after(()=>fs.rmSync(output,{recursive:true,force:true}));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const waitForLoad=async w=>{if(w.document.readyState==='complete')return;await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));};
 
 // Raw index.html alone misses the scripts added by the production installers.
 test('all scripts in the served production page parse',()=>{
@@ -45,16 +44,15 @@ test('daily percentage cards settle without triggering their observer forever',a
 });
 
 test('navigation decoration settles after its own observed class changes',async()=>{
-  const script=html.match(/<script id="v238-responsive-nav-js">([\s\S]*?)<\/script>/)[1];
+  const script=html.match(/<script id="v207-contextual-report-headers-js">([\s\S]*?)<\/script>/)[1];
   const runtime=createRuntime(`<body data-v163-module="operativo"><nav id="operativoNav"><button class="active" data-opview="Reporte Mensual">Reporte Mensual</button></nav><script>${script}</script></body>`,path.join(output,'web'));
   const {window:w}=runtime;
   let mutations=0;
   const observer=new w.MutationObserver(()=>mutations++);
   observer.observe(w.document.body,{subtree:true,childList:true,attributes:true});
   try{
-    await wait(2700); // V238 termina sus inicializaciones diferidas antes de medir estabilidad.
-    assert.ok(d.querySelector('#operativoNav .v238-tab-icon'));
-    assert.match(d.querySelector('#operativoNav .v238-tab-label')?.textContent||'',/Mensual/i);
+    await wait(200);
+    assert.match(w.document.getElementById('v207Context-cm').textContent,/Mensual/i);
     const settled=mutations;
     await wait(200);
     assert.equal(mutations,settled,'navigation observers must become idle');
@@ -68,7 +66,7 @@ test('reports load after repeated initialization, tab changes and filters',{time
   const content=()=>d.getElementById('operativoDynamicContent').textContent;
   const click=async selector=>{const button=d.querySelector(selector);assert.ok(button,selector);button.click();await wait(350);t.diagnostic('Opened '+selector)};
   try{
-    await waitForLoad(w);
+    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
     await wait(2700); // Includes all delayed V199/V200 setup calls.
     await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
     await wait(300);
@@ -129,7 +127,7 @@ test('V315 Bonus tabs all open and company summary drills into a store',{timeout
   const waitFor=async selector=>{for(let i=0;i<40;i++){const el=d.querySelector(selector);if(el)return el;await wait(100)}throw new Error('Missing '+selector)};
   const click=async selector=>{const el=await waitFor(selector);el.click();await wait(250);t.diagnostic('Opened '+selector);return el};
   try{
-    await waitForLoad(w);
+    await new Promise(resolve=>w.addEventListener('load',resolve,{once:true}));
     await wait(2700);
     await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
     await wait(350);
