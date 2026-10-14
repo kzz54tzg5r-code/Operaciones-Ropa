@@ -353,9 +353,11 @@ api("/api/bonuses-v313?"+p.toString()).then(function(d){
  if(seq!==S.seq)return;
  S.data=d;S.month=d.month;S.store=d.selected_store;render();
  var processing=d.processing||{};
- if((processing.capacity||processing.sales||d.weekly_pending)&&S.refreshCount<10){
+ // Al reconstruir una cartera mensual de 192 mil filas, 18 segundos no bastan:
+ // consultar periódicamente mientras dura el proceso (máximo 3 minutos).
+ if((processing.capacity||processing.sales||d.weekly_pending)&&S.refreshCount<60){
   S.refreshCount++;
-  S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},1800);
+  S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},3000);
  }else{S.refreshCount=0}
 }).catch(function(e){var h=q("#v313Host");if(h)h.innerHTML="<div class=\"v313-note\">No fue posible cargar Bonos: "+esc(e.message||e)+"</div>"})
 }
