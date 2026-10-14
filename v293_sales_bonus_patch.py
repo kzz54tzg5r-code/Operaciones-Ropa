@@ -28,6 +28,7 @@ from fastapi.responses import HTMLResponse
 
 MX = ZoneInfo("America/Mexico_City")
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
+CLASSIFIER_VERSION = "V322-CATALOG-PRECEDENCE-1"
 ADMIN = ("superadmin", "admin")
 RESTRICTED = ("tienda", "colaborador", "colaborador_operativo", "colaborador_lenceria")
 MONTH_LABELS = {
@@ -81,11 +82,16 @@ def install(m):
         snapshot_cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(sales_bonus_snapshot_v293)").fetchall()}
         if "source_entry_id" not in snapshot_cols:
             con.execute("ALTER TABLE sales_bonus_snapshot_v293 ADD COLUMN source_entry_id TEXT NOT NULL DEFAULT ''")
+        if "classifier_version" not in snapshot_cols:
+            con.execute("ALTER TABLE sales_bonus_snapshot_v293 ADD COLUMN classifier_version TEXT NOT NULL DEFAULT ''")
         target_cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(sales_bonus_targets_v293)").fetchall()}
         if "initial_existence" not in target_cols:
             con.execute("ALTER TABLE sales_bonus_targets_v293 ADD COLUMN initial_existence REAL NOT NULL DEFAULT 0")
         if "source_entry_id" not in target_cols:
             con.execute("ALTER TABLE sales_bonus_targets_v293 ADD COLUMN source_entry_id TEXT NOT NULL DEFAULT ''")
+        # Resguardar los cortes anteriores antes de cualquier reconstrucción de clasificación.
+        con.execute("CREATE TABLE IF NOT EXISTS sales_bonus_targets_history_v322 AS SELECT *, '' AS archived_at FROM sales_bonus_targets_v293 WHERE 0")
+        con.execute("CREATE TABLE IF NOT EXISTS sales_bonus_snapshot_history_v322 AS SELECT *, '' AS archived_at FROM sales_bonus_snapshot_v293 WHERE 0")
         con.execute("""
             CREATE TABLE IF NOT EXISTS sales_bonus_attendance_v293(
                 month TEXT NOT NULL,
@@ -497,29 +503,32 @@ def install(m):
         return frame.loc[mask, cols].copy()
 
     def classify_catalog(work):
-        """Clasifica por campos comerciales prioritarios; no mezcla descripción y marca."""
+        """Usar señales comerciales cruzadas, no clasificar por nombre/modelo.
+        Licencias y Básicos prevalecen sobre palabras genéricas como CHAMARRA:
+        una chamarra Disney es Licencias, no Abrigador.
+        """
         if work.empty:
             return pd.Series(dtype="object")
         out = pd.Series("", index=work.index, dtype="object")
-        patterns = (
-            ("Licencias", r"LICEN|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES"),
-            ("Básicos", r"BASIC|\\bBASICO\\b|\\bBASICA\\b"),
-            ("Abrigador", r"ABRIGADOR|ABRIGO|CHAMARRA|CHAQUETA|PARKA"),
-        )
-        # Primero la clasificación explícita. Los campos descriptivos no deben
-        # sobreescribir una clasificación ya establecida.
-        for col in ("Tipo catálogo", "Categoría", "Subcategoría"):
-            if col not in work.columns:
-                continue
-            values = work[col].fillna("").astype(str).map(fold)
-            for name, pattern in patterns:
-                mask = out.eq("") & values.str.contains(pattern, regex=True, na=False)
-                out.loc[mask] = name
-        # Marca sólo sirve como respaldo para licencias; nunca para Abrigador.
-        if "Marca" in work.columns:
-            values = work["Marca"].fillna("").astype(str).map(fold)
-            mask = out.eq("") & values.str.contains(patterns[0][1], regex=True, na=False)
-            out.loc[mask] = "Licencias"
+        fields = [col for col in ("Tipo catálogo", "Categoría", "Subcategoría", "Marca") if col in work.columns]
+        if not fields:
+            return out
+        matches = {}
+        rules = {
+            "Licencias": r"LICEN|LICENSE|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES|WARNER|SANRIO|HELLO KITTY|POKEMON|POK.MON|NICKELODEON|LOONEY TUNES|BARBIE|MATTEL|PEANUTS",
+            "Básicos": r"BASIC|B.SIC",
+            "Abrigador": r"ABRIGADOR|ABRIGO|CHAMARRA|CHAQUETA|PARKA|CHAMARRO[N]?|SUDADERA TERMICA",
+        }
+        for name, pattern in rules.items():
+            mask = pd.Series(False, index=work.index)
+            for field in fields:
+                folded = work[field].fillna("").astype(str).map(fold)
+                mask = mask | folded.str.contains(pattern,regex=True,na=False)
+            matches[name] = mask
+        # Asignar de genérico a específico, sobrescribiendo sólo con evidencia
+        # comercial más específica (no con Modelo, que puede ser un código).
+        for name in ("Abrigador", "Básicos", "Licencias"):
+            out.loc[matches[name]] = name
         return out
 
     def aggregate_models(work):
@@ -546,6 +555,12 @@ def install(m):
             existence=("existence", "max"),
             investment=("investment", "max"),
         ).reset_index()
+        # La cartera conserva un único catálogo por ID; no duplicar claves por rubro.
+        priority = {"Licencias": 0, "Básicos": 1, "Abrigador": 2}
+        grouped["_priority"] = grouped["catalog"].map(priority).fillna(9)
+        grouped = grouped.sort_values("_priority", kind="stable").drop_duplicates(
+            subset=["store","id_art"], keep="first"
+        ).drop(columns="_priority")
         return grouped
 
     sales_jobs = set()
@@ -700,6 +715,9 @@ def install(m):
 
             with m.db() as con:
                 for store in stores:
+                    # Archivo histórico: no borrar un corte previo sin respaldo.
+                    con.execute("INSERT INTO sales_bonus_targets_history_v322 SELECT *, ? FROM sales_bonus_targets_v293 WHERE month=? AND store=?", (now, month, store))
+                    con.execute("INSERT INTO sales_bonus_snapshot_history_v322 SELECT *, ? FROM sales_bonus_snapshot_v293 WHERE month=? AND store=?", (now, month, store))
                     con.execute("DELETE FROM sales_bonus_targets_v293 WHERE month=? AND store=?", (month, store))
                     con.execute("DELETE FROM sales_bonus_snapshot_v293 WHERE month=? AND store=?", (month, store))
                     g = by_store.get(store)
@@ -720,12 +738,13 @@ def install(m):
                                 num(row.get("investment")), num(row.get("avg_investment")), source_period, source_date.isoformat(), source_entry_id, now,
                             ))
                     con.execute("""
-                        INSERT INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,source_entry_id,fixed_at,model_count)
-                        VALUES(?,?,?,?,?,?,?)
-                    """, (month, store, source_period, source_date.isoformat(), source_entry_id, now, int(len(selected))))
+                        INSERT INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,source_entry_id,fixed_at,model_count,classifier_version)
+                        VALUES(?,?,?,?,?,?,?,?)
+                    """, (month, store, source_period, source_date.isoformat(), source_entry_id, now, int(len(selected)), CLASSIFIER_VERSION))
             print(
                 f"[V299] Snapshot Bonos {month} listo · corte={source_date.isoformat()} · "
-                f"tiendas={len(stores)} · modelos={len(models)}",
+                f"tiendas={len(stores)} · modelos={len(models)} · "
+                f"por_rubro={models.groupby('catalog').size().to_dict() if not models.empty else {}}",
                 flush=True,
             )
             try:
@@ -753,13 +772,14 @@ def install(m):
 
         with m.db() as con:
             rows = con.execute(
-                "SELECT store,source_date,source_entry_id FROM sales_bonus_snapshot_v293 WHERE month=?",
+                "SELECT store,source_date,source_entry_id,classifier_version FROM sales_bonus_snapshot_v293 WHERE month=?",
                 (month,),
             ).fetchall()
         valid_existing = {
             str(r["store"]) for r in rows
             if str(r["source_date"] or "") == expected_source_date
             and str(r["source_entry_id"] or "") == expected_source_entry_id
+            and str(r["classifier_version"] or "") == CLASSIFIER_VERSION
         }
         missing = [s for s in stores if s not in valid_existing]
         if not missing:
