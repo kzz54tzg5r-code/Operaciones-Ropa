@@ -1,0 +1,27 @@
+name: V325 PWA Update Popup Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/pwa_install.js"
+      - "pwa_patch.py"
+      - "v313_bonus_visual_and_cut_patch.py"
+      - "tests/ui/pwa.test.cjs"
+      - ".github/workflows/v325-pwa-update.yml"
+  workflow_dispatch:
+
+jobs:
+  popup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JS syntax
+        run: node --check web/pwa_install.js
+      - name: PWA update regression tests
+        run: |
+          cd tests/ui
+          npm install --no-audit --no-fund
+          node --test pwa.test.cjs
