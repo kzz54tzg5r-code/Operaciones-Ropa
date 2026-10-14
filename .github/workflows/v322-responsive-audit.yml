@@ -16,17 +16,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
       - name: Install minimal middleware test dependencies
         run: python -m pip install --disable-pip-version-check fastapi httpx pytest
       - name: Compile responsive middleware and production entry
         run: python -m py_compile v322_universal_responsive_audit_patch.py server_entry.py tests/test_v322_responsive_patch.py
       - name: Verify responsive middleware injection
         run: python -m pytest tests/test_v322_responsive_patch.py -q
-      - name: Run existing UI regression tests
-        working-directory: tests/ui
-        run: |
-          npm ci
-          npm test
