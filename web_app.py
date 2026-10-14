@@ -145,6 +145,62 @@ def _cleanup_old_staging_files():
         pass
 
 
+def _cleanup_abandoned_initial_uploads() -> None:
+    """Retira sólo temporales de Bonos abandonados de versiones anteriores.
+
+    Los originales ya publicados y fuentes de trabajos activos no se tocan.
+    Si no es posible leer el estado de los trabajos, se omite la limpieza.
+    """
+    if not DB.exists():
+        return
+    try:
+        with sqlite3.connect(DB) as con:
+            active={str(Path(row[0]).resolve()) for row in con.execute(
+                "SELECT source_path FROM upload_jobs "
+                "WHERE status IN ('queued','processing') AND source_path IS NOT NULL"
+            ) if row[0]}
+    except sqlite3.Error:
+        return
+    removed=0
+    recovered=0
+    cutoff=datetime.now().timestamp()-2*3600
+    for pattern in ("bonus_initial_*.xlsx","bonus_initial_*.xls"):
+        for path in STAGING_DIR.glob(pattern):
+            try:
+                stat=path.stat()
+                if stat.st_mtime>cutoff or str(path.resolve()) in active:
+                    continue
+                recovered+=stat.st_size
+                path.unlink()
+                removed+=1
+            except OSError:
+                continue
+    if removed:
+        print(f"[STORAGE] Temporales de Bonos abandonados: {removed}; "
+              f"espacio liberado: {recovered // (1024*1024)} MB",flush=True)
+
+
+def _log_storage_inventory() -> None:
+    """Sólo totales por carpeta, sin nombres de archivos ni datos de usuarios."""
+    folders={
+        "normalizados":DATA_ROOT/"capacity_normalized",
+        "staging":STAGING_DIR,
+        "fuentes_capacidades":COMMERCIAL_DATA_ROOT/"capacidades",
+        "fuentes_bonos":COMMERCIAL_DATA_ROOT/"bonus_initial_capacity",
+    }
+    sizes={}
+    for label,folder in folders.items():
+        try:
+            sizes[label]=round(sum(p.stat().st_size for p in folder.rglob("*") if p.is_file())/(1024*1024),1)
+        except OSError:
+            sizes[label]=-1
+    try:
+        free=round(shutil.disk_usage(DATA_ROOT).free/(1024*1024),1)
+    except OSError:
+        free=-1
+    print(f"[STORAGE] Desglose MB={sizes}; libre_MB={free}",flush=True)
+
+
 def _cleanup_current_operation_staging():
     """Recupera espacio de intentos anteriores sin tocar archivos publicados."""
     try:
@@ -290,7 +346,7 @@ async def _save_upload_stream(upload: UploadFile, target: Path) -> int:
     return await asyncio.to_thread(copy_file)
 
 
-def _save_capacity_source_path(source: Path, original_name: str) -> dict:
+def _save_capacity_source_path(source: Path, original_name: str, include_bonus_initial: bool = False) -> dict:
     """Registra una capacidad desde disco sin duplicar el Excel en memoria."""
     digest=hashlib.sha256()
     with source.open("rb") as stream:
@@ -298,7 +354,15 @@ def _save_capacity_source_path(source: Path, original_name: str) -> dict:
             digest.update(chunk)
     digest_hex=digest.hexdigest()
     manifest=load_manifest()
-    existing=next((item for item in manifest.get("capacities",[]) if item.get("sha256")==digest_hex),None)
+    candidates=list(manifest.get("capacities",[]) or [])
+    # Los cortes mensuales pueden reutilizar la misma fuente sin duplicar
+    # otro Excel de ~56 MB. Las cargas comerciales mantienen su ámbito propio.
+    if include_bonus_initial:
+        candidates.extend(manifest.get("bonus_initial_capacity_entries",[]) or [])
+    existing=next((
+        item for item in candidates
+        if item.get("sha256")==digest_hex and resolve_entry_path(item).is_file()
+    ),None)
     if existing:return {**existing,"duplicate":True}
 
     safe_name=re.sub(r"[^A-Za-z0-9._-]+","_",Path(original_name).name).strip("._") or "capacidades.xlsx"
@@ -6450,6 +6514,9 @@ def _resume_pending_upload_jobs() -> int:
 
 @app.on_event("startup")
 def resume_uploads_after_restart():
+    # Sólo limpiar temporales abandonados después de que la BD esté lista.
+    _cleanup_abandoned_initial_uploads()
+    _log_storage_inventory()
     resumed=_resume_pending_upload_jobs()
     if resumed:
         print(f"[UPLOAD] {resumed} carga(s) retomada(s) después del reinicio",flush=True)
