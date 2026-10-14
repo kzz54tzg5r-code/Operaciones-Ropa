@@ -138,8 +138,8 @@ body[data-v313="1"] .v313 {
   max-height:none!important;
   overflow:visible!important;
 }
-body[data-v313="1"] html,
-body[data-v313="1"] body {
+html:has(body[data-v313="1"]),
+body[data-v313="1"] {
   height:auto!important;
   min-height:100%!important;
   overflow-x:hidden!important;
