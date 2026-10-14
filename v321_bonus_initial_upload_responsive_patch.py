@@ -200,8 +200,11 @@ body[data-v313="1"] section.page.active {
   touch-action:pan-x pan-y pinch-zoom!important;
 }
 .v313 .v313-bonus {
-  grid-template-columns:repeat(7,minmax(0,1fr))!important;
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;
   min-width:0!important;
+}
+.v313 .v313-bonus.v313-bonus-admin {
+  grid-template-columns:repeat(7,minmax(0,1fr))!important;
 }
 .v313 .v313-tabs {
   min-width:0!important;
