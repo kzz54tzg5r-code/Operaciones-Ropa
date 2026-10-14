@@ -513,6 +513,7 @@ def install(m):
         fields = [col for col in ("Tipo catálogo", "Categoría", "Subcategoría", "Marca") if col in work.columns]
         if not fields:
             return out
+        normalized = {field: work[field].fillna("").astype(str).map(fold) for field in fields}
         matches = {}
         rules = {
             "Licencias": r"LICEN|LICENSE|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES|WARNER|SANRIO|HELLO KITTY|POKEMON|POK.MON|NICKELODEON|LOONEY TUNES|BARBIE|MATTEL|PEANUTS",
@@ -521,8 +522,7 @@ def install(m):
         }
         for name, pattern in rules.items():
             mask = pd.Series(False, index=work.index)
-            for field in fields:
-                folded = work[field].fillna("").astype(str).map(fold)
+            for folded in normalized.values():
                 mask = mask | folded.str.contains(pattern,regex=True,na=False)
             matches[name] = mask
         # Asignar de genérico a específico, sobrescribiendo sólo con evidencia
@@ -705,6 +705,13 @@ def install(m):
                 return
             work = scope_frame(frame, stores)
             models = aggregate_models(work)
+            # Diagnóstico por rubro y por columna de origen, sin exponer IDs.
+            print(f"[V322-CATALOG] mes={month} fuente={source_date.isoformat()} filas={len(work)} "
+                  f"clasificados={len(models)} distribucion={models['catalog'].value_counts().to_dict() if not models.empty else {}}", flush=True)
+            for field in ("Tipo catálogo", "Categoría", "Subcategoría"):
+                if field in work.columns:
+                    top = {str(k)[:60]:int(v) for k,v in work[field].fillna("").astype(str).value_counts().head(8).items()}
+                    print(f"[V322-CATALOG] campo={field} top={top}",flush=True)
             now = datetime.now(MX).isoformat(timespec="seconds")
             source_period = period_for_entry(entry)
             source_entry_id = str(entry.get("id") or "")
