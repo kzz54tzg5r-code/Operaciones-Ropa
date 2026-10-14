@@ -2961,7 +2961,31 @@ def _capacity_store_match_keys(value: str) -> set[str]:
 
 def _capacity_cache_path(entry_id: str) -> Path:
     safe=re.sub(r"[^0-9A-Za-z_-]+","_",str(entry_id or "capacity"))
-    return CAPACITY_NORMALIZED_DIR / f"capacity_{safe}_v{CAPACITY_CACHE_SCHEMA}.pkl"
+    return CAPACITY_NORMALIZED_DIR / f"capacity_{safe}_v{CAPACITY_CACHE_SCHEMA}.pkl.gz"
+
+
+def _save_compressed_capacity_cache(frame: pd.DataFrame, target: Path) -> None:
+    """Guardar caches reconstruibles comprimidos, sin tocar fuentes ni históricos.
+
+    Se escribe un temporal en el mismo disco, se verifica el CRC y sólo entonces
+    se sustituye el destino. En caso de falta de espacio el cache previo sigue
+    intacto y el temporal se limpia.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(
+        prefix=target.name + ".", suffix=".pkl.gz", dir=str(target.parent)
+    )
+    os.close(fd)
+    temporary = Path(temporary_name)
+    try:
+        frame.to_pickle(temporary, compression={"method": "gzip", "compresslevel": 3})
+        # Leer el flujo completo comprueba su integridad sin cargar otro DataFrame.
+        with gzip.open(temporary, "rb") as stream:
+            while stream.read(1024 * 1024):
+                pass
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _prepare_capacity_frame(frame: pd.DataFrame) -> pd.DataFrame:
@@ -3028,6 +3052,12 @@ def _load_capacity_cache(entry: dict) -> pd.DataFrame:
     try:
         cache_rel=str(entry.get("cache_file") or "").strip()
         cache_path=(DATA_ROOT/cache_rel) if cache_rel else _capacity_cache_path(str(entry.get("id") or ""))
+        if not cache_path.exists():
+            compressed=_capacity_cache_path(str(entry.get("id") or ""))
+            for candidate in (compressed,compressed.with_suffix("")):
+                if candidate.exists():
+                    cache_path=candidate
+                    break
         if cache_path.exists() and cache_path.is_file():
             frame=pd.read_pickle(cache_path)
             if isinstance(frame,pd.DataFrame):
@@ -3040,9 +3070,12 @@ def _load_capacity_cache(entry: dict) -> pd.DataFrame:
                 frame=_prepare_capacity_frame(frame)
                 target=_capacity_cache_path(str(entry.get("id") or ""))
                 if old_schema!=CAPACITY_CACHE_SCHEMA or cache_path!=target:
-                    frame.to_pickle(target)
+                    _save_compressed_capacity_cache(frame,target)
                     update_entry("capacities",str(entry.get("id") or ""),cache_file=str(target.relative_to(DATA_ROOT)))
-                    if cache_path.parent==CAPACITY_NORMALIZED_DIR and cache_path!=target:
+                    # La versión .pkl antigua ya fue sustituida por una copia
+                    # comprimida íntegra; sólo se retira este cache regenerable.
+                    if (cache_path.parent==CAPACITY_NORMALIZED_DIR
+                            and cache_path!=target and cache_path.suffix==".pkl"):
                         cache_path.unlink(missing_ok=True)
                 return frame
     except Exception as exc:
@@ -3086,7 +3119,7 @@ def _latest_capacity_frame() -> pd.DataFrame:
                 frame=_prepare_capacity_frame(frame)
                 cache_path=_capacity_cache_path(str(entry.get("id") or ""))
                 try:
-                    frame.to_pickle(cache_path)
+                    _save_compressed_capacity_cache(frame,cache_path)
                     update_entry("capacities",str(entry.get("id") or ""),cache_file=str(cache_path.relative_to(DATA_ROOT)))
                 except Exception as cache_exc:
                     print(f"[V44] No se pudo persistir cache capacidades: {cache_exc}")
@@ -3784,7 +3817,8 @@ _CAPACITY_COMPACT_CACHE_VERSION=5
 def _capacity_compact_cache_path(entry: dict) -> Path:
     entry_id=str(entry.get("id") or "latest").strip() or "latest"
     base=_capacity_cache_path(entry_id)
-    return base.with_name(base.stem+f".commercial-v{_CAPACITY_COMPACT_CACHE_VERSION}.pkl")
+    stem=base.name.removesuffix(".pkl.gz")
+    return base.with_name(stem+f".commercial-v{_CAPACITY_COMPACT_CACHE_VERSION}.pkl.gz")
 
 def _commercial_capacity_columns(frame: pd.DataFrame) -> list[str]:
     wanted=[
@@ -3801,13 +3835,21 @@ def _commercial_capacity_columns(frame: pd.DataFrame) -> list[str]:
 
 def _load_capacity_compact_cache(entry: dict) -> pd.DataFrame:
     target=_capacity_compact_cache_path(entry)
-    try:
-        if target.exists() and target.is_file():
-            frame=pd.read_pickle(target)
-            if isinstance(frame,pd.DataFrame) and int(frame.attrs.get("commercial_cache_version") or 0)==_CAPACITY_COMPACT_CACHE_VERSION:
-                return frame
-    except Exception as exc:
-        print(f"[V188] Cache comercial compacto no disponible: {type(exc).__name__}: {exc}",flush=True)
+    # Compatibilidad con .pkl anteriores: convertir sólo cuando se usan.
+    for candidate in (target,target.with_suffix("")):
+        try:
+            if candidate.exists() and candidate.is_file():
+                frame=pd.read_pickle(candidate)
+                if isinstance(frame,pd.DataFrame) and int(frame.attrs.get("commercial_cache_version") or 0)==_CAPACITY_COMPACT_CACHE_VERSION:
+                    if candidate!=target:
+                        try:
+                            _save_compressed_capacity_cache(frame,target)
+                            candidate.unlink(missing_ok=True)
+                        except Exception as exc:
+                            print(f"[CAPACITY] Cache compacto antiguo conservado: {type(exc).__name__}: {exc}",flush=True)
+                    return frame
+        except Exception as exc:
+            print(f"[V188] Cache comercial compacto no disponible: {type(exc).__name__}: {exc}",flush=True)
 
     # Construcción única: cargar el pickle normalizado, eliminar columnas no
     # utilizadas EN EL MISMO frame y persistir una versión mucho más pequeña.
@@ -3824,7 +3866,7 @@ def _load_capacity_compact_cache(entry: dict) -> pd.DataFrame:
             if isinstance(frame,pd.DataFrame) and not frame.empty:
                 frame=_prepare_capacity_frame(frame)
                 normalized=_capacity_cache_path(str(entry.get("id") or ""))
-                frame.to_pickle(normalized)
+                _save_compressed_capacity_cache(frame,normalized)
                 update_entry(
                     "capacities",
                     str(entry.get("id") or ""),
@@ -3845,7 +3887,7 @@ def _load_capacity_compact_cache(entry: dict) -> pd.DataFrame:
         frame.drop(columns=drop,inplace=True,errors="ignore")
     frame.attrs["commercial_cache_version"]=_CAPACITY_COMPACT_CACHE_VERSION
     try:
-        frame.to_pickle(target)
+        _save_compressed_capacity_cache(frame,target)
     except Exception as exc:
         print(f"[V188] No se pudo persistir cache comercial compacto: {type(exc).__name__}: {exc}",flush=True)
     _release_process_memory()
@@ -6003,7 +6045,7 @@ def _process_capacity_entry(entry: dict, filename: str) -> dict:
             stores=sorted(df["Tienda"].dropna().astype(str).unique().tolist()) if "Tienda" in df.columns else []
             store_count=len(stores)
             cache_path=_capacity_cache_path(entry["id"])
-            df.to_pickle(cache_path)
+            _save_compressed_capacity_cache(df,cache_path)
             cache_rel=str(cache_path.relative_to(DATA_ROOT))
             mtime=path.stat().st_mtime if path.exists() else None
             report_date=_capacity_report_date({**entry,"name":filename})
