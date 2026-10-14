@@ -1,4 +1,4 @@
-name: V320 Bonus Cuts, Design and Methods Smoke
+name: V321 Initial Cut Upload and Responsive Bonus Smoke
 on:
   push:
     branches: [main]
@@ -20,6 +20,18 @@ jobs:
           python-version: "3.12"
       - name: Compile
         run: python -m py_compile v293_sales_bonus_patch.py v302_six_sales_bonuses_patch.py v313_bonus_visual_and_cut_patch.py v321_bonus_initial_upload_responsive_patch.py server_entry.py
+      - name: Check embedded Bonos JavaScript syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("v313_bonus_visual_and_cut_patch.py").read_text(encoding="utf-8")
+          match = re.search(r'<script id="v313-js">([\\s\\S]*?)</script>', source)
+          if not match:
+              raise SystemExit("V313 JavaScript block not found")
+          Path("/tmp/v313-bonus.js").write_text(match.group(1), encoding="utf-8")
+          PY
+          node --check /tmp/v313-bonus.js
       - name: Verify business rules and design markers
         run: |
           python - <<'PY'
@@ -59,5 +71,5 @@ jobs:
           assert "source_dates" in b
           assert 'results.append(round(num(_r.get("points")),2))' in c
           assert "len(set(results[1:]))>=4" in c
-          print("V320 assertions OK")
+          print("V321 assertions OK")
           PY
