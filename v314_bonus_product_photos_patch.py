@@ -85,7 +85,15 @@ function apply(){
    else{
     var img=document.createElement('img');img.className='v314-photo';img.alt='Foto ID '+id;img.loading='lazy';img.decoding='async';img.src='/api/bonuses/product-photo/'+encodeURIComponent(id);
     img.onerror=function(){if(img.parentNode){var span=document.createElement('span');span.className='v314-photo-missing';span.textContent='Sin foto';img.replaceWith(span)}};
-    img.onclick=function(){window.open(img.src,'_blank','noopener,noreferrer')};
+    img.onclick=function(){
+     var overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:56px 14px 14px;box-sizing:border-box';
+     var big=document.createElement('img');big.src=img.src;big.alt=img.alt;big.style.cssText='max-width:100%;max-height:100%;object-fit:contain';
+     var back=document.createElement('button');back.type='button';back.textContent='← Regresar al listado';back.style.cssText='position:absolute;top:12px;left:12px;background:#fff;color:#123d73;border:0;border-radius:8px;padding:12px 16px;font-weight:700;cursor:pointer';
+     function close(){overlay.remove();document.removeEventListener('keydown',esc)}
+     function esc(e){if(e.key==='Escape')close()}
+     back.onclick=close;overlay.onclick=function(e){if(e.target===overlay)close()};
+     overlay.appendChild(big);overlay.appendChild(back);document.body.appendChild(overlay);document.addEventListener('keydown',esc);
+    };
     td.appendChild(img);
    }
    tr.insertBefore(td,first);
