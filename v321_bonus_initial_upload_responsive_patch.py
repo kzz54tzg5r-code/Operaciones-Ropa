@@ -219,8 +219,12 @@ def install(m):
                 return False
 
             already_cached = await asyncio.to_thread(existing_processed_source)
+            # Un corte de ~58 MB genera un cache comprimido de una fracción
+            # del tamaño original. Conservar margen realista (32 MiB) evita
+            # rechazar cargas que sí caben en el volumen de 500 MB.
+            # El proceso sigue capturando ENOSPC y conserva el histórico.
             minimum_free = (4 * 1024 * 1024 if already_cached
-                            else size + 64 * 1024 * 1024)
+                            else size + 32 * 1024 * 1024)
             if free < minimum_free:
                 raise HTTPException(
                     status_code=507,
