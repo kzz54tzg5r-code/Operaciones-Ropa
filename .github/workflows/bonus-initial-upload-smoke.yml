@@ -1,0 +1,36 @@
+name: Bonus initial upload smoke
+on:
+  pull_request:
+    paths:
+      - "web_app.py"
+      - "v313_bonus_visual_and_cut_patch.py"
+      - "v321_bonus_initial_upload_responsive_patch.py"
+      - "tests/test_bonus_initial_upload_job.py"
+      - ".github/workflows/bonus-initial-upload-smoke.yml"
+  workflow_dispatch:
+jobs:
+  bonus-initial-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check fastapi httpx pytest python-multipart
+      - name: Compile production upload modules
+        run: python -m py_compile web_app.py v313_bonus_visual_and_cut_patch.py v321_bonus_initial_upload_responsive_patch.py
+      - name: Check embedded upload JavaScript syntax
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          source = Path("v313_bonus_visual_and_cut_patch.py").read_text()
+          match = re.search(r"js\s*=\s*r'''<script id=\"v313-js\">([\s\S]*?)</script>'''", source)
+          if not match:
+              raise SystemExit("No se encontró el JavaScript de V313")
+          Path("/tmp/v313-upload.js").write_text(match.group(1))
+          PY
+          node --check /tmp/v313-upload.js
+      - name: Verify background upload and monthly assignment
+        run: python -m pytest tests/test_bonus_initial_upload_job.py -q
