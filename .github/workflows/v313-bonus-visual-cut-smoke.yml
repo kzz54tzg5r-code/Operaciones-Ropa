@@ -6,6 +6,7 @@ on:
       - "v293_sales_bonus_patch.py"
       - "v302_six_sales_bonuses_patch.py"
       - "v313_bonus_visual_and_cut_patch.py"
+      - "v321_bonus_initial_upload_responsive_patch.py"
       - "server_entry.py"
       - ".github/workflows/v313-bonus-visual-cut-smoke.yml"
   workflow_dispatch:
@@ -18,7 +19,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile
-        run: python -m py_compile v293_sales_bonus_patch.py v302_six_sales_bonuses_patch.py v313_bonus_visual_and_cut_patch.py server_entry.py
+        run: python -m py_compile v293_sales_bonus_patch.py v302_six_sales_bonuses_patch.py v313_bonus_visual_and_cut_patch.py v321_bonus_initial_upload_responsive_patch.py server_entry.py
       - name: Verify business rules and design markers
         run: |
           python - <<'PY'
@@ -26,10 +27,18 @@ jobs:
           a=Path("v293_sales_bonus_patch.py").read_text(encoding="utf-8")
           b=Path("v313_bonus_visual_and_cut_patch.py").read_text(encoding="utf-8")
           c=Path("v302_six_sales_bonuses_patch.py").read_text(encoding="utf-8")
-          assert "último disponible al iniciar el mes" not in a
-          assert "opening_date <= x[0] <= limit" in a
-          assert "Elige el corte de Capacidades más cercano al primer día del periodo" in a
+          d=Path("v321_bonus_initial_upload_responsive_patch.py").read_text(encoding="utf-8")
+          assert "bonus_initial_cuts" in a
+          assert "Corte inicial explícito del mes" in a
           assert "(month_start - x[0]).days <= 7" in a
+          assert "data-v313-initial" in b
+          assert "initial-upload" in b
+          assert "/api/bonuses/initial-capacity" in b
+          assert "bonus_initial_cuts" in d
+          assert "v321-bonus-responsive-css" in d
+          assert "min-width:0!important" in d
+          assert "repeat(7,minmax(0,1fr))" in d
+          assert "overflow-y:auto!important" in d
           assert "source_date=? AND source_entry_id=? AND store IN" in a
           assert "current_display_entry" in a
           assert "V318-BONUS-CUTS-AND-DESIGN" in b
