@@ -35,9 +35,10 @@ def install(m):
         month = _valid_month(month) if month else ""
         manifest = m.load_manifest()
         cuts = manifest.get("bonus_initial_cuts") or {}
+        all_capacity_entries = list(manifest.get("capacities") or []) + list(manifest.get("bonus_initial_capacity_entries") or [])
         entries = {
             str(x.get("id") or ""): dict(x)
-            for x in (manifest.get("capacities") or [])
+            for x in all_capacity_entries
             if isinstance(x, dict)
         }
         items = []
@@ -97,7 +98,33 @@ def install(m):
             None,
         )
         if not processed or str(processed.get("status") or "").lower() != "procesado":
+            # Una misma fuente puede haberse registrado previamente como corte inicial.
+            processed = next(
+                (dict(x) for x in (manifest.get("bonus_initial_capacity_entries") or [])
+                 if str(x.get("id") or "") == str(entry.get("id") or "")),
+                None,
+            )
+        if not processed or str(processed.get("status") or "").lower() != "procesado":
             raise HTTPException(409, "El Excel no quedó procesado; el corte inicial no se asignó al mes.")
+
+        # Si el archivo es nuevo para el sistema, sepáralo de las Capacidades
+        # comerciales para que no cambie por accidente el reporte activo general.
+        # Si ya existía como archivo normal de Capacidades, conserva su registro normal.
+        if not entry.get("duplicate"):
+            manifest["capacities"] = [
+                dict(x) for x in (manifest.get("capacities") or [])
+                if str(x.get("id") or "") != str(processed.get("id") or "")
+            ]
+            bonus_entries = manifest.setdefault("bonus_initial_capacity_entries", [])
+            existing_bonus = next(
+                (x for x in bonus_entries if str(x.get("id") or "") == str(processed.get("id") or "")),
+                None,
+            )
+            if existing_bonus is None:
+                processed["bonus_initial_only"] = True
+                bonus_entries.append(processed)
+            else:
+                processed = dict(existing_bonus)
 
         cuts = manifest.setdefault("bonus_initial_cuts", {})
         previous = cuts.get(month)
