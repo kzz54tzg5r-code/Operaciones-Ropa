@@ -1,0 +1,22 @@
+name: V325 Capacidades Catalog Import Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "commercial/parsers.py"
+      - "v293_sales_bonus_patch.py"
+      - "tests/test_bonus_catalog_source.py"
+      - ".github/workflows/v325-catalog-source.yml"
+  workflow_dispatch:
+
+jobs:
+  catalogs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install --disable-pip-version-check pandas numpy pytest fastapi
+      - name: Check parser and bonus source
+        run: python -m pytest -q tests/test_bonus_catalog_source.py
