@@ -317,7 +317,20 @@ return summary(d)
 
 function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">Comparación real entre corte inicial y corte actual · sin gráficas de línea</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
 function bind(){
-q("#v313UpdateBtn")?.addEventListener("click",async function(){this.disabled=true;this.textContent="Actualizando…";try{var reg=await navigator.serviceWorker?.getRegistration?.();if(reg)await reg.update();await fetch("/api/app-version?t="+Date.now(),{cache:"no-store",credentials:"same-origin"});location.reload()}catch(e){this.disabled=false;this.textContent="↻ Actualizar";alert("No se pudo comprobar la nueva versión. Intenta de nuevo.")}});
+q("#v313UpdateBtn")?.addEventListener("click",async function(){
+  var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
+  try{
+    if(window.OperacionesPWA&&window.OperacionesPWA.checkForUpdates){
+      await window.OperacionesPWA.checkForUpdates({manual:true});
+    }else{
+      var response=await fetch("/api/app-version?t="+Date.now(),{cache:"no-store",credentials:"same-origin"});
+      if(!response.ok)throw new Error("Servicio de actualización no disponible");
+      alert("Versión consultada. Si hay una actualización, abre el aviso superior.");
+    }
+  }catch(e){
+    alert("No fue posible consultar las actualizaciones. Revisa la conexión e inténtalo de nuevo.");
+  }finally{btn.disabled=false;btn.textContent="↻ Actualizar"}
+});
 qa("[data-v313-download]").forEach(function(b){b.addEventListener("click",function(){var d=S.data||{};var rows=(d.details||[]).filter(function(r){return S.section==="details"||S.section==="allModels"||S.section==="rubrosTodos"?true:r.catalog===S.catalog});if(!rows.length){alert("No hay modelos de este catálogo para descargar.");return}var p=new URLSearchParams({month:S.month,store:S.store,bonus:String(S.bonus),catalog:S.catalog,format:b.dataset.v313Download});window.location.assign("/api/bonuses/models-export?"+p.toString())})});
 qa(".v313-photo").forEach(function(im){im.addEventListener("click",function(){var bg=document.createElement("div");bg.className="v313-photo-overlay";var large=document.createElement("img");large.src=im.src;large.alt=im.alt;var close=document.createElement("button");close.type="button";close.textContent="← Regresar al listado";function done(){bg.remove();document.removeEventListener("keydown",escape)}function escape(e){if(e.key==="Escape")done()}close.onclick=done;bg.onclick=function(e){if(e.target===bg)done()};bg.append(close,large);document.body.append(bg);document.addEventListener("keydown",escape)})});
 q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
