@@ -151,13 +151,13 @@ body[data-v313="1"] #v312Host{display:none!important}
 #v313UpdateBtn:hover,.v313-model-downloads button:hover{background:#eaf4ff}
 .v313-model-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 10px;background:#fafcff;font-size:9px;color:#49617f}
 .v313-model-downloads{display:flex;gap:7px}.v313-model-downloads button{font-size:10px;font-weight:850;color:#115292;border:1px solid #bad1ea;border-radius:7px;padding:8px 12px;background:#fff;cursor:pointer}
-.v313-model-scroll{max-height:calc(30 * 43px + 32px);overflow:auto;overscroll-behavior:contain}
+.v313-model-scroll{max-height:min(calc(30 * 43px + 32px),calc(100dvh - 380px));min-height:0;overflow-y:auto!important;overflow-x:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin}
 .v313-model-table{min-width:880px}.v313-model-table thead th{position:sticky;top:0;z-index:2;background:#eaf3fb}
 .v313-model-table tbody tr{height:43px}.v313-model-table .v314-photo{width:32px;height:36px;object-fit:contain;cursor:zoom-in}
 .v313-model-table .v314-photo-cell{width:46px;min-width:46px;padding:3px}
 .v313-photo-missing{font-size:8px;color:#8293a9}.v313-photo-overlay{position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.91);display:flex;align-items:center;justify-content:center;padding:65px 16px 20px}
 .v313-photo-overlay img{max-height:100%;max-width:100%;object-fit:contain}.v313-photo-overlay button{position:absolute;top:14px;left:14px;border:0;border-radius:8px;padding:12px 16px;background:#fff;color:#12497e;font-weight:900;cursor:pointer}
-@media(max-width:900px){.v313-head-right{width:100%;justify-content:space-between}.v313-model-scroll{max-height:70vh}}
+@media(max-width:900px){.v313-head-right{width:100%;justify-content:space-between}.v313-model-scroll{max-height:min(70dvh,calc(30 * 43px + 32px))}}
 </style>''';
 
     js=r'''<script id="v313-js">(function(){
