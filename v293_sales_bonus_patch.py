@@ -497,25 +497,29 @@ def install(m):
         return frame.loc[mask, cols].copy()
 
     def classify_catalog(work):
+        """Clasifica por campos comerciales prioritarios; no mezcla descripción y marca."""
         if work.empty:
             return pd.Series(dtype="object")
-        parts = []
-        for col in ("Tipo catálogo", "Categoría", "Subcategoría", "Marca", "Modelo"):
-            if col in work.columns:
-                parts.append(work[col].fillna("").astype(str))
-        if not parts:
-            return pd.Series("", index=work.index, dtype="object")
-        text = parts[0]
-        for part in parts[1:]:
-            text = text.str.cat(part, sep=" | ")
-        text = text.map(fold)
         out = pd.Series("", index=work.index, dtype="object")
-        license_mask = text.str.contains(r"\bLICEN(?:CIA|CIAS|CIADO|CIADOS)?\b|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES", regex=True, na=False)
-        coat_mask = text.str.contains(r"ABRIGADOR|ABRIGO|CHAMARRA|CHAQUETA|PARKA", regex=True, na=False)
-        basic_mask = text.str.contains(r"\bBASIC(?:O|OS|A|AS)?\b", regex=True, na=False)
-        out.loc[basic_mask] = "Básicos"
-        out.loc[coat_mask] = "Abrigador"
-        out.loc[license_mask] = "Licencias"
+        patterns = (
+            ("Licencias", r"LICEN|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES"),
+            ("Básicos", r"BASIC|\\bBASICO\\b|\\bBASICA\\b"),
+            ("Abrigador", r"ABRIGADOR|ABRIGO|CHAMARRA|CHAQUETA|PARKA"),
+        )
+        # Primero la clasificación explícita. Los campos descriptivos no deben
+        # sobreescribir una clasificación ya establecida.
+        for col in ("Tipo catálogo", "Categoría", "Subcategoría"):
+            if col not in work.columns:
+                continue
+            values = work[col].fillna("").astype(str).map(fold)
+            for name, pattern in patterns:
+                mask = out.eq("") & values.str.contains(pattern, regex=True, na=False)
+                out.loc[mask] = name
+        # Marca sólo sirve como respaldo para licencias; nunca para Abrigador.
+        if "Marca" in work.columns:
+            values = work["Marca"].fillna("").astype(str).map(fold)
+            mask = out.eq("") & values.str.contains(patterns[0][1], regex=True, na=False)
+            out.loc[mask] = "Licencias"
         return out
 
     def aggregate_models(work):
