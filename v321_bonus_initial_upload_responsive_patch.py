@@ -111,6 +111,21 @@ def install(m):
         # comerciales para que no cambie por accidente el reporte activo general.
         # Si ya existía como archivo normal de Capacidades, conserva su registro normal.
         if not entry.get("duplicate"):
+            # Mover el archivo fuera de commercial/capacidades. storage.discover_existing_files
+            # escanea esa carpeta y, si se dejara ahí, lo volvería a registrar como fuente
+            # comercial general en el siguiente reinicio.
+            source_path = m.resolve_entry_path(processed)
+            target_dir = m.Path(m.COMMERCIAL_DATA_ROOT) / "bonus_initial_capacity"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_path = target_dir / (str(processed.get("id") or "initial") + "_" + m.Path(processed.get("name") or filename).name)
+            try:
+                if source_path.exists() and source_path.resolve() != target_path.resolve():
+                    m.shutil.move(str(source_path), str(target_path))
+                if not target_path.exists():
+                    raise FileNotFoundError("No se pudo mover el Excel al histórico aislado de Bonos.")
+            except Exception as exc:
+                raise HTTPException(500, f"No se pudo aislar el corte inicial: {str(exc)[:250]}")
+            processed["path"] = str(target_path.relative_to(m.COMMERCIAL_DATA_ROOT))
             manifest["capacities"] = [
                 dict(x) for x in (manifest.get("capacities") or [])
                 if str(x.get("id") or "") != str(processed.get("id") or "")
