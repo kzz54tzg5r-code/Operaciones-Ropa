@@ -69,10 +69,10 @@ def install(m):
 if(window.__V314_BONUS_PHOTOS)return;window.__V314_BONUS_PHOTOS=true;
 function apply(){
  var root=document.getElementById('v313Host');if(!root)return;
- var tables=root.querySelectorAll('.v313-table');
+ var tables=root.querySelectorAll('table');
  tables.forEach(function(table){
   var head=table.querySelector('thead tr');
-  if(!head || !/ID/.test(head.textContent||'') || !/DDI inicial/.test(head.textContent||''))return;
+  if(!head || !/ID/.test(head.textContent||'') || !/DDI inicial/.test(head.textContent||'') || !/Inv. actual/.test(head.textContent||''))return;
   if(!head.querySelector('[data-v314-photo-head]')){
    var th=document.createElement('th');th.textContent='Foto';th.dataset.v314PhotoHead='1';th.className='v314-photo-cell';head.insertBefore(th,head.firstChild);
   }
