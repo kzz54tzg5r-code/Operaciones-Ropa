@@ -1,4 +1,4 @@
-name: V316 Bonus Cut Selection and Design Smoke
+name: V318 Bonus Cut Identity and Design Smoke
 on:
   push:
     branches: [main]
@@ -30,7 +30,10 @@ jobs:
           assert "(month_start - x[0]).days <= 7" in a
           assert "source_date=? AND store IN" in a
           assert "current_display_entry" in a
-          assert "V316-BONUS-CUTS-AND-DESIGN" in b
+          assert "V318-BONUS-CUTS-AND-DESIGN" in b
+          assert "source_entry_id" in a
+          assert "opening_capacity_id" in a
+          assert "current_capacity_id" in a
           assert "Desempeño por Tienda" in b
           assert "Colaboradores" in b
           assert "Detalle por rubro" in b

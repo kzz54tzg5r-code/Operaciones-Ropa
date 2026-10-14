@@ -54,6 +54,7 @@ def install(m):
                 store TEXT NOT NULL,
                 source_period TEXT NOT NULL DEFAULT '',
                 source_date TEXT NOT NULL DEFAULT '',
+                source_entry_id TEXT NOT NULL DEFAULT '',
                 fixed_at TEXT NOT NULL,
                 model_count INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(month,store)
@@ -71,14 +72,20 @@ def install(m):
                 avg_investment REAL NOT NULL DEFAULT 0,
                 source_period TEXT NOT NULL DEFAULT '',
                 source_date TEXT NOT NULL DEFAULT '',
+                source_entry_id TEXT NOT NULL DEFAULT '',
                 fixed_at TEXT NOT NULL,
                 PRIMARY KEY(month,store,id_art)
             )
         """)
         con.execute("CREATE INDEX IF NOT EXISTS ix_sales_bonus_targets_v293_month_store ON sales_bonus_targets_v293(month,store,catalog)")
+        snapshot_cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(sales_bonus_snapshot_v293)").fetchall()}
+        if "source_entry_id" not in snapshot_cols:
+            con.execute("ALTER TABLE sales_bonus_snapshot_v293 ADD COLUMN source_entry_id TEXT NOT NULL DEFAULT ''")
         target_cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(sales_bonus_targets_v293)").fetchall()}
         if "initial_existence" not in target_cols:
             con.execute("ALTER TABLE sales_bonus_targets_v293 ADD COLUMN initial_existence REAL NOT NULL DEFAULT 0")
+        if "source_entry_id" not in target_cols:
+            con.execute("ALTER TABLE sales_bonus_targets_v293 ADD COLUMN source_entry_id TEXT NOT NULL DEFAULT ''")
         con.execute("""
             CREATE TABLE IF NOT EXISTS sales_bonus_attendance_v293(
                 month TEXT NOT NULL,
@@ -623,6 +630,7 @@ def install(m):
             models = aggregate_models(work)
             now = datetime.now(MX).isoformat(timespec="seconds")
             source_period = period_for_entry(entry)
+            source_entry_id = str(entry.get("id") or "")
             by_store = {s: pd.DataFrame() for s in stores}
             if not models.empty:
                 for store, group in models.groupby("store", sort=False):
@@ -642,17 +650,17 @@ def install(m):
                             con.execute("""
                                 INSERT INTO sales_bonus_targets_v293(
                                     month,store,id_art,catalog,model,initial_ddi,initial_existence,initial_investment,avg_investment,
-                                    source_period,source_date,fixed_at
-                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+                                    source_period,source_date,source_entry_id,fixed_at
+                                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
                             """, (
                                 month, store, str(row.get("id_art") or ""), str(row.get("catalog") or ""),
                                 str(row.get("model") or row.get("id_art") or ""), num(row.get("ddi")), num(row.get("existence")),
-                                num(row.get("investment")), num(row.get("avg_investment")), source_period, source_date.isoformat(), now,
+                                num(row.get("investment")), num(row.get("avg_investment")), source_period, source_date.isoformat(), source_entry_id, now,
                             ))
                     con.execute("""
-                        INSERT INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,fixed_at,model_count)
-                        VALUES(?,?,?,?,?,?)
-                    """, (month, store, source_period, source_date.isoformat(), now, int(len(selected))))
+                        INSERT INTO sales_bonus_snapshot_v293(month,store,source_period,source_date,source_entry_id,fixed_at,model_count)
+                        VALUES(?,?,?,?,?,?,?)
+                    """, (month, store, source_period, source_date.isoformat(), source_entry_id, now, int(len(selected))))
             print(
                 f"[V299] Snapshot Bonos {month} listo · corte={source_date.isoformat()} · "
                 f"tiendas={len(stores)} · modelos={len(models)}",
@@ -679,15 +687,17 @@ def install(m):
             return {"entry": None, "created": 0, "pending": False}
         source_date, _stamp, entry = opening
         expected_source_date = source_date.isoformat()
+        expected_source_entry_id = str(entry.get("id") or "")
 
         with m.db() as con:
             rows = con.execute(
-                "SELECT store,source_date FROM sales_bonus_snapshot_v293 WHERE month=?",
+                "SELECT store,source_date,source_entry_id FROM sales_bonus_snapshot_v293 WHERE month=?",
                 (month,),
             ).fetchall()
         valid_existing = {
             str(r["store"]) for r in rows
             if str(r["source_date"] or "") == expected_source_date
+            and str(r["source_entry_id"] or "") == expected_source_entry_id
         }
         missing = [s for s in stores if s not in valid_existing]
         if not missing:
@@ -722,11 +732,12 @@ def install(m):
         if not opening:
             return []
         expected_source_date = opening[0].isoformat()
+        expected_source_entry_id = str(opening[2].get("id") or "")
         marks = ",".join("?" for _ in stores)
         with m.db() as con:
             rows = con.execute(
-                f"SELECT * FROM sales_bonus_targets_v293 WHERE month=? AND source_date=? AND store IN ({marks}) ORDER BY store,catalog,id_art",
-                (month, expected_source_date, *stores),
+                f"SELECT * FROM sales_bonus_targets_v293 WHERE month=? AND source_date=? AND source_entry_id=? AND store IN ({marks}) ORDER BY store,catalog,id_art",
+                (month, expected_source_date, expected_source_entry_id, *stores),
             ).fetchall()
         return [dict(r) for r in rows]
 
@@ -737,11 +748,12 @@ def install(m):
         if not opening:
             return {}
         expected_source_date = opening[0].isoformat()
+        expected_source_entry_id = str(opening[2].get("id") or "")
         marks = ",".join("?" for _ in stores)
         with m.db() as con:
             rows = con.execute(
-                f"SELECT * FROM sales_bonus_snapshot_v293 WHERE month=? AND source_date=? AND store IN ({marks})",
-                (month, expected_source_date, *stores),
+                f"SELECT * FROM sales_bonus_snapshot_v293 WHERE month=? AND source_date=? AND source_entry_id=? AND store IN ({marks})",
+                (month, expected_source_date, expected_source_entry_id, *stores),
             ).fetchall()
         return {str(r["store"]): dict(r) for r in rows}
 
@@ -769,8 +781,9 @@ def install(m):
         # no vuelvas a recorrer ~194k filas. Los valores "actuales" son exactamente
         # los iniciales y el avance correcto es 0% hasta que llegue un corte nuevo.
         current_date = _d.isoformat()
-        source_dates = {str(row.get("source_date") or "") for row in targets}
-        if source_dates == {current_date}:
+        current_entry_id = str(entry.get("id") or "")
+        source_entry_ids = {str(row.get("source_entry_id") or "") for row in targets}
+        if source_entry_ids == {current_entry_id}:
             current = {}
             for row in targets:
                 key = (str(row.get("store") or ""), str(row.get("id_art") or ""))
@@ -972,12 +985,9 @@ def install(m):
         """Mapa de la misma cartera objetivo en un corte de Capacidades."""
         if not entry:
             return {}, False
-        try:
-            entry_date = m._capacity_report_date(entry).isoformat()
-        except Exception:
-            entry_date = ""
-        source_dates = {str(row.get("source_date") or "") for row in (targets or [])}
-        if source_dates == {entry_date}:
+        entry_id = str(entry.get("id") or "")
+        source_entry_ids = {str(row.get("source_entry_id") or "") for row in (targets or [])}
+        if source_entry_ids == {entry_id}:
             current = {}
             for row in targets or []:
                 current[(str(row.get("store") or ""), str(row.get("id_art") or ""))] = {
@@ -1115,7 +1125,9 @@ def install(m):
             },
             "source_dates": {
                 "opening_capacity": str((snapshot_state.get("entry") and m._capacity_report_date(snapshot_state.get("entry")).isoformat()) or ""),
+                "opening_capacity_id": str((snapshot_state.get("entry") or {}).get("id") or ""),
                 "current_capacity": m._capacity_report_date(current_display_entry).isoformat() if current_display_entry else "",
+                "current_capacity_id": str((current_display_entry or {}).get("id") or ""),
                 "base_muertos_latest": str(max((m.load_operations_meta() or {}).get("available_dates") or [""]) or ""),
             },
             "processing": {

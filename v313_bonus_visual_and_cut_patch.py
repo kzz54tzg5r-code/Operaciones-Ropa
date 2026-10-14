@@ -120,7 +120,7 @@ def install(m):
         final["processing"]=dict(base.get("processing") or {})
         final["current_source_period"]=base.get("current_source_period")
         final["current_source_date"]=base.get("current_source_date")
-        final["version"]="V316-BONUS-CUTS-AND-DESIGN"
+        final["version"]="V318-BONUS-CUTS-AND-DESIGN"
         final["cut_rule"]="Corte inicial = último corte procesado disponible al inicio del mes; corte actual = último corte procesado hasta hoy."
         return final
 
@@ -177,7 +177,7 @@ return"<div class=\"v313-tabs"+cls+"\">"+xs.map(function(x){return"<button data-
 
 function cutbar(d){
 var sd=d.source_dates||{},opening=sd.opening_capacity,current=sd.current_capacity,processing=d.processing||{};
-var hasOpening=!!opening,hasCurrent=!!current,same=hasOpening&&hasCurrent&&String(opening)===String(current);
+var hasOpening=!!opening,hasCurrent=!!current,same=hasOpening&&hasCurrent&&((sd.opening_capacity_id&&sd.current_capacity_id)?String(sd.opening_capacity_id)===String(sd.current_capacity_id):String(opening)===String(current));
 var status=!hasOpening?"Falta corte inicial":!hasCurrent?"Falta corte actual":same?(processing.capacity?"Preparando cartera inicial":"Esperando segundo corte"):(processing.capacity?"Procesando comparación":"Comparación activa");
 return"<div class=\"v313-cutbar\"><div class=\"v313-cut\"><span>Regla de comparación</span><b>Corte más cercano al inicio → corte actual</b></div><div class=\"v313-cut "+(hasOpening?"ok":"wait")+"\"><span>Corte inicial seleccionado</span><b>"+dateMx(opening)+"</b></div><div class=\"v313-cut current "+(!hasCurrent||same?"wait":"ok")+"\"><span>Corte actual</span><b>"+dateMx(current)+"</b></div><div class=\"v313-cut\"><span>Avance</span><b>"+status+"</b></div></div>"
 }
@@ -291,11 +291,11 @@ document.addEventListener("click",function(e){var x=e.target.closest&&e.target.c
             headers=dict(getattr(response,"headers",{}) or {})
             headers.pop("content-length",None)
             headers["Cache-Control"]="no-store, no-cache, must-revalidate, max-age=0"
-            headers["X-Operations-Bonus-Version"]="V316-BONUS-CUTS-AND-DESIGN"
+            headers["X-Operations-Bonus-Version"]="V318-BONUS-CUTS-AND-DESIGN"
             return HTMLResponse(html,status_code=response.status_code,headers=headers)
         except Exception as exc:
             print(f"[V313] HTML warning: {type(exc).__name__}: {exc}",flush=True)
             return response
 
     m._V313_BONUS_VISUAL_CUTS=True
-    print("[V316] Bonos: corte inicial válido, estados de carga, tabs aprobadas y detalle con estado vacío.",flush=True)
+    print("[V318] Bonos: corte inicial por cercanía, ID único por archivo, tabs aprobadas y estados de detalle.",flush=True)
