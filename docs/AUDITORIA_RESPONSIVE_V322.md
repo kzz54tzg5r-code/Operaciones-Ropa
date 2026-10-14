@@ -13,7 +13,7 @@
 - Añade una última capa responsive, después de V321, limitada a anchos de hasta 1180 px.
 - En tablets y móviles, deja un único scroll vertical de página, con pinch-zoom habilitado.
 - Convierte la navegación de reportes en una fila táctil desplazable en lugar de comprimir pestañas en cinco columnas.
-- Conserva el ancho mínimo lógico de las tablas y confina el desplazamiento horizontal al marco de cada tabla/listado.
+- Conserva el ancho mínimo lógico de las tablas, elimina alturas máximas internas en marcos tabulares para no recortar filas en iPad/tablets grandes y confina el desplazamiento horizontal al marco de cada tabla/listado.
 - Reserva el área inferior para la navegación móvil y respeta las áreas seguras de iOS.
 - Permite scroll interno en modales altos sin bloquear el documento cuando están cerrados.
 - No cambia el diseño de escritorio amplio, estructura de datos, cálculos, filtros, roles ni endpoints.
