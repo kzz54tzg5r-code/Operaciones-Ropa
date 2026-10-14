@@ -260,7 +260,7 @@ var file=q("#v321InitialFile")&&q("#v321InitialFile").files[0];
 var month=q("#v321InitialMonth")?q("#v321InitialMonth").value:String(S.month||"");
 var status=q("#v321UploadStatus"),button=q("#v321UploadButton");
 if(!file){if(status){status.className="v321-state err";status.textContent="Primero selecciona un Excel de Capacidades."}return}
-if(!/\\.xlsx?$/.test(file.name.toLowerCase())){if(status){status.className="v321-state err";status.textContent="El archivo debe ser .xlsx o .xls."}return}
+if(!/\.xlsx?$/.test(file.name.toLowerCase())){if(status){status.className="v321-state err";status.textContent="El archivo debe ser .xlsx o .xls."}return}
 var form=new FormData();form.append("month",month);form.append("file",file);
 if(button){button.disabled=true;button.textContent="Procesando…"}
 if(status){status.className="v321-state";status.textContent="Procesando el Excel y asignándolo al periodo seleccionado…"}
