@@ -130,7 +130,7 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v313{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#0b3268;max-width:1600px;margin:0 auto;padding-bottom:14px}
 .v313 *{box-sizing:border-box}.v313-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:8px}.v313 h2{font-size:21px;margin:0}.v313-sub{font-size:10px;color:#69809b;margin-top:2px}
 .v313-filters{display:flex;gap:7px}.v313-field label{display:block;font-size:8px;font-weight:900;color:#71849b;margin:0 0 2px}.v313-field select{height:30px;min-width:150px;border:1px solid #ccd9e8;border-radius:7px;background:white;color:#123968;font-size:10px;font-weight:800;padding:0 28px 0 8px}
-.v313-bonus,.v313-tabs{display:grid;gap:5px;margin:6px 0}.v313-bonus{grid-template-columns:repeat(6,1fr)}.v313-tabs{grid-template-columns:repeat(4,1fr)}.v313-tabs.v313-tabs-b2{grid-template-columns:repeat(5,minmax(0,1fr))}.v313-tabs.v313-tabs-b3{grid-template-columns:repeat(7,minmax(0,1fr))}
+.v313-bonus,.v313-tabs{display:grid;gap:5px;margin:6px 0}.v313-bonus{grid-template-columns:repeat(7,minmax(0,1fr))}.v313-tabs{grid-template-columns:repeat(4,1fr)}.v313-tabs.v313-tabs-b2{grid-template-columns:repeat(5,minmax(0,1fr))}.v313-tabs.v313-tabs-b3{grid-template-columns:repeat(7,minmax(0,1fr))}
 .v313-bonus button,.v313-tabs button,.v313-subtabs button{height:32px;border:1px solid #d3dfec;border-radius:7px;background:#fff;color:#0d3b73;font-size:10px;font-weight:900}.v313-bonus button.active,.v313-tabs button.active,.v313-subtabs button.active{background:#1475ee;color:#fff;border-color:#1475ee}
 .v313-cutbar{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.35fr;gap:6px;margin:7px 0}.v313-cut{border:1px solid #d5e2ef;background:#fff;border-radius:9px;padding:7px 9px;min-height:53px}.v313-cut span{display:block;font-size:8px;color:#68809b;font-weight:800}.v313-cut b{display:block;font-size:12px;margin-top:3px}.v313-cut.current{background:#eef7ff;border-color:#b8d8fb}.v313-cut.ok b{color:#15925b}.v313-cut.wait b{color:#d28a00}
 .v313-hero{border-radius:10px;padding:10px 12px;color:#fff;background:linear-gradient(100deg,#074caa,#1480ef);display:flex;justify-content:space-between;align-items:center;gap:10px;margin:7px 0}.v313-hero b{font-size:13px}.v313-hero span{font-size:9px;opacity:.95}.v313-hero .tag{background:rgba(255,255,255,.18);padding:5px 8px;border-radius:99px;font-weight:900;white-space:nowrap}
@@ -159,7 +159,7 @@ function api(u){return fetch(u,{credentials:"same-origin"}).then(function(r){if(
 function ensure(){var p=q("#page-bonuses"),main=q("main.main");if(main&&!p){p=document.createElement("section");p.className="page";p.id="page-bonuses";main.appendChild(p)}if(p&&!q("#v313Host",p))p.insertAdjacentHTML("afterbegin","<div id=\"v313Host\"></div>");return p}
 function activate(){ensure();try{MAIN="bonuses"}catch(_e){}document.body.dataset.v313="1";document.body.removeAttribute("data-v302");document.body.removeAttribute("data-v312");qa("[data-main]").forEach(function(x){x.classList.toggle("active",x.dataset.main==="bonuses")});qa(".page").forEach(function(x){x.classList.toggle("active",x.id==="page-bonuses")});var t=q("#heroTitle"),s=q("#heroSub");if(t)t.textContent="Bonos";if(s)s.textContent="Indicadores para habilitar el bono de colaboradores"}
 function filters(d){return"<div class=\"v313-filters\"><div class=\"v313-field\"><label>Periodo</label><select id=\"v313Month\">"+(d.months||[]).map(function(x){return"<option value=\""+esc(x.value)+"\" "+(x.value===d.month?"selected":"")+">"+esc(x.label)+"</option>"}).join("")+"</select></div><div class=\"v313-field\"><label>Tienda</label><select id=\"v313Store\">"+(d.stores||[]).map(function(x){return"<option "+(x===d.selected_store?"selected":"")+">"+esc(x)+"</option>"}).join("")+"</select></div></div>"}
-function bonusTabs(){return"<div class=\"v313-bonus\">"+[1,2,3,4,5,6].map(function(i){return"<button data-v313-bonus=\""+i+"\" class=\""+(S.bonus===i?"active":"")+"\">Bono "+i+"</button>"}).join("")+"</div>"}
+function bonusTabs(d){var h=[1,2,3,4,5,6].map(function(i){return"<button data-v313-bonus=\""+i+"\" class=\""+(S.bonus===i&&S.section!=="initial-upload"?"active":"")+"\">Bono "+i+"</button>"}).join("");if(d&&d.can_admin)h+="<button data-v313-initial=\"1\" class=\""+(S.section==="initial-upload"?"active":"")+"\">Corte inicial</button>";return"<div class=\"v313-bonus\">"+h+"</div>"}
 function tabs(){
 var xs,cls="";
 if(S.bonus===2){
@@ -231,7 +231,48 @@ return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div><div clas
 }
 
 
+function initialUpload(d){
+if(!d.can_admin)return"<div class=\"v313-empty\"><b>Acceso restringido</b><p>La carga de cortes iniciales está disponible sólo para Administrador y Superadministrador.</p></div>";
+var month=String(S.month||d.month||"");
+var opts=(d.months||[]).map(function(x){return"<option value=\""+esc(x.value)+"\" "+(x.value===month?"selected":"")+">"+esc(x.label)+"</option>"}).join("");
+return"<div class=\"v313-hero\"><div><b>Corte inicial mensual</b><br><span>Asigna un Excel de Capacidades al mes seleccionado. El archivo se conserva en el histórico y no reemplaza los cortes actuales.</span></div><span class=\"tag\">"+esc(month)+"</span></div>"+
+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Cargar corte inicial</span><span>Capacidades · Excel</span></div><div class=\"v313-body\">"+
+"<div class=\"v313-note\">El corte inicial define el punto de partida para los Bonos 2–6. Elige el mes, selecciona el Excel más cercano al inicio de ese mes y guarda. Cada mes tiene su propia asignación; no se usará una base antigua de otro periodo automáticamente.</div>"+
+"<div class=\"v313-upload-grid\" style=\"margin-top:12px\"><div><label for=\"v321InitialMonth\">Mes del bono</label><select id=\"v321InitialMonth\">"+opts+"</select></div><div><label for=\"v321InitialFile\">Archivo de Capacidades inicial (.xlsx / .xls)</label><input id=\"v321InitialFile\" type=\"file\" accept=\".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\"></div><div><button type=\"button\" class=\"v321-upload-button\" id=\"v321UploadButton\">Procesar y guardar</button></div></div>"+
+"<div id=\"v321UploadStatus\" class=\"v321-state\" role=\"status\">Selecciona el mes y el archivo inicial que deseas asociar.</div>"+
+"<div id=\"v321InitialHistory\"><div class=\"v313-empty\">Consultando los cortes iniciales guardados…</div></div></div></section>"+
+"<section class=\"v313-panel\" style=\"margin-top:8px\"><div class=\"v313-ph\"><span>Reglas de resguardo</span><span>Histórico por mes</span></div><div class=\"v313-body\"><div class=\"v313-note\">• El corte inicial queda asociado sólo al mes seleccionado.<br>• Cargar un nuevo archivo para el mismo mes reemplaza su asignación, pero no borra el archivo anterior del histórico general.<br>• La carga no modifica la fórmula del Bono 1 ni los criterios de los Bonos 2–6.<br>• Para comparar resultados, también debe existir un corte actual procesado.</div></div></section>";
+}
+function loadInitialHistory(){
+var host=q("#v321InitialHistory");if(!host)return;
+var month=String(S.month||(S.data&&S.data.month)||"");
+api("/api/bonuses/initial-capacity?month="+encodeURIComponent(month)).then(function(payload){
+if(!q("#v321InitialHistory"))return;
+var selected=payload.selected;
+var current=selected?"<div class=\"v313-note\"><b>Asignación para "+esc(month)+":</b> "+esc(selected.name)+" · fecha de reporte "+esc(dateMx(selected.report_date))+" · "+esc(selected.status)+" · "+nf(selected.rows)+" filas · "+nf(selected.stores_count)+" tiendas</div>":"<div class=\"v313-empty\"><b>No hay corte inicial asignado para "+esc(month)+"</b><p>Selecciona el archivo que corresponda al inicio de este periodo. No se tomará como inicial un archivo antiguo de otro mes.</p></div>";
+var rows=(payload.items||[]).map(function(x){return"<tr><td><b>"+esc(x.month)+"</b></td><td>"+esc(x.name)+"</td><td>"+esc(dateMx(x.report_date))+"</td><td>"+esc(x.status)+"</td><td>"+nf(x.rows)+"</td><td>"+nf(x.stores_count)+"</td></tr>"}).join("");
+var history=rows?"<div class=\"v321-history-wrap\"><table class=\"v321-history\"><thead><tr><th>Mes</th><th>Archivo inicial</th><th>Fecha del corte</th><th>Estado</th><th>Filas</th><th>Tiendas</th></tr></thead><tbody>"+rows+"</tbody></table></div>":"<div class=\"v313-empty\">Aún no hay cortes iniciales asignados a ningún mes.</div>";
+host.innerHTML=current+"<h3 style=\"margin:14px 0 5px;font-size:12px\">Histórico de cortes iniciales por mes</h3>"+history;
+}).catch(function(err){if(q("#v321InitialHistory"))q("#v321InitialHistory").innerHTML="<div class=\"v321-state err\">No se pudo consultar el histórico: "+esc(err.message||err)+"</div>"});
+}
+function uploadInitialCut(){
+var file=q("#v321InitialFile")&&q("#v321InitialFile").files[0];
+var month=q("#v321InitialMonth")?q("#v321InitialMonth").value:String(S.month||"");
+var status=q("#v321UploadStatus"),button=q("#v321UploadButton");
+if(!file){if(status){status.className="v321-state err";status.textContent="Primero selecciona un Excel de Capacidades."}return}
+if(!/\\.xlsx?$/.test(file.name.toLowerCase())){if(status){status.className="v321-state err";status.textContent="El archivo debe ser .xlsx o .xls."}return}
+var form=new FormData();form.append("month",month);form.append("file",file);
+if(button){button.disabled=true;button.textContent="Procesando…"}
+if(status){status.className="v321-state";status.textContent="Procesando el Excel y asignándolo al periodo seleccionado…"}
+fetch("/api/bonuses/initial-capacity",{method:"POST",credentials:"same-origin",body:form}).then(function(response){return response.text().then(function(raw){var data={};try{data=JSON.parse(raw)}catch(_e){data={detail:raw}}if(!response.ok)throw new Error(data.detail||data.message||("HTTP "+response.status));return data})}).then(function(data){
+if(status){status.className="v321-state ok";status.textContent=data.message+" Archivo: "+data.file+" · Fecha: "+dateMx(data.report_date)+" · Filas: "+nf(data.rows)+" · Tiendas: "+nf(data.stores)}
+S.month=month;S.refreshCount=0;
+var period=q("#v313Month");if(period)period.value=month;
+load();
+}).catch(function(err){if(status){status.className="v321-state err";status.textContent="No se pudo guardar el corte inicial: "+(err.message||err)}}).finally(function(){if(button){button.disabled=false;button.textContent="Procesar y guardar"}});
+}
 function body(d){
+if(S.section==="initial-upload")return initialUpload(d);
 if(S.section==="ranking"||S.section==="stores")return cutbar(d)+hero(d)+ranking(d,0);
 if(S.section==="panorama")return panorama(d);
 if(S.section==="collaborators")return collaborators(d);
@@ -244,18 +285,21 @@ return summary(d)
 }
 
 
-function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">Comparación real entre corte inicial y corte actual · sin gráficas de línea</div></div>"+filters(d)+"</div>"+bonusTabs()+tabs()+body(d)+"</div>"}
+function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">Comparación real entre corte inicial y corte actual · sin gráficas de línea</div></div>"+filters(d)+"</div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
 function bind(){
 q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
 q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;S.refreshCount=0;load()});
 qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";S.catalog="Abrigador";S.refreshCount=0;load()})});
+q("[data-v313-initial]")?.addEventListener("click",function(){S.section="initial-upload";render()});
+q("#v321InitialMonth")?.addEventListener("change",function(e){S.month=e.target.value;var p=q("#v313Month");if(p)p.value=S.month;S.refreshCount=0;load()});
+q("#v321UploadButton")?.addEventListener("click",uploadInitialCut);
 qa("[data-v313-section]").forEach(function(b){b.addEventListener("click",function(){S.section=b.dataset.v313Section;if(S.section==="catalogLic")S.catalog="Licencias";if(S.section==="catalogBas")S.catalog="Básicos";render()})});
 qa("[data-v313-store]").forEach(function(r){r.addEventListener("click",function(){S.store=r.dataset.v313Store;S.section=S.bonus===3?"rubros":"panorama";S.refreshCount=0;load()})});
 qa("[data-v313-cat]").forEach(function(b){b.addEventListener("click",function(){S.catalog=b.dataset.v313Cat;render()})})
 }
 
 
-function render(){activate();var h=q("#v313Host");if(h&&S.data){h.innerHTML=page(S.data);bind()}}
+function render(){activate();var h=q("#v313Host");if(h&&S.data){h.innerHTML=page(S.data);bind();if(S.section==="initial-upload")loadInitialHistory()}}
 function load(){
 if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}
 var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);
