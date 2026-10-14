@@ -377,6 +377,16 @@ def _iter_fast_capacity_xlsx(path: Path, chunk_rows: int = 6000):
                         # del encabezado. Detecta el encabezado real dentro de las
                         # primeras 60 filas en lugar de asumir que siempre es la 1.
                         if len(candidate_headers)>=4 and has_store and has_model:
+                            # Diagnóstico: únicamente títulos de columnas del Excel, sin IDs.
+                            if "13.10.26" in path.name and not globals().get("_V324_CAP_HEADERS_LOGGED"):
+                                raw_header_names=[]
+                                for hmatch in _XLSX_GENERIC_CELL_RE.finditer(row):
+                                    attr,colname,bodypart=hmatch.groups()
+                                    label=str(_xlsx_decode_cell(attr,bodypart,shared) or "").strip()
+                                    if label:
+                                        raw_header_names.append(label[:90])
+                                print(f"[V324-CAP-HEADERS] cantidad={len(raw_header_names)} titulos={raw_header_names[:125]}",flush=True)
+                                globals()["_V324_CAP_HEADERS_LOGGED"]=True
                             selected_by_col=candidate_by_col
                             selected_headers=list(dict.fromkeys(candidate_headers))
                             exact_alias_by_col=candidate_alias_by_col
