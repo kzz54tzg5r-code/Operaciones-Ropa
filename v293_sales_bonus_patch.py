@@ -249,12 +249,12 @@ def install(m):
         return out
 
     def opening_capacity_entry(month):
-        """Elige el corte de Capacidades más cercano al primer día del periodo.
+        """Corte inicial explícito del mes; si no existe, usa la regla automática segura.
 
-        Se admite un corte previo sólo dentro de los siete días anteriores al mes.
-        Si existe información dentro del mes, también compite el primer corte del
-        mes y gana el de menor distancia al día 1. Nunca reutiliza en silencio una
-        base de otro mes que esté separada por semanas o meses.
+        La pestaña Corte inicial permite asignar un Excel de Capacidades a un periodo.
+        Esa asignación tiene prioridad para ese mes y no cambia la base de otros meses.
+        Sin asignación explícita, sólo se admite un corte dentro del mes o en los siete
+        días previos al inicio; nunca se reutiliza silenciosamente una base antigua.
         """
         yy, mm = (int(x) for x in month.split("-"))
         month_start = date(yy, mm, 1)
@@ -263,6 +263,22 @@ def install(m):
         today = datetime.now(MX).date()
         limit = min(today, month_end) if (yy, mm) <= (today.year, today.month) else month_end
         all_entries = _capacity_all_entries()
+
+        # La asignación mensual explícita creada por V321 manda sobre cualquier
+        # inferencia por nombre/fecha del archivo.
+        try:
+            manifest_path = Path(m.COMMERCIAL_DATA_ROOT) / "manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
+            assigned = (manifest.get("bonus_initial_cuts") or {}).get(month)
+            if isinstance(assigned, dict):
+                assigned = assigned.get("entry_id")
+            if assigned:
+                selected = next((x for x in all_entries if str(x[2].get("id") or "") == str(assigned)), None)
+                if selected:
+                    return selected
+        except Exception as exc:
+            print(f"[V321] No se pudo leer la asignación de corte inicial {month}: {type(exc).__name__}", flush=True)
+
         near_prior = [
             x for x in all_entries
             if x[0] < month_start and (month_start - x[0]).days <= 7
@@ -274,22 +290,33 @@ def install(m):
         return min(candidates, key=lambda x: (abs((x[0] - month_start).days), x[0], x[1]))
 
     def current_capacity_entry(month):
-        """Corte actual: último procesado después del corte base y nunca futuro.
+        """Corte actual: último corte del periodo, sin volver a usar el archivo inicial.
 
-        En el mes en curso llega como máximo a hoy; en meses históricos llega
-        como máximo al último día de ese mes. Así, al subir hoy un segundo corte
-        de octubre, Bonos compara automáticamente base vs corte actual.
+        Se limita a la fecha de hoy en el mes activo y al cierre del mes en periodos
+        históricos. Excluye el corte inicial explícito; si el archivo actual tiene una
+        fecha de reporte anterior a la fecha declarada en el archivo inicial, se admite
+        como alternativa sólo si pertenece al mes seleccionado.
         """
         yy, mm = (int(x) for x in month.split("-"))
         opening = opening_capacity_entry(month)
         if not opening:
             return None
         opening_date = opening[0]
+        opening_id = str(opening[2].get("id") or "")
+        month_start = date(yy, mm, 1)
         next_month = date(yy + (1 if mm == 12 else 0), 1 if mm == 12 else mm + 1, 1)
         month_end = next_month - timedelta(days=1)
         today = datetime.now(MX).date()
         limit = min(today, month_end) if (yy, mm) <= (today.year, today.month) else month_end
-        candidates = [x for x in _capacity_all_entries() if opening_date <= x[0] <= limit]
+        all_entries = _capacity_all_entries()
+        eligible = [
+            x for x in all_entries
+            if str(x[2].get("id") or "") != opening_id
+            and x[0] <= limit
+            and x[0] >= month_start - timedelta(days=7)
+        ]
+        after_opening = [x for x in eligible if x[0] >= opening_date]
+        candidates = after_opening or [x for x in eligible if x[0] >= month_start]
         return candidates[-1] if candidates else opening
 
     def period_for_entry(entry):
