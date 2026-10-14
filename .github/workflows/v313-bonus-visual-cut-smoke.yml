@@ -1,4 +1,4 @@
-name: V318 Bonus Cut Identity and Design Smoke
+name: V319 Bonus Cut Identity and Design Smoke
 on:
   push:
     branches: [main]
@@ -28,7 +28,7 @@ jobs:
           assert "opening_date <= x[0] <= limit" in a
           assert "Elige el corte de Capacidades más cercano al primer día del periodo" in a
           assert "(month_start - x[0]).days <= 7" in a
-          assert "source_date=? AND store IN" in a
+          assert "source_date=? AND source_entry_id=? AND store IN" in a
           assert "current_display_entry" in a
           assert "V318-BONUS-CUTS-AND-DESIGN" in b
           assert "source_entry_id" in a
@@ -46,5 +46,5 @@ jobs:
           assert "4 cortes semanales consecutivos" in b
           assert "sin gráficas de línea" in b.lower()
           assert "source_dates" in b
-          print("V313 assertions OK")
+          print("V319 assertions OK")
           PY
