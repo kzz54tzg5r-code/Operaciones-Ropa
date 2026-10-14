@@ -141,7 +141,15 @@ test('V315 Bonus tabs all open and company summary drills into a store',{timeout
   try{
     await settleDocument(w);
     await wait(2700);
-    await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
+    const enterResult=await new Promise(resolve=>{
+      const timer=setTimeout(()=>resolve({timeout:true}),15000);
+      Promise.resolve(w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false})).then(
+        ()=>{clearTimeout(timer);resolve({ok:true})},
+        e=>{clearTimeout(timer);resolve({ok:false,error:String(e)})}
+      );
+    });
+    assert.ok(!enterResult.timeout,'enter() did not finish within 15s. Requests: '+requests.map(x=>x.path).join(', '));
+    assert.ok(enterResult.ok,'enter() rejected: '+enterResult.error);
     await wait(350);
     await click('[data-main="bonuses"]');
     await wait(350);
