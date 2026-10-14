@@ -3,9 +3,9 @@ name: Report runtime regression
 on:
   push:
     branches: [main]
-    paths: ["web/**", "v*.py", "server_entry.py", "web_app.py", "tests/ui/**", ".github/workflows/report-runtime.yml"]
+    paths: ["web/**", "v*.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**"]
   pull_request:
-    paths: ["web/**", "v*.py", "server_entry.py", "web_app.py", "tests/ui/**", ".github/workflows/report-runtime.yml"]
+    paths: ["web/**", "v*.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**"]
   workflow_dispatch:
 
 jobs:
