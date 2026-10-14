@@ -499,7 +499,7 @@ def install(m):
             mask = frame["Tienda"].astype(str).map(norm).isin(keys)
         cols = [c for c in [
             "Tienda", "ID_ART", "Modelo", "Marca", "Categoría", "Subcategoría", "Tipo catálogo",
-            "DDI", "Existencia", "Inversión"
+            "Catálogo comercial", "Catálogo genérico", "DDI", "Existencia", "Inversión"
         ] if c in frame.columns]
         return frame.loc[mask, cols].copy()
 
