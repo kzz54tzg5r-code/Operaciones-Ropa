@@ -28,7 +28,7 @@ from fastapi.responses import HTMLResponse
 
 MX = ZoneInfo("America/Mexico_City")
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
-CLASSIFIER_VERSION = "V322-CATALOG-PRECEDENCE-1"
+CLASSIFIER_VERSION = "V325-CATALOGO-OFFICIAL-1"
 ADMIN = ("superadmin", "admin")
 RESTRICTED = ("tienda", "colaborador", "colaborador_operativo", "colaborador_lenceria")
 MONTH_LABELS = {
@@ -363,7 +363,7 @@ def install(m):
         iso = d.isocalendar()
         return f"{iso.year}-W{iso.week:02d}"
 
-    BONUS_CAPACITY_CACHE_VERSION = 1
+    BONUS_CAPACITY_CACHE_VERSION = 2
     capacity_jobs = set()
     capacity_jobs_lock = threading.Lock()
 
@@ -389,6 +389,7 @@ def install(m):
             source_path = None
         keep_names = [
             "Tienda", "ID_ART", "Modelo", "Marca", "Categoría", "Subcategoría", "Tipo catálogo",
+            "Catálogo comercial", "Catálogo genérico",
             "DDI", "Existencia", "Inversión"
         ]
         light = pd.DataFrame()
@@ -503,32 +504,25 @@ def install(m):
         return frame.loc[mask, cols].copy()
 
     def classify_catalog(work):
-        """Usar señales comerciales cruzadas, no clasificar por nombre/modelo.
-        Licencias y Básicos prevalecen sobre palabras genéricas como CHAMARRA:
-        una chamarra Disney es Licencias, no Abrigador.
+        """Clasifica únicamente por CATALOGO (columna C del Excel original).
+
+        Ejemplo de origen real: 'LICENCIAS | DIG | PRI-VER | 2026 | 1E'.
+        No inferir rubros de CATEGORIA, SUBCATEGORIA, MARCA o TIPO CATALOGO,
+        que describen otros conceptos y confundían 27k artículos.
         """
         if work.empty:
             return pd.Series(dtype="object")
         out = pd.Series("", index=work.index, dtype="object")
-        fields = [col for col in ("Tipo catálogo", "Categoría", "Subcategoría", "Marca") if col in work.columns]
-        if not fields:
+        if "Catálogo comercial" not in work.columns:
+            print("[V325-CATALOG] Falta columna oficial CATALOGO: no se asignan rubros por aproximacion",flush=True)
             return out
-        normalized = {field: work[field].fillna("").astype(str).map(fold) for field in fields}
-        matches = {}
-        rules = {
-            "Licencias": r"LICEN|LICENSE|DISNEY|MARVEL|MICKEY|MINNIE|PIXAR|STAR WARS|PRINCES|WARNER|SANRIO|HELLO KITTY|POKEMON|POK.MON|NICKELODEON|LOONEY TUNES|BARBIE|MATTEL|PEANUTS",
-            "Básicos": r"BASIC|B.SIC",
-            "Abrigador": r"ABRIGADOR|ABRIGO|CHAMARRA|CHAQUETA|PARKA|CHAMARRO[N]?|SUDADERA TERMICA",
-        }
-        for name, pattern in rules.items():
-            mask = pd.Series(False, index=work.index)
-            for folded in normalized.values():
-                mask = mask | folded.str.contains(pattern,regex=True,na=False)
-            matches[name] = mask
-        # Asignar de genérico a específico, sobrescribiendo sólo con evidencia
-        # comercial más específica (no con Modelo, que puede ser un código).
-        for name in ("Abrigador", "Básicos", "Licencias"):
-            out.loc[matches[name]] = name
+        # Los valores posteriores a "|" son campaña/temporada, no rubro.
+        raw = work["Catálogo comercial"].fillna("").astype(str)
+        labels = raw.str.split("|", n=1, regex=False).str[0].map(fold).str.strip()
+        out.loc[labels.str.match(r"^ABRIGADOR(?:A|ES|AS)?(?:\s|$)",na=False)] = "Abrigador"
+        out.loc[labels.str.match(r"^LICENCIAS?(?:\s|$)",na=False)] = "Licencias"
+        out.loc[labels.str.match(r"^BASICOS?(?:\s|$)",na=False)] = "Básicos"
+        # Fuente sin categoría reconocible = no elegible, nunca se fuerza a Abrigador.
         return out
 
     def aggregate_models(work):
@@ -705,10 +699,14 @@ def install(m):
                 return
             work = scope_frame(frame, stores)
             models = aggregate_models(work)
+            # Evitar sobrescribir cortes con 0 elegibles si la fuente oficial no se leyó.
+            if "Catálogo comercial" not in work.columns or not bool(work["Catálogo comercial"].fillna("").astype(str).str.strip().ne("").any()):
+                print(f"[V325-CATALOG] ERROR: falta CATALOGO real en la fuente, se conserva snapshot de {month}",flush=True)
+                return
             # Diagnóstico por rubro y por columna de origen, sin exponer IDs.
             print(f"[V322-CATALOG] mes={month} fuente={source_date.isoformat()} filas={len(work)} "
                   f"clasificados={len(models)} distribucion={models['catalog'].value_counts().to_dict() if not models.empty else {}}", flush=True)
-            for field in ("Tipo catálogo", "Categoría", "Subcategoría"):
+            for field in ("Catálogo comercial", "Catálogo genérico", "Tipo catálogo", "Categoría", "Subcategoría"):
                 if field in work.columns:
                     top = {str(k)[:60]:int(v) for k,v in work[field].fillna("").astype(str).value_counts().head(8).items()}
                     print(f"[V322-CATALOG] campo={field} top={top}",flush=True)
