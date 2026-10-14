@@ -6,6 +6,7 @@
   document.documentElement.classList.toggle('pwa-standalone', isStandalone());
 
   let swRegistration = null;
+  const loadedVersionKey = "operaciones-ropa:loaded-version";
   let loadedBuild = null;
   let lastVersionCheck = 0;
   let updateVisible = false;
@@ -112,7 +113,7 @@
     }
     try {
       await swRegistration?.update?.();
-      await fetchVersion(); // Do not reload into an unavailable deployment.
+      const verifiedVersion = await fetchVersion(); // No reload en errores de publicación.
       if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) throw new Error('Hay actividad pendiente');
       const waiting = swRegistration?.waiting;
       if (waiting) await new Promise((resolve, reject) => {
@@ -131,6 +132,11 @@
       if (button) { button.disabled = false; button.textContent = 'Reintentar'; }
       return;
     }
+    try {
+      // Actualizar la versión recordada solo después de validar la nueva publicación.
+      const verified = await fetchVersion();
+      localStorage.setItem(loadedVersionKey, String(verified.version || ""));
+    } catch (_) {}
     location.reload();
   };
 
@@ -172,19 +178,45 @@
       lastVersionCheck = Date.now();
 
       if (initial || loadedBuild === null) {
-        loadedBuild = version;
-        renderVersion(version);
-        return;
+        let previous = "";
+        try { previous = localStorage.getItem(loadedVersionKey) || ""; } catch (_) {}
+        loadedBuild = previous && previous !== "local" ? previous : version;
+        if (!previous || previous === "local") {
+          try { localStorage.setItem(loadedVersionKey, version); } catch (_) {}
+        }
+        renderVersion(loadedBuild);
       }
-
       if (version !== loadedBuild) {
         showUpdateBanner(version);
-      } else {
-        renderVersion(version);
+        return { available: true, version };
       }
+      renderVersion(version);
+      return { available: false, version };
     } catch (error) {
       console.warn('[PWA] no se pudo comprobar versión:', error);
     }
+  };
+
+  // Se utiliza desde el botón Actualizar de Bonos y cualquier otro reporte.
+  // El mensaje emergente aparece también al abrir una PWA instalada desactualizada.
+  window.OperacionesPWA = {
+    checkForUpdates: async function(opts = {}) {
+      try { await swRegistration?.update?.(); } catch (_) {}
+      const result = await checkVersion();
+      if (opts.manual && result && !result.available) {
+        const notice = document.createElement("div");
+        notice.className = "or-update-banner";
+        notice.style.zIndex = "25001";
+        notice.innerHTML = '<div style="flex:1"><strong>Aplicación actualizada</strong><span>Ya tienes la versión más reciente de Operaciones Ropa.</span></div><button type="button">Cerrar</button>';
+        addSystemStyle();
+        document.querySelector(".or-update-current")?.remove();
+        notice.classList.add("or-update-current");
+        notice.querySelector("button").onclick = () => notice.remove();
+        document.body.appendChild(notice);
+      }
+      return result;
+    },
+    applyUpdate: () => refreshAndReload(document.querySelector(".or-update-banner button"))
   };
 
   const registerServiceWorker = async () => {
@@ -232,13 +264,8 @@
     if (document.visibilityState === 'visible') checkVersion();
   }, 60000);
 
-  window.setInterval(() => {
-    if (pendingVersion && document.visibilityState === 'visible' &&
-        Date.now() - pendingVersionAt >= 120000 &&
-        Date.now() - lastInteraction >= 30000 && safeToRefresh()) {
-      refreshAndReload(document.querySelector('.or-update-banner button'), true);
-    }
-  }, 10000);
+  // La nueva versión se mantiene visible hasta pulsar Actualizar.
+  // No recargar por sorpresa mientras el usuario revisa un reporte.
 
   // La actualización anterior funciona tanto instalada como en navegador.
   // Lo siguiente sólo controla la invitación de instalación.
