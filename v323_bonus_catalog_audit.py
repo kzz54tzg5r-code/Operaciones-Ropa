@@ -17,13 +17,32 @@ def install(m):
         try:
             cache_dir=Path(m.CAPACITY_NORMALIZED_DIR)
             files=sorted(cache_dir.glob("*bonus-v*.pkl"),key=lambda p:p.stat().st_mtime,reverse=True)
-            if not files:
-                print("[V323-CATALOG-AUDIT] No hay caché ligero de Bonos; no se audita",flush=True)
-                return
             import pandas as pd
-            # Solo el caché más reciente; contiene columnas comerciales, no fotos.
-            df=pd.read_pickle(files[0])
-            print(f"[V323-CATALOG-AUDIT] archivo={files[0].name} filas={len(df)} campos={list(df.columns)}",flush=True)
+            if files:
+                df=pd.read_pickle(files[0])
+                print(f"[V323-CATALOG-AUDIT] archivo={files[0].name} filas={len(df)} campos={list(df.columns)}",flush=True)
+            else:
+                print("[V323-CATALOG-AUDIT] Sin caché; se examinará una muestra del XLSX original sin escribir datos",flush=True)
+                manifest=m.load_manifest()
+                entries=manifest.get("capacities") or []
+                entry=next((e for e in entries if "13.10.26" in str(e.get("name") or e.get("filename") or "")),None)
+                if not entry:
+                    print("[V323-CATALOG-AUDIT] No se encontró el archivo de octubre en el manifiesto",flush=True)
+                    return
+                source=m.resolve_entry_path(entry)
+                if not source or not source.exists():
+                    print("[V323-CATALOG-AUDIT] Fuente física no disponible",flush=True)
+                    return
+                from commercial.parsers import _iter_fast_capacity_xlsx, _normalize_capacity_source
+                iterator=_iter_fast_capacity_xlsx(source,chunk_rows=1800)
+                raw=next(iterator,None)
+                iterator.close()
+                if raw is None or raw.empty:
+                    print("[V323-CATALOG-AUDIT] Archivo sin filas de muestra",flush=True)
+                    return
+                df=_normalize_capacity_source(raw,source)
+                del raw
+                print(f"[V323-CATALOG-AUDIT] fuente={source.name} filas_muestra={len(df)} campos={list(df.columns)}",flush=True)
             for store in ("Olivar", "Ixtapaluca"):
                 subset=df.loc[df["Tienda"].fillna("").astype(str).str.casefold()==store.casefold()]
                 print(f"[V323-CATALOG-AUDIT] tienda={store} filas={len(subset)}",flush=True)
