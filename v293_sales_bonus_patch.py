@@ -28,7 +28,7 @@ from fastapi.responses import HTMLResponse
 
 MX = ZoneInfo("America/Mexico_City")
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
-CLASSIFIER_VERSION = "V325-CATALOGO-OFFICIAL-1"
+CLASSIFIER_VERSION = "V326-CATALOGO-SEGMENTS-VIGENTE-1"
 ADMIN = ("superadmin", "admin")
 RESTRICTED = ("tienda", "colaborador", "colaborador_operativo", "colaborador_lenceria")
 MONTH_LABELS = {
@@ -40,24 +40,30 @@ _META_CACHE = None
 
 
 def classify_bonus_catalogs_from_source(raw_values: pd.Series) -> pd.Series:
-    """Clasificación por la columna original CATALOGO (no por tipo de prenda).
+    """Clasifica exclusivamente por los segmentos de CATALOGO oficial (columna C).
 
-    Ejemplos:
-    LICENCIAS | DIG | PRI-VER | 2026 | 1E -> Licencias
-    ABRIGADOR | DIG | PRI-VER | 2026    -> Abrigador
-    BASICOS | DIG | PRI-VER | 2026     -> Básicos
+    Abrigador puede estar en el segundo segmento:
+    'COL IMP | ABRIGADOR | 2026 | 1E' → Abrigador.
+    No se usan MARCA, SUBCATEGORIA, CATEGORIA o TIPO CATALOGO para
+    adivinar el rubro comercial.
     """
-    raw = raw_values.astype(str).fillna("")
-    token = raw.str.split("|", n=1, regex=False).str[0]
-    token = token.map(lambda v: "".join(
-        c for c in unicodedata.normalize("NFKD", str(v))
-        if not unicodedata.combining(c)
-    ).upper().strip())
-    result = pd.Series("", index=raw.index, dtype="object")
-    result.loc[token.str.match(r"^ABRIGADOR(?:A|ES|AS)?(?:\s|$)", na=False)] = "Abrigador"
-    result.loc[token.str.match(r"^LICENCIAS?(?:\s|$)", na=False)] = "Licencias"
-    result.loc[token.str.match(r"^BASICOS?(?:\s|$)", na=False)] = "Básicos"
-    return result
+    values = raw_values.astype(str).fillna("")
+    normalized = values.map(
+        lambda value: "".join(
+            char for char in unicodedata.normalize("NFKD", str(value))
+            if not unicodedata.combining(char)
+        ).upper()
+    )
+    parts = normalized.str.split("|", regex=False)
+    out = pd.Series("", index=values.index, dtype="object")
+    # Comparaciones por tokens completos, no por coincidencias en nombres.
+    match = lambda labels: parts.map(
+        lambda entries: any(entry.strip() in labels for entry in entries)
+    )
+    out.loc[match({"ABRIGADOR", "ABRIGADORA", "ABRIGADORES", "ABRIGADORAS"})] = "Abrigador"
+    out.loc[match({"BASICO", "BASICA", "BASICOS", "BASICAS"})] = "Básicos"
+    out.loc[match({"LICENCIA", "LICENCIAS"})] = "Licencias"
+    return out
 
 
 def install(m):
@@ -712,6 +718,18 @@ def install(m):
                 print(f"[V299] Snapshot {month}: capacidad sin datos", flush=True)
                 return
             work = scope_frame(frame, stores)
+            # La cartera crítica del mes se fija sólo con Tipo catálogo VIGENTE
+            # en el corte inicial. Los IDs se conservan en comparaciones
+            # posteriores aunque cambie su estatus comercial.
+            if "Tipo catálogo" not in work.columns:
+                print(f"[V326-CATALOG] FALTA tipo catálogo en {month}; cartera previa intacta",flush=True)
+                return
+            raw_status = work["Tipo catálogo"].astype(str).fillna("")
+            normalized_status = raw_status.map(fold).str.strip()
+            vigente = normalized_status.eq("VIGENTE")
+            print(f"[V326-CATALOG] mes={month} fuente={source_date.isoformat()} "
+                  f"filas_antes={len(work)} vigentes={int(vigente.sum())}", flush=True)
+            work = work.loc[vigente].copy()
             models = aggregate_models(work)
             # Evitar sobrescribir cortes con 0 elegibles si la fuente oficial no se leyó.
             if "Catálogo comercial" not in work.columns or not bool(work["Catálogo comercial"].astype(str).fillna("").str.strip().ne("").any()):
