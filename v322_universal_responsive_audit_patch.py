@@ -33,7 +33,7 @@ def install(m):
     overflow-x: hidden !important;
     overflow-y: visible !important;
     overscroll-behavior-y: auto !important;
-    touch-action: pan-y pinch-zoom !important;
+    touch-action: pan-x pan-y pinch-zoom !important;
   }
   /* V321 define scroll para el host de Bonos; el viewport raíz sigue siendo html. */
   body[data-v313="1"] {
@@ -62,7 +62,7 @@ def install(m):
     max-height: none !important;
     overflow-y: visible !important;
     overscroll-behavior-y: auto !important;
-    touch-action: pan-y pinch-zoom !important;
+    touch-action: pan-x pan-y pinch-zoom !important;
   }
   main.main {
     min-width: 0 !important;
