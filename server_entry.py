@@ -428,6 +428,9 @@ _install_v313_bonus_visual_and_cut_patch(web_app)
 # V314: fotografías por ID en el detalle de modelos de los seis bonos.
 from v314_bonus_product_photos_patch import install as _install_v314_bonus_product_photos_patch
 _install_v314_bonus_product_photos_patch(web_app)
+# V322: exportaciones nativas .xlsx y .pdf de todos los modelos con fotos.
+from v322_bonus_model_exports import install as _install_v322_bonus_model_exports
+_install_v322_bonus_model_exports(web_app)
 # V321: carga mensual del corte inicial de Bonos + corrección responsive específica.
 from v321_bonus_initial_upload_responsive_patch import install as _install_v321_bonus_initial_upload_responsive_patch
 _install_v321_bonus_initial_upload_responsive_patch(web_app)
