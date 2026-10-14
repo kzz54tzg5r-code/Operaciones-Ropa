@@ -3057,6 +3057,87 @@ def _save_compressed_capacity_cache(frame: pd.DataFrame, target: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def _migrate_existing_capacity_cache_files() -> None:
+    """Reduce el espacio de los pickles viejos por streaming, sin usar RAM extra.
+
+    Sólo afecta caches regenerables en capacity_normalized. Conserva cada
+    .pkl hasta verificar SHA-256 del contenido descomprimido de su reemplazo
+    y actualizar las referencias del manifiesto.
+    """
+    from commercial import storage as _commercial_storage
+    migrated=0
+    recovered=0
+    for source in sorted(CAPACITY_NORMALIZED_DIR.glob("capacity_*.pkl")):
+        with _RESOURCE_HEAVY_LOCK:
+            temporary=None
+            try:
+                if not source.is_file():
+                    continue
+                with source.open("rb") as handle:
+                    if handle.read(2)==b"\x1f\x8b":
+                        # Un pickle ya comprimido, aunque tenga extensión vieja.
+                        continue
+                if shutil.disk_usage(CAPACITY_NORMALIZED_DIR).free < 8*1024*1024:
+                    print("[STORAGE] Sin espacio para migrar caches; se conserva el original",flush=True)
+                    break
+                target=source.with_name(source.name+".gz")
+                source_size=source.stat().st_size
+                original_digest=hashlib.sha256()
+                with source.open("rb") as stream:
+                    for chunk in iter(lambda:stream.read(1024*1024),b""):
+                        original_digest.update(chunk)
+
+                def gzip_matches() -> bool:
+                    if not target.is_file():
+                        return False
+                    verified=hashlib.sha256()
+                    with gzip.open(target,"rb") as handle:
+                        for part in iter(lambda:handle.read(1024*1024),b""):
+                            verified.update(part)
+                    return verified.digest()==original_digest.digest()
+
+                if not gzip_matches():
+                    fd,name=tempfile.mkstemp(
+                        dir=str(source.parent),
+                        prefix=target.name+".",suffix=".pkl.gz"
+                    )
+                    os.close(fd)
+                    temporary=Path(name)
+                    with source.open("rb") as raw, gzip.open(temporary,"wb",compresslevel=3) as compressed:
+                        shutil.copyfileobj(raw,compressed,length=1024*1024)
+                    verified=hashlib.sha256()
+                    with gzip.open(temporary,"rb") as handle:
+                        for chunk in iter(lambda:handle.read(1024*1024),b""):
+                            verified.update(chunk)
+                    if verified.digest()!=original_digest.digest():
+                        raise ValueError("El cache comprimido no coincide con el original")
+                    os.replace(temporary,target)
+
+                old_ref=str(source.relative_to(DATA_ROOT))
+                new_ref=str(target.relative_to(DATA_ROOT))
+                with _commercial_storage._manifest_lock:
+                    manifest=load_manifest()
+                    changed=False
+                    for category in ("capacities","bonus_initial_capacity_entries"):
+                        for entry in manifest.get(category,[]) or []:
+                            if str(entry.get("cache_file") or "")==old_ref:
+                                entry["cache_file"]=new_ref
+                                changed=True
+                    if changed:
+                        save_manifest(manifest)
+                # La fuente Excel nunca se borra; sólo este pickle verificado.
+                source.unlink()
+                migrated+=1
+                recovered+=max(0,source_size-target.stat().st_size)
+            except Exception as exc:
+                print(f"[STORAGE] Cache anterior conservado: {type(exc).__name__}: {exc}",flush=True)
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+    print(f"[STORAGE] Caches migrados: {migrated}; ahorro_MB={recovered//(1024*1024)}",flush=True)
+    _log_storage_inventory()
+
+
 def _prepare_capacity_frame(frame: pd.DataFrame) -> pd.DataFrame:
     """Reduce el catálogo a una fracción de su memoria y precalcula ubicaciones.
 
@@ -6530,6 +6611,8 @@ def resume_uploads_after_restart():
     resumed=_resume_pending_upload_jobs()
     if resumed:
         print(f"[UPLOAD] {resumed} carga(s) retomada(s) después del reinicio",flush=True)
+    threading.Thread(target=_migrate_existing_capacity_cache_files,
+                     daemon=True,name="compress-capacity-caches").start()
 
 @app.post("/api/upload/jobs/operations",status_code=202)
 async def start_operations_job(request: Request,file:UploadFile=File(...)):
