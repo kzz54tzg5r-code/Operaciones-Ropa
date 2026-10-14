@@ -72,7 +72,15 @@ test('reports load after repeated initialization, tab changes and filters',{time
   try{
     await settleDocument(w);
     await wait(2700); // Includes all delayed V199/V200 setup calls.
-    await w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false});
+    const enterResult=await new Promise(resolve=>{
+      const timer=setTimeout(()=>resolve({timeout:true}),15000);
+      Promise.resolve(w.enter({id:1,username:'Test Admin',role:'admin',store:'',can_preview_roles:false})).then(
+        ()=>{clearTimeout(timer);resolve({ok:true})},
+        e=>{clearTimeout(timer);resolve({ok:false,error:String(e)})}
+      );
+    });
+    assert.ok(!enterResult.timeout,'enter() did not finish within 15s. Requests: '+requests.map(x=>x.path).join(', '));
+    assert.ok(enterResult.ok,'enter() rejected: '+enterResult.error);
     await wait(300);
     assert.match(content(),/Detalle operativo/);
     assert.ok(requests.some(x=>x.path==='/api/operations'));
