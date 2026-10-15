@@ -1,0 +1,42 @@
+name: V329 Employee Bonuses 3 to 6 Smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v329_employee_bonus_models_patch.py"
+      - "v313_bonus_visual_and_cut_patch.py"
+      - "server_entry.py"
+      - "tests/test_v329_employee_bonus_models.py"
+      - ".github/workflows/v329-employee-bonuses.yml"
+  workflow_dispatch:
+
+jobs:
+  bonus-formulas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check fastapi pytest
+      - name: Compile new backend and existing shell
+        run: python -m py_compile v329_employee_bonus_models_patch.py v313_bonus_visual_and_cut_patch.py server_entry.py
+      - name: Check replacement bonus calculations
+        run: python -m pytest -q tests/test_v329_employee_bonus_models.py
+      - name: Assert legacy bonuses remain intact
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          original=Path("v293_sales_bonus_patch.py").read_text()
+          second=Path("v327_bonus2_zero_sales_patch.py").read_text()
+          entry=Path("server_entry.py").read_text()
+          ui=Path("v313_bonus_visual_and_cut_patch.py").read_text()
+          assert 'sales_bonus_v293' in original
+          assert 'build_bono2_cohort' in second
+          assert '_install_v327_bonus2_zero_sales_patch(web_app)' in entry
+          assert '_install_v329_employee_bonus_models_patch(web_app)' in entry
+          assert '/api/bonuses-b2-v327?' in ui
+          assert '/api/bonuses-v329?' in ui
+          print("Bono 1 and Bono 2 still routed to their original modules")
+          PY
