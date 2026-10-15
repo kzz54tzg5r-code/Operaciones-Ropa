@@ -28,7 +28,7 @@ from v293_sales_bonus_patch import classify_bonus_catalogs_from_source
 MX = ZoneInfo("America/Mexico_City")
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
 RESTRICTED = ("tienda", "colaborador", "colaborador_operativo", "colaborador_lenceria")
-_CACHE_VERSION = "v327-2"
+_CACHE_VERSION = "v327-3"  # Forzar recálculo: la versión anterior guardó un error de alineación
 _JOBS = set()
 _JOB_LOCK = threading.Lock()
 _SCAN_LIMIT = threading.BoundedSemaphore(1)
