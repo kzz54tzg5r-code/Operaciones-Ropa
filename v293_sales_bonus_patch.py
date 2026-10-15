@@ -1069,7 +1069,9 @@ def install(m):
         actual_sales_pieces = num(sales_pieces.get(store))
         sales_pct = (actual_sales / goal * 100.0) if sales_available and goal > 0 else None
         att = attendance.get(store)
-        attendance_pct = num(att.get("attendance_pct")) if att is not None else None
+        # 100% provisional en ausencia de captura; no altera asistencia real.
+        attendance_provisional = att is None
+        attendance_pct = num(att.get("attendance_pct")) if att is not None else 100.0
         score = 0.0
         if sales_pct is not None:
             score += min(max(sales_pct, 0.0), 100.0) * 0.50
@@ -1077,7 +1079,7 @@ def install(m):
             score += min(max(ddi_component, 0.0), 100.0) * 0.30
         if attendance_pct is not None:
             score += min(max(attendance_pct, 0.0), 100.0) * 0.20
-        ready = bool(goal > 0 and sales_available and current_entry is not None and attendance_pct is not None)
+        ready = bool(goal > 0 and sales_available and current_entry is not None and not attendance_provisional)
         snap = snapshot.get(store) or {}
         details.sort(key=lambda x: (x["progress_pct"], x["id_art"]))
         return {
@@ -1098,7 +1100,7 @@ def install(m):
                 "available": bool(current_entry is not None),
                 "source": "Capacidades",
             },
-            "attendance": {"pct": None if attendance_pct is None else round(attendance_pct, 1), "updated_at": str((att or {}).get("updated_at") or ""), "updated_by": str((att or {}).get("updated_by") or "")},
+            "attendance": {"pct": round(attendance_pct, 1), "provisional": attendance_provisional, "updated_at": str((att or {}).get("updated_at") or ""), "updated_by": str((att or {}).get("updated_by") or "")},
             "inventory": inventory,
             "score": round(score, 1),
             "score_ready": ready,
@@ -1239,7 +1241,7 @@ def install(m):
                 "sales_actual": x["sales"]["actual"], "sales_goal": x["sales"]["goal"],
                 "ddi_pct": x["ddi"]["pct"], "catalogs": x["ddi"].get("catalogs") or [],
                 "inventory": x.get("inventory") or {},
-                "attendance_pct": x["attendance"]["pct"], "score": x["score"], "score_ready": x["score_ready"],
+                "attendance_pct": x["attendance"]["pct"], "attendance_provisional": x["attendance"]["provisional"], "score": x["score"], "score_ready": x["score_ready"],
                 "target_models": x["target_models"],
             } for x in ranking],
             "current_source_period": period_for_entry(current_display_entry),
@@ -1251,7 +1253,7 @@ def install(m):
             "sources": {
                 "capacity": "Capacidades: Existencia, DDI e Inversión",
                 "sales": "Base Muertos / Cambios: Ventas mensuales",
-                "attendance": "Captura de Asistencia",
+                "attendance": "Asistencia capturada o 100% provisional si está pendiente",
             },
             "source_dates": {
                 "opening_capacity": str((snapshot_state.get("entry") and m._capacity_report_date(snapshot_state.get("entry")).isoformat()) or ""),
