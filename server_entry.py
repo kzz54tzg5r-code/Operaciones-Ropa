@@ -437,4 +437,7 @@ _install_v323_bonus_catalog_audit(web_app)
 # V321: carga mensual del corte inicial de Bonos + corrección responsive específica.
 from v321_bonus_initial_upload_responsive_patch import install as _install_v321_bonus_initial_upload_responsive_patch
 _install_v321_bonus_initial_upload_responsive_patch(web_app)
+# V327: Bono 2 independiente · 0 ventas en 30 días y última llegada reciente.
+from v327_bonus2_zero_sales_patch import install as _install_v327_bonus2_zero_sales_patch
+_install_v327_bonus2_zero_sales_patch(web_app)
 app = web_app.app
