@@ -145,6 +145,26 @@ def install(m):
                 return store
         return str(name or "")
 
+    def processed_entries():
+        # Igual que Bono 1: sólo cortes validados; no recorrer ni rehacer hash
+        # de todos los Excel en cada petición HTTP.
+        manifest=Path(m.COMMERCIAL_DATA_ROOT)/"manifest.json"
+        try:
+            payload=json.loads(manifest.read_text(encoding="utf-8")) if manifest.is_file() else {}
+        except (OSError, ValueError):
+            payload={}
+        entries=list(payload.get("capacities") or [])+list(payload.get("bonus_initial_capacity_entries") or [])
+        initial_ids={
+            str(x.get("entry_id") if isinstance(x,dict) else x)
+            for x in (payload.get("bonus_initial_cuts") or {}).values()
+        }
+        return [
+            entry for entry in entries
+            if str(entry.get("status") or "").strip().lower()=="procesado"
+            and not bool(entry.get("bonus_initial_only"))
+            and str(entry.get("id") or "") not in initial_ids
+        ]
+
     def source_for_month(month):
         if not re.fullmatch(r"20\d{2}-(?:0[1-9]|1[0-2])", month):
             raise HTTPException(400, "Periodo inválido")
@@ -153,7 +173,7 @@ def install(m):
         if (yy,mm) > (now.year,now.month):
             return None
         sources = []
-        for entry in m.load_manifest().get("capacities", []):
+        for entry in processed_entries():
             path = m.resolve_entry_path(entry)
             if not path.is_file() or path.suffix.lower() != ".xlsx":
                 continue
@@ -258,7 +278,7 @@ def install(m):
                "catalog_counts":{c:sum(1 for x in rows if x["catalog"]==c) for c in CATALOGS}}
         all_months=sorted({month,*[
             str(m._capacity_report_date(e))[:7]
-            for e in m.load_manifest().get("capacities",[])
+            for e in processed_entries()
             if m.resolve_entry_path(e).is_file()
         ]},reverse=True)
         labels = {
