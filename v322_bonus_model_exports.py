@@ -43,21 +43,33 @@ def install(m):
         if not re.fullmatch(r"\d{1,15}", product_id):
             return None
         try:
-            req = urllib.request.Request(IMG_BASE + product_id + ".jpg",
-                       headers={"User-Agent": "OperacionesRopa/1.0", "Accept": "image/jpeg"})
-            with urllib.request.urlopen(req, timeout=2.5) as res:
-                raw = res.read(1_200_001)
-            if len(raw)>1_200_000 or not raw.startswith(b"\xff\xd8\xff"):
+            # El reporte web ya tiene un servicio de fotos autenticado, con
+            # caché y validación de MIME; exportaciones deben usar el MISMO origen.
+            shared = getattr(m, "_bonus_photo_fetch_v314", None)
+            if shared:
+                result = shared(product_id)
+                if not result:
+                    return None
+                raw = result[0]
+            else:
+                req = urllib.request.Request(
+                    IMG_BASE + product_id + ".jpg",
+                    headers={"User-Agent": "OperacionesRopa/1.0",
+                             "Accept": "image/jpeg,image/png,image/webp"}
+                )
+                with urllib.request.urlopen(req, timeout=5.0) as res:
+                    raw = res.read(2_000_001)
+            if len(raw) > 2_000_000:
                 return None
             from PIL import Image as PILImage
             with PILImage.open(BytesIO(raw)) as im:
-                im.thumbnail((94, 110))
+                im.thumbnail((150, 180))
                 if im.mode != "RGB":
                     im = im.convert("RGB")
                 out = BytesIO()
-                im.save(out, format="JPEG", quality=70, optimize=True)
+                im.save(out, format="JPEG", quality=76, optimize=True)
                 return out.getvalue()
-        except (OSError, URLError, ValueError):
+        except (OSError, URLError, ValueError, TypeError):
             return None
 
     def fetch_images(rows):
@@ -67,7 +79,7 @@ def install(m):
         if not ids:
             return pictures
         # Cota de concurrencia para no saturar el servicio ni el host de fotografías.
-        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="bono-foto") as pool:
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix="bono-foto") as pool:
             futures = {pool.submit(fetch_image, key):key for key in ids}
             for future in as_completed(futures):
                 try:
@@ -114,11 +126,11 @@ def install(m):
         for idx,row in enumerate(rows,5):
             ident=str(row.get("id_art") or "")
             photo=pictures.get(ident)
-            ws.row_dimensions[idx].height=42
+            ws.row_dimensions[idx].height=53
             if photo:
                 try:
                     image=XLSImage(BytesIO(photo))
-                    image.width=36;image.height=43
+                    image.width=52;image.height=65
                     ws.add_image(image, f"A{idx}")
                 except Exception:
                     ws.cell(idx,1,"Sin foto")
@@ -138,7 +150,7 @@ def install(m):
                     c.number_format='#,##0.00'
                 if idx%2==0:
                     c.fill=PatternFill("solid",fgColor="F1F5FB")
-        widths=([11,16,18,17,16,16,19,18,18,20,20,20] if fields is FIELDS else [11,16,18,20,22,20,20,17,21,23])
+        widths=([14,16,18,17,16,16,19,18,18,20,20,20] if fields is FIELDS else [14,16,18,20,22,20,20,17,21,23])
         for col,w in enumerate(widths,1):
             ws.column_dimensions[get_column_letter(col)].width=w
         ws.freeze_panes="C5"
@@ -150,51 +162,114 @@ def install(m):
         return buf.getvalue()
 
     def pdf(rows, store, month, catalog, pictures, fields=FIELDS):
+        """A3 apaisado: tabla completa al ancho útil, tipografía legible y fotos."""
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import landscape, A3
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, LongTable, TableStyle, Paragraph, Spacer, Image as PDFImage
-        buf=BytesIO()
-        doc=SimpleDocTemplate(buf,pagesize=landscape(A3),rightMargin=15,leftMargin=15,topMargin=18,bottomMargin=18)
-        styles=getSampleStyleSheet()
-        safe=lambda s: str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-        story=[Paragraph("Operaciones Ropa — Bonos · Modelos a Detalle",styles["Heading2"]),
-               Paragraph(f"Tienda: {safe(store)} &nbsp;&nbsp; Periodo: {safe(month)} &nbsp;&nbsp; Catálogo: {safe(catalog)} &nbsp;&nbsp; Modelos: {len(rows)}",styles["Normal"]),Spacer(1,9)]
-        headers=[x[0] for x in fields]
-        data=[headers]
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.platypus import (
+            SimpleDocTemplate, LongTable, TableStyle, Paragraph, Spacer,
+            Image as PDFImage
+        )
+        from xml.sax.saxutils import escape as xml_escape
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(
+            buf, pagesize=landscape(A3), rightMargin=16, leftMargin=16,
+            topMargin=20, bottomMargin=21
+        )
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "BonusTitle", parent=styles["Heading2"],
+            fontName="Helvetica-Bold", fontSize=15, leading=18,
+            textColor=colors.HexColor("#123B73"), spaceAfter=5
+        )
+        label_style = ParagraphStyle(
+            "BonusMeta", parent=styles["Normal"], fontSize=10.2,
+            leading=13, textColor=colors.HexColor("#244B73")
+        )
+        heading_style = ParagraphStyle(
+            "BonusTableHeading", fontName="Helvetica-Bold",
+            fontSize=8.1, leading=9.7, textColor=colors.white,
+            alignment=TA_CENTER
+        )
+        story = [
+            Paragraph("Operaciones Ropa — Bonos · Modelos a Detalle", title_style),
+            Paragraph(
+                f"Tienda: {xml_escape(str(store))}  |  Periodo: {xml_escape(str(month))}"
+                f"  |  Catálogo: {xml_escape(str(catalog))}  |  Modelos: {len(rows)}",
+                label_style
+            ),
+            Spacer(1, 10),
+        ]
+        # Distribución proporcional al ANCHO DISPONIBLE, sin dejar la cuarta
+        # parte de la hoja en blanco como sucedía con anchos fijos.
+        weights = (
+            [57, 65, 76, 76, 76, 76, 104, 80, 80, 102, 102, 107]
+            if fields is FIELDS else
+            [59, 68, 77, 76, 98, 93, 82, 79, 80, 108]
+        )
+        total = sum(weights)
+        widths = [doc.width * weight / total for weight in weights]
+        data = [[Paragraph(xml_escape(label), heading_style) for label, _ in fields]]
         for row in rows:
-            ident=str(row.get("id_art") or "")
-            photo=pictures.get(ident)
+            ident = str(row.get("id_art") or "")
+            photo = pictures.get(ident)
+            picture = "—"
             if photo:
                 try:
-                    im=PDFImage(BytesIO(photo),width=30,height=34)
-                except Exception:
-                    im="—"
-            else:
-                im="—"
-            line=[im]
-            for _label,key in fields[1:]:
-                v=cell_value(row,key)
-                if isinstance(v,float):
-                    line.append(("$"+format(v,",.2f")) if "investment" in key else format(v,",.1f"))
+                    from PIL import Image as PILImage
+                    with PILImage.open(BytesIO(photo)) as original:
+                        w, h = original.size
+                    factor = min(44/max(1,w), 47/max(1,h))
+                    picture = PDFImage(
+                        BytesIO(photo), width=max(1,w*factor), height=max(1,h*factor)
+                    )
+                except (OSError, ValueError):
+                    pass
+            line = [picture]
+            for _label, key in fields[1:]:
+                value = cell_value(row, key)
+                if isinstance(value, float):
+                    if key.endswith("_pct"):
+                        line.append(format(value,",.1f") + "%")
+                    elif key in ("initial_investment", "current_investment"):
+                        line.append("$" + format(value,",.2f"))
+                    else:
+                        line.append(format(value,",.1f"))
                 else:
-                    line.append(str(v)[:26])
+                    line.append(str(value)[:28])
             data.append(line)
-        widths=([44,63,91,76,70,70,86,89,89,98,98,104] if fields is FIELDS else [46,70,96,88,94,105,91,90,102,110])
-        table=LongTable(data,colWidths=widths,repeatRows=1,hAlign="LEFT")
+        table = LongTable(data, colWidths=widths, repeatRows=1, hAlign="CENTER")
         table.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#123B73")),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-            ("FONTSIZE",(0,0),(-1,-1),6.4),
-            ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
-            ("TOPPADDING",(0,0),(-1,-1),3),
-            ("BOTTOMPADDING",(0,0),(-1,-1),3),
-            ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white,colors.HexColor("#F2F6FB")]),
-            ("LINEBELOW",(0,0),(-1,-1),0.2,colors.HexColor("#D3DFEC")),
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#123B73")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTSIZE", (0,1), (-1,-1), 8.4),
+            ("FONTNAME", (0,1), (-1,-1), "Helvetica"),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ("ALIGN", (0,0), (-1,-1), "CENTER"),
+            ("ALIGN", (2,1), (3,-1), "LEFT"),
+            ("LEFTPADDING", (0,0), (-1,-1), 4),
+            ("RIGHTPADDING", (0,0), (-1,-1), 4),
+            ("TOPPADDING", (0,0), (-1,0), 9),
+            ("BOTTOMPADDING", (0,0), (-1,0), 9),
+            ("TOPPADDING", (0,1), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,1), (-1,-1), 5),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1),
+             [colors.white, colors.HexColor("#EFF4FA")]),
+            ("LINEBELOW", (0,0), (-1,-1), .3, colors.HexColor("#D2DFEC")),
         ]))
         story.append(table)
-        doc.build(story)
+        def footer(canvas, document):
+            canvas.saveState()
+            canvas.setFont("Helvetica", 8)
+            canvas.setFillColor(colors.HexColor("#66798D"))
+            canvas.drawRightString(
+                landscape(A3)[0] - 17, 11,
+                f"Operaciones Ropa · Página {document.page}"
+            )
+            canvas.restoreState()
+        doc.build(story, onFirstPage=footer, onLaterPages=footer)
         return buf.getvalue()
 
     @m.app.get("/api/bonuses/models-export")
