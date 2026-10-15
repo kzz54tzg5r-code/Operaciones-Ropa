@@ -1,0 +1,23 @@
+name: V327 Bonus 2 Cohort and Export Tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v327_bonus2_zero_sales_patch.py"
+      - "v322_bonus_model_exports.py"
+      - "tests/test_bonus2_zero_sales.py"
+      - ".github/workflows/v327-bonus2-cohort.yml"
+  workflow_dispatch:
+
+jobs:
+  bonus2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check fastapi pandas numpy pytest openpyxl reportlab pillow
+      - name: Validate criteria and exports
+        run: python -m pytest -q tests/test_bonus2_zero_sales.py
