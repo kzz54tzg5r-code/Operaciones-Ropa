@@ -191,7 +191,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
   function profile(view){
     if(!view||view==='Carga de datos'||view==='Metas y tiendas')return'';
     if(view==='Productividad por Colaborador'||view==='Ranking de Colaboradores')return'productivityperiod';
-    if(['Centro Ejecutivo','Conversión','Recuperación Económica','Recuperación por Tienda','Cumplimiento de Recorridos','Índice Integral'].includes(view))return'fullperiod';
+    if(['Centro Ejecutivo','Conversión','Recuperación Económica','Recuperación por Tienda','Tasa de recuperación · Revisión','Cumplimiento de Recorridos','Índice Integral'].includes(view))return'fullperiod';
     try{
       const fixed=typeof fixedPeriodTypeForView==='function'?String(fixedPeriodTypeForView(view)||''):'';
       if(['fullperiod','productivityperiod','flex'].includes(fixed))return fixed;
