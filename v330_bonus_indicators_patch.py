@@ -142,6 +142,7 @@ def aggregate(rows, comparable):
     return {
         "sales_pct": sales_pct,
         "attendance_reference": average("attendance_reference"),
+        "attendance_provisional": any(r.get("attendance_provisional") for r in rows),
         "ddi_models_pct": ddi_models_pct,
         "ddi_models": total_models if comparable else 0,
         "ddi_improved_models": improved_models if comparable else 0,
@@ -241,18 +242,20 @@ def install(m):
             ddi = ddi_improvement(source.get("catalogs"), comparable)
             sale = finite(source.get("sales_pct"))
             attendance = finite(source.get("attendance_pct"))
+            attendance_provisional = bool(source.get("attendance_provisional", False))
             initial_inv = finite(inv.get("initial_investment")) if comparable else None
             current_inv = finite(inv.get("current_investment")) if comparable else None
             initial_ddi = finite(inv.get("initial_ddi")) if ddi["pct"] is not None else None
             current_ddi = finite(inv.get("current_ddi")) if ddi["pct"] is not None else None
             ddi_reduction_pct = round(100 * (initial_ddi - current_ddi) / initial_ddi, 2) if initial_ddi is not None and initial_ddi > 0 and current_ddi is not None else None
             components = evaluate_store(b, sale, ddi["pct"], attendance)
-            status = "Esperando corte inicial" if not opening_id else "Esperando corte de avance" if opening_id == latest_id or not latest_id else "Procesando Capacidades" if processing.get("capacity") else "Sin modelos elegibles" if ddi["pct"] is None else "Falta venta / meta" if sale is None else "Falta asistencia" if attendance is None else "Evaluación de tienda" if b != 5 else "Meta DDI por autorizar"
+            status = "Esperando corte inicial" if not opening_id else "Esperando corte de avance" if opening_id == latest_id or not latest_id else "Procesando Capacidades" if processing.get("capacity") else "Sin modelos elegibles" if ddi["pct"] is None else "Falta venta / meta" if sale is None else "Falta asistencia" if attendance is None else "Asistencia 100% provisional" if attendance_provisional else "Evaluación de tienda" if b != 5 else "Meta DDI por autorizar"
             rows.append({
                 "store": st, "bonus_no": b, "sales_pct": sale,
                 "sales_actual": finite(source.get("sales_actual")),
                 "sales_goal": finite(source.get("sales_goal")),
                 "attendance_reference": attendance,
+                "attendance_provisional": attendance_provisional,
                 "attendance_scope": "tienda",
                 "ddi_models_pct": ddi["pct"],
                 "ddi_models": ddi["models"],
@@ -267,7 +270,7 @@ def install(m):
                 },
                 "score": components["evaluation_points"] if components else None,
                 "components": components,
-                "ready": bool(components),
+                "ready": bool(components) and not attendance_provisional,
                 "classification": status,
                 "reference_only": True,
             })
@@ -277,6 +280,7 @@ def install(m):
         chosen = next((r for r in rows if r["store"] == selected_store), None)
         overview = aggregate(rows, comparable) if selected_store == "Compañía" else {
             "sales_pct": chosen["sales_pct"], "attendance_reference": chosen["attendance_reference"],
+            "attendance_provisional": chosen["attendance_provisional"],
             "ddi_models_pct": chosen["ddi_models_pct"], "ddi_models": chosen["ddi_models"],
             "ddi_improved_models": chosen["ddi_improved_models"], "inventory": chosen["inventory"],
             "stores_total": 1, "stores_with_ddi": 1 if chosen["ddi_models_pct"] is not None else 0,
@@ -301,7 +305,7 @@ def install(m):
                 "source": "Corte inicial mensual guardado + último corte procesado en Análisis Comercial; misma cartera por tienda e ID_ART.",
                 "ddi": "Indicador DDI = modelos con DDI menor al inicial / modelos del corte inicial; también se reporta reducción del DDI promedio.",
                 "investment": "Variación neta de inversión = inversión del corte inicial − inversión del corte actual; informativo, no genera puntos.",
-                "attendance": "20% del esquema; dato capturado por tienda es informativo y NO equivale a asistencia individual.",
+                "attendance": "Pesa 20%. Si falta captura se usa 100% provisional SOLO para indicadores; no acredita asistencia individual ni habilita pagos.",
                 "payment": "No se calculan, visualizan ni autorizan importes de bono.",
                 "multiplier": "Bono 5 muestra los indicadores reales; la activación del multiplicador requiere una meta de DDI autorizada.",
             },
