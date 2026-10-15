@@ -7,7 +7,7 @@ import re
 import urllib.request
 import urllib.error
 from collections import OrderedDict
-from threading import Lock
+from threading import Lock, BoundedSemaphore
 from fastapi import Request, HTTPException
 from fastapi.responses import Response, HTMLResponse
 
@@ -15,7 +15,9 @@ _BASE = "http://static.priceshoes.com.mx/imgs/original/articulo/"
 _ALLOWED_ID = re.compile(r"^[0-9]{1,15}$")
 _CACHE = OrderedDict()
 _LOCK = Lock()
-_MAX_CACHE = 300
+_MAX_CACHE = 32
+# Acotar las imágenes procesadas en paralelo: Railway tiene límite de 1 GB.
+_FETCH_SLOTS = BoundedSemaphore(value=3)
 
 def install(m):
     if getattr(m, "_V314_BONUS_PRODUCT_PHOTOS", False):
@@ -27,6 +29,16 @@ def install(m):
             if found:
                 _CACHE.move_to_end(product_id)
                 return found
+        # Limitar la concurrencia: docenas de fotos grandes simultáneas pueden
+        # agotar la memoria del contenedor y causar el error 502.
+        if not _FETCH_SLOTS.acquire(timeout=3):
+            return None
+        try:
+            return fetch_photo_limited(product_id)
+        finally:
+            _FETCH_SLOTS.release()
+
+    def fetch_photo_limited(product_id):
         # La ruta exacta se probará en producción; ante error no se muestra imagen inventada.
         url = _BASE + product_id + ".jpg"
         req = urllib.request.Request(url, headers={"User-Agent": "OperacionesRopa/1.0", "Accept": "image/jpeg,image/*;q=0.8"})
