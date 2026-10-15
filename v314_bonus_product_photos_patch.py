@@ -8,6 +8,8 @@ import urllib.request
 import urllib.error
 from collections import OrderedDict
 from threading import Lock, BoundedSemaphore
+from io import BytesIO
+import time
 from fastapi import Request, HTTPException
 from fastapi.responses import Response, HTMLResponse
 
@@ -16,6 +18,10 @@ _ALLOWED_ID = re.compile(r"^[0-9]{1,15}$")
 _CACHE = OrderedDict()
 _LOCK = Lock()
 _MAX_CACHE = 32
+# Memoria pequeña para miniaturas confirmadas: evita volver a buscar en CDN
+# fotografías que ya aparecieron en la vista web.
+_EXPORT_PHOTO_CACHE = OrderedDict()
+_MAX_EXPORT_PHOTOS = 600
 # Acotar las imágenes procesadas en paralelo: Railway tiene límite de 1 GB.
 _FETCH_SLOTS = BoundedSemaphore(value=4)
 
@@ -63,6 +69,41 @@ def install(m):
                 return content,mime
         except (urllib.error.URLError,TimeoutError,OSError,ValueError):
             return None
+
+    def fetch_photo_for_export(product_id):
+        product_id = str(product_id or "").strip()
+        if not _ALLOWED_ID.fullmatch(product_id):
+            return None
+        with _LOCK:
+            cached = _EXPORT_PHOTO_CACHE.get(product_id)
+            if cached:
+                _EXPORT_PHOTO_CACHE.move_to_end(product_id)
+                return cached
+        # Reintento moderado: un fallo transitorio del servidor no debe
+        # producir "Sin foto" para una imagen que sí existe.
+        for attempt in range(2):
+            result = fetch_photo(product_id)
+            if result:
+                try:
+                    from PIL import Image
+                    with Image.open(BytesIO(result[0])) as source:
+                        source.thumbnail((170, 210))
+                        if source.mode != "RGB":
+                            source = source.convert("RGB")
+                        target = BytesIO()
+                        source.save(target, "JPEG", quality=80)
+                        image = target.getvalue()
+                    with _LOCK:
+                        _EXPORT_PHOTO_CACHE[product_id] = image
+                        _EXPORT_PHOTO_CACHE.move_to_end(product_id)
+                        while len(_EXPORT_PHOTO_CACHE) > _MAX_EXPORT_PHOTOS:
+                            _EXPORT_PHOTO_CACHE.popitem(last=False)
+                    return image
+                except (OSError, ValueError):
+                    return None
+            if attempt == 0:
+                time.sleep(.2)
+        return None
 
     @m.app.get("/api/bonuses/product-photo/{product_id}")
     async def bonus_product_photo(product_id:str, request:Request):
@@ -179,5 +220,6 @@ rootWatcher.observe(document.documentElement,{childList:true,subtree:true});
 
     # Reutilizar exactamente la misma ruta de fotografías en XLSX y PDF.
     m._bonus_photo_fetch_v314 = fetch_photo
+    m._bonus_photo_export_v314 = fetch_photo_for_export
     m._V314_BONUS_PRODUCT_PHOTOS=True
     print("[V314] Fotos por ID habilitadas para Modelos a Detalle (Bonos 1–6).",flush=True)
