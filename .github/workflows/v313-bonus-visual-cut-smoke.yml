@@ -61,7 +61,7 @@ jobs:
           assert "current_capacity_id" in a
           assert "Panorama por Tienda" in b  # Bono 2 ahora replica diseño de Bono 1
           assert "Colaboradores" in b
-          assert "Detalle por rubro" in b
+          assert "Comparativo · Bono 3 al 6" in b  # V329 reemplaza vista rubros de Bono 3
           assert "Preparando la cartera inicial" in b
           assert "S.refreshCount<10" in b
           assert "Matriz integral · diseño aprobado" in b
