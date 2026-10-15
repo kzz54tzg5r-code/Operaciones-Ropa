@@ -160,15 +160,64 @@ def install(m):
                 return route.endpoint
         raise HTTPException(503, "La fuente de Bonos no está disponible")
 
+    # Los cuatro reportes consumen la MISMA base de datos; no volver a leer
+    # y cruzar ~192 mil filas de Capacidades con cada pulsación de Bono.
+    # Caché corta, aislada por usuario/rol/tienda, con invalidez al cambiar
+    # el manifiesto comercial. Solo conserva resultados compactos, sin detalles.
+    import threading
+    import time
+    from pathlib import Path
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    base_cache = {}
+    cache_lock = threading.Lock()
+
+    def sources_stamp():
+        try:
+            file = Path(m.COMMERCIAL_DATA_ROOT) / "manifest.json"
+            return file.stat().st_mtime_ns
+        except (AttributeError, OSError):
+            return 0
+
+    def shared_base(request, actor, month, store, include_details):
+        if include_details:
+            # Los modelos a detalle se consultan sólo al abrir esa vista.
+            return base_endpoint()(request=request, month=month, store=store)
+        key = (
+            str(actor.get("username") or ""),
+            str(actor.get("role") or ""),
+            str(actor.get("store") or ""),
+            str(month or datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m")),
+            str(store), sources_stamp(),
+        )
+        with cache_lock:
+            item = base_cache.get(key)
+            if item and time.monotonic() < item[0]:
+                return item[1]
+            result = base_endpoint()(request=request, month=month, store=store)
+            selected = result.get("selected") or {}
+            if selected:
+                result = {**result, "selected": {
+                    "details": [],
+                    "ddi": {"catalogs": ((selected.get("ddi") or {}).get("catalogs") or [])},
+                }}
+            # En reconstrucciones, mantener una caducidad muy corta para
+            # que el usuario vea el nuevo corte en cuanto se procese.
+            ttl = 1 if (result.get("processing") or {}).get("capacity") else 20
+            base_cache.clear() if len(base_cache) >= 8 else None
+            base_cache[key] = (time.monotonic() + ttl, result)
+            return result
+
     @m.app.get("/api/bonuses-v330")
-    def bonuses_v330(request: Request, month: str = "", store: str = "Compañía", bonus: int = 3):
+    def bonuses_v330(request: Request, month: str = "", store: str = "Compañía", bonus: int = 3, include_details: bool = False):
         actor = m.require_user(request)
         b = int(bonus)
         if b not in MODEL_NAMES:
             raise HTTPException(400, "Bono inválido: utilice 3, 4, 5 o 6")
         role = str(actor.get("role") or "").lower()
         requested = str(store or "Compañía")
-        base = base_endpoint()(request=request, month=month, store="" if requested == "Compañía" else requested)
+        base = shared_base(request, actor, month, "" if requested == "Compañía" else requested, include_details)
         available = list(base.get("stores") or [])
         if role in ("tienda", "colaborador_operativo", "colaborador_lenceria"):
             assigned = str(actor.get("store") or "")
