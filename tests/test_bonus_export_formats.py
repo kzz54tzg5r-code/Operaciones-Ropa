@@ -221,9 +221,12 @@ def test_dedicated_export_photo_source_handles_more_than_one_model_and_both_file
     sample=BytesIO()
     Image.new("RGB",(80,105),(30,60,90)).save(sample,format="JPEG")
     img=sample.getvalue()
+    sample2=BytesIO()
+    Image.new("RGB",(80,105),(100,150,25)).save(sample2,format="JPEG")
+    img2=sample2.getvalue()
     m=SimpleNamespace(
         app=FastAPI(),require_user=lambda req:{"role":"admin"},
-        _bonus_photo_export_v314=lambda product: img if product in ("108180","1203206") else None,
+        _bonus_photo_export_v314=lambda product: img if product=="108180" else (img2 if product=="1203206" else None),
     )
     @m.app.get("/api/bonuses-v313")
     def sample(request=None,month="",store="",bonus=1):
