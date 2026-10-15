@@ -167,11 +167,27 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v329-pair{display:flex;justify-content:space-between;gap:9px;align-items:center;border-bottom:1px solid #e3edf6;padding:10px 0;font-size:10.5px}
 .v329-pair b{white-space:nowrap;text-align:right;color:#174d89}.v329-total{background:#edf6ff;border-radius:7px;padding:10px 6px;font-weight:850}
 @media(max-width:900px){.v329-layout{grid-template-columns:1fr}.v329-fields{gap:4px}.v329-fields label{font-size:9px}}
+
+.v330-source{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border:1px solid #dce8f4;border-radius:9px;background:#f4f8fc;padding:8px 10px;margin:8px 0;font-size:10px;color:#496989}
+.v330-source b{color:#104876}.v330-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:8px;align-items:start;margin-top:8px}
+.v330-list{display:grid;gap:5px;padding:8px}.v330-item{display:flex;gap:8px;align-items:center;min-height:58px;border:1px solid #e0eaf2;background:#fff;border-radius:9px;padding:8px 10px}
+.v330-indicator{width:8px;height:30px;border-radius:99px;flex-shrink:0}.v330-indicator.blue{background:#2173e8}.v330-indicator.green{background:#20af77}.v330-indicator.violet{background:#8868e5}
+.v330-item-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.v330-item-main b{font-size:12px;color:#143e70}.v330-item-main small{font-size:10px;color:#6a8098}
+.v330-weight{color:#144e92;font-size:12px}.v330-item strong{min-width:75px;text-align:right;color:#164b8d;font-size:15px}
+.v330-compact .v330-item{min-height:49px;padding:6px 9px}.v330-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:9px}
+.v330-card{display:flex;flex-direction:column;gap:8px;border:1px solid #e1eaf4;border-radius:9px;padding:12px;min-width:0;background:#fff}.v330-card.blue{background:#f4f8ff}.v330-card.green{background:#f2fbf7}.v330-card.violet{background:#f7f4ff}
+.v330-card span{font-size:11px;font-weight:800;color:#284f79}.v330-card b{font-size:20px;color:#0b4383}.v330-card strong{font-size:14px;color:#1a5ca2}.v330-card small{font-size:10px;color:#68829e}
+.v330-bar{height:7px;border-radius:99px;background:#e8eef6;overflow:hidden}.v330-bar i{height:100%;display:block;border-radius:inherit;background:#2879eb}.v330-bar i.green{background:#1fb27a}.v330-bar i.violet{background:#8e6bea}
+.v330-info-line{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #edf2f7;font-size:10.5px}.v330-info-line b{color:#16487c;text-align:right}
+.v330-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:10px}.v330-stats>div{background:#f5f9fd;padding:9px;border:1px solid #e7eef5;border-radius:7px}.v330-stats span{display:block;color:#71869b;font-size:10px}.v330-stats b{display:block;margin-top:6px;font-size:15px;color:#164779}
+.v330-ranking{min-width:880px}.v330-ranking td{text-align:center}.v330-ranking td.left{text-align:left}
+@media(max-width:950px){.v330-layout{grid-template-columns:1fr}.v330-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:640px){.v330-cards{gap:4px;padding:5px}.v330-card{padding:6px;gap:5px}.v330-card b{font-size:16px}.v330-card span{font-size:9px}.v330-card small{font-size:9px}.v330-item-main b{font-size:10px}.v330-item strong{font-size:12px}.v330-item-main small{font-size:9px}.v330-stats span{font-size:9px}.v330-stats b{font-size:12px}}
 </style>''';
 
     js=r'''<script id="v313-js">(function(){
 if(window.__V313_BONUS_VISUAL_CUTS)return;window.__V313_BONUS_VISUAL_CUTS=true;
-var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{},ddiTarget:10,basePay:1000,workerAttendance:100};
+var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{}};
 function q(s,r){return(r||document).querySelector(s)}function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){var x=Number(v);return Number.isFinite(x)?x:0}function pc(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})+"%"}function nf(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})}
@@ -206,16 +222,16 @@ return"<div class=\"v313-cutbar\"><div class=\"v313-cut\"><span>Regla de compara
 }
 
 
-function hero(d){if(d.is_v329)return '<div class="v313-hero"><div><b>Bono '+S.bonus+' · '+esc(d.model.name)+'</b><br><span>'+esc(d.model.formula)+'</span></div><span class="tag">'+esc(d.selected_store)+'</span></div>';var names={1:"Modelo actual · 50/30/20",2:"Modelos sin venta · antigüedad ≥7 días",3:"Rubros críticos · 2 de 3",4:"Matriz integral · imagen 1",5:"Mejora contra sí misma · 3 de 4",6:"Cumplimiento sostenido · 4 semanas"};return"<div class=\"v313-hero\"><div><b>Bono "+S.bonus+" · "+names[S.bonus]+"</b><br><span>"+esc((d.selected&&d.selected.formula)||({1:"Bono 1 conserva exactamente su cálculo original.",2:"Venta ≥100% + reducción DDI mínima 50%.",3:"Venta ≥100% + mínimo 2 de 3 rubros con DDI reducido ≥50%.",4:"Venta ≥100% + matriz DDI / Existencia / Inversión / Modelos.",5:"Venta ≥100% + mejora en mínimo 3 de 4 indicadores.",6:"Venta ≥100% + cuatro cortes semanales consecutivos."})[S.bonus])+"</span></div><span class=\"tag\">"+esc(d.selected_store)+"</span></div>"}
+function hero(d){if(d.is_v330)return '<div class="v313-hero"><div><b>Bono '+S.bonus+' · '+esc(d.model.name)+'</b><br><span>Seguimiento automático por corte inicial y último corte procesado de Capacidades · '+esc(d.model.design)+'</span></div><span class="tag">'+esc(d.selected_store)+'</span></div>';var names={1:"Modelo actual · 50/30/20",2:"Modelos sin venta · antigüedad ≥7 días",3:"Rubros críticos · 2 de 3",4:"Matriz integral · imagen 1",5:"Mejora contra sí misma · 3 de 4",6:"Cumplimiento sostenido · 4 semanas"};return"<div class=\"v313-hero\"><div><b>Bono "+S.bonus+" · "+names[S.bonus]+"</b><br><span>"+esc((d.selected&&d.selected.formula)||({1:"Bono 1 conserva exactamente su cálculo original.",2:"Venta ≥100% + reducción DDI mínima 50%.",3:"Venta ≥100% + mínimo 2 de 3 rubros con DDI reducido ≥50%.",4:"Venta ≥100% + matriz DDI / Existencia / Inversión / Modelos.",5:"Venta ≥100% + mejora en mínimo 3 de 4 indicadores.",6:"Venta ≥100% + cuatro cortes semanales consecutivos."})[S.bonus])+"</span></div><span class=\"tag\">"+esc(d.selected_store)+"</span></div>"}
 function kpi(label,val,note,cls){return"<div class=\"v313-kpi\"><span>"+esc(label)+"</span><b class=\""+(cls||"")+"\">"+esc(val)+"</b><small>"+esc(note||"")+"</small></div>"}
 function topKpis(d){var s=d.summary||{},inv=s.inventory||{},out=[];
- if(d.is_v329)return [
- kpi("Ventas vs Meta",pc(s.sales_pct),"Cumplimiento"),
- kpi("DDI reducido",pc(d.model.cut_comparable?inv.ddi_reduction_pct:null),"Corte inicial / actual"),
- kpi("Meta DDI",pc(d.model.ddi_target_pct),"Simulada · editable"),
- kpi("Asistencia tienda",pc(s.attendance_reference),"No individual"),
- kpi("Cumplimiento bono",pc(s.score_avg),"Simulación"),
- kpi("Inversión neta",money(s.capital_variation_mxn),"Sólo informativo")
+ if(d.is_v330)return [
+ kpi("Ventas vs Meta",pc(s.sales_pct),"Fuente de ventas y metas"),
+ kpi("DDI reducido (modelos)",pc(s.ddi_models_pct),"Sobre la cartera inicial"),
+ kpi("Reducción DDI promedio",pc(inv.ddi_reduction_pct),"DDI inicial vs actual"),
+ kpi("Asistencia tienda",pc(s.attendance_reference),"20% · pendiente individual"),
+ kpi("Modelos con DDI reducido",s.ddi_improved_models==null?"Pendiente":nf(s.ddi_improved_models),"De "+(s.ddi_models==null?"N/D":nf(s.ddi_models))),
+ kpi("Variación inversión",money(inv.capital_variation_mxn),"Informativa; no suma puntos")
  ].join("");
 if(d.b2_cohort){
  var z=d.b2_stats||{},pending=!!(d.processing||{}).capacity;
@@ -244,36 +260,72 @@ function b2Visual(d){
  return "<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Panorama de modelos sin venta · Bono 2</span><span>Vigente · última entrada hace ≥7 días</span></div><div class=\"v313-body\"><div class=\"v313-bars\">"+bars+"</div><div class=\"v313-note\">"+(pending?"Procesando archivo de Capacidades. Se actualizará el listado al terminar.":d.source_error?esc(d.source_error):"Los modelos se seleccionan desde el corte inicial, por tienda e ID. Se excluyen las últimas llegadas de 0 a 6 días y cualquier modelo con venta en 30 días.")+"</div></div></section>"
 }
 
-function v329Price(x){return x==null?"N/D":Number(x).toLocaleString("es-MX",{style:"currency",currency:"MXN",minimumFractionDigits:2,maximumFractionDigits:2})}
-function v329Tier(p){return p<80?0:p<100?.5:p<110?1:1.2}
-function v329Calc(b,sales,ddi,attendance,base){
- if(sales==null||ddi==null||attendance==null)return null;
- var v=Math.max(0,Math.min(1.5,n(sales)/100)),d=Math.max(0,Math.min(1.5,n(ddi)/100)),a=Math.max(0,Math.min(1,n(attendance)/100));
- var c=b===3?Math.min(1,.5*v+.3*d):b===4?.5*v329Tier(v*100)+.3*v329Tier(d*100):b===5?Math.min(1,.8*v*(d>=1?1.1:1)):Math.min(1,.8*(.6*v+.4*d));
- return {percent:(c+.2*a)*100,commercial:base*c,att:base*.2*a,total:base*(c+.2*a)};
-}
-function v329Visual(d){
- var m=d.model||{},s=d.selected||{},inv=(d.summary||{}).inventory||{};
- var store=d.selected_store!=="Compañía",ready=!!(store&&m.cut_comparable);
- var sal=ready?s.sales_pct:null,ddi=ready?(s.extra||{}).ddi_compliance_pct:null;
- var pay=v329Calc(S.bonus,sal,ddi,S.workerAttendance,S.basePay);
- var cases=[3,4,5,6].map(function(b){var z=v329Calc(b,sal,ddi,S.workerAttendance,S.basePay);return'<tr><td>Bono '+b+'</td><td>'+pc(z&&z.percent)+'</td><td>'+v329Price(z&&z.total)+'</td></tr>'}).join('');
- var fields='<div class="v329-fields"><label>Meta DDI simulada (%)<input id="v329Target" type="number" min="0.1" max="100" step=".1" value="'+esc(S.ddiTarget)+'"></label><label>Bono objetivo ilustrativo (MXN)<input id="v329Base" type="number" min="0" max="100000" step="50" value="'+esc(S.basePay)+'"></label><label>Asistencia elegible individual (%)<input id="v329Attendance" type="number" min="0" max="100" step="1" value="'+esc(S.workerAttendance)+'"></label></div>';
- var result=pay?'<div class="v329-pair"><span>Ventas + DDI (80% base con aceleradores)</span><b>'+v329Price(pay.commercial)+'</b></div><div class="v329-pair"><span>Asistencia (20% base, sin aceleradores)</span><b>'+v329Price(pay.att)+'</b></div><div class="v329-pair v329-total"><span>Total estimado</span><b>'+v329Price(pay.total)+'</b></div>':'<div class="v313-note">Selecciona una tienda con ventas y dos cortes de DDI comparables para simular el pago; no se sustituyen datos faltantes por ceros.</div>';
- var left='<section class="v313-panel"><div class="v313-ph"><span>Fórmula del Bono '+S.bonus+'</span><span>Asistencia 20%</span></div><div class="v313-body"><b>'+esc(m.name)+'</b><p>'+esc(m.formula)+'</p>'+fields+result+'<div class="v313-note">Los $1,000 y la meta DDI de 10% son ejemplos configurables de simulación, NO montos ni metas oficiales. La asistencia del colaborador debe validarse individualmente con días elegibles. El registro por tienda no sustituye nómina.</div></div></section>';
- var right='<section class="v313-panel"><div class="v313-ph"><span>DDI e inversión · misma cartera</span><span>Inversión informativa</span></div><div class="v313-body"><div class="v329-pair"><span>DDI inicial / actual</span><b>'+nf(inv.initial_ddi)+' / '+nf(inv.current_ddi)+' días</b></div><div class="v329-pair"><span>Reducción DDI</span><b>'+pc(m.cut_comparable?inv.ddi_reduction_pct:null)+'</b></div><div class="v329-pair"><span>Inversión inicial / actual</span><b>'+money(inv.initial_investment)+' / '+money(inv.current_investment)+'</b></div><div class="v329-pair"><span>Variación neta de inversión</span><b>'+money((d.summary||{}).capital_variation_mxn)+'</b></div><div class="v313-note">La variación neta requiere conciliar entradas, traspasos y ajustes antes de llamarla desplazamiento por ventas. La inversión NO aporta puntos ni un pago independiente.</div></div></section>';
- var compare='<section class="v313-panel" style="margin-top:8px"><div class="v313-ph"><span>Comparativo · Bono 3 al 6</span><span>Un colaborador simulado</span></div><div class="v313-scroll"><table class="v313-table"><thead><tr><th>Opción</th><th>Cumplimiento</th><th>Pago estimado</th></tr></thead><tbody>'+cases+'</tbody></table></div></section>';
- return '<div class="v329-layout">'+left+right+'</div>'+compare;
-}
 
-function visual(d){if(d.is_v329)return v329Visual(d);if(d.b2_cohort)return b2Visual(d);if(S.bonus===1)return componentsB1(d);if(S.bonus===2)return levelsB2(d);if(S.bonus===3)return rubrosB3(d);if(S.bonus===4)return matrixB4(d);if(S.bonus===5)return improveB5(d);return weeksB6(d)}
-function indicator(e){if(!e)return"N/D";if(S.bonus>=3&&e.extra&&"commercial_pct" in e.extra)return pc(e.indicator);if(S.bonus===1)return pc(e.indicator);if(S.bonus===2)return pc((e.extra||{}).ddi_reduction_pct)+" · N"+(e.level||0);if(S.bonus===3)return nf((e.extra||{}).rubros_met)+" de 3";if(S.bonus===4)return pc((e.extra||{}).score);if(S.bonus===5)return nf((e.extra||{}).improved)+" de 4";return nf((e.extra||{}).streak)+" de 4"}
-function ranking(d,limit){if(d.b2_cohort){
+function v330Val(v,unit){return v==null?"Pendiente":(unit==="percent"?pc(v):unit==="money"?money(v):nf(v))}
+function v330Bar(v,tone){return '<div class="v330-bar"><i class="'+(tone||'blue')+'" style="width:'+Math.max(0,Math.min(100,n(v)))+'%"></i></div>'}
+function v330Metric(label,weight,value,caption,tone){
+ return '<div class="v330-item"><span class="v330-indicator '+tone+'"></span><div class="v330-item-main"><b>'+esc(label)+'</b><small>'+esc(caption||'')+'</small></div><b class="v330-weight">'+(weight==null?"Indicador":weight+"%")+'</b><strong>'+v330Val(value,"percent")+'</strong></div>';
+}
+function v330Investment(d){
+ var inv=(d.summary||{}).inventory||{};
+ return '<section class="v313-panel v330-finance"><div class="v313-ph"><span>Inversión y DDI · cortes reales</span><span>Inversión informativa</span></div><div class="v313-body">'
+ +'<div class="v330-info-line"><span>DDI inicial / último corte</span><b>'+v330Val(inv.initial_ddi)+' / '+v330Val(inv.current_ddi)+' días</b></div>'
+ +'<div class="v330-info-line"><span>Reducción DDI promedio</span><b>'+v330Val(inv.ddi_reduction_pct,"percent")+'</b></div>'
+ +'<div class="v330-info-line"><span>Inversión inicial</span><b>'+v330Val(inv.initial_investment,"money")+'</b></div>'
+ +'<div class="v330-info-line"><span>Inversión último corte</span><b>'+v330Val(inv.current_investment,"money")+'</b></div>'
+ +'<div class="v330-info-line"><span>Variación neta de inversión</span><b>'+v330Val(inv.capital_variation_mxn,"money")+'</b></div>'
+ +'<div class="v313-note">La inversión es exclusivamente informativa y no genera puntos. Su variación neta no equivale necesariamente a capital vendido: pueden existir entradas, traspasos y ajustes.</div></div></section>';
+}
+function v330StoreData(d){
+ var s=d.summary||{},inv=s.inventory||{};
+ return {sale:s.sales_pct,ddi:s.ddi_models_pct,att:s.attendance_reference,models:s.ddi_models,improved:s.ddi_improved_models,inv:inv};
+}
+function v330Source(d){
+ var p=d.processing||{},m=d.model||{},sd=d.source_dates||{};
+ var status=p.capacity?"Procesando datos de Capacidades":!sd.opening_capacity?"Falta asignar corte inicial":!m.cut_comparable?"Esperando un nuevo corte de Capacidades":"Comparación entre cortes activa";
+ return '<div class="v330-source"><b>'+esc(status)+'</b><span>Corte inicial: '+dateMx(sd.opening_capacity)+' · Último corte: '+dateMx(sd.current_capacity)+'</span><span>Los datos se toman automáticamente de Análisis Comercial; no existe captura manual de resultados.</span></div>';
+}
+function v330Content(d){
+ var x=v330StoreData(d),note='<div class="v313-note">Asistencia: representa el 20%, pero aquí se visualiza únicamente la referencia por tienda. La asistencia individual debe validarse por separado; no se calcula ni se muestra pago a colaboradores.</div>';
+ var s50=v330Metric("Ventas vs. Meta",50,x.sale,"Resultado real de la tienda","blue");
+ var d30=v330Metric("Reducción de DDI",30,x.ddi,"Modelos con DDI menor al corte inicial","green");
+ var a20=v330Metric("Asistencia",20,x.att,"Referencia de tienda, no individual","violet");
+ var body="";
+ if(S.bonus===3){
+    // Boceto 3.2 · lista de tres indicadores con sus ponderaciones.
+    body='<section class="v313-panel"><div class="v313-ph"><span>Indicadores de evaluación</span><span>Boceto 3.2 · Lista</span></div><div class="v330-list">'+s50+d30+a20+'</div><div class="v313-note">Puntos ponderados: 50% ventas, 30% reducción real de DDI y 20% asistencia. Inversión no puntúa.</div></section>';
+ }else if(S.bonus===4){
+    // Boceto 4.1 · tarjetas de detalle para cada criterio independiente.
+    var cards=[["Ventas vs. Meta","50%",x.sale,"blue","Objetivo independiente; tramos de cumplimiento"],["Reducción de DDI","30%",x.ddi,"green","Objetivo independiente; modelos mejorados"],["Asistencia","20%",x.att,"violet","Participación proporcional; referencia de tienda"]];
+    body='<section class="v313-panel"><div class="v313-ph"><span>Indicadores por objetivo independiente</span><span>Boceto 4.1 · Tarjetas</span></div><div class="v330-cards">'+cards.map(function(c){return '<div class="v330-card '+c[3]+'"><span>'+c[0]+'</span><b>'+c[1]+'</b><strong>'+v330Val(c[2],"percent")+'</strong>'+v330Bar(c[2],c[3])+'<small>'+c[4]+'</small></div>'}).join('')+'</div><div class="v313-note">Ventas y DDI se evalúan en tramos: &lt;80%=0%, 80–&lt;100%=50%, 100–&lt;110%=100%, ≥110%=120%. Asistencia conserva un peso fijo del 20% sin aceleradores.</div></section>';
+ }else if(S.bonus===5){
+    // Boceto 5.2 · lista compacta, con DDI condicionante no simulado.
+    body='<section class="v313-panel"><div class="v313-ph"><span>Indicadores de evaluación</span><span>Boceto 5.2 · Lista compacta</span></div><div class="v330-list v330-compact">'+v330Metric("Ventas vs. Meta",80,x.sale,"Componente comercial de referencia","blue")+v330Metric("Reducción de DDI",null,x.ddi,"Condiciona multiplicador; no suma un peso adicional","green")+a20+'</div><div class="v313-note">Multiplicador por DDI: pendiente de un umbral autorizado de reducción. Se muestra el avance real, sin activación automática ni proyección de pagos.</div></section>';
+ }else{
+    // Boceto 6.1 · tarjetas de resultado de tienda + asistencia individual.
+    body='<section class="v313-panel"><div class="v313-ph"><span>Indicadores colectivos por tienda</span><span>Boceto 6.1 · Tarjetas</span></div><div class="v330-cards v330-store-cards"><div class="v330-card blue"><span>Ventas vs. Meta</span><b>48%</b><strong>'+v330Val(x.sale,"percent")+'</strong>'+v330Bar(x.sale,"blue")+'<small>Resultado de tienda</small></div><div class="v330-card green"><span>Reducción de DDI</span><b>32%</b><strong>'+v330Val(x.ddi,"percent")+'</strong>'+v330Bar(x.ddi,"green")+'<small>Resultado de tienda</small></div><div class="v330-card violet"><span>Asistencia</span><b>20%</b><strong>'+v330Val(x.att,"percent")+'</strong>'+v330Bar(x.att,"violet")+'<small>Evaluación individual pendiente; referencia por tienda</small></div></div></section>';
+ }
+ var details='<div class="v330-stats"><div><span>Modelos del corte inicial</span><b>'+(x.models==null?"Pendiente":nf(x.models))+'</b></div><div><span>Modelos con reducción de DDI</span><b>'+(x.improved==null?"Pendiente":nf(x.improved))+'</b></div><div><span>Porcentaje de modelos mejorados</span><b>'+v330Val(x.ddi,"percent")+'</b></div></div>';
+ return '<div class="v330-layout"><div>'+body+'<section class="v313-panel" style="margin-top:7px"><div class="v313-ph"><span>Avance de la cartera de modelos</span><span>Sin simulaciones</span></div>'+details+'</section></div>'+v330Investment(d)+'</div>'+note;
+}
+function v330Ranking(d,limit){
+ var rows=(d.ranking||[]).slice();if(limit)rows=rows.slice(0,limit);
+ var columns='<th>#</th><th class="left">Tienda</th><th>Venta vs. Meta</th><th>DDI mejorados</th><th>Reducción DDI</th><th>Asistencia tienda</th><th>Variación inversión</th><th>Estado</th>';
+ var body=rows.map(function(r){
+  var i=r.inventory||{};
+  return '<tr data-v313-store="'+esc(r.store)+'" style="cursor:pointer"><td>'+(r.rank==null?"—":r.rank)+'</td><td class="left"><b>'+esc(r.store)+'</b></td><td>'+v330Val(r.sales_pct,"percent")+'</td><td>'+v330Val(r.ddi_models_pct,"percent")+'</td><td>'+v330Val(r.ddi_reduction_pct,"percent")+'</td><td>'+v330Val(r.attendance_reference,"percent")+'</td><td>'+v330Val(i.capital_variation_mxn,"money")+'</td><td>'+esc(r.classification||"")+'</td></tr>';
+ }).join('');
+ return '<section class="v313-panel"><div class="v313-ph"><span>Ranking de tiendas · indicadores reales</span><span>Sin importes de bono</span></div><div class="v313-scroll"><table class="v313-table v330-ranking"><thead><tr>'+columns+'</tr></thead><tbody>'+body+'</tbody></table></div><div class="v313-note">Orden por evaluación referencial de tienda cuando hay datos completos; de lo contrario, por modelos con DDI reducido. No representa incentivos pagaderos.</div></section>';
+}
+function v330Visual(d){return v330Source(d)+v330Content(d)}
+function visual(d){if(d.is_v330)return v330Visual(d);if(d.b2_cohort)return b2Visual(d);if(S.bonus===1)return componentsB1(d);if(S.bonus===2)return levelsB2(d);if(S.bonus===3)return rubrosB3(d);if(S.bonus===4)return matrixB4(d);if(S.bonus===5)return improveB5(d);return weeksB6(d)}
+function indicator(e){if(!e)return"N/D";if(S.bonus===1)return pc(e.indicator);if(S.bonus===2)return pc((e.extra||{}).ddi_reduction_pct)+" · N"+(e.level||0);if(S.bonus===3)return nf((e.extra||{}).rubros_met)+" de 3";if(S.bonus===4)return pc((e.extra||{}).score);if(S.bonus===5)return nf((e.extra||{}).improved)+" de 4";return nf((e.extra||{}).streak)+" de 4"}
+function ranking(d,limit){if(d.is_v330)return v330Ranking(d,limit);if(d.b2_cohort){
  var arr=(d.ranking||[]).slice();if(limit)arr=arr.slice(0,limit);
  return "<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Ranking de tiendas · Bono 2</span><span>Modelos que cumplen criterios</span></div><div class=\"v313-scroll\"><table class=\"v313-table\"><thead><tr><th>#</th><th class=\"left\">Tienda</th><th>Modelos</th><th>Vta 30d</th><th>DDI prom.</th><th>Inversión inicial</th><th>Estado</th></tr></thead><tbody>"+arr.map(function(e){return "<tr data-v313-store=\""+esc(e.store)+"\" style=\"cursor:pointer\"><td>"+(e.rank||"—")+"</td><td class=\"left\"><b>"+esc(e.store)+"</b></td><td>"+nf(e.models)+"</td><td>0</td><td>"+nf(e.avg_ddi)+"</td><td>"+money(e.investment)+"</td><td>"+esc(e.classification)+"</td></tr>"}).join("")+"</tbody></table></div></section>"
 }
 var a=(d.ranking||[]).slice();if(limit)a=a.slice(0,limit);return"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Ranking de Tiendas · Bono "+S.bonus+"</span><span>Mejor a peor</span></div><div class=\"v313-scroll\"><table class=\"v313-table\"><thead><tr><th>#</th><th class=\"left\">Tienda</th><th>Venta</th><th>Indicador</th><th>Asistencia ref.</th><th>Estado</th></tr></thead><tbody>"+a.map(function(e){return"<tr data-v313-store=\""+esc(e.store)+"\" style=\"cursor:pointer\"><td>"+(e.rank==null?"—":e.rank)+"</td><td class=\"left\"><b>"+esc(e.store)+"</b></td><td>"+pc(e.sales_pct)+"</td><td>"+esc(indicator(e))+"</td><td>"+pc(e.attendance_reference)+"</td><td><span class=\"v313-status "+(!e.ready?"na":e.eligible?"":"no")+"\">"+esc(e.classification)+"</span></td></tr>"}).join("")+"</tbody></table></div></section>"}
-function summary(d){if(d.is_v329)return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div>"+visual(d)+"<div style=\"margin-top:8px\">"+ranking(d,10)+"</div><div class=\"v313-note\">Cálculo estimado: 20% asistencia individual, inversión informativa. Sin datos completos no se genera pago.</div>";return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div><div class=\"v313-main\"><div>"+visual(d)+"</div><div>"+ranking(d,10)+(d.b2_cohort?"<div class=\"v313-note\">Seguimiento específico de modelos sin venta 30 días y llegada reciente. El diseño replica al Bono 1; la elegibilidad de un pago no se calcula sin una base de DDI comparable.</div>":d.is_v329?"<div class=\"v313-note\">El 20% de asistencia requiere validación individual. La inversión sólo se informa, no suma puntos. Los importes son simulaciones, no nómina.</div>":"<div class=\"v313-note\">Asistencia en Bonos 2–6 es sólo referencia; 1 falta descalifica al colaborador en la validación individual. El costo del bono no se calcula en esta pantalla.</div>")+"</div></div>"}
+function summary(d){if(d.is_v330)return cutbar(d)+hero(d)+'<div class="v313-kpis">'+topKpis(d)+'</div>'+v330Visual(d)+'<div style="margin-top:8px">'+v330Ranking(d,10)+'</div>';return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div>"+visual(d)+"<div style=\"margin-top:8px\">"+ranking(d,10)+"</div><div class=\"v313-note\">Cálculo estimado: 20% asistencia individual, inversión informativa. Sin datos completos no se genera pago.</div>";return cutbar(d)+hero(d)+"<div class=\"v313-kpis\">"+topKpis(d)+"</div><div class=\"v313-main\"><div>"+visual(d)+"</div><div>"+ranking(d,10)+(d.b2_cohort?"<div class=\"v313-note\">Seguimiento específico de modelos sin venta 30 días y llegada reciente. El diseño replica al Bono 1; la elegibilidad de un pago no se calcula sin una base de DDI comparable.</div>":d.is_v329?"<div class=\"v313-note\">El 20% de asistencia requiere validación individual. La inversión sólo se informa, no suma puntos. Los importes son simulaciones, no nómina.</div>":"<div class=\"v313-note\">Asistencia en Bonos 2–6 es sólo referencia; 1 falta descalifica al colaborador en la validación individual. El costo del bono no se calcula en esta pantalla.</div>")+"</div></div>"}
 function panorama(d){if(d.selected_store==="Compañía")return cutbar(d)+hero(d)+"<div class=\"v313-note\">Selecciona una tienda para ver su panorama completo.</div>"+ranking(d,0);return summary(d)}
 function modelTable(d,rows,title,showCatalog,subtabsHtml){
 if(d.selected_store==="Compañía")return cutbar(d)+hero(d)+"<div class=\"v313-note\">Selecciona una tienda para consultar los modelos de su cartera.</div>"+ranking(d,0);
@@ -391,7 +443,7 @@ return summary(d)
 }
 
 
-function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">"+(d.b2_cohort?"Bono 2 · corte inicial · 0 ventas en 30 días · excluir llegadas de los últimos 7 días · catálogo vigente":"Comparación real entre corte inicial y corte actual · sin gráficas de línea")+"</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
+function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">"+(d.is_v330?"Seguimiento automático con fuentes reales · sin simulaciones ni importes de pago":d.b2_cohort?"Bono 2 · corte inicial · 0 ventas en 30 días · excluir llegadas de los últimos 7 días · catálogo vigente":"Comparación real entre corte inicial y corte actual · sin gráficas de línea")+"</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
 function bind(){
 q("#v313UpdateBtn")?.addEventListener("click",async function(){
   var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
@@ -445,9 +497,6 @@ var scroller=q(".v313-model-scroll");if(scroller){
  scroller.addEventListener("scroll",function(){S.modelScroll[scrollKey]=scroller.scrollTop},{passive:true});
 }
 qa(".v313-photo").forEach(function(im){im.addEventListener("click",function(){var bg=document.createElement("div");bg.className="v313-photo-overlay";var large=document.createElement("img");large.src=im.src;large.alt=im.alt;var close=document.createElement("button");close.type="button";close.textContent="← Regresar al listado";function done(){bg.remove();document.removeEventListener("keydown",escape)}function escape(e){if(e.key==="Escape")done()}close.onclick=done;bg.onclick=function(e){if(e.target===bg)done()};bg.append(close,large);document.body.append(bg);document.addEventListener("keydown",escape)})});
-q("#v329Target")?.addEventListener("change",function(e){S.ddiTarget=Math.max(.1,Math.min(100,n(e.target.value)||10));load()});
-q("#v329Base")?.addEventListener("change",function(e){S.basePay=Math.max(0,Math.min(100000,n(e.target.value)));load()});
-q("#v329Attendance")?.addEventListener("change",function(e){S.workerAttendance=Math.max(0,Math.min(100,n(e.target.value)));render()});
 q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
 q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;S.refreshCount=0;load()});
 qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";S.catalog="Abrigador";S.refreshCount=0;load()})});
@@ -463,8 +512,8 @@ qa("[data-v313-cat]").forEach(function(b){b.addEventListener("click",function(){
 function render(){activate();var h=q("#v313Host");if(h&&S.data){h.innerHTML=page(S.data);bind();if(S.section==="initial-upload")loadInitialHistory()}}
 function load(){
 if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}
-var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);if(S.bonus>=3){p.set("ddi_target",String(S.ddiTarget));p.set("base_amount",String(S.basePay));}
-api((S.bonus===2?"/api/bonuses-b2-v327?":S.bonus>=3?"/api/bonuses-v329?":"/api/bonuses-v313?")+p.toString()).then(function(d){
+var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);
+api((S.bonus===2?"/api/bonuses-b2-v327?":S.bonus>=3?"/api/bonuses-v330?":"/api/bonuses-v313?")+p.toString()).then(function(d){
  if(seq!==S.seq)return;
  S.data=d;S.month=d.month;S.store=d.selected_store;render();
  var processing=d.processing||{};
