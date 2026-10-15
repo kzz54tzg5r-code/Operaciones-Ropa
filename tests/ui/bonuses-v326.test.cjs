@@ -43,7 +43,7 @@ async function setup(opts={}){
         initial_existence:25,initial_investment:12000
       }],b2_stats:{models:1,sales_30:0,avg_ddi:135,existence:25,investment:12000,
          catalog_counts:{Abrigador:0,Licencias:1,'Básicos':0}},
-      selected:{formula:'0 ventas últimos 30 días; última entrada <=7 días; catálogo vigente'},
+      selected:{formula:'0 ventas últimos 30 días; última entrada >=7 días; catálogo vigente'},
       ranking:[{store:'Olivar',models:1,avg_ddi:135,investment:12000,classification:'En seguimiento',rank:1}]
     })};
     if(String(url).startsWith('/api/bonuses/models-export')){
@@ -128,7 +128,7 @@ test('Bono 2 shares the Bono 1 four-tab design and lists zero-sales recent-arriv
     assert.match(list.textContent,/05\/10\/2026/);
     assert.match(list.textContent,/135/);
     assert.match(list.textContent,/DDI inicial/);
-    assert.match(f.w.document.querySelector('#v313Host').textContent,/hace 7 días o más/);
+    assert.match(f.w.document.querySelector('#v313Host').textContent,/hace 7 días o más/i);
     assert.ok(f.w.document.querySelector('[data-v313-return]'));
     assert.ok(f.w.document.querySelector('[data-v313-download="xlsx"]'));
   }finally{f.dom.window.close();}
