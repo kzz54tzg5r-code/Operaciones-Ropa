@@ -25,6 +25,12 @@ FIELDS = [
     ("Inversión actual ($)", "current_investment"),
     ("Reducción inversión (%)", "investment_reduction_pct"),
 ]
+FIELDS_B2 = [
+    ("Foto", "photo"),("ID", "id_art"),("Modelo", "model"),("Catálogo", "catalog"),
+    ("Venta pzas 30 días", "sales_30"),("Última llegada", "last_arrival"),
+    ("Días desde llegada", "arrival_age_days"),("DDI actual", "current_ddi"),
+    ("Existencia actual", "current_existence"),("Inversión actual ($)", "current_investment"),
+]
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
 IMG_BASE = "http://static.priceshoes.com.mx/imgs/original/articulo/"
 
@@ -61,7 +67,7 @@ def install(m):
         if not ids:
             return pictures
         # Cota de concurrencia para no saturar el servicio ni el host de fotografías.
-        with ThreadPoolExecutor(max_workers=8, thread_name_prefix="bono-foto") as pool:
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix="bono-foto") as pool:
             futures = {pool.submit(fetch_image, key):key for key in ids}
             for future in as_completed(futures):
                 try:
@@ -76,14 +82,14 @@ def install(m):
         value = row.get(key)
         if value is None:
             return ""
-        if key in ("id_art", "model", "catalog"):
+        if key in ("id_art", "model", "catalog", "last_arrival"):
             return str(value)
         try:
             return float(value)
         except (TypeError, ValueError):
             return ""
 
-    def excel(rows, store, month, catalog, pictures):
+    def excel(rows, store, month, catalog, pictures, fields=FIELDS):
         from openpyxl import Workbook
         from openpyxl.drawing.image import Image as XLSImage
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -91,15 +97,15 @@ def install(m):
         wb=Workbook()
         ws=wb.active
         ws.title="Modelos a Detalle"
-        ws.merge_cells("A1:L1")
+        ws.merge_cells(f"A1:{get_column_letter(len(fields))}1")
         ws["A1"]="Operaciones Ropa — Bonos · Modelos a Detalle"
         ws["A1"].font=Font(size=16, bold=True, color="FFFFFF")
         ws["A1"].fill=PatternFill("solid",fgColor="123B73")
-        ws.merge_cells("A2:L2")
+        ws.merge_cells(f"A2:{get_column_letter(len(fields))}2")
         ws["A2"]=f"Tienda: {store}  |  Periodo: {month}  |  Catálogo: {catalog}  |  Modelos: {len(rows)}"
         ws["A2"].font=Font(size=11, bold=True, color="123B73")
         ws.append([])
-        for col,(label,_key) in enumerate(FIELDS,1):
+        for col,(label,_key) in enumerate(fields,1):
             c=ws.cell(4,col,label)
             c.font=Font(bold=True,color="FFFFFF")
             c.fill=PatternFill("solid",fgColor="1769E8")
@@ -118,7 +124,7 @@ def install(m):
                     ws.cell(idx,1,"Sin foto")
             else:
                 ws.cell(idx,1,"Sin foto")
-            for col,(_label,key) in enumerate(FIELDS[1:],2):
+            for col,(_label,key) in enumerate(fields[1:],2):
                 value=cell_value(row,key)
                 c=ws.cell(idx,col,value)
                 c.alignment=Alignment(vertical="center")
@@ -132,18 +138,18 @@ def install(m):
                     c.number_format='#,##0.00'
                 if idx%2==0:
                     c.fill=PatternFill("solid",fgColor="F1F5FB")
-        widths=[11,16,18,17,16,16,19,18,18,20,20,20]
+        widths=([11,16,18,17,16,16,19,18,18,20,20,20] if fields is FIELDS else [11,16,18,20,22,20,20,17,21,23])
         for col,w in enumerate(widths,1):
             ws.column_dimensions[get_column_letter(col)].width=w
         ws.freeze_panes="C5"
-        ws.auto_filter.ref=f"B4:L{len(rows)+4}"
+        ws.auto_filter.ref=f"B4:{get_column_letter(len(fields))}{len(rows)+4}"
         ws.sheet_properties.pageSetUpPr.fitToPage=True
         ws.page_setup.orientation="landscape"
         ws.page_setup.paperSize=ws.PAPERSIZE_A3
         buf=BytesIO();wb.save(buf)
         return buf.getvalue()
 
-    def pdf(rows, store, month, catalog, pictures):
+    def pdf(rows, store, month, catalog, pictures, fields=FIELDS):
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import landscape, A3
         from reportlab.lib.styles import getSampleStyleSheet
@@ -154,7 +160,7 @@ def install(m):
         safe=lambda s: str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
         story=[Paragraph("Operaciones Ropa — Bonos · Modelos a Detalle",styles["Heading2"]),
                Paragraph(f"Tienda: {safe(store)} &nbsp;&nbsp; Periodo: {safe(month)} &nbsp;&nbsp; Catálogo: {safe(catalog)} &nbsp;&nbsp; Modelos: {len(rows)}",styles["Normal"]),Spacer(1,9)]
-        headers=[x[0] for x in FIELDS]
+        headers=[x[0] for x in fields]
         data=[headers]
         for row in rows:
             ident=str(row.get("id_art") or "")
@@ -167,14 +173,14 @@ def install(m):
             else:
                 im="—"
             line=[im]
-            for _label,key in FIELDS[1:]:
+            for _label,key in fields[1:]:
                 v=cell_value(row,key)
                 if isinstance(v,float):
                     line.append(("$"+format(v,",.2f")) if "investment" in key else format(v,",.1f"))
                 else:
                     line.append(str(v)[:26])
             data.append(line)
-        widths=[44,63,91,76,70,70,86,89,89,98,98,104]
+        widths=([44,63,91,76,70,70,86,89,89,98,98,104] if fields is FIELDS else [46,70,96,88,94,105,91,90,102,110])
         table=LongTable(data,colWidths=widths,repeatRows=1,hAlign="LEFT")
         table.setStyle(TableStyle([
             ("BACKGROUND",(0,0),(-1,0),colors.HexColor("#123B73")),
@@ -196,10 +202,20 @@ def install(m):
         m.require_user(request)
         if bonus not in range(1,7) or catalog not in (*CATALOGS,"Todos") or format not in ("xlsx","pdf"):
             raise HTTPException(400,"Parámetros de exportación inválidos")
-        handler=next((r.endpoint for r in m.app.routes if getattr(r,"path",None)=="/api/bonuses-v313"),None)
-        if not handler:
-            raise HTTPException(503,"Módulo de Bonos no disponible")
-        data=handler(request=request,month=month,store=store,bonus=bonus)
+        if bonus == 2:
+            cohort=getattr(m, "_v327_bonus2_payload", None)
+            if not cohort:
+                raise HTTPException(503,"La cartera específica del Bono 2 aún no está habilitada")
+            data=cohort(request=request,month=month,store=store)
+            if (data.get("b2_status") or "") == "pending":
+                raise HTTPException(409,"Bono 2 está preparando los modelos. Vuelve a intentar cuando termine la consulta.")
+            if data.get("b2_status")=="error":
+                raise HTTPException(503,"No fue posible validar las ventas y la última llegada del corte")
+        else:
+            handler=next((r.endpoint for r in m.app.routes if getattr(r,"path",None)=="/api/bonuses-v313"),None)
+            if not handler:
+                raise HTTPException(503,"Módulo de Bonos no disponible")
+            data=handler(request=request,month=month,store=store,bonus=bonus)
         selected_store=str(data.get("selected_store") or "")
         if not selected_store or selected_store=="Compañía":
             raise HTTPException(400,"Selecciona una tienda para exportar modelos")
@@ -209,7 +225,8 @@ def install(m):
         images=fetch_images(rows) if photos else {}
         period=str(data.get("month") or month)
         base=re.sub(r"[^a-zA-Z0-9_-]","_",f"Bonos_{selected_store}_{catalog}_{period}")
-        output=excel(rows,selected_store,period,catalog,images) if format=="xlsx" else pdf(rows,selected_store,period,catalog,images)
+        fields=FIELDS_B2 if bonus==2 else FIELDS
+        output=excel(rows,selected_store,period,catalog,images,fields) if format=="xlsx" else pdf(rows,selected_store,period,catalog,images,fields)
         mimetype=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if format=="xlsx" else "application/pdf")
         return Response(output,media_type=mimetype,headers={
             "Content-Disposition":f'attachment; filename="{base}.{format}"',
