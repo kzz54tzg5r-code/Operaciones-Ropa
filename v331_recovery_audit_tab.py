@@ -284,6 +284,11 @@ def install(m):
         async for chunk in response.body_iterator:
             body += chunk
         page = body.decode("utf-8", errors="replace")
+        # La nueva vista aún no tiene exportador auditado: no exponer descargas heredadas incorrectas.
+        page = page.replace(
+            "if(name!=='Recuperación por Tienda') out+=reportDownloadBar(name);",
+            "if(name!=='Recuperación por Tienda' && name!=='Tasa de recuperación · Revisión') out+=reportDownloadBar(name);",
+        )
         if 'id="v331-recovery-audit-css"' not in page:
             page = page.replace("</head>", css + "</head>", 1)
         if 'id="v331-recovery-audit-js"' not in page:
