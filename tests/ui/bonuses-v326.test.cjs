@@ -39,8 +39,8 @@ async function setup(opts={}){
       ...data,b2_cohort:true,b2_status:'ready',source_error:'',cutoff_date:'2026-10-13',
       details:[{
         catalog:'Licencias',id_art:'10001',model:'P1',sales_30:0,
-        last_arrival:'2026-10-08',arrival_age_days:5,current_ddi:135,
-        current_existence:25,current_investment:12000
+        last_arrival:'2026-10-05',arrival_age_days:8,initial_ddi:135,
+        initial_existence:25,initial_investment:12000
       }],b2_stats:{models:1,sales_30:0,avg_ddi:135,existence:25,investment:12000,
          catalog_counts:{Abrigador:0,Licencias:1,'Básicos':0}},
       selected:{formula:'0 ventas últimos 30 días; última entrada <=7 días; catálogo vigente'},
@@ -125,8 +125,10 @@ test('Bono 2 shares the Bono 1 four-tab design and lists zero-sales recent-arriv
     const list=f.w.document.querySelector('.v313-model-table');
     assert.equal(list.querySelectorAll('tbody tr').length,1);
     assert.match(list.textContent,/Venta pzas 30/);
-    assert.match(list.textContent,/08\/10\/2026/);
+    assert.match(list.textContent,/05\/10\/2026/);
     assert.match(list.textContent,/135/);
+    assert.match(list.textContent,/DDI inicial/);
+    assert.match(f.w.document.querySelector('#v313Host').textContent,/hace 7 días o más/);
     assert.ok(f.w.document.querySelector('[data-v313-return]'));
     assert.ok(f.w.document.querySelector('[data-v313-download="xlsx"]'));
   }finally{f.dom.window.close();}
