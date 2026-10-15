@@ -13,6 +13,7 @@
   let pendingVersion = null;
   let pendingVersionAt = 0;
   let refreshing = false;
+  let userApprovedUnsavedReload = false;
   let pendingWrites = 0;
   let lastInteraction = Date.now();
   const edits = new Set();
@@ -115,20 +116,31 @@
     if (refreshing) return;
     if (!safeToRefresh()) {
       const message = document.querySelector('.or-update-banner:not(.or-update-current) span');
-      if (message) message.textContent = pendingWrites > 0
-        ? 'Hay un guardado en proceso; actualiza cuando termine.'
-        : liveUnsavedEdits()
-          ? 'Tienes una captura sin guardar. Guárdala primero y después presiona Actualizar.'
-          : 'Comprueba tu conexión y vuelve a intentarlo.';
-      if (button) { button.disabled = false; button.textContent = 'Actualizar'; }
-      return;
+      // Nunca interrumpir una solicitud que está guardando datos.
+      if (pendingWrites > 0 || navigator.onLine === false) {
+        if (message) message.textContent = pendingWrites > 0
+          ? 'Hay un guardado en proceso. Espera a que termine.'
+          : 'Sin conexión. Conéctate para aplicar la actualización.';
+        return;
+      }
+      if (liveUnsavedEdits()) {
+        // Evita que un borrador antiguo bloquee para siempre el botón.
+        // Requiere 2 clics y confirmación explícita para continuar.
+        if (!button?.dataset?.forceUpdate) {
+          if (message) message.textContent = 'Hay datos sin guardar. Guárdalos o pulsa de nuevo para actualizar de todos modos.';
+          if (button) { button.dataset.forceUpdate = '1'; button.textContent = 'Actualizar de todos modos'; }
+          return;
+        }
+        if (!window.confirm('Hay cambios o capturas sin guardar. ¿Deseas actualizar ahora de todos modos?')) return;
+        userApprovedUnsavedReload = true;
+      }
     }
     refreshing = true;
     if (button) { button.disabled = true; button.textContent = 'Actualizando…'; }
     try {
       const verified = await fetchVersion();
       if (!verified?.version || verified.version === 'local') throw new Error('Versión no verificable');
-      if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) {
+      if (!(userApprovedUnsavedReload ? navigator.onLine !== false && pendingWrites === 0 : safeToRefresh()) || (automatic && Date.now() - lastInteraction < 30000)) {
         throw new Error('Hay una captura o petición pendiente');
       }
       // El SW puede permanecer esperando si otra pestaña sigue abierta:
@@ -144,13 +156,14 @@
       } catch (swError) {
         console.warn('[PWA] SW se actualizará durante la navegación:', swError);
       }
-      if (!safeToRefresh()) throw new Error('Captura pendiente');
+      if (!(userApprovedUnsavedReload ? navigator.onLine !== false && pendingWrites === 0 : safeToRefresh())) throw new Error('Captura pendiente');
       localStorage.setItem(loadedVersionKey, String(verified.version));
       loadedBuild = String(verified.version);
       location.reload();
     } catch (error) {
       console.warn('[PWA] no se pudo aplicar actualización:', error);
       refreshing = false;
+      userApprovedUnsavedReload = false;
       if (button) { button.disabled = false; button.textContent = 'Reintentar'; }
       const message = document.querySelector('.or-update-banner:not(.or-update-current) span');
       if (message) message.textContent = 'No se pudo confirmar la nueva versión. Reintenta cuando haya conexión.';
