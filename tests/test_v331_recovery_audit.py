@@ -4,7 +4,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from v331_recovery_audit_tab import corrected_stock, cut_quality, revise_payload
+from v331_recovery_audit_tab import (corrected_stock, cut_quality, revise_payload, insert_before_document_body_end)
 
 
 @pytest.mark.parametrize(("cut", "status"), [
@@ -87,3 +87,22 @@ def test_company_rate_is_weighted_not_average_of_store_rates():
     assert out["metrics"]["sell_through_pct"] == pytest.approx(100 * 12 / 28)
     assert out["metrics"]["stores_in_scope"] == 2
     assert out["metrics"]["valid_stores"] == 2
+
+
+def test_v314_quoted_closing_body_does_not_swallow_v331_script():
+    # The V314 photo exporter has </body> embedded inside a JS string.
+    v314 = """<script id="v314-bonus-photos-js">
+    (function(){w.document.write('<html><body>Foto</body></html>');})();
+    </script>"""
+    original = "<!doctype html><html><head></head><body>" + v314 + "</body></html>"
+    v331 = '<script id="v331-recovery-audit-js">window.recoveryRateImprovedView=function(){};</script>'
+    result = insert_before_document_body_end(original, v331)
+    assert v314 in result
+    assert result.count('id="v331-recovery-audit-js"') == 1
+    assert result.index('</script>', result.index('id="v314-bonus-photos-js"')) < result.index('id="v331-recovery-audit-js"')
+    assert result.endswith(v331 + "</body></html>")
+    assert "Foto</body></html>" in result
+
+
+def test_appended_script_when_host_page_lacks_explicit_body_end():
+    assert insert_before_document_body_end("<html>ok", "<script>1</script>") == "<html>ok<script>1</script>"
