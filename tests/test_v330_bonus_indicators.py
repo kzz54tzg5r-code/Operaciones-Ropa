@@ -66,7 +66,7 @@ def test_company_sales_weighted_by_real_goals():
     assert aggregate(rows, False)["inventory"]["capital_variation_mxn"] is None
 
 
-def mock_app(role="admin", comparable=True):
+def mock_app(role="admin", comparable=True, tracker=None):
     app = FastAPI()
     samples = [
         {"store": "Centro", "sales_pct": 105, "sales_goal": 100, "sales_actual": 105,
@@ -80,10 +80,12 @@ def mock_app(role="admin", comparable=True):
     ]
     @app.get("/api/operation/sales-bonus-v293")
     def fake_base(request: Request, month="", store=""):
+        if tracker is not None:
+            tracker.append((month, store))
         return {"month": "2026-10", "months": [{"value": "2026-10", "label": "Octubre 2026"}],
                 "stores": ["Centro", "Vallejo"],
                 "ranking": samples if role == "admin" else samples[:1],
-                "selected": {"details": [], "ddi": {"catalogs": []}},
+                "selected": {"details": [{"id_art": "store-123"}], "ddi": {"catalogs": []}},
                 "source_dates": {"opening_capacity_id": "initial", "current_capacity_id": "current" if comparable else "initial",
                                  "opening_capacity": "2026-10-01", "current_capacity": "2026-10-15"},
                 "processing": {"capacity": False, "sales": False}}
@@ -116,3 +118,16 @@ def test_endpoint_waits_for_new_cut_and_restricts_store_role():
     assert result["summary"]["inventory"]["current_ddi"] is None
     assert result["ranking"][0]["score"] is None
     assert result["ranking"][0]["ddi_models_pct"] is None
+
+
+def test_bonus_data_is_reused_across_four_models_but_details_are_lazy():
+    calls = []
+    endpoint = mock_app(tracker=calls)
+    for b in (3, 4, 5, 6):
+        result = endpoint(request=None, month="2026-10", store="Centro", bonus=b)
+        assert result["model"]["design"] in ("3.2", "4.1", "5.2", "6.1")
+        assert result["details"] == []  # Basic report must not transport model rows.
+    assert len(calls) == 1  # Same real-capacity snapshot for all four bonuses.
+    detailed = endpoint(request=None, month="2026-10", store="Centro", bonus=6, include_details=True)
+    assert len(calls) == 2
+    assert detailed["details"][0]["id_art"] == "store-123"
