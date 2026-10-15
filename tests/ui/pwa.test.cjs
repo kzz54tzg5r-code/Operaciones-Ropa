@@ -131,3 +131,44 @@ test('capture restores all four areas and keeps draft on failed save',async()=>{
     await settle();assert.equal(f.reloads,1);
   }finally{f.dom.window.close();}
 });
+
+
+test('changing Bono filters cannot block a manual update',async()=>{
+  const f=await fixture();try{
+    f.w.document.body.insertAdjacentHTML('beforeend',
+      '<div class="v313-filters"><select id="v313Store"><option>Centro</option><option>Vallejo</option></select></div>');
+    const select=f.w.document.getElementById('v313Store');
+    select.focus();select.value='Vallejo';
+    select.dispatchEvent(new f.w.Event('change',{bubbles:true}));
+    await f.update();
+    f.w.document.querySelector('.or-update-banner button').click();
+    await settle();
+    assert.equal(f.reloads,1,'report filters should not be treated as unsaved forms');
+  }finally{f.dom.window.close();}
+});
+test('a stale detached report input is never a permanent update blocker',async()=>{
+  const f=await fixture();try{
+    f.w.document.body.insertAdjacentHTML('beforeend','<section id="oldreport"><input id="oldField"></section>');
+    const input=f.w.document.getElementById('oldField');
+    input.focus();input.value='A';input.dispatchEvent(new f.w.Event('input',{bubbles:true}));
+    f.w.document.getElementById('oldreport').remove();
+    await f.update();
+    f.w.document.querySelector('.or-update-banner button').click();
+    await settle();
+    assert.equal(f.reloads,1);
+  }finally{f.dom.window.close();}
+});
+test('persistent capture draft remains protected even after its input re-renders',async()=>{
+  const f=await fixture();try{
+    f.w.sessionStorage.setItem('or.capture.v1:42:Centro:18',JSON.stringify({Colgado:'9'}));
+    await f.update();
+    const button=f.w.document.querySelector('.or-update-banner button');
+    button.click();
+    await settle();
+    assert.equal(f.reloads,0);
+    assert.match(f.w.document.querySelector('.or-update-banner span').textContent,/sin guardar/);
+    f.w.sessionStorage.removeItem('or.capture.v1:42:Centro:18');
+    button.click();await settle();
+    assert.equal(f.reloads,1);
+  }finally{f.dom.window.close();}
+});
