@@ -485,7 +485,9 @@ qa("[data-v313-download]").forEach(function(b){b.addEventListener("click",async 
     var url=URL.createObjectURL(blob),link=document.createElement("a");
     link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
     setTimeout(function(){URL.revokeObjectURL(url)},60000);
-    showExportNotice("Descarga preparada: "+filename+". El listado permanece abierto.",false);
+    var count=Number(response.headers.get("X-Photos-Included")||0),total=Number(response.headers.get("X-Photos-Requested")||0);
+    var report=total?" Fotografías: "+count+" de "+total+".":" Fotografías no solicitadas.";
+    showExportNotice("Descarga preparada: "+filename+"."+report+" El listado permanece abierto.",total>0&&count<total);
   }catch(e){showExportNotice("No se pudo descargar: "+(e.message||e)+". No se perdió tu consulta.",true)}
   finally{buttons.forEach(function(x){x.disabled=detailRows().length===0})}
 })});
