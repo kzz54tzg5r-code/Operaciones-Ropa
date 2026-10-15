@@ -177,5 +177,7 @@ rootWatcher.observe(document.documentElement,{childList:true,subtree:true});
         except Exception:
             return response
 
-    # Reutilizar exactamente la misma ruta de fotografías en XLSX y PDF.\n    m._bonus_photo_fetch_v314 = fetch_photo\n    m._V314_BONUS_PRODUCT_PHOTOS=True
+    # Reutilizar exactamente la misma ruta de fotografías en XLSX y PDF.
+    m._bonus_photo_fetch_v314 = fetch_photo
+    m._V314_BONUS_PRODUCT_PHOTOS=True
     print("[V314] Fotos por ID habilitadas para Modelos a Detalle (Bonos 1–6).",flush=True)
