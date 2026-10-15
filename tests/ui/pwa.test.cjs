@@ -172,3 +172,18 @@ test('persistent capture draft remains protected even after its input re-renders
     assert.equal(f.reloads,1);
   }finally{f.dom.window.close();}
 });
+
+
+test('update prompt offers deliberate override for old drafts and then reloads',async()=>{
+  const f=await fixture();try{
+    f.edit();
+    await f.update();
+    const button=f.w.document.querySelector('.or-update-banner button');
+    button.click();await settle();
+    assert.equal(f.reloads,0);
+    assert.match(button.textContent,/de todos modos/);
+    f.w.confirm=()=>true;
+    button.click();await settle();
+    assert.equal(f.reloads,1);
+  }finally{f.dom.window.close();}
+});
