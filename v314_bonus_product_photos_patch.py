@@ -53,8 +53,8 @@ def install(m):
                     return None
                 if mime not in ("image/jpeg","image/jpg","image/png","image/webp"):
                     # Algunos servidores devuelven octet-stream aunque el archivo es JPEG.
-                    mime = ("image/jpeg" if content[:3]==b"\\xff\\xd8\\xff" else
-                            "image/png" if content[:8]==b"\\x89PNG\\r\\n\\x1a\\n" else "image/webp")
+                    mime = ("image/jpeg" if content[:3]==b"\xff\xd8\xff" else
+                            "image/png" if content[:8]==b"\x89PNG\r\n\x1a\n" else "image/webp")
                 with _LOCK:
                     _CACHE[product_id]=(content,mime)
                     _CACHE.move_to_end(product_id)
