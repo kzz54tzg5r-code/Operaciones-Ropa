@@ -90,3 +90,15 @@ def test_bono2_export_pending_gives_clear_409():
     with pytest.raises(HTTPException) as err:
         exp(None,"2026-10","Olivar",2,"Licencias","xlsx",False)
     assert err.value.status_code==409
+
+
+def test_arrival_stays_with_correct_id_when_nonmatching_rows_are_interspersed():
+    source=raw_fixture()
+    # Sólo los ID 10002 y 10003 son elegibles, rodeados de filas descartadas.
+    source.loc[0,"TIPO CATALOGO MAX VIG"]="DESCONTINUADO"
+    source.loc[0,"ULTIMA ENTRADA CEDIS A TIENDA"]=""
+    source.loc[3,"ULTIMA ENTRADA CEDIS A TIENDA"]=""
+    out=qualify_bono2_rows(source,date(2026,10,13),Path("Capacidades.xlsx"))
+    assert [r["id_art"] for r in out]==["10002","10003"]
+    assert [r["last_arrival"] for r in out]==["2026-10-08","2026-10-06"]
+    assert [r["arrival_age_days"] for r in out]==[5,7]
