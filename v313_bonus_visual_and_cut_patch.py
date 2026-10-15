@@ -187,13 +187,13 @@ body[data-v313="1"] #v312Host{display:none!important}
 
     js=r'''<script id="v313-js">(function(){
 if(window.__V313_BONUS_VISUAL_CUTS)return;window.__V313_BONUS_VISUAL_CUTS=true;
-var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{}};
+var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{},controller:null,cache:new Map()};
 function q(s,r){return(r||document).querySelector(s)}function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){var x=Number(v);return Number.isFinite(x)?x:0}function pc(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})+"%"}function nf(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})}
 function money(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0})}
 function dateMx(v){if(!v)return"Pendiente";var a=String(v).slice(0,10).split("-");return a.length===3?a[2]+"/"+a[1]+"/"+a[0]:v}
-function api(u){return fetch(u,{credentials:"same-origin"}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(t||("HTTP "+r.status))});return r.json()})}
+function api(u,opts){return fetch(u,{credentials:"same-origin",...(opts||{})}).then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error(t||("HTTP "+r.status))});return r.json()})}
 function ensure(){var p=q("#page-bonuses"),main=q("main.main");if(main&&!p){p=document.createElement("section");p.className="page";p.id="page-bonuses";main.appendChild(p)}if(p&&!q("#v313Host",p))p.insertAdjacentHTML("afterbegin","<div id=\"v313Host\"></div>");return p}
 function activate(){ensure();try{MAIN="bonuses"}catch(_e){}document.body.dataset.v313="1";document.body.removeAttribute("data-v302");document.body.removeAttribute("data-v312");qa("[data-main]").forEach(function(x){x.classList.toggle("active",x.dataset.main==="bonuses")});qa(".page").forEach(function(x){x.classList.toggle("active",x.id==="page-bonuses")});var t=q("#heroTitle"),s=q("#heroSub");if(t)t.textContent="Bonos";if(s)s.textContent="Indicadores para habilitar el bono de colaboradores"}
 function filters(d){return"<div class=\"v313-filters\"><div class=\"v313-field\"><label>Periodo</label><select id=\"v313Month\">"+(d.months||[]).map(function(x){return"<option value=\""+esc(x.value)+"\" "+(x.value===d.month?"selected":"")+">"+esc(x.label)+"</option>"}).join("")+"</select></div><div class=\"v313-field\"><label>Tienda</label><select id=\"v313Store\">"+(d.stores||[]).map(function(x){return"<option "+(x===d.selected_store?"selected":"")+">"+esc(x)+"</option>"}).join("")+"</select></div></div>"}
@@ -449,7 +449,8 @@ q("#v313UpdateBtn")?.addEventListener("click",async function(){
   var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
   try{
     if(window.OperacionesPWA&&window.OperacionesPWA.checkForUpdates){
-      await window.OperacionesPWA.checkForUpdates({manual:true});
+      var versionResult=await window.OperacionesPWA.checkForUpdates({manual:true});
+       if(versionResult&&versionResult.available&&window.OperacionesPWA.applyUpdate)await window.OperacionesPWA.applyUpdate();
     }else{
       var response=await fetch("/api/app-version?t="+Date.now(),{cache:"no-store",credentials:"same-origin"});
       if(!response.ok)throw new Error("Servicio de actualización no disponible");
@@ -499,39 +500,76 @@ var scroller=q(".v313-model-scroll");if(scroller){
 qa(".v313-photo").forEach(function(im){im.addEventListener("click",function(){var bg=document.createElement("div");bg.className="v313-photo-overlay";var large=document.createElement("img");large.src=im.src;large.alt=im.alt;var close=document.createElement("button");close.type="button";close.textContent="← Regresar al listado";function done(){bg.remove();document.removeEventListener("keydown",escape)}function escape(e){if(e.key==="Escape")done()}close.onclick=done;bg.onclick=function(e){if(e.target===bg)done()};bg.append(close,large);document.body.append(bg);document.addEventListener("keydown",escape)})});
 q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
 q("#v313Store")?.addEventListener("change",function(e){S.store=e.target.value;S.refreshCount=0;load()});
-qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";S.catalog="Abrigador";S.refreshCount=0;load()})});
+qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){
+ var next=Number(b.dataset.v313Bonus);if(S.bonus===next&&S.section==="summary")return;
+ S.bonus=next;S.section="summary";S.catalog="Abrigador";S.refreshCount=0;load();
+})});
 q("[data-v313-initial]")?.addEventListener("click",function(){S.section="initial-upload";render()});
 q("#v321InitialMonth")?.addEventListener("change",function(e){S.month=e.target.value;S.initialStatus=null;var p=q("#v313Month");if(p)p.value=S.month;S.refreshCount=0;load()});
 q("#v321UploadButton")?.addEventListener("click",uploadInitialCut);
-qa("[data-v313-section]").forEach(function(b){b.addEventListener("click",function(){S.section=b.dataset.v313Section;if(S.section==="catalogLic")S.catalog="Licencias";if(S.section==="catalogBas")S.catalog="Básicos";render()})});
+qa("[data-v313-section]").forEach(function(b){b.addEventListener("click",function(){
+ S.section=b.dataset.v313Section;
+ if(S.section==="catalogLic")S.catalog="Licencias";if(S.section==="catalogBas")S.catalog="Básicos";
+ if(S.bonus>=3&&S.section==="models"&&(!S.data||!S.data.details||!S.data.details.length)){load();return}
+ render()
+})});
 qa("[data-v313-store]").forEach(function(r){r.addEventListener("click",function(){S.store=r.dataset.v313Store;S.section="panorama";S.refreshCount=0;load()})});
 qa("[data-v313-cat]").forEach(function(b){b.addEventListener("click",function(){S.catalog=b.dataset.v313Cat;render()})})
 }
 
 
 function render(){activate();var h=q("#v313Host");if(h&&S.data){h.innerHTML=page(S.data);bind();if(S.section==="initial-upload")loadInitialHistory()}}
+var v330Display={3:["Puntos ponderados","3.2",50,30],4:["Objetivos independientes","4.1",50,30],5:["Multiplicador por DDI","5.2",80,null],6:["Resultado colectivo por tienda","6.1",48,32]};
+function displayKey(){return [S.bonus,S.month,S.store,S.section==="models"?"details":"brief"].join("|")}
 function load(){
-if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}
-var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);
-api((S.bonus===2?"/api/bonuses-b2-v327?":S.bonus>=3?"/api/bonuses-v330?":"/api/bonuses-v313?")+p.toString()).then(function(d){
- if(seq!==S.seq)return;
- S.data=d;S.month=d.month;S.store=d.selected_store;render();
- var processing=d.processing||{};
- // Al reconstruir una cartera mensual de 192 mil filas, 18 segundos no bastan:
- // consultar periódicamente mientras dura el proceso (máximo 3 minutos).
- var capacityRetries=!!processing.capacity&&S.refreshCount<60;
- var otherRetries=!!(processing.sales||d.weekly_pending)&&S.refreshCount<10;
- if(capacityRetries||otherRetries){
-  S.refreshCount++;
-  S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},capacityRetries?3000:1800);
- }else{S.refreshCount=0}
-}).catch(function(e){
- var h=q("#v313Host");if(!h)return;
- var safe=esc(e.message||e);
- if(S.data){var box=q("#v313ErrorRetry");if(!box){box=document.createElement("div");box.id="v313ErrorRetry";box.className="v313-note";h.prepend(box)}box.innerHTML="No se pudieron actualizar los datos: "+safe+" <button type=\"button\" id=\"v313Retry\">Reintentar</button>";}
- else h.innerHTML="<div class=\"v313-note\">No fue posible cargar Bonos: "+safe+" <button type=\"button\" id=\"v313Retry\">Reintentar consulta</button></div>";
- q("#v313Retry")?.addEventListener("click",function(){load()});
-})
+ if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}
+ if(S.controller){try{S.controller.abort()}catch(_){}S.controller=null}
+ var seq=++S.seq,key=displayKey(),cached=S.cache.get(key),old=S.data;
+ if(cached&&Date.now()-cached.at<20000){
+  S.data=cached.data;render();
+ }else if(S.bonus>=3&&old&&old.is_v330&&old.month===S.month&&old.selected_store===S.store&&S.section!=="models"){
+  var next=v330Display[S.bonus];
+  S.data=Object.assign({},old,{bonus_no:S.bonus,
+   model:Object.assign({},old.model,{name:next[0],design:next[1],
+    weights:{sales:next[2],ddi:next[3],attendance:20}}),
+   ranking:[]});
+  render();
+ }else{
+  S.data=null;activate();
+  var h=q("#v313Host");
+  if(h)h.innerHTML='<div class="v313"><div class="v313-head"><h2>Bonos · Bono '+S.bonus+'</h2></div><div class="v313-bonus">'+[1,2,3,4,5,6].map(function(i){return'<button data-v313-bonus="'+i+'" class="'+(i===S.bonus?'active':'')+'">Bono '+i+'</button>'}).join('')+'</div><div class="v313-note" role="status">Consultando indicadores reales del Bono '+S.bonus+'…</div></div>';
+  qa("[data-v313-bonus]").forEach(function(b){b.addEventListener("click",function(){S.bonus=Number(b.dataset.v313Bonus);S.section="summary";load()})});
+ }
+ var controller=typeof AbortController!=="undefined"?new AbortController():null;S.controller=controller;
+ var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});
+ if(S.month)p.set("month",S.month);
+ if(S.bonus>=3&&S.section==="models")p.set("include_details","true");
+ var url=(S.bonus===2?"/api/bonuses-b2-v327?":S.bonus>=3?"/api/bonuses-v330?":"/api/bonuses-v313?")+p.toString();
+ api(url,controller?{signal:controller.signal}:{}).then(function(d){
+  if(seq!==S.seq)return;
+  S.data=d;S.month=d.month;S.store=d.selected_store;S.controller=null;
+  S.cache.set(displayKey(),{data:d,at:Date.now()});
+  if(S.cache.size>16)S.cache.delete(S.cache.keys().next().value);
+  render();
+  var processing=d.processing||{};
+  var capacityRetries=!!processing.capacity&&S.refreshCount<60;
+  var otherRetries=!!(processing.sales||d.weekly_pending)&&S.refreshCount<10;
+  if(capacityRetries||otherRetries){
+   S.refreshCount++;
+   S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},capacityRetries?3000:1800);
+  }else{S.refreshCount=0}
+ }).catch(function(e){
+  if(seq!==S.seq||e&&e.name==="AbortError")return;
+  S.controller=null;
+  var h=q("#v313Host");if(!h)return;
+  var safe=esc(e.message||e);
+  if(S.data){
+   var box=q("#v313ErrorRetry");
+   if(!box){box=document.createElement("div");box.id="v313ErrorRetry";box.className="v313-note";h.prepend(box)}
+   box.innerHTML="No se pudieron actualizar los datos: "+safe+' <button type="button" id="v313Retry">Reintentar</button>';
+  }else h.innerHTML='<div class="v313-note">No fue posible cargar Bono '+S.bonus+': '+safe+' <button type="button" id="v313Retry">Reintentar</button></div>';
+  q("#v313Retry")?.addEventListener("click",function(){load()});
+ })
 }
 
 
