@@ -287,12 +287,15 @@ def install(m):
         for rank,row in enumerate(ranking,1):
             row["rank"]=rank if row["models"] else None
         rows=by_store.get(selected,[]) if selected in by_store else []
+        # En Compañía, tarjetas macro de todas las tiendas, no cero modelos.
+        # El detalle requiere seleccionar una tienda concreta, como Bono 1.
+        stat_rows=all_rows if selected=="Compañía" else rows
         pending=result["status"]=="pending"
-        stats={"models":len(rows),"sales_30":0 if result["status"]=="ready" else None,
-               "avg_ddi":sum(x["current_ddi"] for x in rows)/len(rows) if rows else None,
-               "existence":sum(x["current_existence"] for x in rows),
-               "investment":sum(x["current_investment"] for x in rows),
-               "catalog_counts":{c:sum(1 for x in rows if x["catalog"]==c) for c in CATALOGS}}
+        stats={"models":len(stat_rows),"sales_30":0 if result["status"]=="ready" else None,
+               "avg_ddi":sum(x["current_ddi"] for x in stat_rows)/len(stat_rows) if stat_rows else None,
+               "existence":sum(x["current_existence"] for x in stat_rows),
+               "investment":sum(x["current_investment"] for x in stat_rows),
+               "catalog_counts":{c:sum(1 for x in stat_rows if x["catalog"]==c) for c in CATALOGS}}
         all_months=sorted({month,*[
             str(m._capacity_report_date(e))[:7]
             for e in processed_entries()
