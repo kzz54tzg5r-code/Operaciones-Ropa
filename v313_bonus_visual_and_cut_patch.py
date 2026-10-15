@@ -507,8 +507,19 @@ qa("[data-v313-page]").forEach(function(b){b.addEventListener("click",function()
  S.modelPage[key]=Math.max(0,Math.min(total-1,current+(b.dataset.v313Page==="next"?1:-1)));
  S.modelScroll[key]=0;render();
 })});
-q("[data-v313-scroll-up]")?.addEventListener("click",function(){q(".v313-model-scroll")?.scrollBy({top:-1290,behavior:"smooth"})});
-q("[data-v313-scroll-down]")?.addEventListener("click",function(){q(".v313-model-scroll")?.scrollBy({top:1290,behavior:"smooth"})});
+function moveModelViewport(direction){
+ var sc=q(".v313-model-scroll");if(!sc)return;
+ var list=detailRows(),key=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
+ var current=S.modelPage[key]||0,pages=Math.max(1,Math.ceil(list.length/30));
+ var measurable=sc.scrollHeight>sc.clientHeight;
+ var atEdge=measurable&&(direction>0?sc.scrollTop+sc.clientHeight>=sc.scrollHeight-12:sc.scrollTop<=2);
+ if(atEdge&&((direction>0&&current<pages-1)||(direction<0&&current>0))){
+  S.modelPage[key]=current+direction;S.modelScroll[key]=0;render();return;
+ }
+ sc.scrollBy({top:direction*1290,behavior:"smooth"});
+}
+q("[data-v313-scroll-up]")?.addEventListener("click",function(){moveModelViewport(-1)});
+q("[data-v313-scroll-down]")?.addEventListener("click",function(){moveModelViewport(1)});
 var scroller=q(".v313-model-scroll");if(scroller){
  var scrollKey=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
  scroller.scrollTop=S.modelScroll[scrollKey]||0;
