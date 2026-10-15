@@ -29,6 +29,30 @@ def install(m):
     if getattr(m, "_V314_BONUS_PRODUCT_PHOTOS", False):
         return
 
+    def remember_export_thumbnail(product_id, original):
+        with _LOCK:
+            cached = _EXPORT_PHOTO_CACHE.get(product_id)
+            if cached:
+                _EXPORT_PHOTO_CACHE.move_to_end(product_id)
+                return cached
+        try:
+            from PIL import Image
+            with Image.open(BytesIO(original)) as source:
+                source.thumbnail((170, 210))
+                if source.mode != "RGB":
+                    source = source.convert("RGB")
+                target = BytesIO()
+                source.save(target, "JPEG", quality=80)
+                image = target.getvalue()
+            with _LOCK:
+                _EXPORT_PHOTO_CACHE[product_id] = image
+                _EXPORT_PHOTO_CACHE.move_to_end(product_id)
+                while len(_EXPORT_PHOTO_CACHE) > _MAX_EXPORT_PHOTOS:
+                    _EXPORT_PHOTO_CACHE.popitem(last=False)
+            return image
+        except (OSError, ValueError):
+            return None
+
     def fetch_photo(product_id):
         with _LOCK:
             found = _CACHE.get(product_id)
@@ -66,6 +90,10 @@ def install(m):
                     _CACHE.move_to_end(product_id)
                     while len(_CACHE)>_MAX_CACHE:
                         _CACHE.popitem(last=False)
+                # Guardar miniatura reutilizable DESDE LA VISUALIZACIÓN WEB,
+                # evitando perder fotos al llegar al PDF/Excel por desalojo
+                # de la caché original de 32 imágenes.
+                remember_export_thumbnail(product_id, content)
                 return content,mime
         except (urllib.error.URLError,TimeoutError,OSError,ValueError):
             return None
@@ -84,23 +112,9 @@ def install(m):
         for attempt in range(2):
             result = fetch_photo(product_id)
             if result:
-                try:
-                    from PIL import Image
-                    with Image.open(BytesIO(result[0])) as source:
-                        source.thumbnail((170, 210))
-                        if source.mode != "RGB":
-                            source = source.convert("RGB")
-                        target = BytesIO()
-                        source.save(target, "JPEG", quality=80)
-                        image = target.getvalue()
-                    with _LOCK:
-                        _EXPORT_PHOTO_CACHE[product_id] = image
-                        _EXPORT_PHOTO_CACHE.move_to_end(product_id)
-                        while len(_EXPORT_PHOTO_CACHE) > _MAX_EXPORT_PHOTOS:
-                            _EXPORT_PHOTO_CACHE.popitem(last=False)
+                image = remember_export_thumbnail(product_id, result[0])
+                if image:
                     return image
-                except (OSError, ValueError):
-                    return None
             if attempt == 0:
                 time.sleep(.2)
         return None
