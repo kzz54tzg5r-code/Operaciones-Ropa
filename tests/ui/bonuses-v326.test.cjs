@@ -33,7 +33,8 @@ async function setup(opts={}){
     url:'https://operaciones.example/',runScripts:'outside-only'
   });
   const w=dom.window;
-  w.fetch=async url=>{
+  w.fetch=async (url,requestOpt)=>{
+    if(String(url).startsWith("/api/bonuses-v330") && opts.bonusResponse)return opts.bonusResponse(url,requestOpt);
     if(String(url).startsWith('/api/bonuses-v313'))return {ok:true,json:async()=>data};
     if(String(url).startsWith('/api/bonuses-b2-v327'))return {ok:true,json:async()=>({
       ...data,b2_cohort:true,b2_status:'ready',source_error:'',cutoff_date:'2026-10-13',
@@ -131,5 +132,42 @@ test('Bono 2 shares the Bono 1 four-tab design and lists zero-sales recent-arriv
     assert.match(f.w.document.querySelector('#v313Host').textContent,/hace 7 días o más/i);
     assert.ok(f.w.document.querySelector('[data-v313-return]'));
     assert.ok(f.w.document.querySelector('[data-v313-download="xlsx"]'));
+  }finally{f.dom.window.close();}
+});
+
+
+test('bonus tabs respond immediately and stale server responses cannot overwrite selected tab',async()=>{
+  const waiting=new Map();
+  const f=await setup({bonusResponse:(url,opts)=>new Promise(resolve=>{
+    const b=new URL(url,'https://operaciones.example').searchParams.get('bonus');
+    waiting.set(b,{resolve,signal:opts?.signal});
+  })});
+  try{
+    f.w.document.querySelector('[data-v313-bonus="3"]').click();
+    assert.ok(f.w.document.querySelector('[data-v313-bonus="3"].active'));
+    assert.match(f.w.document.querySelector('#v313Host').textContent,/Consultando indicadores reales del Bono 3/);
+    f.w.document.querySelector('[data-v313-bonus="6"]').click();
+    assert.ok(f.w.document.querySelector('[data-v313-bonus="6"].active'));
+    assert.equal(waiting.get("3").signal.aborted,true);
+    const createPayload=b=>({
+      is_v330:true,bonus_no:b,
+      month:'2026-10',months:[{value:'2026-10',label:'Octubre 2026'}],
+      stores:['Compañía','Olivar'],selected_store:'Compañía',
+      processing:{capacity:false,sales:false},
+      source_dates:{opening_capacity:'2026-10-01',current_capacity:'2026-10-13'},
+      model:{name:b===6?'Resultado colectivo por tienda':'Puntos ponderados',design:b===6?'6.1':'3.2',cut_comparable:true},
+      summary:{sales_pct:98,attendance_reference:95,ddi_models_pct:33,ddi_models:9,ddi_improved_models:3,inventory:{}},
+      selected:null,ranking:[]
+    });
+    waiting.get("6").resolve({ok:true,json:async()=>createPayload(6)});
+    await tick();await tick();
+    assert.match(f.w.document.querySelector('#v313Host').textContent,/Resultado colectivo por tienda/);
+    waiting.get("3").resolve({ok:true,json:async()=>createPayload(3)});
+    await tick();await tick();
+    assert.ok(f.w.document.querySelector('[data-v313-bonus="6"].active'));
+    assert.doesNotMatch(f.w.document.querySelector('.v313-hero').textContent,/Puntos ponderados/);
+    f.w.document.querySelector('[data-v313-bonus="5"]').click();
+    assert.ok(f.w.document.querySelector('[data-v313-bonus="5"].active'));
+    assert.match(f.w.document.querySelector('.v313-hero').textContent,/Multiplicador por DDI/);
   }finally{f.dom.window.close();}
 });
