@@ -246,6 +246,7 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
     'operations.conversion':'Conversión',
     'operations.recovery':'Recuperación Económica',
     'operations.recovery_store':'Recuperación por Tienda',
+    'operations.recovery_audit':'Tasa de recuperación · Revisión',
     'operations.productivity':'Productividad por Colaborador',
     'operations.routes':'Cumplimiento de Recorridos',
     'operations.score':'Índice Integral'
@@ -262,6 +263,7 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
     if(!t)return '';
     if(t.includes('centro operativo')||t.includes('centro ejecutivo'))return'Centro Ejecutivo';
     if(t.startsWith('conversion'))return'Conversión';
+    if(t.includes('tasa de recuperacion')&&t.includes('revision'))return'Tasa de recuperación · Revisión';
     if(t.includes('tasa de recuperacion')||t.includes('recuperacion por tienda'))return'Recuperación por Tienda';
     if(t.includes('recuperacion'))return'Recuperación Económica';
     if(t.includes('productividad'))return'Productividad por Colaborador';
@@ -298,7 +300,7 @@ html body #operativoPeriodBar.v250-option9b #v254ResetFilters svg{
   function profile(view){
     if(!view||view==='Carga de datos'||view==='Metas y tiendas')return '';
     if(view==='Productividad por Colaborador'||view==='Ranking de Colaboradores')return'productivityperiod';
-    if(['Centro Ejecutivo','Conversión','Recuperación Económica','Recuperación por Tienda','Cumplimiento de Recorridos','Índice Integral'].includes(view))return'fullperiod';
+    if(['Centro Ejecutivo','Conversión','Recuperación Económica','Recuperación por Tienda','Tasa de recuperación · Revisión','Cumplimiento de Recorridos','Índice Integral'].includes(view))return'fullperiod';
     try{
       const p=typeof fixedPeriodTypeForView==='function'?String(fixedPeriodTypeForView(view)||''):'';
       if(['fullperiod','productivityperiod','flex'].includes(p))return p;
