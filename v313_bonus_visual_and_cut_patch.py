@@ -152,13 +152,13 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v313-return-btn{background:#eaf2ff;color:#124475;border:1px solid #b9d1ec;border-radius:7px;padding:8px 10px;font-weight:850;font-size:10px;cursor:pointer}.v313-return-btn:hover{background:#dceafd}.v313-export-notice{padding:8px 11px;background:#eef6ff;color:#114276;font-size:11px;border-radius:5px;margin:4px 10px}.v313-export-notice.error{background:#fff0ef;color:#922f34}.v313-export-notice[hidden]{display:none!important}.v313-model-downloads button:disabled{opacity:.5;cursor:not-allowed}
 .v313-model-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px 10px;background:#fafcff;font-size:9px;color:#49617f}
 .v313-model-downloads{display:flex;gap:7px}.v313-model-downloads button{font-size:10px;font-weight:850;color:#115292;border:1px solid #bad1ea;border-radius:7px;padding:8px 12px;background:#fff;cursor:pointer}
-.v313-model-scroll{height:auto;max-height:min(calc(30 * 43px + 32px),calc(100dvh - 350px));min-height:0;overflow-y:scroll!important;overflow-x:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:#7b9cc1 #f1f5f9;contain:layout;position:relative}
-.v313-model-table{min-width:880px}.v313-model-table thead th{position:sticky;top:0;z-index:2;background:#eaf3fb}
-.v313-model-scroll::-webkit-scrollbar{width:11px;height:11px}.v313-model-scroll::-webkit-scrollbar-thumb{background:#86a9d3;border-radius:10px;border:2px solid #f1f5f9}.v313-model-table tbody tr{height:43px}.v313-model-table .v314-photo{width:32px;height:36px;object-fit:contain;cursor:zoom-in}
+.v313-model-scroll{display:block!important;height:min(66dvh,620px)!important;max-height:min(66dvh,620px)!important;min-height:280px!important;overflow-y:auto!important;overflow-x:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scrollbar-width:thin;scrollbar-color:#7b9cc1 #f1f5f9;contain:layout;position:relative}
+.v313-model-table{min-width:880px;height:max-content!important;table-layout:auto}.v313-model-table thead th{position:sticky;top:0;z-index:2;background:#eaf3fb}
+.v313-model-scroll::-webkit-scrollbar{width:14px;height:12px}.v313-model-scroll::-webkit-scrollbar-thumb{background:#86a9d3;border-radius:10px;border:2px solid #f1f5f9}.v313-model-table tbody tr{height:43px}.v313-model-table .v314-photo{width:32px;height:36px;object-fit:contain;cursor:zoom-in}
 .v313-model-table .v314-photo-cell{width:46px;min-width:46px;padding:3px}
 .v313-photo-missing{font-size:8px;color:#8293a9}.v313-photo-overlay{position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.91);display:flex;align-items:center;justify-content:center;padding:65px 16px 20px}
 .v313-photo-overlay img{max-height:100%;max-width:100%;object-fit:contain}.v313-photo-overlay button{position:absolute;top:14px;left:14px;border:0;border-radius:8px;padding:12px 16px;background:#fff;color:#12497e;font-weight:900;cursor:pointer}
-@media(max-width:900px){.v313-head-right{width:100%;justify-content:space-between}.v313-model-scroll{max-height:min(70dvh,calc(30 * 43px + 32px))}}
+@media(max-width:900px){.v313-head-right{width:100%;justify-content:space-between}.v313-model-scroll{height:min(62dvh,570px)!important;max-height:min(62dvh,570px)!important}}
 
 .v329-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
 .v329-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
@@ -183,11 +183,16 @@ body[data-v313="1"] #v312Host{display:none!important}
 .v330-ranking{min-width:880px}.v330-ranking td{text-align:center}.v330-ranking td.left{text-align:left}
 @media(max-width:950px){.v330-layout{grid-template-columns:1fr}.v330-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:640px){.v330-cards{gap:4px;padding:5px}.v330-card{padding:6px;gap:5px}.v330-card b{font-size:16px}.v330-card span{font-size:9px}.v330-card small{font-size:9px}.v330-item-main b{font-size:10px}.v330-item strong{font-size:12px}.v330-item-main small{font-size:9px}.v330-stats span{font-size:9px}.v330-stats b{font-size:12px}}
+
+.v313-model-pagination{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:9px 10px;background:#f5faff;border-top:1px solid #d8e5f4;font-weight:800;font-size:11px;color:#194877}
+.v313-model-pagination button{font-size:11px;font-weight:800;border:1px solid #b9d1eb;background:#fff;border-radius:7px;padding:8px 12px;cursor:pointer;color:#124b85}
+.v313-model-pagination button:disabled{opacity:.35;cursor:not-allowed}
+.v313-model-scroll:focus-visible{outline:2px solid #3280e8;outline-offset:-2px}
 </style>''';
 
     js=r'''<script id="v313-js">(function(){
 if(window.__V313_BONUS_VISUAL_CUTS)return;window.__V313_BONUS_VISUAL_CUTS=true;
-var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{},controller:null,cache:new Map()};
+var S={bonus:1,section:"summary",store:"Compañía",month:"",catalog:"Abrigador",data:null,seq:0,refreshCount:0,refreshTimer:null,initialStatus:null,modelScroll:{},modelPage:{},controller:null,cache:new Map()};
 function q(s,r){return(r||document).querySelector(s)}function qa(s,r){return Array.from((r||document).querySelectorAll(s))}
 function esc(v){return String(v==null?"":v).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]})}
 function n(v){var x=Number(v);return Number.isFinite(x)?x:0}function pc(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})+"%"}function nf(v){return v==null?"N/D":n(v).toLocaleString("es-MX",{maximumFractionDigits:1})}
@@ -330,6 +335,10 @@ function panorama(d){if(d.selected_store==="Compañía")return cutbar(d)+hero(d)
 function modelTable(d,rows,title,showCatalog,subtabsHtml){
 if(d.selected_store==="Compañía")return cutbar(d)+hero(d)+"<div class=\"v313-note\">Selecciona una tienda para consultar los modelos de su cartera.</div>"+ranking(d,0);
 var all=d.details||[],processing=d.processing||{},sd=d.source_dates||{},emptyTitle="",emptyText="";
+ var pageKey=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
+ var pageSize=30,pageMax=Math.max(1,Math.ceil(rows.length/pageSize));
+ var page=Math.max(0,Math.min(pageMax-1,S.modelPage[pageKey]||0));
+ var visible=rows.slice(page*pageSize,(page+1)*pageSize);
 if(!rows.length){
  if(processing.capacity){emptyTitle="Preparando la cartera inicial";emptyText="Capacidades está reconstruyendo el listado para el corte seleccionado. Esta pantalla se actualizará automáticamente cuando termine."}
  else if(!sd.opening_capacity){emptyTitle="Falta un corte inicial válido";emptyText="No se usará una Capacidades antigua de otro mes. Carga el corte más cercano al inicio de "+esc((d.period_label||d.month||"este periodo"))+" para construir la comparación."}
@@ -337,21 +346,21 @@ if(!rows.length){
  else{emptyTitle="Sin modelos en "+title;emptyText="No hay modelos de este rubro que cumplan los criterios de la cartera inicial. Revisa los demás rubros o la clasificación del archivo de Capacidades."}
 }
 var head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>DDI inicial</th><th>DDI actual</th><th>Red. DDI</th><th>Exist. inicial</th><th>Exist. actual</th><th>Inv. inicial</th><th>Inv. actual</th><th>Red. inversión</th>";
-var bodyRows=rows.map(function(r){var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id),photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";return"<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+pc(r.ddi_reduction_pct)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.initial_investment)+"</td><td>"+money(r.current_investment)+"</td><td>"+pc(r.investment_reduction_pct)+"</td></tr>"}).join("");
+var bodyRows=visible.map(function(r){var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id),photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";return"<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+pc(r.ddi_reduction_pct)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.initial_investment)+"</td><td>"+money(r.current_investment)+"</td><td>"+pc(r.investment_reduction_pct)+"</td></tr>"}).join("");
 if(d.b2_cohort){
  if(!rows.length){
   emptyTitle=d.b2_status==="pending"?"Preparando modelos sin venta":d.b2_status==="missing"?"No hay corte inicial de Capacidades":d.b2_status==="error"?"No se pudo validar el archivo":"No hay modelos que cumplan los criterios";
   emptyText=d.source_error||"Sólo Tipo catálogo VIGENTE, Abrigador/Licencias/Básicos, VTA EN PZAS 30 = 0 y última llegada de hace 7 días o más al corte inicial. Si falta alguna fecha de entrada, el modelo no entra.";
  }
  head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>Venta pzas 30</th><th>Última llegada</th><th>Días desde llegada</th><th>DDI inicial</th><th>Existencia inicial</th><th>Inversión inicial</th>";
- bodyRows=rows.map(function(r){
+ bodyRows=visible.map(function(r){
   var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id);
   var photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";
   return "<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>0</td><td>"+dateMx(r.last_arrival)+"</td><td>"+nf(r.arrival_age_days)+"</td><td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+money(r.initial_investment)+"</td></tr>";
  }).join("");
 }
-var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · Tipo catálogo: VIGENTE "+(d.b2_cohort?"· 0 ventas 30 días · última llegada ≥7 días ":"")+"· desplázate sobre la tabla (máx. 30 visibles)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↑</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↓</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
-return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div>"+actions+"<div class=\"v313-scroll v313-model-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Listado de modelos, usa rueda o dedo para desplazar\"><table class=\"v313-table v313-model-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
+var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · Tipo catálogo: VIGENTE "+(d.b2_cohort?"· 0 ventas 30 días · última llegada ≥7 días ":"")+"· rueda/dedo o usa las páginas (30 modelos por página)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↑</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↓</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
+return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div>"+actions+"<div class=\"v313-scroll v313-model-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Listado de modelos, usa rueda o dedo para desplazar\"><table class=\"v313-table v313-model-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(pageMax>1?"<div class=\"v313-model-pagination\" role=\"navigation\" aria-label=\"Páginas de modelos\"><button type=\"button\" data-v313-page=\"prev\" "+(page===0?"disabled":"")+">← Anteriores</button><span>Mostrando "+(page*pageSize+1)+"–"+Math.min((page+1)*pageSize,rows.length)+" de "+rows.length+" · Página "+(page+1)+" de "+pageMax+"</span><button type=\"button\" data-v313-page=\"next\" "+(page>=pageMax-1?"disabled":"")+">Siguientes →</button></div>":"")+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
 }
 function models(d,onlyCatalog){
 if(onlyCatalog)S.catalog=onlyCatalog;
@@ -492,12 +501,36 @@ qa("[data-v313-download]").forEach(function(b){b.addEventListener("click",async 
   finally{buttons.forEach(function(x){x.disabled=detailRows().length===0})}
 })});
 q("[data-v313-return]")?.addEventListener("click",function(){S.section="summary";render()});
+qa("[data-v313-page]").forEach(function(b){b.addEventListener("click",function(){
+ var list=detailRows(),key=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
+ var total=Math.max(1,Math.ceil(list.length/30)),current=S.modelPage[key]||0;
+ S.modelPage[key]=Math.max(0,Math.min(total-1,current+(b.dataset.v313Page==="next"?1:-1)));
+ S.modelScroll[key]=0;render();
+})});
 q("[data-v313-scroll-up]")?.addEventListener("click",function(){q(".v313-model-scroll")?.scrollBy({top:-1290,behavior:"smooth"})});
 q("[data-v313-scroll-down]")?.addEventListener("click",function(){q(".v313-model-scroll")?.scrollBy({top:1290,behavior:"smooth"})});
 var scroller=q(".v313-model-scroll");if(scroller){
  var scrollKey=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
  scroller.scrollTop=S.modelScroll[scrollKey]||0;
  scroller.addEventListener("scroll",function(){S.modelScroll[scrollKey]=scroller.scrollTop},{passive:true});
+  scroller.addEventListener("wheel",function(e){
+    if(scroller.scrollHeight<=scroller.clientHeight&&scroller.scrollWidth<=scroller.clientWidth)return;
+    if(e.cancelable)e.preventDefault();
+    scroller.scrollTop+=e.deltaY;scroller.scrollLeft+=e.deltaX;
+  },{passive:false,capture:true});
+  var startY=0,startX=0;
+  scroller.addEventListener("touchstart",function(e){
+    if(e.touches.length===1){startY=e.touches[0].clientY;startX=e.touches[0].clientX}
+  },{passive:true});
+  scroller.addEventListener("touchmove",function(e){
+    if(e.touches.length!==1)return;
+    var y=e.touches[0].clientY,x=e.touches[0].clientX;
+    if(scroller.scrollHeight>scroller.clientHeight||scroller.scrollWidth>scroller.clientWidth){
+      if(e.cancelable)e.preventDefault();
+      scroller.scrollTop+=(startY-y);scroller.scrollLeft+=(startX-x);
+    }
+    startY=y;startX=x;
+  },{passive:false,capture:true});
 }
 qa(".v313-photo").forEach(function(im){im.addEventListener("click",function(){var bg=document.createElement("div");bg.className="v313-photo-overlay";var large=document.createElement("img");large.src=im.src;large.alt=im.alt;var close=document.createElement("button");close.type="button";close.textContent="← Regresar al listado";function done(){bg.remove();document.removeEventListener("keydown",escape)}function escape(e){if(e.key==="Escape")done()}close.onclick=done;bg.onclick=function(e){if(e.target===bg)done()};bg.append(close,large);document.body.append(bg);document.addEventListener("keydown",escape)})});
 q("#v313Month")?.addEventListener("change",function(e){S.month=e.target.value;S.refreshCount=0;load()});
