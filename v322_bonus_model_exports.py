@@ -28,8 +28,8 @@ FIELDS = [
 FIELDS_B2 = [
     ("Foto", "photo"),("ID", "id_art"),("Modelo", "model"),("Catálogo", "catalog"),
     ("Venta pzas 30 días", "sales_30"),("Última llegada", "last_arrival"),
-    ("Días desde llegada", "arrival_age_days"),("DDI actual", "current_ddi"),
-    ("Existencia actual", "current_existence"),("Inversión actual ($)", "current_investment"),
+    ("Días desde llegada", "arrival_age_days"),("DDI inicial", "initial_ddi"),
+    ("Existencia inicial", "initial_existence"),("Inversión inicial ($)", "initial_investment"),
 ]
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
 IMG_BASE = "http://static.priceshoes.com.mx/imgs/original/articulo/"
