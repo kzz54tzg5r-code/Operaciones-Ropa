@@ -17,7 +17,7 @@ _CACHE = OrderedDict()
 _LOCK = Lock()
 _MAX_CACHE = 32
 # Acotar las imágenes procesadas en paralelo: Railway tiene límite de 1 GB.
-_FETCH_SLOTS = BoundedSemaphore(value=3)
+_FETCH_SLOTS = BoundedSemaphore(value=4)
 
 def install(m):
     if getattr(m, "_V314_BONUS_PRODUCT_PHOTOS", False):
@@ -31,7 +31,7 @@ def install(m):
                 return found
         # Limitar la concurrencia: docenas de fotos grandes simultáneas pueden
         # agotar la memoria del contenedor y causar el error 502.
-        if not _FETCH_SLOTS.acquire(timeout=3):
+        if not _FETCH_SLOTS.acquire(timeout=15):
             return None
         try:
             return fetch_photo_limited(product_id)
@@ -45,14 +45,16 @@ def install(m):
         try:
             with urllib.request.urlopen(req, timeout=5) as response:
                 mime = response.headers.get("Content-Type","").split(";")[0].lower().strip()
-                if mime not in ("image/jpeg","image/jpg","image/png","image/webp"):
-                    return None
                 content = response.read(2_000_001)
                 if not content or len(content)>2_000_000:
                     return None
                 signature = (content[:3]==b"\xff\xd8\xff" or content[:8]==b"\x89PNG\r\n\x1a\n" or (content[:4]==b"RIFF" and content[8:12]==b"WEBP"))
                 if not signature:
                     return None
+                if mime not in ("image/jpeg","image/jpg","image/png","image/webp"):
+                    # Algunos servidores devuelven octet-stream aunque el archivo es JPEG.
+                    mime = ("image/jpeg" if content[:3]==b"\\xff\\xd8\\xff" else
+                            "image/png" if content[:8]==b"\\x89PNG\\r\\n\\x1a\\n" else "image/webp")
                 with _LOCK:
                     _CACHE[product_id]=(content,mime)
                     _CACHE.move_to_end(product_id)
