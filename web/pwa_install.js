@@ -19,7 +19,7 @@
   const originals = new WeakMap();
   const valueOf = el => ['checkbox', 'radio'].includes(el.type) ? el.checked : el.value;
   const eligible = el => el?.matches?.('input,textarea,select') &&
-    !el.closest('#loginView,.filters,.v165-subfilters,.or-filter-panel-v3,#viewRoleBox') &&
+    !el.closest('#loginView,.filters,.v165-subfilters,.or-filter-panel-v3,#viewRoleBox,.v313-filters,.v293-filters,.v302-filters,.v330-layout,.v330-source') &&
     !['hidden', 'button', 'submit'].includes(el.type);
   document.addEventListener('focusin', event => {
     if (eligible(event.target) && !originals.has(event.target)) originals.set(event.target, valueOf(event.target));
@@ -54,7 +54,19 @@
     try { return await originalFetch(...args); }
     finally { if (writing) pendingWrites--; }
   };
-  const safeToRefresh = () => navigator.onLine !== false && pendingWrites === 0 && edits.size === 0;
+  // Los filtros cambian consultas, no son capturas sin guardar.
+  // Los campos desconectados del DOM no deben bloquear actualizaciones.
+  const pendingDrafts = () => {
+    try {
+      return Array.from({ length: sessionStorage.length }, (_, i) => sessionStorage.key(i))
+        .some(key => /^or\.capture\.v1:/.test(key || ''));
+    } catch (_) { return false; }
+  };
+  const liveUnsavedEdits = () => {
+    for (const el of edits) if (!el.isConnected) edits.delete(el);
+    return edits.size > 0 || pendingDrafts();
+  };
+  const safeToRefresh = () => navigator.onLine !== false && pendingWrites === 0 && !liveUnsavedEdits();
 
   const addSystemStyle = () => {
     if (document.getElementById('pwaSystemStyle')) return;
@@ -64,13 +76,13 @@
       .or-version-badge{display:flex;align-items:center;gap:6px;margin-top:7px;padding:6px 8px;border:1px solid #e1e8f0;
         border-radius:8px;background:#f8fafc;color:#62748a;font-size:8px;font-weight:750;line-height:1.2}
       .or-version-dot{width:7px;height:7px;border-radius:50%;background:#0e9f6e;box-shadow:0 0 0 3px rgba(14,159,110,.10)}
-      .or-update-banner{position:fixed;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:25000;
+      .or-update-banner{position:fixed;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:2147483000!important;pointer-events:auto!important;isolation:isolate;
         max-width:620px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #b9dafc;
         border-radius:12px;background:#fff;color:#123b73;box-shadow:0 16px 40px rgba(10,49,91,.20);
         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
       .or-update-banner strong{display:block;font-size:11px;margin-bottom:2px}.or-update-banner span{display:block;font-size:9px;color:#66758a;line-height:1.3}
       .or-update-banner button{margin-left:auto;flex:0 0 auto;border:0;border-radius:8px;background:#0d7ff4;color:#fff;
-        min-height:34px;padding:0 11px;font-size:9px;font-weight:900;cursor:pointer}
+        min-height:40px;padding:0 14px;font-size:11px;font-weight:900;cursor:pointer;pointer-events:auto!important;touch-action:manipulation;position:relative;z-index:2}
       .or-update-banner button:disabled{opacity:.65}
       .pwa-install-hint{position:fixed;left:10px;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:19000;
         max-width:520px;margin:0 auto;background:#fff;border:1px solid #dce4ee;border-radius:16px;padding:11px 12px;
@@ -102,48 +114,53 @@
   const refreshAndReload = async (button, automatic = false) => {
     if (refreshing) return;
     if (!safeToRefresh()) {
-      const message = document.querySelector('.or-update-banner span');
-      if (message) message.textContent = 'Guarda los cambios pendientes y espera a tener conexión antes de actualizar.';
+      const message = document.querySelector('.or-update-banner:not(.or-update-current) span');
+      if (message) message.textContent = pendingWrites > 0
+        ? 'Hay un guardado en proceso; actualiza cuando termine.'
+        : liveUnsavedEdits()
+          ? 'Tienes una captura sin guardar. Guárdala primero y después presiona Actualizar.'
+          : 'Comprueba tu conexión y vuelve a intentarlo.';
+      if (button) { button.disabled = false; button.textContent = 'Actualizar'; }
       return;
     }
     refreshing = true;
-    if (button) {
-      button.disabled = true;
-      button.textContent = 'Actualizando…';
-    }
+    if (button) { button.disabled = true; button.textContent = 'Actualizando…'; }
     try {
-      await swRegistration?.update?.();
-      const verifiedVersion = await fetchVersion(); // No reload en errores de publicación.
-      if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) throw new Error('Hay actividad pendiente');
-      const waiting = swRegistration?.waiting;
-      if (waiting) await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { waiting.removeEventListener('statechange', changed); reject(new Error('La actualización sigue preparándose')); }, 10000);
-        function changed() {
-          if (waiting.state === 'activated') { clearTimeout(timer); waiting.removeEventListener('statechange', changed); resolve(); }
+      const verified = await fetchVersion();
+      if (!verified?.version || verified.version === 'local') throw new Error('Versión no verificable');
+      if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) {
+        throw new Error('Hay una captura o petición pendiente');
+      }
+      // El SW puede permanecer esperando si otra pestaña sigue abierta:
+      // el shell es network-first, no esperamos su activación para recargar.
+      try {
+        if (swRegistration?.update) {
+          await Promise.race([
+            swRegistration.update(),
+            new Promise(resolve => setTimeout(resolve, 2500))
+          ]);
         }
-        waiting.addEventListener('statechange', changed);
-        waiting.postMessage({ type: 'SKIP_WAITING' });
-        changed();
-      });
-      if (!safeToRefresh() || (automatic && Date.now() - lastInteraction < 30000)) throw new Error('Hay actividad pendiente');
+        swRegistration?.waiting?.postMessage({type:'SKIP_WAITING'});
+      } catch (swError) {
+        console.warn('[PWA] SW se actualizará durante la navegación:', swError);
+      }
+      if (!safeToRefresh()) throw new Error('Captura pendiente');
+      localStorage.setItem(loadedVersionKey, String(verified.version));
+      loadedBuild = String(verified.version);
+      location.reload();
     } catch (error) {
-      console.warn('[PWA] actualización previa a recarga:', error);
+      console.warn('[PWA] no se pudo aplicar actualización:', error);
       refreshing = false;
       if (button) { button.disabled = false; button.textContent = 'Reintentar'; }
-      return;
+      const message = document.querySelector('.or-update-banner:not(.or-update-current) span');
+      if (message) message.textContent = 'No se pudo confirmar la nueva versión. Reintenta cuando haya conexión.';
     }
-    try {
-      // Actualizar la versión recordada solo después de validar la nueva publicación.
-      const verified = await fetchVersion();
-      localStorage.setItem(loadedVersionKey, String(verified.version || ""));
-    } catch (_) {}
-    location.reload();
   };
 
   const showUpdateBanner = newVersion => {
     if (pendingVersion !== newVersion) pendingVersionAt = Date.now();
     pendingVersion = newVersion;
-    if (updateVisible) return;
+    if (updateVisible) { const el=document.querySelector('.or-update-banner:not(.or-update-current)'); if(el){const span=el.querySelector('span'); if(span)span.textContent='Versión nueva lista para instalar sin reinstalar la aplicación.';} return; }
     updateVisible = true;
     addSystemStyle();
     const banner = document.createElement('div');
@@ -155,7 +172,7 @@
       </div>
       <button type="button">Actualizar</button>
     `;
-    banner.querySelector('button')?.addEventListener('click', event => refreshAndReload(event.currentTarget));
+    banner.querySelector('button')?.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); refreshAndReload(event.currentTarget); });
     document.body.appendChild(banner);
     // The badge identifies the loaded build, never the pending server build.
     renderVersion(loadedBuild);
@@ -216,7 +233,7 @@
       }
       return result;
     },
-    applyUpdate: () => refreshAndReload(document.querySelector(".or-update-banner button"))
+    applyUpdate: () => refreshAndReload(document.querySelector(".or-update-banner:not(.or-update-current) button"))
   };
 
   const registerServiceWorker = async () => {
