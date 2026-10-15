@@ -440,7 +440,8 @@ _install_v321_bonus_initial_upload_responsive_patch(web_app)
 # V327: Bono 2 independiente · 0 ventas en 30 días y última llegada reciente.
 from v327_bonus2_zero_sales_patch import install as _install_v327_bonus2_zero_sales_patch
 _install_v327_bonus2_zero_sales_patch(web_app)
-# V329: reemplaza exclusivamente Bonos 3–6 por modelos de pago simulados.
-from v329_employee_bonus_models_patch import install as _install_v329_employee_bonus_models_patch
-_install_v329_employee_bonus_models_patch(web_app)
+# V330: indicadores reales para Bonos 3–6; sin simuladores ni montos de pago.
+# V329 ya no se instala: los Bonos 1 y 2 permanecen en sus rutas actuales.
+from v330_bonus_indicators_patch import install as _install_v330_bonus_indicators_patch
+_install_v330_bonus_indicators_patch(web_app)
 app = web_app.app
