@@ -298,6 +298,17 @@ def install(m):
         if not rows:
             raise HTTPException(404,"No hay modelos para exportar en este catálogo y periodo")
         images=fetch_images(rows) if photos else {}
+        unique_ids = {str(x.get("id_art") or "") for x in rows}
+        if photos:
+            print(f"[BONUS-EXPORT-PHOTOS] format={format} tienda={selected_store} "
+                  f"modelos={len(rows)} imagenes={len(images)} faltantes={len(unique_ids) - len(images)}",
+                  flush=True)
+            if not images:
+                raise HTTPException(
+                    503,
+                    "No se logró recuperar ninguna fotografía. No se generó un archivo "
+                    "sin imágenes. Intenta nuevamente o revisa la conexión al servidor de fotos."
+                )
         period=str(data.get("month") or month)
         base=re.sub(r"[^a-zA-Z0-9_-]","_",f"Bonos_{selected_store}_{catalog}_{period}")
         fields=FIELDS_B2 if bonus==2 else FIELDS
@@ -307,6 +318,7 @@ def install(m):
             "Content-Disposition":f'attachment; filename="{base}.{format}"',
             "Cache-Control":"private, no-store",
             "X-Photos-Included":str(len(images)),
+            "X-Photos-Requested":str(len(unique_ids)) if photos else "0",
         })
 
     m._V322_BONUS_EXPORTS=True
