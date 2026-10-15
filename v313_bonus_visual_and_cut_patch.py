@@ -250,7 +250,19 @@ if(!rows.length){
 }
 var head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>DDI inicial</th><th>DDI actual</th><th>Red. DDI</th><th>Exist. inicial</th><th>Exist. actual</th><th>Inv. inicial</th><th>Inv. actual</th><th>Red. inversión</th>";
 var bodyRows=rows.map(function(r){var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id),photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";return"<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+pc(r.ddi_reduction_pct)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.initial_investment)+"</td><td>"+money(r.current_investment)+"</td><td>"+pc(r.investment_reduction_pct)+"</td></tr>"}).join("");
-var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · Tipo catálogo: VIGENTE · desplázate sobre la tabla (máx. 30 visibles)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↑</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↓</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
+if(d.b2_cohort){
+ if(!rows.length){
+  emptyTitle=d.b2_status==="pending"?"Preparando modelos sin venta":d.b2_status==="missing"?"No hay corte actual de Capacidades":d.b2_status==="error"?"No se pudo validar el archivo":"No hay modelos que cumplan los criterios";
+  emptyText=d.source_error||"Sólo Tipo catálogo VIGENTE, Abrigador/Licencias/Básicos, VTA EN PZAS 30 = 0 y última llegada de 0 a 7 días antes del corte. Si falta alguna fecha de entrada, el modelo no entra.";
+ }
+ head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>Venta pzas 30</th><th>Última llegada</th><th>Días desde llegada</th><th>DDI actual</th><th>Existencia actual</th><th>Inversión actual</th>";
+ bodyRows=rows.map(function(r){
+  var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id);
+  var photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";
+  return "<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>0</td><td>"+dateMx(r.last_arrival)+"</td><td>"+nf(r.arrival_age_days)+"</td><td>"+nf(r.current_ddi)+"</td><td>"+nf(r.current_existence)+"</td><td>"+money(r.current_investment)+"</td></tr>";
+ }).join("");
+}
+var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · Tipo catálogo: VIGENTE "+(d.b2_cohort?"· 0 ventas 30 días · última llegada ≤7 días ":"")+"· desplázate sobre la tabla (máx. 30 visibles)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↑</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↓</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
 return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div>"+actions+"<div class=\"v313-scroll v313-model-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Listado de modelos, usa rueda o dedo para desplazar\"><table class=\"v313-table v313-model-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
 }
 function models(d,onlyCatalog){
@@ -343,7 +355,7 @@ return summary(d)
 }
 
 
-function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">Comparación real entre corte inicial y corte actual · sin gráficas de línea</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
+function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">"+(d.b2_cohort?"Bono 2 · cero ventas 30 días · última llegada hasta 7 días · catálogo vigente":"Comparación real entre corte inicial y corte actual · sin gráficas de línea")+"</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
 function bind(){
 q("#v313UpdateBtn")?.addEventListener("click",async function(){
   var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
@@ -413,7 +425,7 @@ function render(){activate();var h=q("#v313Host");if(h&&S.data){h.innerHTML=page
 function load(){
 if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}
 var seq=++S.seq;activate();var p=new URLSearchParams({bonus:String(S.bonus),store:S.store});if(S.month)p.set("month",S.month);
-api("/api/bonuses-v313?"+p.toString()).then(function(d){
+api((S.bonus===2?"/api/bonuses-b2-v327?":"/api/bonuses-v313?")+p.toString()).then(function(d){
  if(seq!==S.seq)return;
  S.data=d;S.month=d.month;S.store=d.selected_store;render();
  var processing=d.processing||{};
@@ -425,7 +437,13 @@ api("/api/bonuses-v313?"+p.toString()).then(function(d){
   S.refreshCount++;
   S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},capacityRetries?3000:1800);
  }else{S.refreshCount=0}
-}).catch(function(e){var h=q("#v313Host");if(h)h.innerHTML="<div class=\"v313-note\">No fue posible cargar Bonos: "+esc(e.message||e)+"</div>"})
+}).catch(function(e){
+ var h=q("#v313Host");if(!h)return;
+ var safe=esc(e.message||e);
+ if(S.data){var box=q("#v313ErrorRetry");if(!box){box=document.createElement("div");box.id="v313ErrorRetry";box.className="v313-note";h.prepend(box)}box.innerHTML="No se pudieron actualizar los datos: "+safe+" <button type=\"button\" id=\"v313Retry\">Reintentar</button>";}
+ else h.innerHTML="<div class=\"v313-note\">No fue posible cargar Bonos: "+safe+" <button type=\"button\" id=\"v313Retry\">Reintentar consulta</button></div>";
+ q("#v313Retry")?.addEventListener("click",function(){load()});
+})
 }
 
 
