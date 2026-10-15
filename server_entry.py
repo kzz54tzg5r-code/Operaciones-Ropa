@@ -444,4 +444,8 @@ _install_v327_bonus2_zero_sales_patch(web_app)
 # V329 ya no se instala: los Bonos 1 y 2 permanecen en sus rutas actuales.
 from v330_bonus_indicators_patch import install as _install_v330_bonus_indicators_patch
 _install_v330_bonus_indicators_patch(web_app)
+# V331: pestaña paralela de auditoría, preserva íntegra la Tasa V243 original.
+from v331_recovery_audit_tab import install as _install_v331_recovery_audit_tab
+_install_v331_recovery_audit_tab(web_app)
+
 app = web_app.app
