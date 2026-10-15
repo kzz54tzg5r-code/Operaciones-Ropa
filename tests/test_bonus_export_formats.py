@@ -127,3 +127,76 @@ def test_pdf_uses_entire_available_page_width_for_large_tables(monkeypatch):
     assert "Inversión actual" in txt
     assert "Reducción inversión" in txt
     assert "-4.3%" in txt
+
+
+
+def test_real_photo_patch_installation_is_wired_into_exports(monkeypatch):
+    """Integration regression: the shared V314 provider must actually be exposed
+    to the V322 export installer, not commented out via literal backslash-n.
+    """
+    import v314_bonus_product_photos_patch as module
+    from PIL import Image
+    from pypdf import PdfReader
+
+    sample=BytesIO()
+    Image.new("RGB",(80,100),(30,90,140)).save(sample,format="JPEG")
+    raw=sample.getvalue()
+
+    class FakeRemoteImage:
+        headers={"Content-Type":"image/jpeg"}
+        def __enter__(self): return self
+        def __exit__(self,*args): return False
+        def read(self,length): return raw
+
+    calls=[]
+    def fake_request(request,timeout=5):
+        calls.append(request.full_url)
+        return FakeRemoteImage()
+    monkeypatch.setattr(module.urllib.request, "urlopen", fake_request)
+
+    m=SimpleNamespace(app=FastAPI(),require_user=lambda request:{"role":"admin"})
+    @m.app.get("/api/bonuses-v313")
+    def bonus_data(request=None,month="",store="",bonus=1):
+        return {
+            "selected_store":store,"month":month,
+            "details":[{
+                "id_art":"1888555","model":"C100","catalog":"Abrigador",
+                "initial_ddi":120,"current_ddi":100,"ddi_reduction_pct":16.67,
+                "initial_existence":22,"current_existence":19,
+                "initial_investment":2500,"current_investment":2200,
+                "investment_reduction_pct":12.0
+            }]
+        }
+    module.install(m)
+    assert callable(m._bonus_photo_fetch_v314)
+    install(m)
+    export=next(rt.endpoint for rt in m.app.routes if getattr(rt,"path",None)=="/api/bonuses/models-export")
+    response_xlsx=export(request=None,month="2026-10",store="Ixtapaluca",catalog="Abrigador",format="xlsx")
+    assert response_xlsx.headers["x-photos-included"] == "1"
+    assert response_xlsx.headers["x-photos-requested"] == "1"
+    sheet=load_workbook(BytesIO(response_xlsx.body)).active
+    assert len(sheet._images)==1
+    response_pdf=export(request=None,month="2026-10",store="Ixtapaluca",catalog="Abrigador",format="pdf")
+    assert response_pdf.headers["x-photos-included"] == "1"
+    assert any(page.images for page in PdfReader(BytesIO(response_pdf.body)).pages)
+    assert calls and all(url.endswith("1888555.jpg") for url in calls)
+
+
+def test_when_photo_server_is_unavailable_photo_exports_fail_explicitly():
+    m=SimpleNamespace(
+        app=FastAPI(),
+        require_user=lambda request:{"role":"admin"},
+        _bonus_photo_fetch_v314=lambda ident:None,
+    )
+    @m.app.get("/api/bonuses-v313")
+    def bonus_data(request=None,month="",store="",bonus=1):
+        return {"selected_store":store,"month":month,"details":[{"id_art":"1888555","model":"C100","catalog":"Abrigador"}]}
+    install(m)
+    export=next(rt.endpoint for rt in m.app.routes if getattr(rt,"path",None)=="/api/bonuses/models-export")
+    with pytest.raises(HTTPException) as exc:
+        export(request=None,store="Ixtapaluca",catalog="Abrigador",format="xlsx",photos=True)
+    assert exc.value.status_code == 503
+    assert "ninguna fotografía" in exc.value.detail
+    # An explicit photos=False request still produces a readable workbook.
+    resp=export(request=None,store="Ixtapaluca",catalog="Abrigador",format="xlsx",photos=False)
+    assert resp.status_code == 200
