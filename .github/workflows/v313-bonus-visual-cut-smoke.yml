@@ -59,7 +59,7 @@ jobs:
           assert "source_entry_id" in a
           assert "opening_capacity_id" in a
           assert "current_capacity_id" in a
-          assert "Desempeño por Tienda" in b
+          assert "Panorama por Tienda" in b  # Bono 2 ahora replica diseño de Bono 1
           assert "Colaboradores" in b
           assert "Detalle por rubro" in b
           assert "Preparando la cartera inicial" in b
