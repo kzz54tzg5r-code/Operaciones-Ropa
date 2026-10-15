@@ -73,7 +73,8 @@ async function setup(opts={}){
 
 test('Excel 404 is shown inside Bonos without navigating to JSON error screen',async()=>{
   const f=await setup();try{
-    assert.equal(f.w.document.querySelectorAll('.v313-model-table tbody tr').length,66);
+    assert.equal(f.w.document.querySelectorAll('.v313-model-table tbody tr').length,30);
+    assert.match(f.w.document.querySelector('.v313-model-pagination').textContent,/1 de 3/);
     const before=f.w.location.href;
     f.w.document.querySelector('[data-v313-download="xlsx"]').click();
     await tick();await tick();await tick();
@@ -170,4 +171,39 @@ test('bonus tabs respond immediately and stale server responses cannot overwrite
     assert.ok(f.w.document.querySelector('[data-v313-bonus="5"].active'));
     assert.match(f.w.document.querySelector('.v313-hero').textContent,/Multiplicador por DDI/);
   }finally{f.dom.window.close();}
+});
+
+
+test('157 models remain accessible using pagination when browser scroll is intercepted',async()=>{
+ const f=await setup({data:details(157)});
+ try {
+   let table=f.w.document.querySelector('.v313-model-table');
+   assert.equal(table.querySelectorAll('tbody tr').length,30);
+   assert.match(table.textContent,/M0/);
+   assert.ok(f.w.document.querySelector('.v313-model-scroll'));
+   f.w.document.querySelector('[data-v313-page="next"]').click();
+   table=f.w.document.querySelector('.v313-model-table');
+   assert.equal(table.querySelectorAll('tbody tr').length,30);
+   assert.equal(table.querySelectorAll('tbody tr')[0].textContent.includes('M30'),true);
+   assert.match(f.w.document.querySelector('.v313-model-pagination').textContent,/2 de 6/);
+   for(let n=0;n<4;n++)f.w.document.querySelector('[data-v313-page="next"]').click();
+   table=f.w.document.querySelector('.v313-model-table');
+   assert.equal(table.querySelectorAll('tbody tr').length,7);
+   assert.match(table.textContent,/M156/);
+   f.w.document.querySelector('[data-v313-page="prev"]').click();
+   assert.equal(f.w.document.querySelector('.v313-model-table tbody tr').textContent.includes('M120'),true);
+ }finally{f.dom.window.close()}
+});
+
+test('mouse wheel movement is consumed by model list and not the surrounding report',async()=>{
+ const f=await setup();
+ try{
+   const scroll=f.w.document.querySelector('.v313-model-scroll');
+   Object.defineProperty(scroll,'scrollHeight',{configurable:true,value:2000});
+   Object.defineProperty(scroll,'clientHeight',{configurable:true,value:350});
+   const wheel=new f.w.WheelEvent('wheel',{deltaY:200,bubbles:true,cancelable:true});
+   scroll.dispatchEvent(wheel);
+   assert.equal(wheel.defaultPrevented,true);
+   assert.equal(scroll.scrollTop,200);
+ }finally{f.dom.window.close()}
 });
