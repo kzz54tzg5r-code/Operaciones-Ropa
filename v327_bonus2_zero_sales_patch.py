@@ -66,7 +66,22 @@ def qualify_bono2_rows(raw, cutoff: date, source_path):
     if not bool(matched.any()):
         return []
     selected = raw.loc[matched].copy()
+    # _normalize_capacity_source() reinicia los índices de las filas.
+    # Conservar el mismo orden y filtrar inválidos antes de normalizar evita
+    # cruzar la fecha de un ID con la de otro producto.
+    if "MODELO" not in selected.columns:
+        raise ValueError("Falta columna MODELO en Capacidades")
+    valid_source = (
+        selected["TIENDA"].astype(str).str.strip().ne("")
+        & selected["MODELO"].astype(str).str.strip().ne("")
+        & ~selected["MODELO"].astype(str).isin(["nan", "None"])
+    )
+    selected = selected.loc[valid_source]
+    selected_dates = dates.loc[selected.index].reset_index(drop=True)
+    selected = selected.reset_index(drop=True)
     normalized = _normalize_capacity_source(selected, source_path)
+    if len(normalized) != len(selected_dates):
+        raise ValueError("No coinciden las fechas e IDs normalizados del corte")
     catalogs = classify_bonus_catalogs_from_source(normalized["Catálogo comercial"])
     normalized = normalized.loc[catalogs.isin(CATALOGS)].copy()
     catalogs = catalogs.loc[normalized.index]
@@ -78,7 +93,9 @@ def qualify_bono2_rows(raw, cutoff: date, source_path):
         id_art = str(row.get("ID_ART") or "").strip()
         if not re.fullmatch(r"\d{1,15}", id_art):
             continue
-        arriving = dates.loc[idx]
+        arriving = selected_dates.iloc[int(idx)]
+        if pd.isna(arriving):
+            continue
         store = str(row.get("Tienda") or "").strip()
         if not store:
             continue
