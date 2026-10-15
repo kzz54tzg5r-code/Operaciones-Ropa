@@ -200,3 +200,42 @@ def test_when_photo_server_is_unavailable_photo_exports_fail_explicitly():
     # An explicit photos=False request still produces a readable workbook.
     resp=export(request=None,store="Ixtapaluca",catalog="Abrigador",format="xlsx",photos=False)
     assert resp.status_code == 200
+
+
+def test_export_filename_includes_store_catalog_and_mexico_date():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    expected=datetime.now(ZoneInfo("America/Mexico_City")).strftime("%d.%m.%y")
+    export=app_with_sample()
+    for format in ("pdf","xlsx"):
+        response=export(request=None,month="2026-10",store="Ixtapaluca",bonus=1,
+                        catalog="Abrigador",format=format,photos=False)
+        assert response.headers["content-disposition"]==(
+            'attachment; filename="Modelos Ixtapaluca Abrigador '+expected+'.'+format+'"'
+        )
+
+
+def test_dedicated_export_photo_source_handles_more_than_one_model_and_both_file_types():
+    from PIL import Image
+    from pypdf import PdfReader
+    sample=BytesIO()
+    Image.new("RGB",(80,105),(30,60,90)).save(sample,format="JPEG")
+    img=sample.getvalue()
+    m=SimpleNamespace(
+        app=FastAPI(),require_user=lambda req:{"role":"admin"},
+        _bonus_photo_export_v314=lambda product: img if product in ("108180","1203206") else None,
+    )
+    @m.app.get("/api/bonuses-v313")
+    def sample(request=None,month="",store="",bonus=1):
+        return {"selected_store":store,"month":month,"details":[
+            {"id_art":"108180","model":"9112","catalog":"Abrigador"},
+            {"id_art":"1203206","model":"880","catalog":"Abrigador"},
+        ]}
+    install(m)
+    export=next(r.endpoint for r in m.app.routes if getattr(r,"path",None)=="/api/bonuses/models-export")
+    x=export(request=None,month="2026-10",store="Ixtapaluca",format="xlsx",photos=True)
+    assert x.headers["x-photos-included"]=="2"
+    assert len(load_workbook(BytesIO(x.body)).active._images)==2
+    p=export(request=None,month="2026-10",store="Ixtapaluca",format="pdf",photos=True)
+    assert p.headers["x-photos-included"]=="2"
+    assert sum(len(page.images) for page in PdfReader(BytesIO(p.body)).pages)>=2
