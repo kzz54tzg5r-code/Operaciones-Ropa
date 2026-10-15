@@ -17,6 +17,20 @@ VIEW_NAME = "Tasa de recuperación · Revisión"
 MAX_CUT_AGE_DAYS = 7
 
 
+def insert_before_document_body_end(page: str, fragment: str) -> str:
+    """Insert at the LAST closing body tag, not tags quoted inside other JS.
+
+    V314 contains document.write('</body></html>') inside a <script>. Using
+    str.replace('</body>', ..., 1) injects our <script> into that JavaScript,
+    breaks the host document and prints its remainder as visible text.
+    """
+    lower = page.lower()
+    index = lower.rfind("</body>")
+    if index < 0:
+        return page + fragment
+    return page[:index] + fragment + page[index:]
+
+
 def safe_number(value):
     try:
         v = float(value or 0)
@@ -292,7 +306,7 @@ def install(m):
         if 'id="v331-recovery-audit-css"' not in page:
             page = page.replace("</head>", css + "</head>", 1)
         if 'id="v331-recovery-audit-js"' not in page:
-            page = page.replace("</body>", script + "</body>", 1)
+            page = insert_before_document_body_end(page, script)
         headers = dict(response.headers)
         headers.pop("content-length", None)
         headers["X-Recovery-Audit"] = "V331"
