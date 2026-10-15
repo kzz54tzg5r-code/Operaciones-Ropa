@@ -112,8 +112,11 @@ def aggregate(rows, comparable):
         vals = [v for v in vals if v is not None]
         return round(sum(vals) / len(vals), 2) if vals else None
 
-    sum_goal = sum(finite(r.get("sales_goal")) or 0 for r in rows)
-    sum_sales = sum(finite(r.get("sales_actual")) or 0 for r in rows)
+    # La falta de ventas NO equivale a 0% y no debe diluir el macro.
+    known_sales = [r for r in rows if finite(r.get("sales_pct")) is not None
+                   and (finite(r.get("sales_goal")) or 0) > 0]
+    sum_goal = sum(finite(r.get("sales_goal")) or 0 for r in known_sales)
+    sum_sales = sum(finite(r.get("sales_actual")) or 0 for r in known_sales)
     sales_pct = round(sum_sales / sum_goal * 100, 2) if sum_goal > 0 else None
     eligible = [r for r in rows if r.get("ddi_models_pct") is not None]
     total_models = sum(r["ddi_models"] for r in eligible)
@@ -124,7 +127,6 @@ def aggregate(rows, comparable):
         vals = [finite(r["inventory"].get(key)) for r in eligible]
         vals = [v for v in vals if v is not None]
         inventory[key] = round(sum(vals), 2) if vals and comparable else None
-    weights = [r["ddi_models"] for r in eligible if r.get("initial_ddi") is not None and r.get("current_ddi") is not None]
     weighted_rows = [r for r in eligible if r.get("initial_ddi") is not None and r.get("current_ddi") is not None]
     denom = sum(r["ddi_models"] for r in weighted_rows)
     if denom:
