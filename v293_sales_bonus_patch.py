@@ -1266,6 +1266,9 @@ def install(m):
             },
         }
 
+    # Punto único de selección de corte inicial para Bonos 1 y 2.
+    # Respeta asignaciones mensuales explícitas y no toma el último corte.
+    m._sales_bonus_opening_capacity_v293 = opening_capacity_entry
     m._sales_bonus_weekly_inventory_v293 = weekly_inventory_series
 
     @m.app.get("/api/operation/sales-bonus-v293")
