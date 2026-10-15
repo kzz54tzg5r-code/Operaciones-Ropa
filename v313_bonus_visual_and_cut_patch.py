@@ -255,7 +255,7 @@ if(d.b2_cohort){
   emptyTitle=d.b2_status==="pending"?"Preparando modelos sin venta":d.b2_status==="missing"?"No hay corte inicial de Capacidades":d.b2_status==="error"?"No se pudo validar el archivo":"No hay modelos que cumplan los criterios";
   emptyText=d.source_error||"Sólo Tipo catálogo VIGENTE, Abrigador/Licencias/Básicos, VTA EN PZAS 30 = 0 y última llegada de hace 7 días o más al corte inicial. Si falta alguna fecha de entrada, el modelo no entra.";
  }
- head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>Venta pzas 30</th><th>Última llegada</th><th>Días desde llegada</th><th>DDI actual</th><th>Existencia actual</th><th>Inversión actual</th>";
+ head="<th data-v314-photo-head=\"1\">Foto</th><th class=\"left\">ID</th><th class=\"left\">Modelo</th>"+(showCatalog?"<th>Rubro</th>":"")+"<th>Venta pzas 30</th><th>Última llegada</th><th>Días desde llegada</th><th>DDI inicial</th><th>Existencia inicial</th><th>Inversión inicial</th>";
  bodyRows=rows.map(function(r){
   var id=String(r.id_art||"").trim(),valid=/^\d{1,15}$/.test(id);
   var photo=valid?"<img class=\"v314-photo v313-photo\" alt=\"Foto ID "+esc(id)+"\" loading=\"lazy\" decoding=\"async\" src=\"/api/bonuses/product-photo/"+encodeURIComponent(id)+"\" onerror=\"this.style.display='none';this.nextElementSibling.style.display='inline'\"/><span class=\"v313-photo-missing\" style=\"display:none\">Sin foto</span>":"<span class=\"v313-photo-missing\">Sin foto</span>";
