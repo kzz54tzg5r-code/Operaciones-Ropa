@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import BytesIO
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import re
 import urllib.request
 from urllib.error import URLError
@@ -45,8 +47,13 @@ def install(m):
         try:
             # El reporte web ya tiene un servicio de fotos autenticado, con
             # caché y validación de MIME; exportaciones deben usar el MISMO origen.
+            dedicated = getattr(m, "_bonus_photo_export_v314", None)
             shared = getattr(m, "_bonus_photo_fetch_v314", None)
-            if shared:
+            if dedicated:
+                raw = dedicated(product_id)
+                if not raw:
+                    return None
+            elif shared:
                 result = shared(product_id)
                 if not result:
                     return None
@@ -310,7 +317,11 @@ def install(m):
                     "sin imágenes. Intenta nuevamente o revisa la conexión al servidor de fotos."
                 )
         period=str(data.get("month") or month)
-        base=re.sub(r"[^a-zA-Z0-9_-]","_",f"Bonos_{selected_store}_{catalog}_{period}")
+        # Fecha local real de emisión, no fecha del mes analizado.
+        issued_at=datetime.now(ZoneInfo("America/Mexico_City")).strftime("%d.%m.%y")
+        safe_store=re.sub(r'[^\w -]', '', selected_store, flags=re.UNICODE).strip()
+        safe_catalog=re.sub(r'[^\w -]', '', catalog, flags=re.UNICODE).strip()
+        base=f"Modelos {safe_store} {safe_catalog} {issued_at}"
         fields=FIELDS_B2 if bonus==2 else FIELDS
         output=excel(rows,selected_store,period,catalog,images,fields) if format=="xlsx" else pdf(rows,selected_store,period,catalog,images,fields)
         mimetype=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if format=="xlsx" else "application/pdf")
