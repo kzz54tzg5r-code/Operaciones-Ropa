@@ -49,7 +49,16 @@ def qualify_bono2_rows(raw, cutoff: date, source_path):
         raise ValueError("Columnas de Capacidades no disponibles: " + ", ".join(absent))
     status = raw["TIPO CATALOGO MAX VIG"].astype(str).map(fold).eq("VIGENTE")
     sales = pd.to_numeric(raw["VTA EN PZAS 30"], errors="coerce")
-    dates = _capacity_date_series(raw["ULTIMA ENTRADA CEDIS A TIENDA"])
+    original_dates = raw["ULTIMA ENTRADA CEDIS A TIENDA"]
+    dates = _capacity_date_series(original_dates)
+    # ISO YYYY-MM-DD es inequívoco y no debe interpretarse como DD-MM-YYYY
+    # con dayfirst=True; en Capacidades reales también puede llegar serial Excel.
+    raw_iso = original_dates.astype(str).str.strip()
+    explicit_iso = pd.to_datetime(
+        raw_iso.where(raw_iso.str.fullmatch(r"\d{4}-\d{1,2}-\d{1,2}")),
+        format="%Y-%m-%d", errors="coerce"
+    )
+    dates = dates.where(explicit_iso.isna(), explicit_iso)
     lower = pd.Timestamp(cutoff - timedelta(days=7))
     upper = pd.Timestamp(cutoff)
     recent = dates.ge(lower) & dates.le(upper)
