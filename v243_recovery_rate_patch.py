@@ -8,12 +8,36 @@ existencias de capacidades más cercano al inicio del periodo.
 from __future__ import annotations
 
 import math
+import json
 import sqlite3
 import threading
 from datetime import date, datetime, timedelta
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
+
+
+def select_capacity_cut(dated, start, max_before_days=7, max_after_days=2):
+    """Near-date stock cut selection. Future snapshots are reference only."""
+    previous = [x for x in dated if x[0] <= start]
+    after = [x for x in dated if x[0] > start]
+    prior = max(previous, key=lambda x: (x[0], x[1])) if previous else None
+    next_cut = min(after, key=lambda x: (x[0], x[1])) if after else None
+    if prior and (start - prior[0]).days <= max_before_days:
+        return prior, "valid"
+    if next_cut and (next_cut[0] - start).days <= max_after_days:
+        return next_cut, "reference_future"
+    if prior:
+        return prior, "stale"
+    return None, "missing"
+
+
+def stock_cut_is_valid(cut_date, start, future, max_age_days=7):
+    return bool(cut_date and not future and 0 <= (start - cut_date).days <= max_age_days)
+
+
+def money_in_thousands(value, digits=1):
+    return round(float(value) / 1000.0, digits)
 
 
 def install(m):
@@ -29,6 +53,9 @@ def install(m):
     cache_lock = threading.Lock()
     cache_state = {"building": False, "error": ""}
     cache_version = "243.1"
+    stock_lock = threading.Lock()
+    stock_cache = {"key": "", "building": False, "ready": None, "error": ""}
+    stock_cache_file = m.DATA_ROOT / "recovery_rate_stock_v243_v2.json"
 
     def num(value):
         try:
