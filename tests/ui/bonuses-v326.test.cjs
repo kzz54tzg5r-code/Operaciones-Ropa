@@ -207,3 +207,20 @@ test('mouse wheel movement is consumed by model list and not the surrounding rep
    assert.equal(scroll.scrollTop,200);
  }finally{f.dom.window.close()}
 });
+
+test('a missing photo can be retried using exactly the same model ID',async()=>{
+ const f=await setup();
+ try{
+  const photo=f.w.document.querySelector('.v313-model-table tbody tr .v313-photo');
+  const missing=f.w.document.querySelector('[data-v313-retry-photo]');
+  assert.ok(photo&&missing);
+  const id=missing.dataset.v313RetryPhoto;
+  assert.equal(id,'1100000');
+  missing.style.display='inline';
+  missing.click();
+  assert.equal(photo.style.display,'block');
+  assert.equal(missing.style.display,'none');
+  assert.ok(photo.getAttribute('src').startsWith('/api/bonuses/product-photo/'+id+'?retry=1&t='));
+  assert.ok(f.w.document.querySelector('[data-v313-retry-visible]'));
+ }finally{f.dom.window.close()}
+});
