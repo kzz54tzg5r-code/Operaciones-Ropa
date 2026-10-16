@@ -690,7 +690,7 @@ def install(m):
   window.recoveryRateView=function(d){
     if(!d||d.status==='building'){
       window.setTimeout(function(){var b=document.querySelector('#operativoNav [data-tab-key="operations.recovery_store"].active');if(b&&typeof renderOperativoView==='function')renderOperativoView('Recuperación por Tienda')},4000);
-      return '<div class="rr243-loading">Preparando ventas y devoluciones diarias para calcular la Tasa de recuperación…<br><small>Este proceso se ejecuta una sola vez por cada archivo publicado.</small></div>';
+      return '<div class="rr243-loading">'+(d?.phase==='stock'?'Preparando existencias por tienda del corte seleccionado…':'Preparando ventas y devoluciones diarias para calcular la Tasa de recuperación…')+'<div style="font-size:11px;font-weight:600;margin-top:6px">Este procesamiento se ejecuta en segundo plano y se reutiliza al cambiar de tienda o periodo.</div></div>';
     }
     if(d.status!=='ready')return '<div class="infoempty">'+esc(d.error||'No fue posible calcular la Tasa de recuperación.')+'</div>';
     var m=d.metrics||{},rows=d.rows||[];
