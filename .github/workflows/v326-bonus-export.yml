@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - "v322_bonus_model_exports.py"
+      - "v314_bonus_product_photos_patch.py"
+      - "tests/test_bonus_photos_backend.py"
       - "tests/test_bonus_export_formats.py"
       - ".github/workflows/v326-bonus-export.yml"
   workflow_dispatch:
@@ -19,4 +21,4 @@ jobs:
       - name: Install export dependencies
         run: python -m pip install --disable-pip-version-check fastapi pytest openpyxl reportlab pillow pypdf
       - name: Validate binary downloads and catalog filters
-        run: python -m pytest -q tests/test_bonus_export_formats.py
+        run: python -m pytest -q tests/test_bonus_export_formats.py tests/test_bonus_photos_backend.py
