@@ -36,6 +36,53 @@ def stock_cut_is_valid(cut_date, start, future, max_age_days=7):
     return bool(cut_date and not future and 0 <= (start - cut_date).days <= max_age_days)
 
 
+def partial_rate_after_future_cut(daily_rows, stocks, cut_date, period_start, period_end, scope, normalize_store):
+    """Indicador parcial desde el día POSTERIOR al corte, nunca tasa semanal."""
+    from collections import defaultdict
+    if not (cut_date and period_start < cut_date < period_end):
+        return None
+    first = cut_date + timedelta(days=1)
+    totals = defaultdict(lambda: {"sales": 0.0, "dev": 0.0, "days": set()})
+    for event in daily_rows or []:
+        day = str(event.get("date") or "")[:10]
+        if not (first.isoformat() <= day <= period_end.isoformat()):
+            continue
+        store = normalize_store(event.get("store") or "")
+        if store not in scope:
+            continue
+        point = totals[store]
+        point["sales"] += max(0.0, float(event.get("sales") or 0.0))
+        point["dev"] += max(0.0, float(event.get("dev") or 0.0))
+        point["days"].add(day)
+    if not any(p["days"] for p in totals.values()):
+        return {"start": first.isoformat(), "end": None, "rows": {}, "global": None}
+    rows = {}
+    for store in scope:
+        if store not in stocks or store not in totals:
+            rows[store] = None
+            continue
+        base = max(0.0, float(stocks[store] or 0.0)) + totals[store]["dev"]
+        sold = totals[store]["sales"]
+        rows[store] = {
+            "base": base, "sales": sold, "dev": totals[store]["dev"],
+            "sell_through_pct": round(100.0 * sold / base, 2) if base > 0 and sold <= base else None,
+            "impact_dev_pct": round(100.0 * totals[store]["dev"] / base, 2) if base > 0 else None,
+        }
+    complete = bool(rows) and all(item and item["sell_through_pct"] is not None for item in rows.values())
+    all_base = sum(x["base"] for x in rows.values() if x)
+    all_sales = sum(x["sales"] for x in rows.values() if x)
+    all_dev = sum(x["dev"] for x in rows.values() if x)
+    return {
+        "start": first.isoformat(),
+        "end": max(day for point in totals.values() for day in point["days"]),
+        "rows": rows,
+        "global": {
+            "sell_through_pct": round(100.0 * all_sales / all_base, 2),
+            "impact_dev_pct": round(100.0 * all_dev / all_base, 2),
+        } if complete and all_base > 0 else None,
+    }
+
+
 def money_in_thousands(value, digits=1):
     return round(float(value) / 1000.0, digits)
 
@@ -611,6 +658,19 @@ def install(m):
                 })
             cursor += timedelta(days=1)
 
+        partial = partial_rate_after_future_cut(
+            daily_rows, stocks, stock_date, start, end, scope, m._normalize_store_value
+        ) if future_cut else None
+        for row in rows:
+            ref = ((partial or {}).get("rows") or {}).get(row["store"])
+            row["partial_sell_through_pct"] = ref["sell_through_pct"] if ref else None
+            row["partial_impact_dev_pct"] = ref["impact_dev_pct"] if ref else None
+        if partial:
+            warnings.append(
+                "El desplazamiento parcial usa únicamente movimientos desde "
+                + partial["start"] + " hasta " + str(partial.get("end") or "sin registro")
+                + "; NO es el Sell-Through Neto de la semana completa."
+            )
         rows.sort(key=lambda x: str(x.get("store") or ""))
         return {
             "available": True,
@@ -624,6 +684,7 @@ def install(m):
             "stock_reference_only": future_cut,
             "stock_cut_valid": cut_valid,
             "metrics": metrics,
+            "partial_reference": partial,
             "rows": rows,
             "trend": trend,
             "warnings": warnings,
@@ -668,7 +729,7 @@ def install(m):
 (function(){
   function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]||c})}
   function n(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';return Number(v).toLocaleString('es-MX',{maximumFractionDigits:0})}
-  function money(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';var raw=Number(v),digits=Math.abs(raw)<1000?3:1;return (raw/1000).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:digits,maximumFractionDigits:digits})+' mil'}
+  function money(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';var raw=Number(v),digits=Math.abs(raw)<1000?3:1;return (raw/1000).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:digits,maximumFractionDigits:digits})}
   function pc(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';return Number(v).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'}
   function kpi(label,value,sub,tone){return '<div class="rr243-kpi" style="--rr243:'+tone+'"><div class="lab">'+esc(label)+'</div><div class="val">'+value+'</div><div class="sub">'+esc(sub||'')+'</div></div>'}
 
@@ -702,12 +763,12 @@ def install(m):
       kpi(stockReference?'Stock al corte · referencia (Pzs)':'Stock Total Habilitado (Pzs)',stockReference?n(referenceTotal):n(m.inv_total_pzs),stockReference?'Corte posterior · '+referenceCount+'/'+rows.length+' tiendas · no es stock inicial':'Stock Inicial + Devoluciones','#1769E8')+
       kpi('Venta Total ($ mil)',money(m.sales_value),n(m.sales_pzs)+' piezas vendidas','#10B981')+
       kpi('Stock Final Residual (Pzs)',n(m.inv_final_pzs),m.stock_complete?'Stock habilitado - venta':'No conciliado: oculto','#F59E0B')+
-      kpi('% Sell-Through Neto Global',pc(m.sell_through_pct),'KPI principal del periodo','#7C3AED')+
+      kpi(stockReference?'% Desplazamiento parcial':'% Sell-Through Neto Global',pc(stockReference?d.partial_reference?.global?.sell_through_pct:m.sell_through_pct),stockReference?'Sólo después del corte · NO tasa semanal':'KPI principal del periodo','#7C3AED')+
       '</div>';
     out+='<div class="rr243-source"><span><b>Periodo:</b> '+esc(d.period_start||'')+(d.period_end&&d.period_end!==d.period_start?' al '+esc(d.period_end):'')+'</span><span>·</span><span><b>'+(stockReference?'Stock de referencia (posterior):':'Stock inicial:')+'</b> '+esc(d.stock_source_date||'Sin corte')+'</span><span>·</span><span>'+esc(d.stock_source_name||'')+'</span><span>·</span><b>Moneda: $ mil MXN</b></div>';
     (d.warnings||[]).forEach(function(w){out+='<div class="rr243-warning">'+esc(w)+'</div>'});
-    out+='<div class="title">Matriz operativa · Tasa de recuperación por tienda</div><div class="rr243-tablewrap"><table class="table rr243-table"><thead><tr><th>Tienda</th><th>Periodo</th><th>'+(stockReference?'Stock al corte (ref.) Pzs':'Stock Inicial Pzs')+'</th><th>Devueltas Pzs</th><th>Stock Total Habilitado Pzs</th><th>Stock Total Habilitado ($ mil)</th><th>Vendidas Pzs</th><th>Venta Total ($ mil)</th><th>Precio Promedio ($ mil)</th><th>Stock Final Residual Pzs</th><th>Stock Final Residual ($ mil)</th><th>% Sell-Through Neto</th><th>% Impacto Dev</th></tr></thead><tbody>';
-    out+=rows.map(function(r){var neg=Number(r.inv_final_pzs)<0?' rr243-negative':'';return '<tr class="'+(r.is_project?'project-row':'')+'"><td><b>'+esc(r.store)+'</b></td><td>'+esc(r.period)+'</td><td>'+n(r.inv_initial_pzs)+'</td><td>'+n(r.dev_pzs)+'</td><td><b>'+n(r.inv_total_pzs)+'</b></td><td>'+money(r.inv_total_amount)+'</td><td><b>'+n(r.sales_pzs)+'</b></td><td>'+money(r.sales_value)+'</td><td>'+money(r.avg_price)+'</td><td class="'+neg+'">'+n(r.inv_final_pzs)+'</td><td class="'+neg+'">'+money(r.inv_final_amount)+'</td><td><b>'+pc(r.sell_through_pct)+'</b></td><td>'+pc(r.impact_dev_pct)+'</td></tr>'}).join('');
+    out+='<div class="title">Matriz operativa · Tasa de recuperación por tienda</div><div class="rr243-tablewrap"><table class="table rr243-table"><thead><tr><th>Tienda</th><th>Periodo</th><th>'+(stockReference?'Stock al corte (ref.) Pzs':'Stock Inicial Pzs')+'</th><th>Devueltas Pzs</th><th>Stock Total Habilitado Pzs</th><th>Stock Total Habilitado ($ mil)</th><th>Vendidas Pzs</th><th>Venta Total ($ mil)</th><th>Precio Promedio ($ mil)</th><th>Stock Final Residual Pzs</th><th>Stock Final Residual ($ mil)</th><th>'+(stockReference?'% Desplazamiento parcial':'% Sell-Through Neto')+'</th><th>'+(stockReference?'% Devol. parcial':'% Impacto Dev')+'</th></tr></thead><tbody>';
+    out+=rows.map(function(r){var neg=Number(r.inv_final_pzs)<0?' rr243-negative':'';return '<tr class="'+(r.is_project?'project-row':'')+'"><td><b>'+esc(r.store)+'</b></td><td>'+esc(r.period)+'</td><td>'+n(r.inv_initial_pzs)+'</td><td>'+n(r.dev_pzs)+'</td><td><b>'+n(r.inv_total_pzs)+'</b></td><td>'+money(r.inv_total_amount)+'</td><td><b>'+n(r.sales_pzs)+'</b></td><td>'+money(r.sales_value)+'</td><td>'+money(r.avg_price)+'</td><td class="'+neg+'">'+n(r.inv_final_pzs)+'</td><td class="'+neg+'">'+money(r.inv_final_amount)+'</td><td><b>'+pc(stockReference?r.partial_sell_through_pct:r.sell_through_pct)+'</b></td><td>'+pc(stockReference?r.partial_impact_dev_pct:r.impact_dev_pct)+'</td></tr>'}).join('');
     out+='</tbody></table></div>';
     out+='<div class="rr243-chart-panel" id="rr243ChartPanel"><div class="rr243-chart-head"><b>Sell-Through Neto · evolución cronológica</b><button class="rr243-expand" type="button" onclick="document.getElementById(\'rr243ChartPanel\').requestFullscreen?.()">Pantalla completa</button></div><div class="rr243-chart-scroll">'+chart(d.trend||[])+'</div></div>';
     return out;
