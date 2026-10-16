@@ -185,3 +185,34 @@ def test_fast_daily_sqlite_path_preserves_security_and_weighted_company_rate(tmp
     assert len(other["rows"]) == 1
     assert other["rows"][0]["store"] == "Centro"
     assert calls["baseline"] == 0
+
+
+def test_original_recovery_uses_nearby_new_snapshot_as_reference_not_april_stock():
+    from v243_recovery_rate_patch import select_capacity_cut, stock_cut_is_valid
+    previous = (date(2026, 4, 24), "2026-08-16", {"name": "capacidades_24.04.26.xls"})
+    upcoming = (date(2026, 10, 13), "2026-10-13", {"name": "Capacidades_13.10.26.xlsx"})
+    selected, flag = select_capacity_cut([previous, upcoming], date(2026, 10, 12))
+    assert flag == "reference_future"
+    assert selected[0] == date(2026, 10, 13)
+    assert stock_cut_is_valid(selected[0], date(2026, 10, 12), True) is False
+
+
+def test_original_recovery_accepts_prior_cut_and_rejects_old_stale_cuts():
+    from v243_recovery_rate_patch import select_capacity_cut, stock_cut_is_valid
+    near = (date(2026, 10, 11), "", {"name": "Prev day"})
+    after = (date(2026, 10, 13), "", {"name": "Next day"})
+    selected, flag = select_capacity_cut([near, after], date(2026, 10, 12))
+    assert flag == "valid"
+    assert selected[0] == date(2026, 10, 11)
+    assert stock_cut_is_valid(selected[0], date(2026, 10, 12), False)
+    selected, flag = select_capacity_cut([(date(2026, 4, 24), "", {})],
+                                         date(2026, 10, 12))
+    assert flag == "stale"
+    assert not stock_cut_is_valid(selected[0], date(2026, 10, 12), False)
+
+
+def test_original_recovery_formats_pesos_in_thousands_without_changing_pieces():
+    from v243_recovery_rate_patch import money_in_thousands
+    assert money_in_thousands(9812466.88) == pytest.approx(9812.5)
+    assert money_in_thousands(304.39, 3) == pytest.approx(0.304)
+    assert money_in_thousands(-12000.0) == pytest.approx(-12.0)
