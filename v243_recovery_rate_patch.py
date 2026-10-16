@@ -452,7 +452,14 @@ def install(m):
             payload["error"] = str(exc)
             return payload
 
-        stocks, stock_date, stock_name, future_cut, warnings = stock_by_store(start)
+        stocks, stock_date, stock_name, future_cut, warnings, stock_building = stock_by_store(start)
+        if stock_building:
+            loading = loading_payload("building")
+            loading["phase"] = "stock"
+            loading["stock_source_date"] = stock_date.isoformat() if stock_date else None
+            loading["stock_source_name"] = stock_name
+            return loading
+        cut_valid = stock_cut_is_valid(stock_date, start, future_cut)
         configured = set(active_store_names())
         project_set = set(m.project_store_names(True)) if hasattr(m, "project_store_names") else set()
 
@@ -500,18 +507,19 @@ def install(m):
         for s in scope:
             event = events.get(s, {})
             stock_available = s in stocks
+            reference_only = stock_available and not cut_valid
             initial = num(stocks.get(s)) if stock_available else 0.0
             dev = num(event.get("dev"))
             sales = num(event.get("sales"))
             sales_value = num(event.get("sales_value"))
             return_value = num(event.get("return_value"))
             avg_price = sales_value / sales if sales > 0 else (return_value / dev if dev > 0 else 0.0)
-            enabled = initial + dev
-            enabled_amount = enabled * avg_price
-            residual = enabled - sales
-            residual_amount = residual * avg_price
-            sell_through = sales / enabled * 100 if enabled > 0 and stock_available else None
-            impact_dev = dev / enabled * 100 if enabled > 0 and stock_available else None
+            enabled = initial + dev if stock_available and cut_valid else None
+            enabled_amount = enabled * avg_price if enabled is not None else None
+            residual = enabled - sales if enabled is not None else None
+            residual_amount = residual * avg_price if residual is not None else None
+            sell_through = sales / enabled * 100 if enabled and stock_available and cut_valid and sales <= enabled else None
+            impact_dev = dev / enabled * 100 if enabled and stock_available and cut_valid else None
             if not stock_available:
                 missing_stock.append(s)
             rows.append({
@@ -519,15 +527,16 @@ def install(m):
                 "period": period_label,
                 "is_project": s in project_set,
                 "stock_available": stock_available,
+                "stock_reference_only": reference_only,
                 "inv_initial_pzs": initial if stock_available else None,
                 "dev_pzs": dev,
-                "inv_total_pzs": enabled if stock_available else None,
+                "inv_total_pzs": enabled,
                 "avg_price": avg_price,
-                "inv_total_amount": enabled_amount if stock_available else None,
+                "inv_total_amount": enabled_amount,
                 "sales_pzs": sales,
                 "sales_value": sales_value,
-                "inv_final_pzs": residual if stock_available else None,
-                "inv_final_amount": residual_amount if stock_available else None,
+                "inv_final_pzs": residual,
+                "inv_final_amount": residual_amount,
                 "sell_through_pct": sell_through,
                 "impact_dev_pct": impact_dev,
             })
@@ -540,17 +549,17 @@ def install(m):
         total_enabled = total_initial + total_dev
         global_avg = total_sales_value / total_sales if total_sales > 0 else (total_return_value / total_dev if total_dev > 0 else 0.0)
         total_residual = total_enabled - total_sales
-        stock_complete = bool(rows) and not missing_stock
+        stock_complete = bool(rows) and not missing_stock and cut_valid
         metrics = {
-            "inv_initial_pzs": total_initial if rows else None,
+            "inv_initial_pzs": total_initial if stock_complete else None,
             "dev_pzs": total_dev,
-            "inv_total_pzs": total_enabled if rows else None,
+            "inv_total_pzs": total_enabled if stock_complete else None,
             "avg_price": global_avg,
-            "inv_total_amount": total_enabled * global_avg if rows else None,
+            "inv_total_amount": total_enabled * global_avg if stock_complete else None,
             "sales_pzs": total_sales,
             "sales_value": total_sales_value,
-            "inv_final_pzs": total_residual if rows else None,
-            "inv_final_amount": total_residual * global_avg if rows else None,
+            "inv_final_pzs": total_residual if stock_complete else None,
+            "inv_final_amount": total_residual * global_avg if stock_complete else None,
             "sell_through_pct": (total_sales / total_enabled * 100) if total_enabled > 0 and stock_complete else None,
             "impact_dev_pct": (total_dev / total_enabled * 100) if total_enabled > 0 and stock_complete else None,
             "stock_complete": stock_complete,
@@ -558,10 +567,6 @@ def install(m):
 
         if missing_stock:
             warnings.append("Sin Stock Inicial para: " + ", ".join(sorted(missing_stock)) + ". El KPI global se oculta hasta completar el corte.")
-        if future_cut and stock_date:
-            warnings.append(
-                f"No había un corte de existencias anterior al inicio del periodo; se usó el corte disponible del {stock_date.isoformat()}."
-            )
         if any(num(r.get("inv_final_pzs")) < 0 for r in rows if r.get("stock_available")):
             warnings.append("Hay tiendas donde las ventas superan Stock Inicial + Devoluciones. Se conserva el residual negativo para evidenciar entradas no contempladas por esta fórmula.")
 
@@ -596,8 +601,8 @@ def install(m):
                     "week_iso": f"{iso.year}-W{iso.week:02d}",
                     "sales_pzs": cumulative_sales,
                     "dev_pzs": cumulative_dev,
-                    "inv_total_pzs": enabled_to_date if rows else None,
-                    "sell_through_pct": (cumulative_sales / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete else None,
+                    "inv_total_pzs": enabled_to_date if stock_complete else None,
+                    "sell_through_pct": (cumulative_sales / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete and cumulative_sales <= enabled_to_date else None,
                     "impact_dev_pct": (cumulative_dev / enabled_to_date * 100) if enabled_to_date > 0 and stock_complete else None,
                 })
             cursor += timedelta(days=1)
@@ -612,6 +617,8 @@ def install(m):
             "period_end": end.isoformat(),
             "stock_source_date": stock_date.isoformat() if stock_date else None,
             "stock_source_name": stock_name,
+            "stock_reference_only": future_cut,
+            "stock_cut_valid": cut_valid,
             "metrics": metrics,
             "rows": rows,
             "trend": trend,
