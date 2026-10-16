@@ -1,0 +1,47 @@
+name: V332 Recovery and Universal Tables
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v243_recovery_rate_patch.py"
+      - "v332_compact_table_headers_patch.py"
+      - "server_entry.py"
+      - "tests/test_v332_recovery_partials_and_tables.py"
+      - ".github/workflows/v332-recovery-tables.yml"
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install tests
+        run: python -m pip install fastapi pytest
+      - name: Python syntax and calculations
+        run: |
+          python -m py_compile v243_recovery_rate_patch.py v332_compact_table_headers_patch.py server_entry.py
+          python -m pytest -q tests/test_v332_recovery_partials_and_tables.py
+      - name: Validate browser scripts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          v243=Path("v243_recovery_rate_patch.py").read_text()
+          v332=Path("v332_compact_table_headers_patch.py").read_text()
+          legacy=re.search(r"js\s*=\s*r'''<script id=\"v243-recovery-rate-js\">([\s\S]*?)</script>'''",v243)
+          assert legacy, "V243 script not found"
+          cleanup=re.search(r"JS\s*=\s*r'''<script id=\"v332-units-cleanup-js\">([\s\S]*?)</script>'''",v332)
+          assert cleanup, "V332 unit cleaner not found"
+          Path("/tmp/v243.js").write_text(legacy.group(1))
+          Path("/tmp/v332.js").write_text(cleanup.group(1))
+          assert "partial_sell_through_pct" in legacy.group(1)
+          assert "stockReference?" in legacy.group(1)
+          assert "_install_v332_compact_table_headers_patch(web_app)" in Path("server_entry.py").read_text()
+          PY
+          node --check /tmp/v243.js
+          node --check /tmp/v332.js
