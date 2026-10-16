@@ -666,6 +666,15 @@ def install(m):
             row["partial_sell_through_pct"] = ref["sell_through_pct"] if ref else None
             row["partial_impact_dev_pct"] = ref["impact_dev_pct"] if ref else None
         if partial:
+            if not partial.get("end"):
+                warnings.append(
+                    "SIN VENTAS POSTERIORES AL CORTE: el último dato publicado es "
+                    + str(available_dates[-1] if available_dates else "desconocido")
+                    + ". No se puede calcular el porcentaje parcial desde "
+                    + partial["start"]
+                    + ". Carga la base de Cambios y Muertos con los días posteriores "
+                    "al corte o selecciona un periodo con Stock Inicial válido."
+                )
             warnings.append(
                 "El desplazamiento parcial usa únicamente movimientos desde "
                 + partial["start"] + " hasta " + str(partial.get("end") or "sin registro")
@@ -680,6 +689,7 @@ def install(m):
             "period_start": start.isoformat(),
             "period_end": end.isoformat(),
             "stock_source_date": stock_date.isoformat() if stock_date else None,
+            "sales_data_through": available_dates[-1] if available_dates else None,
             "stock_source_name": stock_name,
             "stock_reference_only": future_cut,
             "stock_cut_valid": cut_valid,
@@ -763,9 +773,12 @@ def install(m):
       kpi(stockReference?'Stock al corte · referencia (Pzs)':'Stock Total Habilitado (Pzs)',stockReference?n(referenceTotal):n(m.inv_total_pzs),stockReference?'Corte posterior · '+referenceCount+'/'+rows.length+' tiendas · no es stock inicial':'Stock Inicial + Devoluciones','#1769E8')+
       kpi('Venta Total ($ mil)',money(m.sales_value),n(m.sales_pzs)+' piezas vendidas','#10B981')+
       kpi('Stock Final Residual (Pzs)',n(m.inv_final_pzs),m.stock_complete?'Stock habilitado - venta':'No conciliado: oculto','#F59E0B')+
-      kpi(stockReference?'% Desplazamiento parcial':'% Sell-Through Neto Global',pc(stockReference?d.partial_reference?.global?.sell_through_pct:m.sell_through_pct),stockReference?'Sólo después del corte · NO tasa semanal':'KPI principal del periodo','#7C3AED')+
+      kpi(stockReference?'% Desplazamiento parcial':'% Sell-Through Neto Global',pc(stockReference?d.partial_reference?.global?.sell_through_pct:m.sell_through_pct),stockReference?'Después del corte · datos hasta '+esc(d.sales_data_through||'N/D'):'KPI principal del periodo','#7C3AED')+
       '</div>';
     out+='<div class="rr243-source"><span><b>Periodo:</b> '+esc(d.period_start||'')+(d.period_end&&d.period_end!==d.period_start?' al '+esc(d.period_end):'')+'</span><span>·</span><span><b>'+(stockReference?'Stock de referencia (posterior):':'Stock inicial:')+'</b> '+esc(d.stock_source_date||'Sin corte')+'</span><span>·</span><span>'+esc(d.stock_source_name||'')+'</span><span>·</span><b>Moneda: $ mil MXN</b></div>';
+    if(stockReference&&d.partial_reference&&!d.partial_reference.end){
+      out+='<div class="rr243-warning"><b>Porcentaje pendiente:</b> el corte del '+esc(d.stock_source_date||'')+' es posterior al inicio de la semana y la última venta publicada corresponde al '+esc(d.sales_data_through||'N/D')+'. Se necesitan ventas desde '+esc(d.partial_reference.start)+' para mostrar un desplazamiento parcial; para la semana completa se necesita Stock Inicial válido.</div>';
+    }
     (d.warnings||[]).forEach(function(w){out+='<div class="rr243-warning">'+esc(w)+'</div>'});
     out+='<div class="title">Matriz operativa · Tasa de recuperación por tienda</div><div class="rr243-tablewrap"><table class="table rr243-table"><thead><tr><th>Tienda</th><th>Periodo</th><th>'+(stockReference?'Stock al corte (ref.) Pzs':'Stock Inicial Pzs')+'</th><th>Devueltas Pzs</th><th>Stock Total Habilitado Pzs</th><th>Stock Total Habilitado ($ mil)</th><th>Vendidas Pzs</th><th>Venta Total ($ mil)</th><th>Precio Promedio ($ mil)</th><th>Stock Final Residual Pzs</th><th>Stock Final Residual ($ mil)</th><th>'+(stockReference?'% Desplazamiento parcial':'% Sell-Through Neto')+'</th><th>'+(stockReference?'% Devol. parcial':'% Impacto Dev')+'</th></tr></thead><tbody>';
     out+=rows.map(function(r){var neg=Number(r.inv_final_pzs)<0?' rr243-negative':'';return '<tr class="'+(r.is_project?'project-row':'')+'"><td><b>'+esc(r.store)+'</b></td><td>'+esc(r.period)+'</td><td>'+n(r.inv_initial_pzs)+'</td><td>'+n(r.dev_pzs)+'</td><td><b>'+n(r.inv_total_pzs)+'</b></td><td>'+money(r.inv_total_amount)+'</td><td><b>'+n(r.sales_pzs)+'</b></td><td>'+money(r.sales_value)+'</td><td>'+money(r.avg_price)+'</td><td class="'+neg+'">'+n(r.inv_final_pzs)+'</td><td class="'+neg+'">'+money(r.inv_final_amount)+'</td><td><b>'+pc(stockReference?r.partial_sell_through_pct:r.sell_through_pct)+'</b></td><td>'+pc(stockReference?r.partial_impact_dev_pct:r.impact_dev_pct)+'</td></tr>'}).join('');
