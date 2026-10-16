@@ -421,46 +421,111 @@ def install(m):
         return data
 
     css = """<style id="v331-recovery-audit-css">
-.v331-note{border:1px solid #cbdcf3;border-radius:10px;background:#f4f8ff;padding:12px;font-size:12px;line-height:1.5;margin-bottom:10px}
-.v331-warning{border-left:3px solid #cb8919;background:#fff8ed;padding:9px 11px;font-size:11px;margin-bottom:6px;line-height:1.45}
-.v331-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
-.v331-card{background:white;border:1px solid #d9e3ef;border-radius:10px;padding:11px;min-width:0}
-.v331-card small{font-size:10px;color:#526783;display:block}
-.v331-card strong{font-size:21px;color:#153c72;display:block;margin:5px 0}
-.v331-table-wrap{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch}
-.v331-table{min-width:1030px;width:100%;border-collapse:collapse;font-size:12px}
-.v331-table th,.v331-table td{border-bottom:1px solid #e3eaf2;padding:9px;text-align:right;white-space:nowrap}
-.v331-table th:first-child,.v331-table td:first-child{text-align:left}
-.v331-table th{background:#edf4ff;color:#1c487c;position:sticky;top:0}
-.v331-status{font-weight:800;color:#905e12}
-.v331-status.ok{color:#0d7b58}
-.v331-table tr.project-row{background:#edf6ff}
-@media(max-width:750px){.v331-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v331-card strong{font-size:17px}.v331-table{font-size:10px}}
+.v331-root{font-family:inherit;color:#173b69}
+.v331-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:linear-gradient(110deg,#f1f6ff,#fff);border:1px solid #cbdcf0;border-radius:12px;padding:11px 13px;margin:8px 0}
+.v331-toolbar b{font-size:12px;color:#143c73}.v331-toolbar small{color:#607590;font-size:10px}
+.v331-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.v331-pill{font-size:10px;font-weight:850;border-radius:999px;padding:5px 9px;background:#eaf0fa;color:#214d7d;white-space:nowrap}
+.v331-pill.warn{background:#fff1d7;color:#966213}.v331-pill.fail{background:#fff0f0;color:#ac3030}.v331-pill.ok{background:#dff7ed;color:#087951}
+.v331-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:10px 0}
+.v331-card{background:#fff;border:1px solid #dce5f0;border-radius:12px;padding:12px 12px 10px;min-width:0;box-shadow:0 2px 7px #193f7410;position:relative;overflow:hidden}
+.v331-card:before{content:"";position:absolute;inset:0 auto 0 0;background:var(--accent,#1d6fcb);width:3px}
+.v331-card .label{font-size:10px;font-weight:800;text-transform:uppercase;line-height:1.3;color:#637893}
+.v331-card .number{display:block;font-size:clamp(16px,1.5vw,24px);line-height:1.2;font-weight:950;letter-spacing:-.035em;color:#163e78;margin:7px 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v331-card .hint{font-size:10px;line-height:1.3;color:#60748b}
+.v331-bottom{display:grid;grid-template-columns:minmax(260px,0.9fr) minmax(0,2fr);gap:10px;margin:12px 0}
+.v331-panel{background:#fff;border:1px solid #dce5f0;border-radius:12px;min-width:0;overflow:hidden}
+.v331-panelhead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;border-bottom:1px solid #e7edf5}
+.v331-panelhead b{font-size:12px;color:#123d72}.v331-panelhead small{font-size:10px;color:#667a90}
+.v331-rank{padding:11px 13px;max-height:310px;overflow-y:auto}
+.v331-rankrow{display:grid;grid-template-columns:minmax(75px,1fr) 2fr 48px;gap:8px;align-items:center;margin:0 0 11px;font-size:10px;font-weight:750}
+.v331-rankrow .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v331-track{background:#e8f0fa;height:8px;border-radius:99px;overflow:hidden}
+.v331-fill{height:100%;background:linear-gradient(90deg,#0b64c9,#37a3fc);border-radius:99px}
+.v331-tablewrap{overflow-x:auto;width:100%;max-height:355px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.v331-table{width:100%;min-width:910px;border-collapse:separate;border-spacing:0;font-size:11px;font-variant-numeric:tabular-nums}
+.v331-table th,.v331-table td{padding:10px 9px;text-align:right;border-bottom:1px solid #ebeff5;white-space:nowrap}
+.v331-table th{position:sticky;top:0;background:#edf4ff;z-index:2;text-transform:uppercase;color:#244c7b;font-size:9px;letter-spacing:.01em}
+.v331-table td:first-child,.v331-table th:first-child{text-align:left;position:sticky;left:0;background:#fff;z-index:1}
+.v331-table th:first-child{z-index:3;background:#edf4ff}
+.v331-table tr:nth-child(even) td{background:#f8fbff}
+.v331-table tr:nth-child(even) td:first-child{background:#f8fbff}
+.v331-table tr.project-row td{background:#edf5ff}.v331-table tr.project-row td:first-child{background:#edf5ff}
+.v331-quality{font-size:9px;white-space:nowrap;font-weight:850}
+.v331-quality.warn{color:#9a6711}.v331-quality.fail{color:#bd3940}.v331-quality.ok{color:#087951}
+.v331-empty{padding:18px;color:#627990;font-size:11px;line-height:1.5;text-align:center}
+.v331-disclosure{border:1px solid #dce5f0;border-radius:11px;background:#fff;margin:9px 0;overflow:hidden}
+.v331-disclosure summary{list-style:none;cursor:pointer;padding:11px 13px;font-size:11px;font-weight:850;color:#1b4a7e}
+.v331-disclosure summary:after{content:"▾";float:right}
+.v331-disclosure[open] summary:after{content:"▴"}
+.v331-disclosure .details{padding:0 14px 13px;font-size:11px;line-height:1.5;color:#5d7087}
+.v331-disclosure ul{margin:8px 0 0;padding-left:17px}
+.v331-actions{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0 13px;flex-wrap:wrap}
+.v331-actions p{margin:0;color:#64788e;font-size:10px}
+.v331-retry{border:1px solid #b4cef1;border-radius:8px;background:#fff;color:#165ca8;font-weight:850;padding:7px 11px;font-size:11px;cursor:pointer}
+.v331-retry:hover{background:#eef6ff}
+@media(max-width:1300px){.v331-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:850px){.v331-bottom{grid-template-columns:1fr}.v331-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.v331-card{padding:10px}.v331-card .number{font-size:19px}.v331-panelhead{padding:10px}}
 </style>"""
     script = """<script id="v331-recovery-audit-js">
 (function(){
- var esc=function(x){return String(x==null?'':x).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]})};
- var nf=function(x){return x===null||x===undefined||!Number.isFinite(Number(x))?'—':Number(x).toLocaleString('es-MX',{maximumFractionDigits:0})};
- var pc=function(x){return x===null||x===undefined||!Number.isFinite(Number(x))?'—':Number(x).toLocaleString('es-MX',{maximumFractionDigits:1,minimumFractionDigits:1})+'%'};
- var money=function(x){return x===null||x===undefined?'—':Number(x).toLocaleString('es-MX',{style:'currency',currency:'MXN'})};
- var status=function(x){return {'coincidente':'Corte coincidente · estimado','estimado':'Corte cercano · estimado','sin_corte':'Sin corte','corte_futuro':'Corte futuro: bloqueado','corte_antiguo':'Corte antiguo: bloqueado','sin_stock_tienda':'Sin stock','sin_base':'Sin base','ventas_superan_base':'Ventas > base: revisar'}[x]||'Revisar'};
- function card(name,val,sub){return '<div class="v331-card"><small>'+esc(name)+'</small><strong>'+val+'</strong><small>'+esc(sub)+'</small></div>'}
+ if(window.__v331AuditVisualInstalled)return;
+ window.__v331AuditVisualInstalled=true;
+ var esc=function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+ var n=function(v){return v==null||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('es-MX',{maximumFractionDigits:0})};
+ var pct=function(v){return v==null||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'};
+ var mxn=function(v){return v==null||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0})};
+ var titles={coincidente:'Corte coincidente',estimado:'Corte cercano',sin_corte:'Sin corte',corte_futuro:'Corte posterior',corte_antiguo:'Corte antiguo',sin_stock_tienda:'Falta stock',sin_base:'Sin base',ventas_superan_base:'Revisar ventas'};
+ var title=function(s){return titles[s]||'Revisar dato'};
+ var icon=function(k){return k==='ok'?'✓':k==='fail'?'!':'·'};
+ var pill=function(label,tone){return '<span class="v331-pill '+tone+'">'+esc(label)+'</span>'};
+ var card=function(label,value,sub,color){return '<div class="v331-card" style="--accent:'+color+'"><span class="label">'+esc(label)+'</span><strong class="number">'+value+'</strong><span class="hint">'+esc(sub)+'</span></div>'};
+ window.v331Refresh=function(){if(typeof window.renderOperativoView==='function')window.renderOperativoView('Tasa de recuperación · Revisión',true)};
  window.recoveryRateImprovedView=function(d){
-   if(!d||d.status==='building'){
-     window.setTimeout(function(){var active=document.querySelector('#operativoNav [data-tab-key="operations.recovery_audit"].active');if(active&&typeof window.renderOperativoView==='function')window.renderOperativoView('Tasa de recuperación · Revisión',true)},5000);
-     return '<div class="v331-note">Preparando datos diarios de ventas y devoluciones. La pestaña se actualizará automáticamente cuando termine la carga.</div>';
+   if(window.__v331Poll){clearTimeout(window.__v331Poll);window.__v331Poll=null}
+   if(!d)d={status:'error',error:'No se recibió información de la consulta.'};
+   var a=d.audit||{}, m=d.metrics||{}, rows=d.rows||[];
+   var busy=d.status==='building'||a.stock_phase==='building';
+   if(busy&&Number(d.retry_seconds||5)>0){
+     window.__v331Poll=setTimeout(function(){
+       var tab=document.querySelector('#operativoNav [data-tab-key="operations.recovery_audit"].active');
+       if(tab)window.v331Refresh();
+     },Math.max(4,Number(d.retry_seconds||5))*1000);
    }
-   if(d.status!=='ready')return '<div class="v331-note">'+esc(d.error||'No se pudo procesar el corte de recuperación.')+'</div>';
-   var m=d.metrics||{}, a=d.audit||{},rows=d.rows||[];
-   var out='<div class="v331-note"><b>Versión de revisión independiente.</b> Usa la suma de existencias de los registros de capacidades por tienda e ID_ART. El porcentaje es <b>estimado</b> y no constituye recuperación comprobada de devoluciones. Sólo se publica si existe corte válido y ventas no superan la base.</div>';
-   out+='<div class="v331-kpis">'+card('Stock inicial de referencia',m.stock_complete?nf(m.inv_initial_pzs):'—','Piezas · falta conciliación de movimientos')+card('Devoluciones registradas',nf(m.dev_pzs),'Habilitación sin verificar')+card('Ventas totales',nf(m.sales_pzs),'Durante el periodo consultado')+card('Tasa estimada de desplazamiento',pc(m.sell_through_pct),'No es conversión FIFO')+card('Base inicial + devoluciones',m.stock_complete?nf(m.inv_total_pzs):'—','Piezas potencialmente disponibles')+card('Stock residual teórico',m.stock_complete?nf(m.inv_final_pzs):'—','No es existencia física')+card('Venta registrada ($)',money(m.sales_value),'No es recuperación atribuible')+card('Tiendas con indicador',nf(m.valid_stores)+' / '+nf(m.stores_in_scope),'Sujetas a conciliación')+'</div>';
-   out+='<div class="v331-note"><b>Periodo:</b> '+esc(d.period_start)+' a '+esc(d.period_end)+' · <b>Corte:</b> '+esc(d.stock_source_date||'No disponible')+' · '+esc(d.stock_source_name||'')+' · <b>Calidad:</b> '+esc(status(a.cut_status))+'</div>';
-   (d.warnings||[]).forEach(function(w){out+='<div class="v331-warning">'+esc(w)+'</div>'});
-   out+='<div class="title">Detalle y trazabilidad por tienda</div><div class="v331-table-wrap"><table class="v331-table"><thead><tr><th>Tienda</th><th>Stock inicial</th><th>Dev. registradas</th><th>Base estimada</th><th>Ventas (pzs)</th><th>Residual teórico</th><th>Tasa estimada</th><th>Impacto Dev.</th><th>Calidad del dato</th></tr></thead><tbody>';
-   rows.forEach(function(r){out+='<tr class="'+(r.is_project?'project-row':'')+'"><td><b>'+esc(r.store)+'</b></td><td>'+nf(r.inv_initial_pzs)+'</td><td>'+nf(r.dev_pzs)+'</td><td>'+nf(r.inv_total_pzs)+'</td><td>'+nf(r.sales_pzs)+'</td><td>'+nf(r.inv_final_pzs)+'</td><td><b>'+pc(r.sell_through_pct)+'</b></td><td>'+pc(r.impact_dev_pct)+'</td><td class="v331-status '+(r.audit_valid?'ok':'')+'">'+esc(status(r.data_quality))+'</td></tr>'});
-   out+='</tbody></table></div>';
-   out+='<div class="v331-note" style="margin-top:12px"><b>Próxima conciliación requerida:</b> entradas a tienda, traspasos, ajustes, movimientos de habilitado/ubicado y existencias al cierre. Hasta disponer de estas fuentes, los importes de inventario y la conversión atribuible a devoluciones quedan expresamente sin certificar. La pestaña original no fue modificada.</div>';
-   return out;
+   if(d.status!=='ready'){
+     var waiting=d.status==='building',info=waiting?'Preparando el resumen diario en segundo plano…':(d.error||'No fue posible consultar el reporte.');
+     return '<div class="v331-root"><div class="v331-toolbar"><div><b>'+esc(waiting?'Preparando información':'Consulta no disponible')+'</b><small style="display:block">'+esc(info)+'</small></div>'+pill(waiting?'Procesando':'Revisar','warn')+'</div><button type="button" class="v331-retry" onclick="window.v331Refresh()">Reintentar consulta</button></div>';
+   }
+   var noRate=m.sell_through_pct==null;
+   var statusLabel=a.stock_phase==='building'?'Preparando existencias':a.period_partial?'Periodo parcial':noRate?'Pendiente de conciliación':'Estimación disponible';
+   var statusTone=a.stock_phase==='building'?'warn':noRate?'fail':'warn';
+   var head='<div class="v331-toolbar"><div><b>Auditoría paralela · '+esc(d.period_value||d.period_start||'')+'</b><small style="display:block">Stock y movimientos con trazabilidad por tienda · sin modificar la pestaña original</small></div><div class="v331-tags">'+pill(statusLabel,statusTone)+pill('Corte '+(d.stock_source_date||'no disponible'),'')+pill('Fuente '+(a.source_last_date||'sin ventas'),'')+'</div></div>';
+   var kpis='<div class="v331-kpis">'+
+     card('Stock inicial',m.stock_complete?n(m.inv_initial_pzs):'—','Referencia no conciliada','#196fce')+
+     card('Devoluciones',n(m.dev_pzs),'Registradas · habilitado no verificado','#7754ce')+
+     card('Piezas vendidas',n(m.sales_pzs),'Ventas registradas del periodo','#12a884')+
+     card('Base estimada',m.stock_complete?n(m.inv_total_pzs):'—','Inicial + devoluciones','#2583d3')+
+     card('Tasa de desplazamiento',pct(m.sell_through_pct),'No equivale a conversión FIFO','#8b65cf')+
+     card('Tiendas con cálculo',n(m.valid_stores)+' / '+n(m.stores_in_scope),'Sujetas a conciliación','#de9a28')+
+     '</div>';
+   var good=rows.filter(function(r){return r.sell_through_pct!=null&&Number.isFinite(Number(r.sell_through_pct))})
+      .sort(function(x,y){return Number(y.sell_through_pct)-Number(x.sell_through_pct)});
+   var bars=good.length?good.slice(0,10).map(function(r){
+     var v=Math.max(0,Math.min(100,Number(r.sell_through_pct)));
+     return '<div class="v331-rankrow"><span class="name" title="'+esc(r.store)+'">'+esc(r.store)+'</span><span class="v331-track"><span class="v331-fill" style="display:block;width:'+v+'%"></span></span><strong>'+pct(r.sell_through_pct)+'</strong></div>';
+   }).join(''):'<div class="v331-empty">Sin tasas validadas para mostrar un ranking. Revisa la fecha del corte y las alertas del periodo.</div>';
+   var table=rows.map(function(r){
+     var st=a.stock_phase==='building'?'Preparando stock':title(r.data_quality);
+     var tone=r.audit_valid?'warn':'fail';
+     return '<tr class="'+(r.is_project?'project-row':'')+'"><td><b>'+esc(r.store)+'</b></td><td>'+n(r.inv_initial_pzs)+'</td><td>'+n(r.dev_pzs)+'</td><td>'+n(r.sales_pzs)+'</td><td>'+n(r.inv_total_pzs)+'</td><td>'+n(r.inv_final_pzs)+'</td><td><b>'+pct(r.sell_through_pct)+'</b></td><td><span class="v331-quality '+tone+'">'+icon(tone)+' '+esc(st)+'</span></td></tr>';
+   }).join('');
+   var lower='<div class="v331-bottom"><div class="v331-panel"><div class="v331-panelhead"><b>Desplazamiento por tienda</b><small>Orden descendente · sólo cortes válidos</small></div><div class="v331-rank">'+bars+'</div></div>'+
+    '<div class="v331-panel"><div class="v331-panelhead"><b>Matriz de revisión por tienda</b><small>'+n(rows.length)+' tiendas</small></div><div class="v331-tablewrap"><table class="v331-table"><thead><tr><th>Tienda</th><th>Stock inicial</th><th>Dev.</th><th>Vta. pzs</th><th>Base</th><th>Residual</th><th>Tasa</th><th>Estado</th></tr></thead><tbody>'+table+'</tbody></table></div></div></div>';
+   var warnings=d.warnings||[];
+   var acc='<details class="v331-disclosure"'+(noRate?' open':'')+'><summary>Calidad de la información y advertencias ('+warnings.length+')</summary><div class="details"><ul>'+warnings.map(function(w){return '<li>'+esc(w)+'</li>'}).join('')+'</ul></div></details>';
+   var methodology='<details class="v331-disclosure"><summary>Cómo se calcula y qué falta conciliar</summary><div class="details"><b>Estimación:</b> venta total en piezas ÷ (existencia inicial del corte + devoluciones registradas) × 100. Para considerarla confiable falta conciliar transferencias, entradas, salidas, ajustes e inventario final. Las devoluciones no equivalen automáticamente a unidades habilitadas en piso. Los importes de ventas no son recuperación atribuible a devoluciones.</div></details>';
+   var actions='<div class="v331-actions"><p>Periodo '+esc(d.period_start||'')+' al '+esc(d.period_end||'')+' · Venta registrada: '+mxn(m.sales_value)+' · Residual: '+(m.stock_complete?n(m.inv_final_pzs):'—')+' pzs</p><button class="v331-retry" type="button" onclick="window.v331Refresh()">Actualizar datos ↻</button></div>';
+   return '<section class="v331-root">'+head+kpis+lower+acc+methodology+actions+'</section>';
  };
 })();
 </script>"""
