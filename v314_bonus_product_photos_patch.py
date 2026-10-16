@@ -17,7 +17,8 @@ _BASE = "http://static.priceshoes.com.mx/imgs/original/articulo/"
 _ALLOWED_ID = re.compile(r"^[0-9]{1,15}$")
 _CACHE = OrderedDict()
 _LOCK = Lock()
-_MAX_CACHE = 32
+_MAX_CACHE = 24
+_MAX_IMAGE_BYTES = 4_000_000
 # Memoria pequeña para miniaturas confirmadas: evita volver a buscar en CDN
 # fotografías que ya aparecieron en la vista web.
 _EXPORT_PHOTO_CACHE = OrderedDict()
@@ -109,8 +110,8 @@ def install(m):
                 try:
                     with urllib.request.urlopen(request, timeout=6) as response:
                         mime = response.headers.get("Content-Type", "").split(";")[0].lower().strip()
-                        content = response.read(2_000_001)
-                        if not content or len(content) > 2_000_000:
+                        content = response.read(_MAX_IMAGE_BYTES + 1)
+                        if not content or len(content) > _MAX_IMAGE_BYTES:
                             photo_failure(product_id, "invalid_image")
                             return None
                         jpeg = content[:3] == b"\xff\xd8\xff"
