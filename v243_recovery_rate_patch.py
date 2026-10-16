@@ -664,7 +664,7 @@ def install(m):
 (function(){
   function esc(v){return String(v==null?'':v).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]||c})}
   function n(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';return Number(v).toLocaleString('es-MX',{maximumFractionDigits:0})}
-  function money(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';return Number(v).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2,maximumFractionDigits:2})}
+  function money(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';var raw=Number(v),digits=Math.abs(raw)<1000?3:1;return (raw/1000).toLocaleString('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:digits,maximumFractionDigits:digits})+' mil'}
   function pc(v){if(v===null||v===undefined||!Number.isFinite(Number(v)))return '—';return Number(v).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'}
   function kpi(label,value,sub,tone){return '<div class="rr243-kpi" style="--rr243:'+tone+'"><div class="lab">'+esc(label)+'</div><div class="val">'+value+'</div><div class="sub">'+esc(sub||'')+'</div></div>'}
 
@@ -690,16 +690,19 @@ def install(m):
     }
     if(d.status!=='ready')return '<div class="infoempty">'+esc(d.error||'No fue posible calcular la Tasa de recuperación.')+'</div>';
     var m=d.metrics||{},rows=d.rows||[];
-    var out='<div class="rr243-definition"><b>% Sell-Through Neto:</b> Piezas Vendidas ÷ (Stock Inicial del periodo + Piezas Devueltas que regresan al piso) × 100.</div>';
+    var stockReference=!!d.stock_reference_only;
+    var referenceTotal=rows.reduce(function(sum,r){return sum+(r.inv_initial_pzs==null?0:Number(r.inv_initial_pzs)||0)},0);
+    var referenceCount=rows.filter(function(r){return r.inv_initial_pzs!=null}).length;
+    var out='<div class="rr243-definition"><b>% Sell-Through Neto:</b> Piezas Vendidas ÷ (Stock Inicial válido + Devoluciones registradas) × 100. Las devoluciones no acreditan por sí solas habilitación. <b>Importes monetarios en miles de pesos ($ mil).</b></div>';
     out+='<div class="rr243-kpis">'+
-      kpi('Stock Total Habilitado (Pzs)',n(m.inv_total_pzs),'Stock Inicial + Devoluciones','#1769E8')+
-      kpi('Venta Total ($)',money(m.sales_value),n(m.sales_pzs)+' piezas vendidas','#10B981')+
-      kpi('Stock Final Residual (Pzs)',n(m.inv_final_pzs),'Stock habilitado - venta','#F59E0B')+
+      kpi(stockReference?'Stock al corte · referencia (Pzs)':'Stock Total Habilitado (Pzs)',stockReference?n(referenceTotal):n(m.inv_total_pzs),stockReference?'Corte posterior · '+referenceCount+'/'+rows.length+' tiendas · no es stock inicial':'Stock Inicial + Devoluciones','#1769E8')+
+      kpi('Venta Total ($ mil)',money(m.sales_value),n(m.sales_pzs)+' piezas vendidas','#10B981')+
+      kpi('Stock Final Residual (Pzs)',n(m.inv_final_pzs),m.stock_complete?'Stock habilitado - venta':'No conciliado: oculto','#F59E0B')+
       kpi('% Sell-Through Neto Global',pc(m.sell_through_pct),'KPI principal del periodo','#7C3AED')+
       '</div>';
-    out+='<div class="rr243-source"><span><b>Periodo:</b> '+esc(d.period_start||'')+(d.period_end&&d.period_end!==d.period_start?' al '+esc(d.period_end):'')+'</span><span>·</span><span><b>Stock inicial:</b> '+esc(d.stock_source_date||'Sin corte')+'</span><span>·</span><span>'+esc(d.stock_source_name||'')+'</span></div>';
+    out+='<div class="rr243-source"><span><b>Periodo:</b> '+esc(d.period_start||'')+(d.period_end&&d.period_end!==d.period_start?' al '+esc(d.period_end):'')+'</span><span>·</span><span><b>'+(stockReference?'Stock de referencia (posterior):':'Stock inicial:')+'</b> '+esc(d.stock_source_date||'Sin corte')+'</span><span>·</span><span>'+esc(d.stock_source_name||'')+'</span><span>·</span><b>Moneda: $ mil MXN</b></div>';
     (d.warnings||[]).forEach(function(w){out+='<div class="rr243-warning">'+esc(w)+'</div>'});
-    out+='<div class="title">Matriz operativa · Tasa de recuperación por tienda</div><div class="rr243-tablewrap"><table class="table rr243-table"><thead><tr><th>Tienda</th><th>Periodo</th><th>Stock Inicial Pzs</th><th>Devueltas Pzs</th><th>Stock Total Habilitado Pzs</th><th>Stock Total Habilitado $</th><th>Vendidas Pzs</th><th>Venta Total $</th><th>Precio Promedio</th><th>Stock Final Residual Pzs</th><th>Stock Final Residual $</th><th>% Sell-Through Neto</th><th>% Impacto Dev</th></tr></thead><tbody>';
+    out+='<div class="title">Matriz operativa · Tasa de recuperación por tienda</div><div class="rr243-tablewrap"><table class="table rr243-table"><thead><tr><th>Tienda</th><th>Periodo</th><th>'+(stockReference?'Stock al corte (ref.) Pzs':'Stock Inicial Pzs')+'</th><th>Devueltas Pzs</th><th>Stock Total Habilitado Pzs</th><th>Stock Total Habilitado ($ mil)</th><th>Vendidas Pzs</th><th>Venta Total ($ mil)</th><th>Precio Promedio ($ mil)</th><th>Stock Final Residual Pzs</th><th>Stock Final Residual ($ mil)</th><th>% Sell-Through Neto</th><th>% Impacto Dev</th></tr></thead><tbody>';
     out+=rows.map(function(r){var neg=Number(r.inv_final_pzs)<0?' rr243-negative':'';return '<tr class="'+(r.is_project?'project-row':'')+'"><td><b>'+esc(r.store)+'</b></td><td>'+esc(r.period)+'</td><td>'+n(r.inv_initial_pzs)+'</td><td>'+n(r.dev_pzs)+'</td><td><b>'+n(r.inv_total_pzs)+'</b></td><td>'+money(r.inv_total_amount)+'</td><td><b>'+n(r.sales_pzs)+'</b></td><td>'+money(r.sales_value)+'</td><td>'+money(r.avg_price)+'</td><td class="'+neg+'">'+n(r.inv_final_pzs)+'</td><td class="'+neg+'">'+money(r.inv_final_amount)+'</td><td><b>'+pc(r.sell_through_pct)+'</b></td><td>'+pc(r.impact_dev_pct)+'</td></tr>'}).join('');
     out+='</tbody></table></div>';
     out+='<div class="rr243-chart-panel" id="rr243ChartPanel"><div class="rr243-chart-head"><b>Sell-Through Neto · evolución cronológica</b><button class="rr243-expand" type="button" onclick="document.getElementById(\'rr243ChartPanel\').requestFullscreen?.()">Pantalla completa</button></div><div class="rr243-chart-scroll">'+chart(d.trend||[])+'</div></div>';
