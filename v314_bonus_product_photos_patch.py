@@ -53,15 +53,44 @@ def install(m):
         except (OSError, ValueError):
             return None
 
-    def fetch_photo(product_id):
+    # Evita solicitudes masivas repetidas por IDs sin foto.
+    # Los fallos temporales expiran mucho antes que las ausencias 404.
+    _photo_failures = OrderedDict()
+
+    def photo_failure(product_id, reason):
+        with _LOCK:
+            _photo_failures[product_id] = (time.monotonic() + (90 if reason == "not_found" else 12), reason)
+            _photo_failures.move_to_end(product_id)
+            while len(_photo_failures) > 1200:
+                _photo_failures.popitem(last=False)
+        print(f"[BONUS-PHOTO] ID={product_id} status={reason}", flush=True)
+
+    def photo_error_kind(product_id):
+        with _LOCK:
+            hit = _photo_failures.get(product_id)
+        return hit[1] if hit else "temporary"
+
+    def fetch_photo(product_id, force=False):
+        product_id = str(product_id or "").strip()
+        if not _ALLOWED_ID.fullmatch(product_id):
+            return None
         with _LOCK:
             found = _CACHE.get(product_id)
             if found:
                 _CACHE.move_to_end(product_id)
                 return found
-        # Limitar la concurrencia: docenas de fotos grandes simultáneas pueden
-        # agotar la memoria del contenedor y causar el error 502.
+            thumb = _EXPORT_PHOTO_CACHE.get(product_id)
+            if thumb:
+                _EXPORT_PHOTO_CACHE.move_to_end(product_id)
+                return thumb, "image/jpeg"
+            negative = _photo_failures.get(product_id)
+            if negative and not force and negative[0] > time.monotonic():
+                return None
+            if negative and negative[0] <= time.monotonic():
+                _photo_failures.pop(product_id, None)
+        # Control de concurrencia para no saturar memoria o CDN.
         if not _FETCH_SLOTS.acquire(timeout=15):
+            photo_failure(product_id, "temporary")
             return None
         try:
             return fetch_photo_limited(product_id)
@@ -69,34 +98,52 @@ def install(m):
             _FETCH_SLOTS.release()
 
     def fetch_photo_limited(product_id):
-        # La ruta exacta se probará en producción; ante error no se muestra imagen inventada.
-        url = _BASE + product_id + ".jpg"
-        req = urllib.request.Request(url, headers={"User-Agent": "OperacionesRopa/1.0", "Accept": "image/jpeg,image/*;q=0.8"})
-        try:
-            with urllib.request.urlopen(req, timeout=5) as response:
-                mime = response.headers.get("Content-Type","").split(";")[0].lower().strip()
-                content = response.read(2_000_001)
-                if not content or len(content)>2_000_000:
+        # Formatos alternativos sólo si el origen no tiene el anterior.
+        # No sustituir fotos por imágenes de otro ID o modelo.
+        for extension in (".jpg", ".png", ".webp"):
+            url = _BASE + product_id + extension
+            request = urllib.request.Request(
+                url, headers={"User-Agent": "OperacionesRopa/1.0",
+                              "Accept": "image/jpeg,image/png,image/webp"})
+            for attempt in range(2):
+                try:
+                    with urllib.request.urlopen(request, timeout=6) as response:
+                        mime = response.headers.get("Content-Type", "").split(";")[0].lower().strip()
+                        content = response.read(2_000_001)
+                        if not content or len(content) > 2_000_000:
+                            photo_failure(product_id, "invalid_image")
+                            return None
+                        jpeg = content[:3] == b"\\xff\\xd8\\xff"
+                        png = content[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+                        webp = content[:4] == b"RIFF" and content[8:12] == b"WEBP"
+                        if not (jpeg or png or webp):
+                            photo_failure(product_id, "invalid_image")
+                            return None
+                        mime = "image/jpeg" if jpeg else "image/png" if png else "image/webp"
+                        with _LOCK:
+                            _CACHE[product_id] = (content, mime)
+                            _CACHE.move_to_end(product_id)
+                            _photo_failures.pop(product_id, None)
+                            while len(_CACHE) > _MAX_CACHE:
+                                _CACHE.popitem(last=False)
+                        remember_export_thumbnail(product_id, content)
+                        return content, mime
+                except urllib.error.HTTPError as exc:
+                    if exc.code in (404, 410):
+                        break  # probar la siguiente extensión
+                    if exc.code in (429, 500, 502, 503, 504) and attempt == 0:
+                        time.sleep(0.25)
+                        continue
+                    photo_failure(product_id, f"upstream_http_{exc.code}")
                     return None
-                signature = (content[:3]==b"\xff\xd8\xff" or content[:8]==b"\x89PNG\r\n\x1a\n" or (content[:4]==b"RIFF" and content[8:12]==b"WEBP"))
-                if not signature:
+                except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+                    if attempt == 0:
+                        time.sleep(0.25)
+                        continue
+                    photo_failure(product_id, "temporary")
                     return None
-                if mime not in ("image/jpeg","image/jpg","image/png","image/webp"):
-                    # Algunos servidores devuelven octet-stream aunque el archivo es JPEG.
-                    mime = ("image/jpeg" if content[:3]==b"\xff\xd8\xff" else
-                            "image/png" if content[:8]==b"\x89PNG\r\n\x1a\n" else "image/webp")
-                with _LOCK:
-                    _CACHE[product_id]=(content,mime)
-                    _CACHE.move_to_end(product_id)
-                    while len(_CACHE)>_MAX_CACHE:
-                        _CACHE.popitem(last=False)
-                # Guardar miniatura reutilizable DESDE LA VISUALIZACIÓN WEB,
-                # evitando perder fotos al llegar al PDF/Excel por desalojo
-                # de la caché original de 32 imágenes.
-                remember_export_thumbnail(product_id, content)
-                return content,mime
-        except (urllib.error.URLError,TimeoutError,OSError,ValueError):
-            return None
+        photo_failure(product_id, "not_found")
+        return None
 
     def fetch_photo_for_export(product_id):
         product_id = str(product_id or "").strip()
@@ -120,13 +167,20 @@ def install(m):
         return None
 
     @m.app.get("/api/bonuses/product-photo/{product_id}")
-    async def bonus_product_photo(product_id:str, request:Request):
+    async def bonus_product_photo(product_id:str, request:Request, retry:int=0):
         m.require_user(request)
         if not _ALLOWED_ID.fullmatch(product_id):
             raise HTTPException(status_code=400,detail="ID inválido")
-        image = await asyncio.to_thread(fetch_photo,product_id)
+        image = await asyncio.to_thread(fetch_photo,product_id,bool(retry))
         if not image:
-            raise HTTPException(status_code=404,detail="Fotografía no disponible")
+            reason = photo_error_kind(product_id)
+            if reason == "not_found":
+                raise HTTPException(
+                    status_code=404, detail="El servidor de imágenes no tiene una foto para este ID",
+                    headers={"Cache-Control":"no-store"})
+            raise HTTPException(
+                status_code=503, detail="La fotografía no se pudo cargar. Reintenta.",
+                headers={"Cache-Control":"no-store","Retry-After":"3"})
         return Response(image[0],media_type=image[1],headers={"Cache-Control":"private, max-age=86400","X-Content-Type-Options":"nosniff"})
 
     css = """<style id="v314-bonus-photos-css">
