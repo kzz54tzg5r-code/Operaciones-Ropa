@@ -1,0 +1,8 @@
+{
+  "application": "Operaciones Ropa",
+  "environment": "vercel-preview",
+  "frontend": "configured",
+  "backend": "not-connected",
+  "productionData": "not-connected",
+  "readyForProduction": false
+}
