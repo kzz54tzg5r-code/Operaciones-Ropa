@@ -2396,9 +2396,16 @@ async function fetchOpsForView(name){
     const value=await resolveOpsPeriod(type);
     const store=$('#operStoreSelect')?.value||'Compañía';
     const url='/api/operations/recovery-rate-audit-v331?store='+encodeURIComponent(store)+'&period_type='+encodeURIComponent(type)+'&period_value='+encodeURIComponent(value);
-    const d=await api(url,{timeoutMs:120000});
-    if(d?.status==='ready')mergeOpsMetaFromResult(d);
-    return d;
+    try{
+      const d=await api(url,{timeoutMs:18000});
+      if(d?.status==='ready')mergeOpsMetaFromResult(d);
+      return {...d,available:true};
+    }catch(err){
+      const text=String(err?.message||err||'Error desconocido');
+      const offline=/failed to respond|fetch|gateway|502|503|504|timeout|tardó|network|respond/i.test(text);
+      return {available:true,status:'error',period_type:type,period_value:value,
+        error:offline?'La aplicación no respondió a tiempo o se está reiniciando. Intenta actualizar el reporte en unos segundos.':'No fue posible consultar Tasa de recuperación: '+text};
+    }
   }
   /* V243_RECOVERY_RATE_FETCH */
   if(name==='Recuperación por Tienda'){
