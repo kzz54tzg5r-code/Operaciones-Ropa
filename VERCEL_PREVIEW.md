@@ -1,3 +1,15 @@
+## Estado validado del backend — 16-10-2026
+
+- **Servidor de demostración creado:** Railway, proyecto `Operaciones Ropa Temporal`, servicio `operaciones-ropa-vercel-demo`.
+- **Despliegue backend:** `daafe8a8-7abf-4014-bedf-1826078220b5`, estado `SUCCESS`; /health = HTTP 200 según los registros de Railway.
+- **Dominio backend:** `operaciones-ropa-vercel-demo-production.up.railway.app`.
+- **Base aislada:** volumen propio en `/data-preview`; las trazas de inicio muestran 0 PDF de ventas y 0 registros operativos; no se importan cuentas ni históricos legados desde el repositorio.
+- **Demo:** cuenta sintética `Demo Vercel`, generada mediante `OPERACIONES_ROPA_PREVIEW_PASSWORD` protegida como variable del servicio. No añadir secretos al repositorio.
+- **Frontend Vercel:** despliegue `dpl_HYXuNB6KtxXCS8vA7tkPhHS33R94` listo; `/api/:path*` reescrito al backend de demostración.
+- **Pendiente de verificar en navegador con sesión autorizada:** bootstrap, login, persistencia de cookie, navegación y reportes. El conector no tiene permiso para realizar peticiones autenticadas al despliegue protegido.
+- **Importante:** Railway dispone de un servidor adicional de pruebas que puede generar consumo facturable. Retirarlo cuando ya no sea necesario.
+- **Sin alteración de producción:** Vercel es un proyecto distinto, y los cambios GitHub se limitan a la rama de prueba.
+
 ## Despliegue de la interfaz realizado el 16-10-2026
 
 - Proyecto independiente en Vercel: `operaciones-ropa-prueba` (`prj_OHfmg7pw80yMYpiftTECzzHtqyo3`).
