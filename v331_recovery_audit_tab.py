@@ -276,7 +276,8 @@ def install(m):
         with lock:
             if state["key"] == key and isinstance(state["stocks"], dict):
                 return dict(state["stocks"]), "ready"
-            if state["key"] == key and state["building"]:
+            # Never load two full 192k-row capacity frames concurrently.
+            if state["building"]:
                 return {}, "building"
             if stock_file.exists():
                 try:
