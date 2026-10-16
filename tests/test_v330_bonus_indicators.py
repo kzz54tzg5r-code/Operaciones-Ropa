@@ -74,7 +74,8 @@ def mock_app(role="admin", comparable=True, tracker=None):
          "inventory": {"initial_ddi": 120, "current_ddi": 100,
                        "initial_investment": 200000, "current_investment": 150000}},
         {"store": "Vallejo", "sales_pct": 95, "sales_goal": 200, "sales_actual": 190,
-         "attendance_pct": None, "catalogs": [{"models": 2, "ddi_reduced_models": 1}],
+         "attendance_pct": 100, "attendance_provisional": True,
+         "catalogs": [{"models": 2, "ddi_reduced_models": 1}],
          "inventory": {"initial_ddi": 140, "current_ddi": 130,
                        "initial_investment": 300000, "current_investment": 275000}},
     ]
@@ -104,7 +105,11 @@ def test_endpoint_no_simulator_or_payment_and_actual_cuts():
     assert result["summary"]["ddi_models_pct"] == 75
     assert result["summary"]["inventory"]["capital_variation_mxn"] == 50000
     assert result["summary"]["inventory"]["ddi_reduction_pct"] == pytest.approx(16.67, .01)
-    assert result["ranking"][1]["score"] is None  # Missing attendance: not 0.
+    assert result["ranking"][1]["attendance_reference"] == 100
+    assert result["ranking"][1]["attendance_provisional"] is True
+    assert result["ranking"][1]["ready"] is False  # Reference is not authorized attendance.
+    assert result["ranking"][1]["score"] is not None  # Reference estimate only.
+    assert result["ranking"][0]["attendance_reference"] == 96  # Respect actual entry.
     assert "base_amount" not in str(result)
     assert "estimated_amount" not in str(result)
     assert "multiplier_needs_authorized_ddi_target" in str(result["model"])
@@ -131,3 +136,22 @@ def test_bonus_data_is_reused_across_four_models_but_details_are_lazy():
     detailed = endpoint(request=None, month="2026-10", store="Centro", bonus=6, include_details=True)
     assert len(calls) == 2
     assert detailed["details"][0]["id_art"] == "store-123"
+
+
+def test_company_marks_100_attendance_as_provisional_when_any_store_is_missing():
+    result = mock_app()(request=None, month="2026-10", store="Compañía", bonus=3)
+    assert result["summary"]["attendance_reference"] == 98
+    assert result["summary"]["attendance_provisional"] is True
+    assert result["rules"]["attendance"].find("100% provisional") >= 0
+    assert result["ranking"][1]["classification"] == "Asistencia 100% provisional"
+    assert all(row["reference_only"] for row in result["ranking"])
+
+
+def test_bono1_keeps_original_weights_and_does_not_authorize_provisional_score():
+    from pathlib import Path
+    source=Path("v293_sales_bonus_patch.py").read_text(encoding="utf-8")
+    assert "attendance_provisional = att is None" in source
+    assert "else 100.0" in source
+    assert "and not attendance_provisional" in source
+    assert "min(max(attendance_pct, 0.0), 100.0) * 0.20" in source
+    assert '"attendance_provisional": x["attendance"]["provisional"]' in source
