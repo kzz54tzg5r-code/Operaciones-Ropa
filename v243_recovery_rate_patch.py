@@ -566,7 +566,11 @@ def install(m):
         }
 
         if missing_stock:
-            warnings.append("Sin Stock Inicial para: " + ", ".join(sorted(missing_stock)) + ". El KPI global se oculta hasta completar el corte.")
+            label = "Sin stock de referencia para: " if future_cut else "Sin Stock Inicial para: "
+            warnings.append(label + ", ".join(sorted(missing_stock)) +
+                            ". El indicador global se oculta hasta completar un corte válido.")
+        if stock_cache.get("error") and not stocks:
+            warnings.append("No fue posible leer las existencias del archivo seleccionado: " + stock_cache["error"])
         if any(num(r.get("inv_final_pzs")) < 0 for r in rows if r.get("stock_available")):
             warnings.append("Hay tiendas donde las ventas superan Stock Inicial + Devoluciones. Se conserva el residual negativo para evidenciar entradas no contempladas por esta fórmula.")
 
