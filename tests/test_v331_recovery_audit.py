@@ -106,3 +106,82 @@ def test_v314_quoted_closing_body_does_not_swallow_v331_script():
 
 def test_appended_script_when_host_page_lacks_explicit_body_end():
     assert insert_before_document_body_end("<html>ok", "<script>1</script>") == "<html>ok<script>1</script>"
+
+
+def test_fast_daily_sqlite_path_preserves_security_and_weighted_company_rate(tmp_path):
+    import json
+    import sqlite3
+    from types import SimpleNamespace
+    from fastapi import FastAPI
+    from v331_recovery_audit_tab import install
+
+    source = tmp_path / "cambios_muertos_actual.xlsx"
+    source.write_bytes(b"v243 normalized sample")
+    stamp = source.stat()
+    db = sqlite3.connect(tmp_path / "recovery_rate_daily_v243.sqlite3")
+    db.executescript("""
+    CREATE TABLE meta (k TEXT PRIMARY KEY,v TEXT);
+    CREATE TABLE daily (store TEXT,date TEXT,year_iso INTEGER,week_iso INTEGER,
+                        sales REAL,dev REAL,sales_value REAL,return_value REAL);
+    """)
+    db.executemany("INSERT INTO meta VALUES (?,?)", [
+        ("version", "243.1"), ("source_stamp", f"{stamp.st_mtime_ns}:{stamp.st_size}")])
+    db.executemany("INSERT INTO daily VALUES (?,?,?,?,?,?,?,?)", [
+        ("Centro", "2026-10-12", 2026, 42, 10, 4, 1000, 0),
+        ("Olivar", "2026-10-12", 2026, 42, 2, 0, 200, 0),
+    ])
+    db.commit()
+    db.close()
+
+    item = {"id": "cut-oct", "sha256": "test-hash",
+            "name": "Capacidades_12.10.26.xlsx"}
+    (tmp_path / "recovery_audit_stock_v331.json").write_text(
+        json.dumps({"key": "cut-oct|test-hash|2026-10-12|schema2",
+                    "stocks": {"Centro": 20, "Olivar": 4}}), encoding="utf-8")
+    app = FastAPI()
+    calls = {"baseline": 0, "user": 0}
+
+    @app.get("/api/operations/recovery-rate")
+    def existing_baseline():
+        calls["baseline"] += 1
+        raise AssertionError("The audited view must not execute the slow baseline")
+
+    def require_user(request):
+        calls["user"] += 1
+        return {"role": "admin"}
+
+    m = SimpleNamespace(
+        app=app, DATA_ROOT=tmp_path, REPORT_TABS={},
+        require_user=require_user,
+        effective_store=lambda user, store: store,
+        store_names=lambda active: ["Centro", "Olivar"],
+        project_store_names=lambda active: ["Centro"],
+        load_operations_meta=lambda: {
+            "available_dates": ["2026-10-12"],
+            "available_weeks": ["2026-W42"],
+            "available_months": ["2026-10"],
+        },
+        _capacity_processed_entries=lambda: [item],
+        _capacity_report_date=lambda entry: date(2026, 10, 12),
+        _normalize_store_value=lambda text: text,
+        _load_capacity_compact_cache=lambda entry: (_ for _ in ()).throw(
+            AssertionError("Stock must come from summarized cache")),
+    )
+    install(m)
+    endpoint = next(x.endpoint for x in app.routes
+                    if x.path == "/api/operations/recovery-rate-audit-v331")
+    result = endpoint(request=object(), store="Compañía",
+                      period_type="week", period_value="2026-W42")
+    assert result["status"] == "ready"
+    assert result["metrics"]["sell_through_pct"] == pytest.approx(100 * 12 / 28)
+    assert result["metrics"]["sales_pzs"] == 12
+    assert result["audit"]["period_partial"] is True
+    assert result["audit"]["stock_phase"] == "ready"
+    assert calls == {"baseline": 0, "user": 1}
+
+    other = endpoint(request=object(), store="Centro", period_type="week",
+                     period_value="2026-W42")
+    assert other["metrics"]["sell_through_pct"] == pytest.approx(100 * 10 / 24)
+    assert len(other["rows"]) == 1
+    assert other["rows"][0]["store"] == "Centro"
+    assert calls["baseline"] == 0
