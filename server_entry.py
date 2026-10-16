@@ -448,4 +448,7 @@ _install_v330_bonus_indicators_patch(web_app)
 from v331_recovery_audit_tab import install as _install_v331_recovery_audit_tab
 _install_v331_recovery_audit_tab(web_app)
 
+from v332_compact_table_headers_patch import install as _install_v332_compact_table_headers_patch
+_install_v332_compact_table_headers_patch(web_app)
+
 app = web_app.app
