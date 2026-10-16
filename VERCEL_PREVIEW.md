@@ -1,3 +1,16 @@
+## Despliegue de la interfaz realizado el 16-10-2026
+
+- Proyecto independiente en Vercel: `operaciones-ropa-prueba` (`prj_OHfmg7pw80yMYpiftTECzzHtqyo3`).
+- URL asignada: https://operaciones-ropa-prueba.vercel.app
+- Despliegue: `dpl_AFdZFh4YVpJKRb6Yf2h8KsV78UPk`, estado **READY**.
+- Archivos servidos desde `web` y configuración `vercel.json`: 27 archivos de origen confirmados en el despliegue.
+- Protección de despliegues **Vercel Authentication = all** habilitada.
+- Backend de pruebas **no conectado**: rutas `/api/*` aún sin servidor. No usar contraseñas reales.
+- La publicación se efectuó mediante carga directa de archivos porque la integración Vercel–GitHub aún no tiene instalación autorizada; **no hay autodespliegue al hacer push**.
+- No se modificó el servicio Render `operaciones-ropa` ni la rama `main`.
+- La comprobación HTTP desde el conector quedó bloqueada por un 403 del acceso al proyecto protegido; por tanto **no hay validación navegador/end-to-end todavía**.
+- Para uso comercial y datos de la empresa corresponde revisar el plan Vercel (Hobby no es para uso comercial).
+
 # Operaciones Ropa — prueba aislada en Vercel
 
 **Rama exclusiva:** `vercel-preview-20261016` (derivada de `main` el 16-10-2026).
