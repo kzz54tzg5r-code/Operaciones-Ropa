@@ -65,7 +65,7 @@ OPERATIONS_PARSER_VERSION = 41
 _OPS_RESPONSE_CACHE = {}
 
 SALES_PDF_FILE = DATA_ROOT / "ventas_pdf_procesadas.json"
-LEGACY_DB = ROOT / "data" / "config" / "ps_operaciones.db"
+LEGACY_DB = (DATA_ROOT / "_preview_no_legacy_db.sqlite3") if os.environ.get("OPERACIONES_ROPA_PREVIEW_ISOLATED") == "1" else (ROOT / "data" / "config" / "ps_operaciones.db")
 STAGING_DIR = DATA_ROOT / "staging"
 STAGING_DIR.mkdir(parents=True, exist_ok=True)
 OPERATIONS_HISTORY_DIR = DATA_ROOT / "history" / "operations"
@@ -284,6 +284,8 @@ def migrate_packaged_data_to_shared():
 
     Nunca sobreescribe información ya persistida en el directorio compartido.
     """
+    if os.environ.get("OPERACIONES_ROPA_PREVIEW_ISOLATED") == "1":
+        return  # Nunca importar datos o cuentas empaquetadas en la prueba aislada.
     packaged=ROOT / "data"
     try:
         if DATA_ROOT.resolve()==packaged.resolve():
@@ -2613,8 +2615,27 @@ def index_healthcheck():
 @app.get("/")
 def index(): return FileResponse(WEB/"index.html")
 
+def _ensure_isolated_preview_owner():
+    """Crea exclusivamente una cuenta sintética de prueba, sin datos reales."""
+    if os.environ.get("OPERACIONES_ROPA_PREVIEW_ISOLATED") != "1":
+        return
+    username = "Demo Vercel"
+    password = os.environ.get("OPERACIONES_ROPA_PREVIEW_PASSWORD", "")
+    if len(password) < 16:
+        raise HTTPException(503, "El entorno de demostración todavía no está configurado")
+    with db() as con:
+        exists = con.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
+        if not exists:
+            con.execute(
+                "INSERT INTO users(username,password_hash,role,store,active,created_at) VALUES(?,?,?,?,?,?)",
+                (username, hash_password(password), "superadmin", "", 1,
+                 datetime.now().isoformat(timespec="seconds")),
+            )
+
+
 @app.get("/api/bootstrap")
 def bootstrap(request: Request):
+    _ensure_isolated_preview_owner()
     migrate_legacy_owner()
     visibility={key:True for key in REPORT_TABS}
     try:
@@ -2628,6 +2649,8 @@ def bootstrap(request: Request):
 
 @app.post("/api/bootstrap-owner")
 async def bootstrap_owner(request: Request):
+    if os.environ.get("OPERACIONES_ROPA_PREVIEW_ISOLATED") == "1":
+        raise HTTPException(403, "Registro de propietario deshabilitado en entorno de pruebas")
     if user_count()!=0: raise HTTPException(409,"El propietario ya fue configurado")
     body=await request.json(); username=str(body.get("username") or "").strip(); password=str(body.get("password") or "")
     if len(username)<3 or len(password)<8: raise HTTPException(400,"Usuario mínimo 3 caracteres y contraseña mínimo 8")
@@ -2668,6 +2691,7 @@ async def recovery_reset_local(request: Request):
 
 @app.post("/api/login")
 async def login(request: Request):
+    _ensure_isolated_preview_owner()
     body=await request.json()
     username=str(body.get("username") or "").strip()
     password=str(body.get("password") or "")
