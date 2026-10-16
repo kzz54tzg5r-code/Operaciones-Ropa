@@ -113,8 +113,8 @@ def install(m):
                         if not content or len(content) > 2_000_000:
                             photo_failure(product_id, "invalid_image")
                             return None
-                        jpeg = content[:3] == b"\\xff\\xd8\\xff"
-                        png = content[:8] == b"\\x89PNG\\r\\n\\x1a\\n"
+                        jpeg = content[:3] == b"\xff\xd8\xff"
+                        png = content[:8] == b"\x89PNG\r\n\x1a\n"
                         webp = content[:4] == b"RIFF" and content[8:12] == b"WEBP"
                         if not (jpeg or png or webp):
                             photo_failure(product_id, "invalid_image")
