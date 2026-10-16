@@ -286,53 +286,100 @@ def install(m):
         dated = []
         for entry in entries:
             try:
-                d = m._capacity_report_date(entry)
-                dated.append((d, str(entry.get("uploaded_at") or ""), entry))
+                dated.append((m._capacity_report_date(entry), str(entry.get("uploaded_at") or ""), entry))
             except Exception:
                 continue
-        if not dated:
-            return None, None, False
-        prior = [item for item in dated if item[0] <= start]
-        if prior:
-            d, _uploaded, entry = max(prior, key=lambda x: (x[0], x[1]))
-            return entry, d, False
-        d, _uploaded, entry = min(dated, key=lambda x: (x[0], x[1]))
-        return entry, d, True
+        chosen, status = select_capacity_cut(dated, start)
+        if not chosen:
+            return None, None, False, status
+        date_cut, _uploaded, entry = chosen
+        return entry, date_cut, status == "reference_future", status
 
     def stock_by_store(start: date):
-        entry, source_date, future_cut = capacity_entry_for_start(start)
+        entry, source_date, future_cut, status = capacity_entry_for_start(start)
         if not entry:
-            return {}, None, "", False, ["No existe un corte de capacidades/existencias procesado para obtener el Stock Inicial."]
+            return {}, None, "", False, [
+                "No existe un corte de inventario cercano al inicio del periodo. Sube un corte con fecha válida."
+            ], False
+        name = str(entry.get("name") or entry.get("id") or "Corte de capacidades")
+        if status == "stale":
+            age = (start - source_date).days
+            return {}, source_date, name, False, [
+                "El corte anterior (" + source_date.isoformat() + ") tiene " + str(age) +
+                " días de antigüedad. No representa el Stock Inicial del periodo: se necesita un corte cercano."
+            ], False
+        notes = []
+        if future_cut:
+            notes.append(
+                "El corte " + name + " del " + source_date.isoformat() +
+                " es POSTERIOR al inicio (" + start.isoformat() +
+                "). Las existencias se presentan exclusivamente como STOCK DE REFERENCIA. "
+                "No son Stock Inicial ni Stock Habilitado del periodo: se bloquean la tasa y el residual "
+                "hasta contar con un corte válido al inicio."
+            )
+        key = "|".join([
+            str(entry.get("id") or ""), str(entry.get("uploaded_at") or ""),
+            str(entry.get("sha256") or entry.get("cache_file") or ""),
+            source_date.isoformat(), "v243-sum-2"
+        ])
+        with stock_lock:
+            if stock_cache["key"] == key and isinstance(stock_cache["ready"], dict):
+                return dict(stock_cache["ready"]), source_date, name, future_cut, notes, False
+            if stock_cache["building"]:
+                return None, source_date, name, future_cut, notes, True
+            if stock_cache_file.exists():
+                try:
+                    stored = json.loads(stock_cache_file.read_text(encoding="utf-8"))
+                    if stored.get("key") == key and isinstance(stored.get("stock"), dict):
+                        stock_cache.update(key=key, ready=stored["stock"], building=False, error="")
+                        return dict(stored["stock"]), source_date, name, future_cut, notes, False
+                except Exception:
+                    pass
+            stock_cache.update(key=key, ready=None, building=True, error="")
 
-        frame = m._load_capacity_compact_cache(entry)
-        if frame is None or frame.empty or "Tienda" not in frame.columns or "ID_ART" not in frame.columns:
-            return {}, source_date, str(entry.get("name") or ""), future_cut, ["El corte de capacidades no contiene Tienda + ID_ART utilizables."]
+        def work():
+            try:
+                import pandas as pd
+                frame = m._load_capacity_compact_cache(entry)
+                if frame is None or frame.empty or "Tienda" not in frame.columns or "ID_ART" not in frame.columns:
+                    raise ValueError("Faltan Tienda e ID_ART en el archivo.")
+                stores = frame["Tienda"].fillna("").astype(str).map(m._normalize_store_value)
+                ids = frame["ID_ART"].fillna("").astype(str).str.strip()
+                if "Existencia" in frame.columns:
+                    amounts = pd.to_numeric(frame["Existencia"], errors="coerce").fillna(0.0)
+                else:
+                    floor = pd.to_numeric(frame["Existencia piso"], errors="coerce").fillna(0.0) if "Existencia piso" in frame.columns else pd.Series(0.0,index=frame.index)
+                    bodega = pd.to_numeric(frame["Existencia bodega"], errors="coerce").fillna(0.0) if "Existencia bodega" in frame.columns else pd.Series(0.0,index=frame.index)
+                    amounts = floor + bodega
+                compact = pd.DataFrame({"store": stores, "id": ids, "qty": amounts})
+                compact = compact[(compact["store"] != "") & (~compact["id"].isin(["", "nan", "None"]))]
+                if compact.empty:
+                    raise ValueError("El corte no contiene inventario por tienda/ID_ART.")
+                # Sumar ubicaciones, colores y tallas por tienda; max(ID_ART) omitía stock.
+                by_store = compact.groupby("store", observed=True, sort=False)["qty"].sum()
+                summary = {str(k): max(num(v), 0.0) for k, v in by_store.items()}
+                payload = {"key": key, "stock": summary}
+                temp = stock_cache_file.with_name(stock_cache_file.name + ".tmp")
+                try:
+                    temp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+                    temp.replace(stock_cache_file)
+                except Exception:
+                    try: temp.unlink(missing_ok=True)
+                    except Exception: pass
+                with stock_lock:
+                    if stock_cache["key"] == key:
+                        stock_cache.update(ready=summary, building=False, error="")
+            except Exception as exc:
+                with stock_lock:
+                    if stock_cache["key"] == key:
+                        stock_cache.update(ready={}, building=False, error=str(exc)[:150])
+                print("[V243] Error al preparar el corte:", type(exc).__name__, str(exc)[:160], flush=True)
+            finally:
+                try: m._release_process_memory()
+                except Exception: pass
 
-        import pandas as pd
-
-        store_series = frame["Tienda"].fillna("").astype(str).map(m._normalize_store_value)
-        id_series = frame["ID_ART"].fillna("").astype(str).str.strip()
-        if "Existencia" in frame.columns:
-            existence = pd.to_numeric(frame["Existencia"], errors="coerce").fillna(0.0)
-        else:
-            floor = pd.to_numeric(frame["Existencia piso"], errors="coerce").fillna(0.0) if "Existencia piso" in frame.columns else pd.Series(0.0, index=frame.index)
-            warehouse = pd.to_numeric(frame["Existencia bodega"], errors="coerce").fillna(0.0) if "Existencia bodega" in frame.columns else pd.Series(0.0, index=frame.index)
-            existence = floor + warehouse
-
-        slim = pd.DataFrame({"store": store_series, "id": id_series, "existence": existence})
-        slim = slim[(slim["store"] != "") & (~slim["id"].isin(["", "nan", "None"]))]
-        if slim.empty:
-            return {}, source_date, str(entry.get("name") or ""), future_cut, ["El corte seleccionado no contiene existencias por tienda/modelo."]
-
-        by_model = slim.groupby(["store", "id"], sort=False, observed=True)["existence"].max()
-        by_store = by_model.groupby(level=0, sort=False).sum()
-        result = {str(k): max(num(v), 0.0) for k, v in by_store.items()}
-        del slim, by_model, by_store
-        try:
-            m._release_process_memory()
-        except Exception:
-            pass
-        return result, source_date, str(entry.get("name") or entry.get("id") or "Corte de capacidades"), future_cut, []
+        threading.Thread(target=work, name="v243-stock-summary", daemon=True).start()
+        return None, source_date, name, future_cut, notes, True
 
     def active_store_names():
         try:
