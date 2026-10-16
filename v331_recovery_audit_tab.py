@@ -7,7 +7,11 @@ No inventa entradas, salidas ni fechas de habilitado no presentes en la fuente.
 from __future__ import annotations
 
 import math
-from datetime import date
+import json
+import sqlite3
+import threading
+import time
+from datetime import date, datetime, timedelta
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -207,42 +211,214 @@ def install(m):
     if baseline is None:
         raise RuntimeError("V331 requiere el endpoint de V243 previamente instalado")
 
-    @m.app.get("/api/operations/recovery-rate-audit-v331")
-    def rate_audit(request: Request, store: str = "Compañía",
-                   period_type: str = "week", period_value: str = ""):
-        # Auth, geocerca por tienda y cache diaria son los mismos que en V243.
-        raw = baseline(request=request, store=store, period_type=period_type,
-                       period_value=period_value)
-        if raw.get("status") != "ready":
-            return raw
-        start = date.fromisoformat(raw["period_start"])
-        # No usar cortes futuros aunque sean los únicos disponibles.
+
+    # Lightweight daily aggregate in existing V243 sqlite; inventory summary
+    # is written to disk once per cut in a daemon worker, not per HTTP request.
+    daily_path = m.DATA_ROOT / "recovery_rate_daily_v243.sqlite3"
+    stock_file = m.DATA_ROOT / "recovery_audit_stock_v331.json"
+    lock = threading.Lock()
+    state = {"key": "", "stocks": None, "building": False, "error": "", "retry_at": 0.0}
+
+    def bounds(mode, value):
+        try:
+            if mode == "day":
+                d = date.fromisoformat(value)
+                return d, d
+            if mode == "week":
+                year, week = value.split("-W", 1)
+                d = date.fromisocalendar(int(year), int(week), 1)
+                return d, d + timedelta(days=6)
+            if mode == "month":
+                d = datetime.strptime(value, "%Y-%m").date().replace(day=1)
+                after = date(d.year + int(d.month == 12), d.month % 12 + 1, 1)
+                return d, after - timedelta(days=1)
+            if mode == "year":
+                d = date(int(value), 1, 1)
+                return d, date(d.year, 12, 31)
+        except (ValueError, TypeError, OverflowError, AttributeError):
+            raise ValueError("Periodo inválido para la vista seleccionada.")
+        raise ValueError("Vista inválida. Selecciona día, semana, mes o año.")
+
+    def meta():
+        try:
+            data = m.load_operations_meta()
+        except Exception:
+            data = {}
+        d = data.get("available_dates") or []
+        w = data.get("available_weeks") or []
+        mo = data.get("available_months") or []
+        return {"available_dates": d, "available_weeks": w, "available_months": mo,
+                "available_years": sorted({str(x)[:4] for x in mo if str(x)[:4].isdigit()})}
+
+    def cut_for_start(start):
         try:
             entries = list(m._capacity_processed_entries() or [])
         except Exception:
             entries = []
         dated = []
-        for entry in entries:
+        for item in entries:
             try:
-                cut_date = m._capacity_report_date(entry)
-                if cut_date <= start:
-                    dated.append((cut_date, str(entry.get("uploaded_at") or ""), entry))
+                dated.append((m._capacity_report_date(item), str(item.get("uploaded_at") or ""), item))
             except Exception:
                 continue
-        chosen = max(dated, key=lambda x: (x[0], x[1])) if dated else None
-        cut_date = chosen[0] if chosen else None
-        entry = chosen[2] if chosen else None
-        source = str(entry.get("name") or entry.get("id") or "") if entry else ""
-        stocks = {}
-        if entry and (start - cut_date).days <= MAX_CUT_AGE_DAYS:
+        prev = [x for x in dated if x[0] <= start]
+        if prev:
+            d, _, item = max(prev, key=lambda x: (x[0], x[1]))
+        elif dated:
+            d, _, item = min(dated, key=lambda x: (x[0], x[1]))
+        else:
+            return None, None, ""
+        return item, d, str(item.get("name") or item.get("id") or "")
+
+    def stock_summary(item, cut_date):
+        key = "|".join((str(item.get("id") or ""), str(item.get("sha256") or ""),
+                        str(cut_date), "schema2"))
+        with lock:
+            if state["key"] == key and isinstance(state["stocks"], dict):
+                return dict(state["stocks"]), "ready"
+            if state["key"] == key and state["building"]:
+                return {}, "building"
+            if stock_file.exists():
+                try:
+                    saved = json.loads(stock_file.read_text(encoding="utf-8"))
+                    if saved.get("key") == key and isinstance(saved.get("stocks"), dict):
+                        state.update(key=key, stocks=saved["stocks"], building=False, error="")
+                        return dict(state["stocks"]), "ready"
+                except Exception:
+                    pass
+            if state["key"] == key and time.monotonic() < state["retry_at"]:
+                return {}, "error"
+            state.update(key=key, stocks=None, building=True, error="")
+
+        def build():
             try:
-                stocks = corrected_stock(m._load_capacity_compact_cache(entry),
-                                         m._normalize_store_value)
+                frame = m._load_capacity_compact_cache(item)
+                stocks = corrected_stock(frame, m._normalize_store_value)
+                del frame
+                if not stocks:
+                    raise ValueError("El corte no tiene existencia disponible por tienda.")
+                temp = stock_file.with_name(stock_file.name + ".tmp")
+                try:
+                    temp.write_text(json.dumps({"key": key, "stocks": stocks}, ensure_ascii=False), encoding="utf-8")
+                    temp.replace(stock_file)
+                except Exception:
+                    temp.unlink(missing_ok=True)
+                with lock:
+                    if state["key"] == key:
+                        state.update(stocks=stocks, building=False, error="")
             except Exception as exc:
-                result = revise_payload(raw, {}, cut_date, source, start)
-                result["warnings"].append("No se pudo procesar stock: " + type(exc).__name__ + ".")
-                return result
-        return revise_payload(raw, stocks, cut_date, source, start)
+                with lock:
+                    if state["key"] == key:
+                        state.update(building=False, error=type(exc).__name__,
+                                     retry_at=time.monotonic() + 60)
+                print("[V331] Error preparando stock:", type(exc).__name__, str(exc)[:160], flush=True)
+            finally:
+                try:
+                    m._release_process_memory()
+                except Exception:
+                    pass
+
+        threading.Thread(target=build, daemon=True, name="recovery-audit-stock").start()
+        return {}, "building"
+
+    def daily_aggregate(start, end, selected, allowed):
+        con = sqlite3.connect("file:" + str(daily_path) + "?mode=ro", uri=True, timeout=2)
+        try:
+            src = m.DATA_ROOT / "cambios_muertos_actual.xlsx"
+            if not src.exists():
+                return None, None
+            st = src.stat()
+            stamp = str(st.st_mtime_ns) + ":" + str(st.st_size)
+            dbmeta = dict(con.execute("SELECT k,v FROM meta"))
+            if dbmeta.get("version") != "243.1" or dbmeta.get("source_stamp") != stamp:
+                return None, None
+            sql = ("SELECT store,SUM(sales),SUM(dev),SUM(sales_value) "
+                   "FROM daily WHERE date>=? AND date<=? ")
+            args = [start.isoformat(), end.isoformat()]
+            if selected != "Compañía":
+                sql += "AND store=? "
+                args.append(selected)
+            sql += "GROUP BY store"
+            events = {
+                str(s): {"sales_pzs": safe_number(v), "dev_pzs": safe_number(d),
+                         "sales_value": safe_number(amount)}
+                for s, v, d, amount in con.execute(sql, args)
+                if selected != "Compañía" or not allowed or s in allowed
+            }
+            return events, con.execute("SELECT MAX(date) FROM daily").fetchone()[0]
+        finally:
+            con.close()
+
+    @m.app.get("/api/operations/recovery-rate-audit-v331")
+    def rate_audit(request: Request, store: str = "Compañía",
+                   period_type: str = "week", period_value: str = ""):
+        # Same authenticated store restriction as original V243.
+        user = m.require_user(request)
+        selected = m.effective_store(user, store)
+        metadata = meta()
+        if not period_value:
+            k = {"day": "available_dates", "week": "available_weeks",
+                 "month": "available_months", "year": "available_years"}.get(period_type)
+            period_value = (metadata.get(k) or [""])[-1]
+        try:
+            start, end = bounds(period_type, period_value)
+        except ValueError as exc:
+            return {**metadata, "status": "error", "error": str(exc)}
+
+        try:
+            allowed = {m._normalize_store_value(s) for s in m.store_names(True)}
+        except Exception:
+            allowed = set()
+        try:
+            events, last_date = daily_aggregate(start, end, selected, allowed)
+        except (sqlite3.Error, OSError, ValueError):
+            events, last_date = None, None
+
+        if events is None:
+            # V243 performs its own background rebuild when SQLite is missing.
+            try:
+                result = baseline(request=request, store=selected,
+                                  period_type=period_type, period_value=period_value)
+                return {**metadata, "status": result.get("status") or "building",
+                        "error": result.get("error") or "",
+                        "phase": "sales", "retry_seconds": 5}
+            except Exception as exc:
+                return {**metadata, "status": "error",
+                        "error": "No fue posible preparar ventas: " + type(exc).__name__}
+
+        item, cut_date, name = cut_for_start(start)
+        cut_status, days = cut_quality(start, cut_date)
+        stocks, phase = {}, "not_applicable"
+        if item and cut_status in ("coincidente", "estimado"):
+            stocks, phase = stock_summary(item, cut_date)
+        scope = [selected] if selected != "Compañía" else sorted(allowed or set(events))
+        try:
+            projects = {m._normalize_store_value(s) for s in m.project_store_names(True)}
+        except Exception:
+            projects = set()
+        rows = [{
+            "store": s, "period": period_value, "is_project": s in projects,
+            "dev_pzs": events.get(s, {}).get("dev_pzs", 0.0),
+            "sales_pzs": events.get(s, {}).get("sales_pzs", 0.0),
+            "sales_value": events.get(s, {}).get("sales_value", 0.0),
+        } for s in scope]
+        raw = {"status": "ready", "available": True,
+               "period_start": start.isoformat(), "period_end": end.isoformat(),
+               "period_type": period_type, "period_value": period_value,
+               "rows": rows, "trend": [], **metadata}
+        data = revise_payload(raw, stocks, cut_date, name, start)
+        data["audit"]["stock_phase"] = phase
+        data["audit"]["source_last_date"] = last_date
+        if phase == "building":
+            data["warnings"].append("Preparando el corte de inventario una sola vez. Ventas y devoluciones ya están disponibles.")
+            data["retry_seconds"] = 4
+        elif phase == "error":
+            data["warnings"].append("No fue posible procesar el stock. Se permite reintentar después de 60 segundos.")
+            data["retry_seconds"] = 60
+        data["audit"]["period_partial"] = bool(last_date and end.isoformat() > last_date)
+        if data["audit"]["period_partial"]:
+            data["warnings"].append("Periodo parcial: información publicada hasta el " + last_date + ".")
+        return data
 
     css = """<style id="v331-recovery-audit-css">
 .v331-note{border:1px solid #cbdcf3;border-radius:10px;background:#f4f8ff;padding:12px;font-size:12px;line-height:1.5;margin-bottom:10px}
