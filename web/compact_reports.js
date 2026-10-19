@@ -209,7 +209,8 @@ function compactControls(){
   ['grid-template-columns','grid-template-rows','grid-auto-flow','grid-auto-rows'].forEach(p=>{if(nav.style.getPropertyValue(p))nav.style.removeProperty(p);});
   setStyle(nav,'overflow-x','auto');setStyle(nav,'overflow-y','hidden');setStyle(nav,'height','58px');setStyle(nav,'min-height','58px');setStyle(nav,'max-height','58px');setStyle(nav,'gap','4px');setStyle(nav,'touch-action','pan-x pan-y');setStyle(nav,'position','relative');
   nav.querySelectorAll('[data-opview]').forEach(btn=>{
-   setStyle(btn,'flex','1 0 100px');setStyle(btn,'width','auto');setStyle(btn,'min-width','100px');setStyle(btn,'max-width','none');setStyle(btn,'height','48px');setStyle(btn,'min-height','48px');setStyle(btn,'max-height','48px');setStyle(btn,'padding','5px 6px');setStyle(btn,'margin','0px');
+   const tabWidth=/Revisión/.test(btn.dataset.opview||'')?'136px':'100px';
+   setStyle(btn,'flex','1 0 '+tabWidth);setStyle(btn,'width','auto');setStyle(btn,'min-width',tabWidth);setStyle(btn,'max-width','none');setStyle(btn,'height','48px');setStyle(btn,'min-height','48px');setStyle(btn,'max-height','48px');setStyle(btn,'padding','5px 6px');setStyle(btn,'margin','0px');
   });
   if(active&&(active.offsetLeft<nav.scrollLeft||active.offsetLeft+active.offsetWidth>nav.scrollLeft+nav.clientWidth))nav.scrollLeft=active.offsetLeft;
  }
