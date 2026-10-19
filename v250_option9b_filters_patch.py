@@ -666,6 +666,7 @@ body.v238-module-operativo #operativoPeriodBar.v249-compact.v250-option9b{
 
     const grid=q(':scope > .or-report-filter-grid',bar);
     if(!grid)return;
+    if(window.RopaCompact)return; // V335 owns geometry; profile/filter behavior above remains intact.
     grid.style.setProperty('display','flex','important');
     grid.style.setProperty('flex-wrap','nowrap','important');
     grid.style.setProperty('align-items','flex-end','important');

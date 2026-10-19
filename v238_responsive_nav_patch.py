@@ -354,6 +354,7 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
   }
 
   function sizeHost(host,kind){
+    if(host?.id==='operativoNav'&&window.RopaCompact)return;
     const tabs=Array.from(host.children).filter(buttonVisible);
     const count=Math.max(1,tabs.length);
     // V247: medir el espacio REAL de contenido. Usar window.innerWidth hacía
@@ -438,6 +439,12 @@ body.v238-module-operation #v200OperationTabs>button[aria-selected="true"]{
         IDS.forEach(id=>{
           const host=document.getElementById(id);
           if(!host)return;
+          if(id==='operativoNav'&&window.RopaCompact){
+            const desired=id===active?'flex':'none';
+            if((host.style.getPropertyValue('display')!==desired||host.style.getPropertyPriority('display')!=='important'))host.style.setProperty('display',desired,'important');
+            if(id===active)host.classList.remove('hidden');
+            return;
+          }
           if(id!==active){
             host.style.setProperty('display','none','important');
             return;

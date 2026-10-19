@@ -2545,7 +2545,7 @@ async function renderOperativoView(name,force=false){
       <div class="preview-item">Duplicados exactos eliminados<b>${fmt(cur.duplicate_rows_removed||0)}</b></div>
     </div>`:'<div class="infoempty">No hay una Base de datos Muertos y Cambios publicada.</div>';
     $('#operativoDynamicContent').innerHTML=`<div class="panel" style="border-left:5px solid var(--pink)">
-      <div class="panel-head"><b>Carga de datos · Cambios y Muertos</b><span class="status">${cur.available?'ok':''}">${cur.available?'Archivo publicado':'Sin archivo'}</span></div>
+      <div class="panel-head"><b>Carga de datos · Cambios y Muertos</b><span class="status ${cur.available?'ok':''}">${cur.available?'Archivo publicado':'Sin archivo'}</span></div>
       ${currentHtml}
       <div id="opsDropzone" class="dropzone"><b>Arrastra aquí el Excel .xlsx</b><br><small>o haz clic para seleccionarlo</small><input id="opsModuleFile" type="file" accept=".xlsx" class="hidden"></div>
       <div class="progress-shell"><div class="progress-bar" id="opsProgress"></div></div>
@@ -3468,6 +3468,6 @@ $('#saveLingerieChecklist')?.addEventListener('click',async()=>{
 });
 
 start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg').textContent=e.message});
-</script><link rel="stylesheet" href="/static/compact_reports.css?v=334">
-<script src="/static/compact_reports.js?v=334" defer></script>
+</script><link rel="stylesheet" href="/static/compact_reports.css?v=335">
+<script src="/static/compact_reports.js?v=335" defer></script>
 </body></html>

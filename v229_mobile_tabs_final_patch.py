@@ -421,6 +421,7 @@ def install(m):
   }
 
   function styleHost(host){
+    if(host?.id==='operativoNav'&&window.RopaCompact)return;
     host.classList.add('v232-mobile-tabs');
     host.classList.remove('v225-mobile-rail','v226-mobile-rail');
     /* Las clases pueden seguir existiendo por funcionalidad, pero V232 neutraliza su aspecto. */
@@ -542,6 +543,12 @@ def install(m):
         IDS.forEach(id=>{
           const host=document.getElementById(id);
           if(!host)return;
+          if(id==='operativoNav'&&window.RopaCompact){
+            const desired=id===activeId?'flex':'none';
+            if((host.style.getPropertyValue('display')!==desired||host.style.getPropertyPriority('display')!=='important'))host.style.setProperty('display',desired,'important');
+            if(id===activeId)host.classList.remove('hidden');
+            return;
+          }
           if(id!==activeId){
             host.style.setProperty('display','none','important');
             return;

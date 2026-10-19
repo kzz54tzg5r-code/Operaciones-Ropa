@@ -137,6 +137,7 @@ def install(m):
   }
 
   function fitCmTabs(){
+    if(window.RopaCompact)return;
     if(!isMobile())return;
     const host=q('#operativoNav');
     if(!host)return;

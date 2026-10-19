@@ -219,6 +219,7 @@ def install(m):
   }
 
   function applyHost(host,kind){
+    if(host?.id==='operativoNav'&&window.RopaCompact)return;
     if(!host)return;
     [...host.children].filter(x=>x.tagName==='BUTTON').forEach(btn=>{
       if(btn.hidden||btn.classList.contains('hidden')||btn.getAttribute('aria-hidden')==='true')return;

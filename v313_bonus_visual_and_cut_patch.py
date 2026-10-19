@@ -459,7 +459,7 @@ var compactBonusViews=new Map();
 function compactBonusKey(){return [S.bonus,S.section].join("|")}
 function bonusSection(id,title,caption,view,content){
  var open=view.panel===id;
- return '<section class="compact-section compact-bonus-section"><button type="button" '+(id==="evaluation"||id==="report"?'id="compactBonusToggle" ':'')+'data-compact-panel="'+id+'" class="compact-bonus-summary" aria-expanded="'+open+'"><strong>'+esc(title)+'</strong><span class="compact-section-value">'+esc(caption||'')+'</span><span class="compact-section-action">'+(open?'Cerrar detalle':'Ver detalle')+'</span></button>'+(open?'<div class="compact-section-body"><button type="button" class="compact-section-back" data-compact-close="1">← Regresar al resumen</button>'+content()+'</div>':'')+'</section>';
+ return '<section class="compact-section compact-bonus-section"><button type="button" '+(id==="evaluation"||id==="report"?'id="compactBonusToggle" ':'')+'data-compact-panel="'+id+'" class="compact-bonus-summary" aria-expanded="'+open+'"><span class="compact-section-title"><strong>'+esc(title)+'</strong><small>'+esc(caption||'')+'</small></span><span class="compact-section-action">'+(open?'Cerrar detalle':'Ver detalle')+'</span></button>'+(open?'<div class="compact-section-body"><button type="button" class="compact-section-back" data-compact-close="1">← Regresar al resumen</button>'+content()+'</div>':'')+'</section>';
 }
 function body(d){
  if(S.section==="initial-upload")return fullReportBody(d);
@@ -469,7 +469,7 @@ function body(d){
  if(S.section==="summary"||S.section==="panorama"){
   return top+bonusSection("evaluation","Evaluación del bono","Criterios e indicadores",view,function(){return '<div class="v313-kpis">'+topKpis(d)+'</div>'+visual(d)})
    +bonusSection("ranking","Ranking de tiendas","Comparativo del periodo",view,function(){return ranking(d,0)})
-   +'<section class="compact-section"><button class="compact-bonus-summary" type="button" data-compact-models="1"><strong>Modelos y catálogos</strong><span class="compact-section-value">Abrigador · Licencias · Básicos</span><span class="compact-section-action">Ver detalle</span></button></section>';
+   +'<section class="compact-section"><button class="compact-bonus-summary" type="button" data-compact-models="1"><span class="compact-section-title"><strong>Modelos y catálogos</strong><small>Abrigador · Licencias · Básicos</small></span><span class="compact-section-action">Ver detalle</span></button></section>';
  }
  var title={ranking:"Ranking de tiendas",stores:"Tiendas",models:"Modelos por catálogo",rubros:"Rubros",collaborators:"Colaboradores",details:"Modelos a detalle"}[S.section]||"Desglose del bono";
  return top+bonusSection("report",title,"Periodo y tienda seleccionados",view,function(){return fullReportBody(d)});
