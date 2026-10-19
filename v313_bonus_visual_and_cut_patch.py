@@ -19,6 +19,26 @@ from fastapi.responses import HTMLResponse
 MX=ZoneInfo("America/Mexico_City")
 CATALOGS=("Abrigador","Licencias","Básicos")
 
+def bonus1_source_rows(base, selected_store="Compañía"):
+    """Expose original components and missing sources; never recalculate a score."""
+    processing=base.get("processing") or {}
+    rows=[]
+    for original in base.get("ranking") or []:
+        if selected_store!="Compañía" and str(original.get("store"))!=selected_store:continue
+        row=dict(original)
+        missing=[]
+        if row.get("sales_pct") is None:missing.append("Venta o meta del periodo no disponible")
+        if row.get("ddi_pct") is None:
+            missing.append("Preparando DDI de Capacidades" if processing.get("capacity") else "DDI de la cartera objetivo no disponible")
+        if row.get("attendance_pct") is None:missing.append("Falta asistencia")
+        elif row.get("attendance_provisional"):missing.append("Asistencia provisional: pendiente de captura")
+        row["missing_sources"]=missing
+        row["score_partial"]=not bool(row.get("score_ready"))
+        rows.append(row)
+    # Preserve the original ordering; ordinal positions are explicitly provisional.
+    for i,row in enumerate(rows,1):row["display_order"]=i
+    return rows
+
 def install(m):
     if getattr(m,"_V313_BONUS_VISUAL_CUTS",False):
         return
@@ -54,8 +74,8 @@ def install(m):
         if fn is None: raise HTTPException(503,"Bonos V312 no está disponible")
         return fn
 
-    def aggregate_base(base):
-        rows=list(base.get("ranking") or [])
+    def aggregate_base(base,selected_store="Compañía"):
+        rows=[r for r in (base.get("ranking") or []) if selected_store=="Compañía" or str(r.get("store"))==selected_store]
         valid_sales=[x for x in rows if maybe(x.get("sales_pct")) is not None]
         actual=sum(num(x.get("sales_actual")) for x in valid_sales)
         goal=sum(num(x.get("sales_goal")) for x in valid_sales)
@@ -109,14 +129,19 @@ def install(m):
         actor=m.require_user(request)
         final=final_endpoint()(request=request,month=month,store=store,bonus=bonus)
         selected_store=str(final.get("selected_store") or "Compañía")
-        base=base_endpoint()(request=request,month=str(final.get("month") or month),store="" if selected_store=="Compañía" else selected_store)
-        agg=aggregate_base(base)
+        base=getattr(getattr(request,"state",None),"bonus_base_v312",None)
+        if base is None:base=base_endpoint()(request=request,month=str(final.get("month") or month),store="" if selected_store=="Compañía" else selected_store)
+        agg=aggregate_base(base,selected_store)
+        if int(bonus)==1:
+            final["bonus1_rows"]=bonus1_source_rows(base,selected_store)
+            final["bonus1_pending_stores"]=sum(bool(r["missing_sources"]) for r in final["bonus1_rows"])
 
         # Macro real: no convertir "sin ventas cargadas" en 0%.
         if selected_store=="Compañía":
             final["summary"]["sales_pct"]=agg["sales_pct"]
             final["summary"]["inventory"]=agg["inventory"]
             final["summary"]["attendance_reference"]=agg["attendance_pct"]
+        final["can_edit_attendance"]=bool(base.get("can_edit_attendance"))
         final["legacy_components"]=agg
         final["source_dates"]=dict(base.get("source_dates") or {})
         final["processing"]=dict(base.get("processing") or {})
@@ -250,7 +275,7 @@ if(d.b2_cohort){
   kpi("Existencia inicial",nf(z.existence),"Piezas del corte inicial"),
   kpi("Inversión inicial",money(z.investment),"En modelos sin venta")
  ].join("");
-}out.push(kpi("Venta vs Meta",pc(s.sales_pct),"Meta obligatoria 100%",s.sales_pct==null?"warn":n(s.sales_pct)>=100?"good":"bad"));if(S.bonus===1){var l=d.legacy_components||{};out.push(kpi("DDI por Cat",pc(l.ddi_pct),"Peso 30%"));out.push(kpi("Asistencia",pc(l.attendance_pct),l.attendance_provisional_stores?"20% · provisional":"Peso 20%"));out.push(kpi("Resultado promedio",pc(l.legacy_score_avg),"Sólo scores completos"));out.push(kpi("Tiendas con score",nf(l.stores_with_score)+" de "+nf(s.stores_total),"Bono 1"));out.push(kpi("Corte actual",dateMx((d.source_dates||{}).current_capacity),"Capacidades"));return out.join("")}out.push(kpi("DDI inicial",nf(inv.initial_ddi),"Corte inicial"));out.push(kpi("DDI actual",nf(inv.current_ddi),"Último corte"));out.push(kpi("Reducción DDI",pc(inv.ddi_reduction_pct),"Objetivo base ≥50%",inv.ddi_reduction_pct!=null&&n(inv.ddi_reduction_pct)>=50?"good":"bad"));out.push(kpi("Tiendas habilitadas",nf(s.stores_enabled)+" de "+nf(s.stores_total),"Según Bono "+S.bonus));out.push(kpi("Asistencia",pc(s.attendance_reference),"Referencia · no suma puntos","warn"));return out.join("")}
+}out.push(kpi("Venta vs Meta",pc(s.sales_pct),"Meta obligatoria 100%",s.sales_pct==null?"warn":n(s.sales_pct)>=100?"good":"bad"));if(S.bonus===1){var l=d.legacy_components||{};out.push(kpi("DDI por Cat",l.ddi_pct==null&&d.processing?.capacity?"Preparando":pc(l.ddi_pct),"Peso 30%"));out.push(kpi("Asistencia",pc(l.attendance_pct),l.attendance_provisional_stores?"20% · provisional":"Peso 20%"));out.push(kpi("Resultado promedio",pc(l.legacy_score_avg),"Sólo scores completos"));out.push(kpi("Tiendas con score",nf(l.stores_with_score)+" de "+nf(s.stores_total),"Bono 1"));out.push(kpi("Corte actual",dateMx((d.source_dates||{}).current_capacity),"Capacidades"));return out.join("")}out.push(kpi("DDI inicial",nf(inv.initial_ddi),"Corte inicial"));out.push(kpi("DDI actual",nf(inv.current_ddi),"Último corte"));out.push(kpi("Reducción DDI",pc(inv.ddi_reduction_pct),"Objetivo base ≥50%",inv.ddi_reduction_pct!=null&&n(inv.ddi_reduction_pct)>=50?"good":"bad"));out.push(kpi("Tiendas habilitadas",nf(s.stores_enabled)+" de "+nf(s.stores_total),"Según Bono "+S.bonus));out.push(kpi("Asistencia",pc(s.attendance_reference),"Referencia · no suma puntos","warn"));return out.join("")}
 function componentsB1(d){var l=d.legacy_components||{},p=l.legacy_score_avg;return"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Componentes originales del Bono 1</span><span>50 / 30 / 20</span></div><div class=\"v313-body\"><div class=\"v313-components\"><div class=\"v313-comp sales\"><div class=\"top\">50% · Venta vs Meta</div><div class=\"value\"><b>"+pc(l.sales_pct)+"</b><small>Base Muertos/Cambios + Meta</small></div></div><div class=\"v313-comp ddi\"><div class=\"top\">30% · DDI por Cat</div><div class=\"value\"><b>"+pc(l.ddi_pct)+"</b><small>Capacidades</small></div></div><div class=\"v313-comp att\"><div class=\"top\">20% · Asistencia</div><div class=\"value\"><b>"+pc(l.attendance_pct)+"</b><small>"+(l.attendance_provisional_stores?"100% provisional sin captura":"Captura autorizada")+"</small></div></div></div></div></section><section class=\"v313-panel\" style=\"margin-top:7px\"><div class=\"v313-ph\"><span>Resultado Bono 1</span><span>Sin cambios</span></div><div class=\"v313-score\"><div class=\"v313-ring\" style=\"--p:"+Math.max(0,Math.min(100,n(p)))+"\"><div><b>"+pc(p)+"</b><small>Promedio compañía</small></div></div><div><b style=\"font-size:12px\">Cálculo original V293</b><div class=\"v313-note\">No se modificó fórmula, ponderaciones ni criterios.</div></div></div></section>"}
 function levelsB2(d){var a=d.ranking||[],counts=[0,0,0,0,0];a.forEach(function(x){counts[Math.max(0,Math.min(4,Number(x.level)||0))]++});var labs=["<50%","50–59%","60–74%","75–89%","≥90%"];return"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Escalones de reducción DDI</span><span>Mínimo 50%</span></div><div class=\"v313-body\"><div class=\"v313-levels\">"+counts.map(function(c,i){return"<div class=\"v313-level "+(i?"l"+i:"off")+"\"><b>"+c+"</b><span>"+labs[i]+"</span><small style=\"display:block\">"+(i?"Nivel "+i:"No habilita")+"</small></div>"}).join("")+"</div></div></section><section class=\"v313-panel\" style=\"margin-top:7px\"><div class=\"v313-ph\"><span>Puerta del bono</span><span>Venta + DDI</span></div><div class=\"v313-gate\"><div><b>"+pc((d.summary||{}).inventory?.ddi_reduction_pct)+"</b><span>Reducción DDI compañía<br>Venta debe estar en 100% o más</span></div></div></section>"}
 function rubrosB3(d){var r=(d.summary||{}).rubros||{};return"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Rubros críticos</span><span>Se requieren 2 de 3</span></div><div class=\"v313-body\"><div class=\"v313-bars\">"+CAT().map(function(c){var v=r[c],ok=v!=null&&n(v)>=50;return"<div class=\"v313-barbox\"><div class=\"v313-bartrack\"><i style=\"height:"+Math.max(2,Math.min(100,n(v)))+"%\"></i></div><b class=\""+(ok?"good":"bad")+"\">"+pc(v)+"</b>"+c+"<small style=\"display:block\">"+(ok?"Cumple ≥50%":"Pendiente / <50%")+"</small></div>"}).join("")+"</div></div></section><section class=\"v313-panel\" style=\"margin-top:7px\"><div class=\"v313-ph\"><span>Regla</span><span>Opción 4 elegida</span></div><div class=\"v313-gate\"><div><b>2 / 3</b><span>Abrigador · Licencias · Básicos<br>cada rubro debe reducir DDI al menos 50%</span></div></div></section>"}
@@ -325,9 +350,33 @@ function v330Ranking(d,limit){
  return '<section class="v313-panel"><div class="v313-ph"><span>Ranking de tiendas · indicadores reales</span><span>Sin importes de bono</span></div><div class="v313-scroll"><table class="v313-table v330-ranking"><thead><tr>'+columns+'</tr></thead><tbody>'+body+'</tbody></table></div><div class="v313-note">Orden por evaluación referencial de tienda cuando hay datos completos; de lo contrario, por modelos con DDI reducido. No representa incentivos pagaderos.</div></section>';
 }
 function v330Visual(d){return v330Source(d)+v330Content(d)}
-function visual(d){if(d.is_v330)return v330Visual(d);if(d.b2_cohort)return b2Visual(d);if(S.bonus===1)return componentsB1(d);if(S.bonus===2)return levelsB2(d);if(S.bonus===3)return rubrosB3(d);if(S.bonus===4)return matrixB4(d);if(S.bonus===5)return improveB5(d);return weeksB6(d)}
+function attendanceEditor(d){
+ if(S.bonus!==1||!d.can_edit_attendance||d.selected_store==="Compañía")return '';
+ var l=d.legacy_components||{},provisional=!!l.attendance_provisional_stores;
+ return '<section class="v313-panel"><div class="v313-ph"><span>Asistencia · '+esc(d.selected_store)+'</span><span>'+esc(d.month)+'</span></div><form id="v313AttendanceForm" class="v313-body"><label for="v313AttendancePct">Asistencia validada del periodo (%)</label><div class="v313-attendance-edit"><input id="v313AttendancePct" type="number" min="0" max="100" step="0.1" required value="'+(provisional||l.attendance_pct==null?'':esc(l.attendance_pct))+'" placeholder="Captura el porcentaje"><button type="submit">Guardar asistencia</button></div><div class="v313-note">'+(provisional?'El 100% mostrado es provisional hasta registrar la asistencia.':'Dato capturado para la tienda y el periodo seleccionados.')+'</div><div id="v313AttendanceMsg" role="status"></div></form></section>';
+}
+function visual(d){if(d.is_v330)return v330Visual(d);if(d.b2_cohort)return b2Visual(d);if(S.bonus===1)return componentsB1(d)+attendanceEditor(d);if(S.bonus===2)return levelsB2(d);if(S.bonus===3)return rubrosB3(d);if(S.bonus===4)return matrixB4(d);if(S.bonus===5)return improveB5(d);return weeksB6(d)}
 function indicator(e){if(!e)return"N/D";if(S.bonus===1)return pc(e.indicator);if(S.bonus===2)return pc((e.extra||{}).ddi_reduction_pct)+" · N"+(e.level||0);if(S.bonus===3)return nf((e.extra||{}).rubros_met)+" de 3";if(S.bonus===4)return pc((e.extra||{}).score);if(S.bonus===5)return nf((e.extra||{}).improved)+" de 4";return nf((e.extra||{}).streak)+" de 4"}
-function ranking(d,limit){if(d.is_v330)return v330Ranking(d,limit);if(d.b2_cohort){
+function bonus1Ranking(d,limit){
+ var rows=(d.bonus1_rows||[]).slice();if(limit)rows=rows.slice(0,limit);
+ var pending=rows.some(function(r){return !r.score_ready});
+ return '<section class="v313-panel"><div class="v313-ph"><span>Ranking de tiendas · Bono 1</span><span>'+(pending?'Resultados completos y parciales':'Resultados validados')+'</span></div><div class="v313-scroll"><table class="v313-table"><thead><tr><th>Orden</th><th>Tienda</th><th>Venta vs Meta<br>50%</th><th>DDI por catálogo<br>30%</th><th>Asistencia<br>20%</th><th>Resultado</th><th>Estado y datos pendientes</th></tr></thead><tbody>'+rows.map(function(r){
+  var reasons=r.missing_sources||[];
+  var state=r.score_ready?'Resultado completo':(reasons.join(' · ')||'Pendiente de validación');
+  return '<tr data-v313-store="'+esc(r.store)+'"><td>'+nf(r.display_order)+(r.score_ready?'':'*')+'</td><td class="left"><b>'+esc(r.store)+'</b></td><td>'+pc(r.sales_pct)+'</td><td>'+pc(r.ddi_pct)+'</td><td>'+pc(r.attendance_pct)+(r.attendance_provisional?'<small class="v313-source-pending">Provisional</small>':'')+'</td><td><b>'+pc(r.score)+'</b>'+(r.score_ready?'':'<small class="v313-source-pending">Parcial</small>')+'</td><td class="v313-missing-source">'+esc(state)+'</td></tr>';
+ }).join('')+'</tbody></table></div>'+(pending?'<div class="v313-note">* Orden informativo con el resultado original disponible. Los resultados parciales no son un bono validado. No se sustituyen los datos faltantes por cero.</div>':'')+'</section>';
+}
+function bonusDataNotice(d){
+ if(S.bonus!==1)return '';
+ var p=d.processing||{},l=d.legacy_components||{};
+ var notes=[];
+ if(p.capacity)notes.push('Preparando los cortes y el DDI de Capacidades. El reporte se actualizará automáticamente.');
+ else if(l.ddi_pct==null)notes.push('El DDI por catálogo aún no está disponible. Consulta el estado por tienda para identificar los datos pendientes.');
+ if(p.sales)notes.push('Preparando ventas del periodo.');
+ if(l.attendance_provisional_stores)notes.push('Asistencia provisional en '+nf(l.attendance_provisional_stores)+' tienda(s); falta su captura para validar el resultado.');
+ return notes.length?'<div class="v313-note v313-source-status" role="status">'+notes.map(esc).join('<br>')+'</div>':'';
+}
+function ranking(d,limit){if(S.bonus===1&&Array.isArray(d.bonus1_rows))return bonus1Ranking(d,limit);if(d.is_v330)return v330Ranking(d,limit);if(d.b2_cohort){
  var arr=(d.ranking||[]).slice();if(limit)arr=arr.slice(0,limit);
  return "<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Ranking de tiendas · Bono 2</span><span>Modelos que cumplen criterios</span></div><div class=\"v313-scroll\"><table class=\"v313-table\"><thead><tr><th>#</th><th class=\"left\">Tienda</th><th>Modelos</th><th>Vta 30d</th><th>DDI prom.</th><th>Inversión inicial</th><th>Estado</th></tr></thead><tbody>"+arr.map(function(e){return "<tr data-v313-store=\""+esc(e.store)+"\" style=\"cursor:pointer\"><td>"+(e.rank||"—")+"</td><td class=\"left\"><b>"+esc(e.store)+"</b></td><td>"+nf(e.models)+"</td><td>0</td><td>"+nf(e.avg_ddi)+"</td><td>"+money(e.investment)+"</td><td>"+esc(e.classification)+"</td></tr>"}).join("")+"</tbody></table></div></section>"
 }
@@ -466,7 +515,7 @@ function body(d){
  var key=compactBonusKey(),view=compactBonusViews.get(key)||{open:S.section==="summary"||S.section==="panorama",panel:S.section==="summary"||S.section==="panorama"?"ranking":null,y:0};
  compactBonusViews.set(key,view);
  var sd=d.source_dates||{},cutLabel='Cortes: '+dateMx(d.cutoff_date||sd.opening_capacity)+' → '+dateMx(sd.current_capacity);
- var top='<details class="compact-cut-disclosure"><summary>'+esc(cutLabel)+' · Ver referencias</summary>'+cutbar(d)+'</details>'+hero(d)+'<div class="v313-kpis compact-summary-band">'+topKpis(d)+'</div>';
+ var top='<details class="compact-cut-disclosure"><summary>'+esc(cutLabel)+' · Ver referencias</summary>'+cutbar(d)+'</details>'+hero(d)+bonusDataNotice(d)+'<div class="v313-kpis compact-summary-band">'+topKpis(d)+'</div>';
  if(S.section==="summary"||S.section==="panorama"){
   return top+bonusSection("evaluation","Evaluación del bono","Criterios e indicadores",view,function(){return '<div class="v313-kpis">'+topKpis(d)+'</div>'+visual(d)})
    +bonusSection("ranking","Ranking de tiendas","Comparativo del periodo",view,function(){return ranking(d,0)})
@@ -481,6 +530,17 @@ function page(d){
 }
 
 function bind(){
+q("#v313AttendanceForm")?.addEventListener("submit",async function(event){
+ event.preventDefault();var form=this,input=q("#v313AttendancePct"),msg=q("#v313AttendanceMsg"),button=form.querySelector('button');
+ var value=input.value.trim(),pctValue=Number(value),month=S.month,store=S.store;
+ if(value===''||!Number.isFinite(pctValue)||pctValue<0||pctValue>100){msg.textContent='Captura una asistencia entre 0 y 100%.';return}
+ button.disabled=true;msg.textContent='Guardando asistencia…';
+ try{
+  await api('/api/operation/sales-bonus-v293/attendance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({month:month,store:store,attendance_pct:pctValue})});
+  if(S.bonus===1&&S.month===month&&S.store===store){S.cache.clear();S.refreshCount=0;load()}
+ }catch(error){if(msg.isConnected)msg.textContent='No se pudo guardar: '+(error.message||error)}
+ finally{if(button.isConnected)button.disabled=false}
+});
 qa("[data-compact-panel]").forEach(function(button){button.addEventListener("click",function(){
  var view=compactBonusViews.get(compactBonusKey());if(!view)return;
  if(!view.open)view.y=window.scrollY;
@@ -496,7 +556,8 @@ q("[data-compact-models]")?.addEventListener("click",function(){
  if(S.bonus>=3&&(!S.data||!S.data.details||!S.data.details.length)){load();return}render();
 });
 q("#v313UpdateBtn")?.addEventListener("click",async function(){
-  var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
+  var btn=this;btn.disabled=true;btn.textContent="Actualizando…";
+  S.refreshCount=0;S.cache.delete(displayKey());load();
   try{
     if(window.OperacionesPWA&&window.OperacionesPWA.checkForUpdates){
       var versionResult=await window.OperacionesPWA.checkForUpdates({manual:true});
@@ -660,11 +721,11 @@ function load(){
   if(S.cache.size>16)S.cache.delete(S.cache.keys().next().value);
   render();
   var processing=d.processing||{};
-  var capacityRetries=!!processing.capacity&&S.refreshCount<60;
-  var otherRetries=!!(processing.sales||d.weekly_pending)&&S.refreshCount<10;
+  var capacityRetries=!!processing.capacity;
+  var otherRetries=!!(processing.sales||d.weekly_pending);
   if(capacityRetries||otherRetries){
    S.refreshCount++;
-   S.refreshTimer=setTimeout(function(){if(seq===S.seq)load()},capacityRetries?3000:1800);
+   S.refreshTimer=setTimeout(function(){if(seq===S.seq&&q("#page-bonuses")?.classList.contains("active"))load()},S.refreshCount>20?10000:(capacityRetries?3000:1800));
   }else{S.refreshCount=0}
  }).catch(function(e){
   if(seq!==S.seq||e&&e.name==="AbortError")return;
@@ -684,7 +745,7 @@ function load(){
 function bindMenu(el){if(!el)return;var c=el.cloneNode(true);el.replaceWith(c);c.dataset.v313Bound="1";c.dataset.v312Bound="1";c.dataset.v302Bound="1";c.dataset.v293Bound="1";c.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();activate();load()},true)}
 function boot(){var s=q("#sidebar [data-main=\"bonuses\"]"),m=q("#mobileMainNav [data-main=\"bonuses\"]");if(s&&!s.dataset.v313Bound)bindMenu(s);if(m&&!m.dataset.v313Bound)bindMenu(m)}
 document.addEventListener("DOMContentLoaded",function(){setTimeout(boot,850)},{once:true});[900,1800,3300].forEach(function(ms){setTimeout(boot,ms)});
-document.addEventListener("click",function(e){var x=e.target.closest&&e.target.closest("[data-main]");if(x&&x.dataset.main!=="bonuses")document.body.removeAttribute("data-v313")},true);
+document.addEventListener("click",function(e){var x=e.target.closest&&e.target.closest("[data-main]");if(x&&x.dataset.main!=="bonuses"){document.body.removeAttribute("data-v313");S.seq++;if(S.controller){try{S.controller.abort()}catch(_){}S.controller=null}if(S.refreshTimer){clearTimeout(S.refreshTimer);S.refreshTimer=null}}},true);
 })();</script>''';
 
     @m.app.middleware("http")

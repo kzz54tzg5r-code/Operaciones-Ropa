@@ -339,6 +339,8 @@ def install(m):
             if b==5:summary["changes"]=(selected_eval.get("extra") or {}).get("changes")
             if b==6:
                 dist={0:0,1:0,2:0,3:0,4:0};dist[int((selected_eval.get("extra") or {}).get("streak") or 0)]=1;summary["streak_distribution"]=dist
+        state=getattr(request,"state",None)
+        if state is not None:state.bonus_base_v312=base
         role=str(actor.get("role") or "").lower()
         return {
             "version":"V312-FINAL-BONUS-METHODS","month":month,"bonus_no":b,

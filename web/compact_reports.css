@@ -277,3 +277,9 @@ html body #v313Host .compact-refresh-icon{font-size:18px!important;line-height:1
 html body #v313Host .compact-refresh-icon svg{width:21px!important;height:21px!important;display:block!important}
 html body #v313Host .v313-model-downloads{flex-wrap:wrap!important}
 html body #v313Host .v313-model-downloads button{font-size:12px!important;padding:7px 9px!important;min-height:38px!important}
+html body #v313Host .v313-source-pending{display:block!important;font-size:12px!important;line-height:1.3!important;color:#8c661c!important;margin-top:3px!important}
+html body #v313Host .v313-table .v313-missing-source{white-space:normal!important;min-width:220px!important;max-width:320px!important;font-size:12px!important;line-height:1.4!important;text-align:left!important}
+html body #v313Host .v313-source-status{border:1px solid #eed8ad!important;background:#fffaf0!important;font-size:13px!important;line-height:1.4!important}
+html body #v313Host .v313-attendance-edit{display:flex!important;flex-wrap:wrap!important;gap:8px!important;margin:6px 0!important}
+html body #v313Host .v313-attendance-edit input{flex:1!important;min-width:140px!important;max-width:240px!important}
+html body #v313Host #v313AttendanceForm label{font-size:13px!important}

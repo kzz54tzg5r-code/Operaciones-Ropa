@@ -28,14 +28,14 @@ async function setup(opts={}){
     source_dates:{opening_capacity:'2026-09-29',current_capacity:'2026-10-13'},
     processing:{capacity:false,sales:false},selected:{formula:'Bono 1 vigente'},
   };
-  let exportMode=opts.mode||'error', navigations=0, downloaded=0;
+  let exportMode=opts.mode||'error', navigations=0, downloaded=0,reportRequests=0;
   const dom=new JSDOM('<div id="sidebar"><button data-main="bonuses">Bonos</button></div><main class="main"><section class="page" id="page-bonuses"></section></main>',{
     url:'https://operaciones.example/',runScripts:'outside-only'
   });
   const w=dom.window;
   w.fetch=async (url,requestOpt)=>{
     if(String(url).startsWith("/api/bonuses-v330") && opts.bonusResponse)return opts.bonusResponse(url,requestOpt);
-    if(String(url).startsWith('/api/bonuses-v313'))return {ok:true,json:async()=>data};
+    if(String(url).startsWith('/api/bonuses-v313')){reportRequests++;return {ok:true,json:async()=>data};}
     if(String(url).startsWith('/api/bonuses-b2-v327'))return {ok:true,json:async()=>({
       ...data,b2_cohort:true,b2_status:'ready',source_error:'',cutoff_date:'2026-10-13',
       details:[{
@@ -71,7 +71,7 @@ async function setup(opts={}){
   tab.click();await tick();
   assert.equal(w.document.querySelector('.v313-model-table'),null,'models are deferred in summary');
   w.document.querySelector('#compactBonusToggle').click();await tick();
-  return {w,dom,data,setMode:m=>{exportMode=m},get downloads(){return downloaded},get navigations(){return navigations}};
+  return {w,dom,data,get reportRequests(){return reportRequests},setMode:m=>{exportMode=m},get downloads(){return downloaded},get navigations(){return navigations}};
 }
 
 test('Excel 404 is shown inside Bonos without navigating to JSON error screen',async()=>{
@@ -247,5 +247,74 @@ test('all six bonuses expose summary/detail and retain numerical values on retur
    assert.equal(f.w.document.querySelector('.v313-kpis').textContent,before);
    assert.equal(f.w.document.querySelector('#v313Store').value,'Olivar');
   }
+ }finally{f.dom.window.close()}
+});
+
+test('Bono 1 shows original components, partial scores and missing sources, and Actualizar reloads data',async()=>{
+ const f=await setup();try{
+  f.data.legacy_components={sales_pct:41.7,ddi_pct:null,attendance_pct:100,attendance_provisional_stores:1,stores_with_score:0};
+  f.data.bonus1_rows=[{store:'Olivar',display_order:1,sales_pct:41.7,ddi_pct:null,attendance_pct:100,attendance_provisional:true,score:40.9,score_ready:false,missing_sources:['Preparando DDI de Capacidades','Asistencia provisional: pendiente de captura']}];
+  f.w.OperacionesPWA={checkForUpdates:async()=>({available:false})};
+  f.w.document.querySelector('[data-v313-section="summary"]').click();await tick();
+  const before=f.reportRequests;
+  f.w.document.querySelector('#v313UpdateBtn').click();await tick();await tick();
+  assert.ok(f.reportRequests>before,'Actualizar must fetch current report data');
+  const rank=f.w.document.querySelector('[data-compact-panel="ranking"]');
+  if(rank.getAttribute('aria-expanded')==='false')rank.click();
+  let body=f.w.document.querySelector('.v313-table').textContent;
+  assert.match(body,/DDI por catálogo/);assert.match(body,/40.9%/);assert.match(body,/Parcial/);assert.match(body,/pendiente de captura/);assert.match(body,/1\*/);
+  f.data.legacy_components.ddi_pct=73.2;f.data.bonus1_rows[0].ddi_pct=73.2;
+  f.w.document.querySelector('#v313UpdateBtn').click();await tick();await tick();
+  assert.match(f.w.document.querySelector('.compact-summary-band').textContent,/73.2%/);
+  assert.equal(f.w.document.querySelector('#v313Store').value,'Olivar');
+ }finally{f.dom.window.close()}
+});
+
+test('capacity polling continues beyond sixty attempts and stops when the source is ready',async()=>{
+ const f=await setup();try{
+  const jobs=[],original=f.w.setTimeout.bind(f.w);
+  f.w.setTimeout=(fn,ms,...args)=>{if([1800,3000,10000].includes(ms)){jobs.push(()=>fn(...args));return 9876;}return original(fn,ms,...args)};
+  f.w.OperacionesPWA={checkForUpdates:async()=>({available:false})};
+  f.data.processing.capacity=true;
+  f.w.document.querySelector('#v313UpdateBtn').click();await tick();await tick();
+  for(let i=0;i<65;i++){
+   assert.equal(jobs.length,1,'source must keep refreshing at attempt '+i);
+   jobs.shift()();await tick();await tick();
+  }
+  f.data.processing.capacity=false;
+  jobs.shift()();await tick();await tick();
+  assert.equal(jobs.length,0);
+  assert.equal(f.w.document.querySelector('#v313Store').value,'Olivar');
+ }finally{f.dom.window.close()}
+});
+
+test('Bono 1 restores the existing attendance form only for authorized store views',async()=>{
+ const f=await setup();try{
+  f.data.can_edit_attendance=true;f.data.legacy_components={attendance_pct:100,attendance_provisional_stores:1};
+  f.w.OperacionesPWA={checkForUpdates:async()=>({available:false})};
+  f.w.document.querySelector('[data-v313-section="summary"]').click();await tick();
+  f.w.document.querySelector('#v313UpdateBtn').click();await tick();await tick();
+  let toggle=f.w.document.querySelector('#compactBonusToggle');if(toggle.getAttribute('aria-expanded')==='false')toggle.click();
+  let form=f.w.document.querySelector('#v313AttendanceForm');assert.ok(form);
+  assert.equal(f.w.document.querySelector('#v313AttendancePct').value,'','provisional 100% must require explicit input');
+  const oldFetch=f.w.fetch;let saved;
+  f.w.fetch=async(url,opt)=>{if(String(url).endsWith('/attendance')){saved=JSON.parse(opt.body);return {ok:true,json:async()=>({ok:true})}}return oldFetch(url,opt)};
+  form.dispatchEvent(new f.w.Event('submit',{cancelable:true,bubbles:true}));await tick();assert.equal(saved,undefined);
+  f.w.document.querySelector('#v313AttendancePct').value='95';form.dispatchEvent(new f.w.Event('submit',{cancelable:true,bubbles:true}));await tick();await tick();
+  assert.deepEqual(saved,{month:'2026-10',store:'Olivar',attendance_pct:95});
+  f.data.can_edit_attendance=false;f.w.document.querySelector('#v313UpdateBtn').click();await tick();await tick();
+  assert.equal(f.w.document.querySelector('#v313AttendanceForm'),null);
+ }finally{f.dom.window.close()}
+});
+
+test('a late bonus refresh cannot reopen Bonos after leaving the module',async()=>{
+ let release;const f=await setup({bonusResponse:()=>new Promise(resolve=>{release=resolve})});
+ try{
+  f.w.document.querySelector('[data-v313-bonus="3"]').click();await tick();assert.ok(release);
+  const other=f.w.document.createElement('button');other.dataset.main='operativo';f.w.document.body.append(other);other.click();
+  f.w.document.querySelector('#page-bonuses').classList.remove('active');
+  release({ok:true,json:async()=>({is_v330:true,bonus_no:3,month:'2026-10',selected_store:'Olivar',model:{name:'Bono 3'},summary:{},ranking:[],details:[],processing:{}})});await tick();await tick();
+  assert.equal(f.w.document.querySelector('#page-bonuses').classList.contains('active'),false);
+  assert.equal(f.w.document.body.hasAttribute('data-v313'),false);
  }finally{f.dom.window.close()}
 });
