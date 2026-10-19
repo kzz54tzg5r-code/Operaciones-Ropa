@@ -30,6 +30,22 @@ function decorate(root){
    if(!block.querySelector('input,select,textarea,form'))blocks.add(block);
  });
  const selected=[...blocks].filter(b=>![...blocks].some(other=>other!==b&&other.contains(b)));
+ let preview=root.querySelector(':scope > .compact-preview');
+ const hasKpis=!!root.querySelector('.report-kpis,.kpis,.rr243-kpis,.v331-kpis');
+ const table=root.querySelector('table'),row=table&&[...table.querySelectorAll('tbody tr')].find(r=>!r.querySelector('input,select,textarea'));
+ if(!hasKpis&&row&&selected.length){
+   const headers=[...table.querySelectorAll('thead tr:last-child th')];
+   const values=[...row.cells].slice(0,4).map((cell,i)=>[(headers[i]&&headers[i].textContent.trim())||('Columna '+(i+1)),cell.textContent.trim()]);
+   const signature=JSON.stringify(values);
+   if(!preview){preview=document.createElement('section');preview.className='compact-preview';root.prepend(preview);}
+   if(preview.dataset.values!==signature){
+     preview.dataset.values=signature;preview.replaceChildren();
+     const title=document.createElement('b');title.textContent='Vista previa · primera fila del reporte';preview.append(title);
+     const dl=document.createElement('dl');
+     values.forEach(([label,value])=>{const item=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;item.append(dt,dd);dl.append(item);});
+     preview.append(dl);
+   }
+ }else if(preview)preview.remove();
  let bar=root.querySelector(':scope > .compact-detail-bar');
  if(!selected.length){if(bar)bar.remove();return;}
  selected.forEach(b=>{b.classList.add('compact-detail-block');b.classList.toggle('compact-detail-closed',!state.open);});

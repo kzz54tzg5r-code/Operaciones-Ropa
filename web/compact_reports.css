@@ -3,7 +3,7 @@ html body :is(#page-operativo,#page-bonuses){min-width:0!important;max-width:100
 html body :is(#page-operativo,#page-bonuses) :is(.v313,.v313-main,.panel,.v313-panel,.v331-root,.rr243-root){min-width:0!important;max-width:100%!important;box-sizing:border-box}
 html body :is(#page-operativo,#page-bonuses) :is(.report-kpis,.kpis,.v313-kpis,.rr243-kpis,.v331-kpis){display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(145px,100%),1fr))!important;gap:6px!important;margin:6px 0!important}
 html body :is(#page-operativo,#page-bonuses) :is(.report-kpi,.kpi,.v313-kpi,.rr243-kpi,.v331-card){padding:9px!important;min-height:0!important;height:auto!important;min-width:0!important}
-html body :is(#page-operativo,#page-bonuses) :is(.rk-value,.val,.v313-kpi b,.v331-card .number){font-size:clamp(20px,2.5vw,28px)!important;line-height:1.15!important;overflow-wrap:anywhere}
+html body :is(#page-operativo,#page-bonuses) :is(.rk-value,.val,.v313-kpi b,.v331-card .number){font-size:clamp(20px,2.5vw,28px)!important;line-height:1.15!important;overflow-wrap:anywhere;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
 html body :is(#page-operativo,#page-bonuses) :is(.rk-label,.lab,.v313-kpi span,.v331-card .label){font-size:12px!important;line-height:1.25!important;white-space:normal!important}
 html body :is(#page-operativo,#page-bonuses) :is(.rk-sub,.sub,.note,.v313-kpi small,.v313-note,.v313-sub){font-size:12px!important;line-height:1.35!important}
 html body :is(#page-operativo,#page-bonuses) :is(h2,.title){font-size:18px!important;margin:6px 0!important;line-height:1.2!important}
@@ -27,3 +27,7 @@ html body .compact-detail-closed{display:none!important}
 
 html body #page-operativo :is(.chart-scroll,.rr243-chart){max-width:100%!important;overflow-x:auto!important;touch-action:pan-x pan-y!important}
 html body #page-operativo :is(.combo-svg,.recovery-svg){max-width:none!important}
+
+.compact-preview{border:1px solid #d7e3ef;border-radius:9px;padding:9px;margin:6px 0;background:#fff;font-size:12px}
+.compact-preview dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:7px 0 0}
+.compact-preview dl div{min-width:0}.compact-preview dt{color:#627b97;overflow-wrap:anywhere}.compact-preview dd{font-size:16px;font-weight:700;margin:2px 0;overflow-wrap:anywhere}

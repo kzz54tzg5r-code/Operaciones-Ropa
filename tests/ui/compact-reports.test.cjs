@@ -22,3 +22,12 @@ test('editing forms and error/empty states remain visible',async()=>{
  const dom=new JSDOM('<main class="main"><div id="v313Host"><div class="error">Sin datos disponibles</div><form><table><tr><td><input value="20"></td></tr></table></form></div></main>',{runScripts:'outside-only',pretendToBeVisual:true});
  dom.window.eval(source);await wait();assert.equal(dom.window.document.querySelector('.compact-detail-closed'),null);assert.equal(dom.window.document.querySelector('input').value,'20');dom.window.close();
 });
+test('table-only tabs show a labelled preview while recovery KPI grids stay visible',async()=>{
+ for(const grid of ['', '<div class="rr243-kpis">Stock: 123</div>','<div class="v331-kpis">Tasa: —</div>']){
+  const dom=new JSDOM(`<main class="main"><section id="page-operativo"><div id="operativoDynamicContent">${grid}<div><table><thead><tr><th>Tienda</th><th>Conversión</th></tr></thead><tbody><tr><td>Olivar</td><td>85.1%</td></tr></tbody></table></div></div></section></main>`,{runScripts:'outside-only',pretendToBeVisual:true});
+  dom.window.eval(source);await wait();const root=dom.window.document.querySelector('#operativoDynamicContent');
+  if(grid){assert.equal(root.querySelector('.compact-preview'),null);assert.equal(root.querySelector('[class$="kpis"]').closest('.compact-detail-closed'),null);}
+  else {assert.match(root.querySelector('.compact-preview').textContent,/primera fila/);assert.match(root.querySelector('.compact-preview').textContent,/85.1%/);}
+  assert.ok(root.querySelector('.compact-detail-closed'));dom.window.close();
+ }
+});
