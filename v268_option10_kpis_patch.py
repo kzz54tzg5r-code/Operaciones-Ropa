@@ -358,6 +358,7 @@ def install(m):
   }
 
   function enforce(){
+    if(window.RopaCompact)return;
     const root=q('#operativoDynamicContent');
     if(!root)return;
 

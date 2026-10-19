@@ -9,6 +9,7 @@ on:
       - 'v237_final_ui_patch.py'
       - 'v238_responsive_nav_patch.py'
       - 'v250_option9b_filters_patch.py'
+      - 'v268_option10_kpis_patch.py'
       - 'v313_bonus_visual_and_cut_patch.py'
       - 'tests/ui/compact*'
       - '.github/workflows/compact-layout.yml'

@@ -361,7 +361,7 @@ if(d.b2_cohort){
   return "<tr><td data-v314-photo-cell=\"1\" class=\"v314-photo-cell\">"+photo+"</td><td class=\"left\"><b>"+esc(id)+"</b></td><td class=\"left\">"+esc(r.model)+"</td>"+(showCatalog?"<td>"+esc(r.catalog)+"</td>":"")+"<td>0</td><td>"+dateMx(r.last_arrival)+"</td><td>"+nf(r.arrival_age_days)+"</td><td>"+nf(r.initial_ddi)+"</td><td>"+nf(r.initial_existence)+"</td><td>"+money(r.initial_investment)+"</td></tr>";
  }).join("");
 }
-var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · Tipo catálogo: VIGENTE "+(d.b2_cohort?"· 0 ventas 30 días · última llegada ≥7 días ":"")+"· rueda/dedo o usa las páginas (30 modelos por página)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-retry-visible=\"1\" title=\"Reintentar fotografías faltantes de esta página\" "+(rows.length?"":"disabled")+">↻ Fotos</button><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↑</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">↓</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
+var actions="<div class=\"v313-model-actions\" data-v314-export=\"1\"><button type=\"button\" class=\"v313-return-btn\" data-v313-return=\"1\">← Regresar al listado</button><span>"+nf(rows.length)+" modelos · Tipo catálogo: VIGENTE "+(d.b2_cohort?"· 0 ventas 30 días · última llegada ≥7 días ":"")+"· rueda/dedo o usa las páginas (30 modelos por página)</span><div class=\"v313-model-downloads\"><button type=\"button\" data-v313-retry-visible=\"1\" title=\"Reintentar fotografías faltantes de esta página\" "+(rows.length?"":"disabled")+">↻ Fotos</button><button type=\"button\" data-v313-scroll-up=\"1\" title=\"Subir dentro de la tabla\" "+(rows.length<2?"disabled":"")+">Subir</button><button type=\"button\" data-v313-scroll-down=\"1\" title=\"Bajar dentro de la tabla\" "+(rows.length<2?"disabled":"")+">Bajar</button><button type=\"button\" data-v313-download=\"xlsx\" "+(rows.length?"":"disabled")+">↓ Descargar Excel</button><button type=\"button\" data-v313-download=\"pdf\" "+(rows.length?"":"disabled")+">↓ Descargar PDF</button></div></div><div id=\"v313ExportNotice\" role=\"status\" aria-live=\"polite\" class=\"v313-export-notice\" hidden></div>";
 return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div class=\"v313-ph\"><span>Modelos a Detalle · "+esc(title)+"</span><span>"+esc(d.selected_store)+" · "+nf(rows.length)+" modelos</span></div>"+actions+"<div class=\"v313-scroll v313-model-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Listado de modelos, usa rueda o dedo para desplazar\"><table class=\"v313-table v313-model-table\"><thead><tr>"+head+"</tr></thead><tbody>"+bodyRows+"</tbody></table></div>"+(pageMax>1?"<div class=\"v313-model-pagination\" role=\"navigation\" aria-label=\"Páginas de modelos\"><button type=\"button\" data-v313-page=\"prev\" "+(page===0?"disabled":"")+">← Anteriores</button><span>Mostrando "+(page*pageSize+1)+"–"+Math.min((page+1)*pageSize,rows.length)+" de "+rows.length+" · Página "+(page+1)+" de "+pageMax+"</span><button type=\"button\" data-v313-page=\"next\" "+(page>=pageMax-1?"disabled":"")+">Siguientes →</button></div>":"")+(!rows.length?"<div class=\"v313-empty\"><b>"+emptyTitle+"</b><p>"+emptyText+"</p></div>":"")+"</section>"
 }
 function models(d,onlyCatalog){
@@ -459,22 +459,27 @@ var compactBonusViews=new Map();
 function compactBonusKey(){return [S.bonus,S.section].join("|")}
 function bonusSection(id,title,caption,view,content){
  var open=view.panel===id;
- return '<section class="compact-section compact-bonus-section"><button type="button" '+(id==="evaluation"||id==="report"?'id="compactBonusToggle" ':'')+'data-compact-panel="'+id+'" class="compact-bonus-summary" aria-expanded="'+open+'"><span class="compact-section-title"><strong>'+esc(title)+'</strong><small>'+esc(caption||'')+'</small></span><span class="compact-section-action">'+(open?'Cerrar detalle':'Ver detalle')+'</span></button>'+(open?'<div class="compact-section-body"><button type="button" class="compact-section-back" data-compact-close="1">← Regresar al resumen</button>'+content()+'</div>':'')+'</section>';
+ return '<section class="compact-section compact-bonus-section"><button type="button" '+(id==="evaluation"||id==="report"?'id="compactBonusToggle" ':'')+'data-compact-panel="'+id+'" class="compact-bonus-summary" aria-expanded="'+open+'"><span class="compact-section-title"><strong>'+esc(title)+'</strong><small>'+esc(caption||'')+'</small></span><span class="compact-section-action">'+(open?'Cerrar detalle':'Ver detalle')+'</span></button>'+(open?'<div class="compact-section-body">'+content()+'<button type="button" class="compact-section-back" data-compact-close="1">← Regresar al resumen</button></div>':'')+'</section>';
 }
 function body(d){
  if(S.section==="initial-upload")return fullReportBody(d);
- var key=compactBonusKey(),view=compactBonusViews.get(key)||{open:false,panel:null,y:0};
+ var key=compactBonusKey(),view=compactBonusViews.get(key)||{open:S.section==="summary"||S.section==="panorama",panel:S.section==="summary"||S.section==="panorama"?"ranking":null,y:0};
  compactBonusViews.set(key,view);
- var top=cutbar(d)+hero(d)+'<div class="v313-kpis compact-summary-band">'+topKpis(d)+'</div>';
+ var sd=d.source_dates||{},cutLabel='Cortes: '+dateMx(d.cutoff_date||sd.opening_capacity)+' → '+dateMx(sd.current_capacity);
+ var top='<details class="compact-cut-disclosure"><summary>'+esc(cutLabel)+' · Ver referencias</summary>'+cutbar(d)+'</details>'+hero(d)+'<div class="v313-kpis compact-summary-band">'+topKpis(d)+'</div>';
  if(S.section==="summary"||S.section==="panorama"){
   return top+bonusSection("evaluation","Evaluación del bono","Criterios e indicadores",view,function(){return '<div class="v313-kpis">'+topKpis(d)+'</div>'+visual(d)})
    +bonusSection("ranking","Ranking de tiendas","Comparativo del periodo",view,function(){return ranking(d,0)})
    +'<section class="compact-section"><button class="compact-bonus-summary" type="button" data-compact-models="1"><span class="compact-section-title"><strong>Modelos y catálogos</strong><small>Abrigador · Licencias · Básicos</small></span><span class="compact-section-action">Ver detalle</span></button></section>';
  }
  var title={ranking:"Ranking de tiendas",stores:"Tiendas",models:"Modelos por catálogo",rubros:"Rubros",collaborators:"Colaboradores",details:"Modelos a detalle"}[S.section]||"Desglose del bono";
- return top+bonusSection("report",title,"Periodo y tienda seleccionados",view,function(){return fullReportBody(d)});
+ return top+bonusSection("report",title,"Periodo y tienda seleccionados",view,function(){var html=fullReportBody(d),prefix=cutbar(d)+hero(d);return html.startsWith(prefix)?html.slice(prefix.length):html});
 }
-function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">"+(d.is_v330?"Seguimiento automático con fuentes reales · sin simulaciones ni importes de pago":d.b2_cohort?"Bono 2 · corte inicial · 0 ventas en 30 días · excluir llegadas de los últimos 7 días · catálogo vigente":"Comparación real entre corte inicial y corte actual · sin gráficas de línea")+"</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
+function page(d){
+ var description=d.is_v330?'Seguimiento automático con fuentes reales':d.b2_cohort?'Bono 2 · corte inicial · 0 ventas en 30 días · excluir llegadas de los últimos 7 días · catálogo vigente':'Comparación real entre corte inicial y corte actual';
+ return '<div class="v313">'+bonusTabs(d)+(S.section==="initial-upload"?'':tabs())+'<div class="v313-head"><div class="v313-head-right">'+filters(d)+'<button type="button" id="v313UpdateBtn" title="Consultar la última versión y actualizar"><span class="compact-refresh-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7V3l-4 4M20 7a8 8 0 1 0 0 10"/></svg></span><span class="compact-refresh-label">Actualizar</span></button></div></div><div class="v313-sub">'+esc(description)+'</div>'+body(d)+'</div>';
+}
+
 function bind(){
 qa("[data-compact-panel]").forEach(function(button){button.addEventListener("click",function(){
  var view=compactBonusViews.get(compactBonusKey());if(!view)return;
@@ -560,8 +565,12 @@ var scroller=q(".v313-model-scroll");if(scroller){
  var scrollKey=[S.month,S.store,S.bonus,S.section,S.catalog].join("|");
  scroller.scrollTop=S.modelScroll[scrollKey]||0;
  scroller.addEventListener("scroll",function(){S.modelScroll[scrollKey]=scroller.scrollTop},{passive:true});
+  function canConsume(dx,dy){
+    if(Math.abs(dy)>=Math.abs(dx))return dy<0?scroller.scrollTop>0:dy>0&&scroller.scrollTop+scroller.clientHeight<scroller.scrollHeight-1;
+    return dx<0?scroller.scrollLeft>0:dx>0&&scroller.scrollLeft+scroller.clientWidth<scroller.scrollWidth-1;
+  }
   scroller.addEventListener("wheel",function(e){
-    if(scroller.scrollHeight<=scroller.clientHeight&&scroller.scrollWidth<=scroller.clientWidth)return;
+    if(!canConsume(e.deltaX,e.deltaY))return;
     if(e.cancelable)e.preventDefault();
     scroller.scrollTop+=e.deltaY;scroller.scrollLeft+=e.deltaX;
   },{passive:false,capture:true});
@@ -572,7 +581,7 @@ var scroller=q(".v313-model-scroll");if(scroller){
   scroller.addEventListener("touchmove",function(e){
     if(e.touches.length!==1)return;
     var y=e.touches[0].clientY,x=e.touches[0].clientX;
-    if(scroller.scrollHeight>scroller.clientHeight||scroller.scrollWidth>scroller.clientWidth){
+    if(canConsume(startX-x,startY-y)){
       if(e.cancelable)e.preventDefault();
       scroller.scrollTop+=(startY-y);scroller.scrollLeft+=(startX-x);
     }

@@ -28,7 +28,7 @@ function theme(title){
  if(/historial|seguimiento/.test(t))return ['clock','purple','Registros y cambios disponibles'];
  if(/alerta|advertencia|calidad/.test(t))return ['alert','orange','Información que requiere revisión'];
  if(/tienda|meta/.test(t))return ['store','blue','Configuración y detalle por tienda'];
- if(/recorrido|evoluci|gráfico/.test(t))return ['chart','blue','Avance del periodo consultado'];
+ if(/recorrido|evoluci|gráfico|resultado/.test(t))return ['chart','blue','Avance del periodo consultado'];
  if(/recuperaci|venta|conversi/.test(t))return ['money','blue','Resultado y desglose del periodo'];
  return ['box','green','Detalle de la información seleccionada'];
 }
@@ -51,10 +51,10 @@ function brandCards(root){
   }
  });
 }
-function disclosure(root,block,title,metric,id){
+function disclosure(root,block,title,metric,id,captionText){
  const doc=root.ownerDocument,section=doc.createElement('details');section.className='compact-section';section.dataset.section=id;
  const head=doc.createElement('summary'),label=doc.createElement('strong'),value=doc.createElement('span'),action=doc.createElement('span');
- const spec=theme(title),titleWrap=doc.createElement('span'),caption=doc.createElement('small');titleWrap.className='compact-section-title';caption.textContent=spec[2];label.textContent=title;titleWrap.append(label,caption);value.textContent=metric||'';value.className='compact-section-value';action.className='compact-section-action';action.textContent='Ver detalle';head.insertAdjacentHTML('afterbegin',icon(spec[0],spec[1]));head.append(titleWrap,value,action);
+ const spec=theme(title),titleWrap=doc.createElement('span'),caption=doc.createElement('small');titleWrap.className='compact-section-title';caption.textContent=captionText||spec[2];label.textContent=title;titleWrap.append(label,caption);value.textContent=metric||'';value.className='compact-section-value';action.className='compact-section-action';action.textContent='Ver detalle';head.insertAdjacentHTML('afterbegin',icon(spec[0],spec[1]));head.append(titleWrap,value,action);
  const body=doc.createElement('div');body.className='compact-section-body';
  const back=doc.createElement('button');back.type='button';back.className='compact-section-back';back.textContent='← Regresar al resumen';
  const reportKey=key(),sectionKey=reportKey+'|'+id;
@@ -66,7 +66,7 @@ function disclosure(root,block,title,metric,id){
   if(section.open){y=window.scrollY;root.querySelectorAll('details.compact-section').forEach(other=>{if(other!==section)other.open=false;});window.dispatchEvent(new Event('resize'));}
   action.textContent=section.open?'Cerrar detalle':'Ver detalle';
  });
- section.append(head,body);body.append(back,block);section.open=!!state.get(sectionKey);return section;
+ section.append(head,body);body.append(block,back);section.open=!!state.get(sectionKey);return section;
 }
 function metricGrid(rows,headers){
  const grid=document.createElement('div');grid.className='compact-data-grid';grid.setAttribute('role','table');
@@ -87,10 +87,9 @@ function monthly(root){
  const value=label=>text(card(label)?.querySelector('.mct-kpi-value'));
  const container=document.createElement('div');container.className='compact-monthly-sections';
  const specs=[
-  ['collection','Operación (Recolección)',value('TOTAL OPERACIÓN')+' pzas',rows.filter(r=>/^(DEV PZS|MUERTOS|PROBADOR|CAJAS|PENDIENTE ANTERIOR|TOTAL OPERACIÓN)/.test(r[0]||''))],
+  ['collection','Operación (Recolección)',value('TOTAL OPERACIÓN')+' piezas',rows.filter(r=>/^(DEV PZS|MUERTOS|PROBADOR|CAJAS|PENDIENTE ANTERIOR|TOTAL OPERACIÓN|PENDIENTE DE|TOTAL PENDIENTES)/.test(r[0]||''))],
   ['progress','Acondicionado y ubicado',[value('% ACONDICIONADO'),value('% UBICADO')].filter(Boolean).join(' / '),[byLabel('% ACONDICIONADO'),byLabel('% UBICADO')].filter(Boolean)],
-  ['routes','Recorridos',value('RECORRIDOS'),[byLabel('RECORRIDOS')].filter(Boolean)],
-  ['pending','Pendientes',value('TOTAL PENDIENTES')+' pzas',rows.filter(r=>/^(PENDIENTE DE|TOTAL PENDIENTES)/.test(r[0]||''))]
+  ['routes','Recorridos',value('RECORRIDOS'),[byLabel('RECORRIDOS')].filter(Boolean)]
  ];
  specs.forEach(([id,title,metric,data])=>{
   if(!data.length)return;
@@ -104,31 +103,66 @@ function monthly(root){
     titleEl.textContent=label.replace('% ','');amount.textContent=raw||'Sin dato';note.textContent=text(c?.querySelector('.mct-kpi-sub'));track.className='compact-progress-track';fill.style.width=(Number.isFinite(num)?Math.max(0,Math.min(100,num)):0)+'%';track.append(fill);meter.append(titleEl,amount,note,track);meters.append(meter);
    });detail.append(meters);
   }
-  detail.append(metricGrid(data,['Indicador','Valor / Piezas','%','Meta','Total']));
-  container.append(disclosure(root,detail,title,metric,id));
+  const displayRows=id==='progress'?data.map(row=>{const r=[...row];r[0]=r[0].replace(/^% /,'');if(r[1]?.includes(' · '))r[1]=r[1].split(' · ').slice(1).join(' · ');return r;}):data;
+  detail.append(metricGrid(displayRows,['Indicador','Valor / Piezas','%','Meta','Total']));
+  const captions={collection:'Piezas procesadas y pendientes',progress:'Avance de acondicionado y ubicación',routes:'Avance de recorridos del periodo'};
+  const section=disclosure(root,detail,title,id==='progress'?'':metric,id,captions[id]);
+  container.append(section);
+  if(id==='progress'&&!state.has(key()+'|'+id))section.open=true;
  });
  cards.after(container);cards.classList.add('compact-summary-band');
+ cards.children[0]?.querySelector('.mct-kpi-label')?.replaceChildren(document.createTextNode('Total operación'));
+ cards.children[1]?.querySelector('.mct-kpi-label')?.replaceChildren(document.createTextNode('Total pendientes'));
+ const supplementary=document.createElement('div');supplementary.className='compact-supplementary';
  // Keep all six original KPI cards available in the complete detail as well.
  const original=table.closest('.monthly-cross-desktop')||table.parentElement;
  const sourceHolder=document.createElement('div');original.before(sourceHolder);sourceHolder.append(original);
  const mobile=root.querySelector('.monthly-cross-mobile');if(mobile)sourceHolder.append(mobile);
- container.append(disclosure(root,sourceHolder,'Tabla completa del reporte',value('TOTAL GENERAL')+' pzas','full-table'));
+ supplementary.append(sourceHolder);
+ // Supplementary store tables and charts remain available in one full report,
+ // rather than adding more top-level accordions absent from the chosen design.
+ let next=container.nextElementSibling;
+ while(next){const following=next.nextElementSibling;if(next!==sourceHolder&&!next.querySelector('button[data-download]')&&!next.matches('.report-downloads,.download-bar'))supplementary.append(next);next=following;}
+ const complete=disclosure(root,supplementary,'Reporte completo por tienda',value('TOTAL GENERAL')+' piezas','full-table','Tablas, gráficos y exportaciones del periodo');
+ complete.classList.add('compact-utility');container.append(complete);
+}
+function settings(root){
+ if(!root.querySelector('.goalInput')||root.querySelector('.compact-settings'))return false;
+ const nodes=[...root.children],groups=[[],[],[]];let group=0;
+ nodes.forEach(node=>{if(node.matches('.title')&&/Tiendas y selección/.test(text(node)))group=1;if(node.matches('.title')&&/Historial/.test(text(node)))group=2;groups[group].push(node);});
+ const host=document.createElement('div');host.className='compact-settings';root.append(host);
+ const band=document.createElement('div');band.className='compact-summary-band';
+ [['Metas configuradas',root.querySelectorAll('.goalInput').length],['Tiendas registradas',root.querySelectorAll('[data-store-id]').length]].forEach(([label,value])=>{const card=document.createElement('div');card.className='report-kpi';const l=document.createElement('div'),v=document.createElement('div');l.className='rk-label';v.className='rk-value';l.textContent=label;v.textContent=value;card.append(l,v);band.append(card);});host.append(band);
+ ['Metas vigentes','Tiendas y selección de proyecto','Historial de cambios'].forEach((title,i)=>{
+  const block=document.createElement('div');groups[i].forEach(node=>block.append(node));
+  if(i<2)block.querySelector('.title')?.setAttribute('hidden','');
+  const section=disclosure(root,block,title,'','settings-'+i,['Valores configurados para la operación','Tiendas activas y participación en el proyecto','Cambios de metas y tiendas'][i]);host.append(section);
+
+ });return true;
 }
 function decorate(root){
  if(!root.children.length)return;
  root.classList.add('compact-report');
  root.querySelectorAll('.compact-preview,.compact-detail-bar').forEach(el=>el.remove());
  monthly(root);
+ if(settings(root)||root.querySelector('.compact-settings'))return;
  const band=root.querySelector('.report-kpis,.kpis,.rr243-kpis,.v331-kpis');
+ const donut=root.querySelector('.donut');
+ if(band&&donut&&!root.querySelector('[data-compact-score]')){
+  const card=document.createElement('div');card.className='report-kpi';card.dataset.compactScore='1';
+  const label=document.createElement('div'),value=document.createElement('div'),note=document.createElement('div');label.className='rk-label';label.textContent='Score integral';value.className='rk-value';value.textContent=donut.dataset.label||'Sin dato';note.className='rk-sub';note.textContent='Resultado del periodo';card.append(label,value,note);band.prepend(card);
+  donut.classList.add('compact-score-source');
+ }
  if(band&&!band.classList.contains('compact-summary-band')&&!band.closest('.compact-section')){
   band.classList.add('compact-summary-band');
   if(band.children.length>2){
    const more=document.createElement('div');more.className=band.className.replace('compact-summary-band','');
    [...band.children].slice(2).forEach(card=>more.append(card));
-   band.after(disclosure(root,more,'Resultado del periodo','','period-result'));
+   const metric=more.querySelector('.rk-value,.val,.number'),label=more.querySelector('.rk-label,.lab,.label');
+   band.after(disclosure(root,more,'Resultado del periodo',text(metric),'period-result',text(label)));
   }
  }
- const elements=[...root.querySelectorAll(':scope>.panel, :scope>.cards, table,canvas,.plotly-graph-div,.js-plotly-plot,.bars,.v331-rank,.combo-svg,.recovery-svg,.rr243-chart')].filter(el=>!el.closest('.compact-section')&&!el.querySelector(KPI+',.compact-section'));
+ const elements=[...root.querySelectorAll(':scope>.panel, :scope>.cards, .rr243-chart-panel,.chart-box, table,canvas,.plotly-graph-div,.js-plotly-plot,.bars,.v331-rank,.combo-svg,.recovery-svg,.rr243-chart')].filter(el=>!el.closest('.compact-section')&&!el.querySelector(KPI+',.compact-section'));
  const blocks=new Set();
  elements.forEach(el=>{
   let block=el;
@@ -138,7 +172,7 @@ function decorate(root){
   blocks.add(block);
  });
  [...blocks].filter(b=>![...blocks].some(other=>other!==b&&other.contains(b))).forEach((block,i)=>{
-  let heading=block.querySelector('h2,h3,h4,.title,.panel-head,.chart-title,.v331-panelhead,.rr243-chart-head,caption');
+  let heading=block.matches('.cards')?null:block.querySelector('h2,h3,h4,.title,.panel-head,.chart-title,.v331-panelhead,.rr243-chart-head,caption');
   const previous=block.previousElementSibling;
   if(!heading&&previous&&previous.matches('h2,h3,h4,.title,.chart-title'))heading=previous;
   const view=text(document.querySelector('#operativoDynamicTitle'));
@@ -147,9 +181,16 @@ function decorate(root){
   const marker=document.createComment('report-section');block.before(marker);
   if(block.matches('table')){const wrap=document.createElement('div');wrap.className='compact-table-scroll';wrap.append(block);block=wrap;}
   const section=disclosure(root,block,title,'',title+'|'+i);marker.replaceWith(section);
-  if(block.querySelector('input:not([type=hidden]),select,textarea')&&!state.has(key()+'|'+title+'|'+i))section.open=true;
-  if(heading&&heading!==block&&!block.contains(heading))heading.hidden=true;
+  if(/Carga de datos/i.test(view)){const filename=block.querySelector('.preview-item b');if(filename)section.querySelector('.compact-section-value').textContent=text(filename);}
+  if(heading&&heading!==block)heading.hidden=true;
+  if(block.matches('.cards'))section.classList.add('compact-alerts');
  });
+ const viewTitle=text(document.querySelector('#operativoDynamicTitle'));
+ if(viewTitle&&!root.querySelector('.compact-monthly-sections')){
+  const sections=[...root.querySelectorAll('details.compact-section')];
+  const preferred=sections.find(el=>el.querySelector('table')&&!el.querySelector('input,select,textarea'))||sections.find(el=>!el.querySelector('input,select,textarea'));
+  if(preferred&&!sections.some(el=>state.has(key()+'|'+el.dataset.section))&&!sections.some(el=>el.open))preferred.open=true;
+ }
 }
 function setStyle(el,prop,value){if(el&&(el.style.getPropertyValue(prop)!==value||el.style.getPropertyPriority(prop)!=='important'))el.style.setProperty(prop,value,'important');}
 function compactControls(){
@@ -168,7 +209,7 @@ function compactControls(){
   ['grid-template-columns','grid-template-rows','grid-auto-flow','grid-auto-rows'].forEach(p=>{if(nav.style.getPropertyValue(p))nav.style.removeProperty(p);});
   setStyle(nav,'overflow-x','auto');setStyle(nav,'overflow-y','hidden');setStyle(nav,'height','58px');setStyle(nav,'min-height','58px');setStyle(nav,'max-height','58px');setStyle(nav,'gap','4px');setStyle(nav,'touch-action','pan-x pan-y');setStyle(nav,'position','relative');
   nav.querySelectorAll('[data-opview]').forEach(btn=>{
-   setStyle(btn,'flex','1 0 88px');setStyle(btn,'width','auto');setStyle(btn,'min-width','88px');setStyle(btn,'max-width','none');setStyle(btn,'height','48px');setStyle(btn,'min-height','48px');setStyle(btn,'max-height','48px');setStyle(btn,'padding','5px 6px');setStyle(btn,'margin','0px');
+   setStyle(btn,'flex','1 0 100px');setStyle(btn,'width','auto');setStyle(btn,'min-width','100px');setStyle(btn,'max-width','none');setStyle(btn,'height','48px');setStyle(btn,'min-height','48px');setStyle(btn,'max-height','48px');setStyle(btn,'padding','5px 6px');setStyle(btn,'margin','0px');
   });
   if(active&&(active.offsetLeft<nav.scrollLeft||active.offsetLeft+active.offsetWidth>nav.scrollLeft+nav.clientWidth))nav.scrollLeft=active.offsetLeft;
  }
@@ -176,6 +217,7 @@ function compactControls(){
  if(grid){
   grid.dataset.compactOwned='1';setStyle(grid,'display','grid');setStyle(grid,'grid-template-columns',small?'repeat(2,minmax(0,1fr))':'repeat(3,minmax(0,1fr))');setStyle(grid,'grid-auto-flow','row');setStyle(grid,'gap','8px');setStyle(grid,'overflow','visible');setStyle(grid,'height','auto');
   grid.querySelectorAll('.or-fcontrol').forEach(el=>{setStyle(el,'width','100%');setStyle(el,'min-width','0px');setStyle(el,'max-width','100%');setStyle(el,'flex','initial');setStyle(el,'grid-row','auto');setStyle(el,'grid-column','auto');setStyle(el,'order','0');});
+  grid.querySelectorAll('label').forEach(label=>{setStyle(label,'font-size','12px');setStyle(label,'line-height','1.25');});
   const mode=document.getElementById('operPeriodMode'),wrap=document.getElementById('operPeriodModeWrap');
   if(mode&&wrap){const on=mode.options.length>1;wrap.dataset.compactMode=on?'1':'0';if(on){setStyle(wrap,'display','flex');setStyle(wrap,'order','-3');}}
   const period=document.getElementById('operPeriodSelectWrap'),store=document.getElementById('operStoreWrap');
