@@ -454,27 +454,41 @@ return summary(d)
 }
 
 
-// Presentation state only: keep each bonus/tab independent across filter refreshes.
+// Option 3: each bonus/tab keeps its open section across data refreshes.
 var compactBonusViews=new Map();
 function compactBonusKey(){return [S.bonus,S.section].join("|")}
+function bonusSection(id,title,caption,view,content){
+ var open=view.panel===id;
+ return '<section class="compact-section compact-bonus-section"><button type="button" '+(id==="evaluation"||id==="report"?'id="compactBonusToggle" ':'')+'data-compact-panel="'+id+'" class="compact-bonus-summary" aria-expanded="'+open+'"><strong>'+esc(title)+'</strong><span class="compact-section-value">'+esc(caption||'')+'</span><span class="compact-section-action">'+(open?'Cerrar detalle':'Ver detalle')+'</span></button>'+(open?'<div class="compact-section-body"><button type="button" class="compact-section-back" data-compact-close="1">← Regresar al resumen</button>'+content()+'</div>':'')+'</section>';
+}
 function body(d){
  if(S.section==="initial-upload")return fullReportBody(d);
- var key=compactBonusKey(),view=compactBonusViews.get(key)||{open:false,y:0};
+ var key=compactBonusKey(),view=compactBonusViews.get(key)||{open:false,panel:null,y:0};
  compactBonusViews.set(key,view);
- var title={summary:"Resumen",ranking:"Ranking de tiendas",panorama:"Panorama de tienda",models:"Modelos",rubros:"Rubros",collaborators:"Colaboradores",details:"Modelos a detalle"}[S.section]||"Desglose del bono";
- var control='<div class="compact-detail-bar"><span>'+esc(title)+'</span><button type="button" id="compactBonusToggle" aria-expanded="'+view.open+'">'+(view.open?'← Regresar al resumen':'Ver detalle')+'</button></div>';
- if(view.open)return control+fullReportBody(d);
- // Do not build model tables, photo nodes or charts until explicitly requested.
- return cutbar(d)+hero(d)+'<div class="v313-kpis">'+topKpis(d)+'</div>'+control;
+ var top=cutbar(d)+hero(d)+'<div class="v313-kpis compact-summary-band">'+topKpis(d)+'</div>';
+ if(S.section==="summary"||S.section==="panorama"){
+  return top+bonusSection("evaluation","Evaluación del bono","Criterios e indicadores",view,function(){return '<div class="v313-kpis">'+topKpis(d)+'</div>'+visual(d)})
+   +bonusSection("ranking","Ranking de tiendas","Comparativo del periodo",view,function(){return ranking(d,0)})
+   +'<section class="compact-section"><button class="compact-bonus-summary" type="button" data-compact-models="1"><strong>Modelos y catálogos</strong><span class="compact-section-value">Abrigador · Licencias · Básicos</span><span class="compact-section-action">Ver detalle</span></button></section>';
+ }
+ var title={ranking:"Ranking de tiendas",stores:"Tiendas",models:"Modelos por catálogo",rubros:"Rubros",collaborators:"Colaboradores",details:"Modelos a detalle"}[S.section]||"Desglose del bono";
+ return top+bonusSection("report",title,"Periodo y tienda seleccionados",view,function(){return fullReportBody(d)});
 }
 function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">"+(d.is_v330?"Seguimiento automático con fuentes reales · sin simulaciones ni importes de pago":d.b2_cohort?"Bono 2 · corte inicial · 0 ventas en 30 días · excluir llegadas de los últimos 7 días · catálogo vigente":"Comparación real entre corte inicial y corte actual · sin gráficas de línea")+"</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
 function bind(){
-q("#compactBonusToggle")?.addEventListener("click",function(){
+qa("[data-compact-panel]").forEach(function(button){button.addEventListener("click",function(){
  var view=compactBonusViews.get(compactBonusKey());if(!view)return;
  if(!view.open)view.y=window.scrollY;
- view.open=!view.open;render();
- if(!view.open){window.scrollTo({top:view.y,behavior:"auto"});q("#compactBonusToggle")?.focus({preventScroll:true})}
- else window.dispatchEvent(new Event("resize"));
+ view.panel=view.panel===button.dataset.compactPanel?null:button.dataset.compactPanel;
+ view.open=!!view.panel;render();window.dispatchEvent(new Event("resize"));
+})});
+qa("[data-compact-close]").forEach(function(button){button.addEventListener("click",function(){
+ var view=compactBonusViews.get(compactBonusKey());if(!view)return;
+ view.panel=null;view.open=false;render();window.scrollTo({top:view.y,behavior:"auto"});q("#compactBonusToggle")?.focus({preventScroll:true});
+})});
+q("[data-compact-models]")?.addEventListener("click",function(){
+ S.section="models";compactBonusViews.set(compactBonusKey(),{open:true,panel:"report",y:window.scrollY});
+ if(S.bonus>=3&&(!S.data||!S.data.details||!S.data.details.length)){load();return}render();
 });
 q("#v313UpdateBtn")?.addEventListener("click",async function(){
   var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
