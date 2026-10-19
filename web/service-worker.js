@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v2';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v333';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -12,7 +12,9 @@ const STATIC_ASSETS = [
   '/static/design_system.js',
   '/static/report_tab_mundial_v7.js',
   '/static/pwa_install.js',
-  '/static/ios_native.js'
+  '/static/ios_native.js',
+  '/static/compact_reports.css?v=333',
+  '/static/compact_reports.js?v=333'
 ];
 
 const putInCache = async (request, response) => {

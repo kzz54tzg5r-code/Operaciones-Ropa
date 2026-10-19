@@ -440,7 +440,7 @@ var period=q("#v313Month");if(period)period.value=month;
 load();
 }).catch(function(err){S.initialStatus={kind:"err",text:"No se pudo guardar el corte inicial: "+(err.message||err)};if(status){status.className="v321-state err";status.textContent=S.initialStatus.text}}).finally(function(){if(button){button.disabled=false;button.textContent="Procesar y guardar"}});
 }
-function body(d){
+function fullReportBody(d){
 if(S.section==="initial-upload")return initialUpload(d);
 if(S.section==="ranking"||S.section==="stores")return cutbar(d)+hero(d)+ranking(d,0);
 if(S.section==="panorama")return panorama(d);
@@ -454,8 +454,28 @@ return summary(d)
 }
 
 
+// Presentation state only: keep each bonus/tab independent across filter refreshes.
+var compactBonusViews=new Map();
+function compactBonusKey(){return [S.bonus,S.section].join("|")}
+function body(d){
+ if(S.section==="initial-upload")return fullReportBody(d);
+ var key=compactBonusKey(),view=compactBonusViews.get(key)||{open:false,y:0};
+ compactBonusViews.set(key,view);
+ var title={summary:"Resumen",ranking:"Ranking de tiendas",panorama:"Panorama de tienda",models:"Modelos",rubros:"Rubros",collaborators:"Colaboradores",details:"Modelos a detalle"}[S.section]||"Desglose del bono";
+ var control='<div class="compact-detail-bar"><span>'+esc(title)+'</span><button type="button" id="compactBonusToggle" aria-expanded="'+view.open+'">'+(view.open?'← Regresar al resumen':'Ver detalle')+'</button></div>';
+ if(view.open)return control+fullReportBody(d);
+ // Do not build model tables, photo nodes or charts until explicitly requested.
+ return cutbar(d)+hero(d)+'<div class="v313-kpis">'+topKpis(d)+'</div>'+control;
+}
 function page(d){return"<div class=\"v313\"><div class=\"v313-head\"><div><h2>Bonos</h2><div class=\"v313-sub\">"+(d.is_v330?"Seguimiento automático con fuentes reales · sin simulaciones ni importes de pago":d.b2_cohort?"Bono 2 · corte inicial · 0 ventas en 30 días · excluir llegadas de los últimos 7 días · catálogo vigente":"Comparación real entre corte inicial y corte actual · sin gráficas de línea")+"</div></div><div class=\"v313-head-right\">"+filters(d)+"<button type=\"button\" id=\"v313UpdateBtn\" title=\"Consultar la última versión y actualizar\">↻ Actualizar</button></div></div>"+bonusTabs(d)+(S.section==="initial-upload"?"":tabs())+body(d)+"</div>"}
 function bind(){
+q("#compactBonusToggle")?.addEventListener("click",function(){
+ var view=compactBonusViews.get(compactBonusKey());if(!view)return;
+ if(!view.open)view.y=window.scrollY;
+ view.open=!view.open;render();
+ if(!view.open){window.scrollTo({top:view.y,behavior:"auto"});q("#compactBonusToggle")?.focus({preventScroll:true})}
+ else window.dispatchEvent(new Event("resize"));
+});
 q("#v313UpdateBtn")?.addEventListener("click",async function(){
   var btn=this;btn.disabled=true;btn.textContent="Buscando versión…";
   try{

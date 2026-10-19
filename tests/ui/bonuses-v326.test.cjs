@@ -53,6 +53,7 @@ async function setup(opts={}){
     }
     return {ok:true,json:async()=>({})};
   };
+  w.scrollTo=()=>{};
   w.URL.createObjectURL=()=> 'blob:fake';
   w.URL.revokeObjectURL=()=>{};
   w.document.addEventListener('click',e=>{
@@ -68,6 +69,8 @@ async function setup(opts={}){
   const tab=w.document.querySelector('[data-v313-section="models"]');
   assert.ok(tab,'models tab');
   tab.click();await tick();
+  assert.equal(w.document.querySelector('.v313-model-table'),null,'models are deferred in summary');
+  w.document.querySelector('#compactBonusToggle').click();await tick();
   return {w,dom,data,setMode:m=>{exportMode=m},get downloads(){return downloaded},get navigations(){return navigations}};
 }
 
@@ -122,6 +125,7 @@ test('Bono 2 shares the Bono 1 four-tab design and lists zero-sales recent-arriv
     assert.match(f.w.document.querySelector('#v313Host').textContent,/Venta últimos 30 días/);
     f.w.document.querySelector('[data-v313-section="models"]').click();
     await tick();
+    f.w.document.querySelector('#compactBonusToggle').click();await tick();
     f.w.document.querySelector('[data-v313-cat="Licencias"]').click();
     await tick();
     const list=f.w.document.querySelector('.v313-model-table');
@@ -222,5 +226,26 @@ test('a missing photo can be retried using exactly the same model ID',async()=>{
   assert.equal(missing.style.display,'none');
   assert.ok(photo.getAttribute('src').startsWith('/api/bonuses/product-photo/'+id+'?retry=1&t='));
   assert.ok(f.w.document.querySelector('[data-v313-retry-visible]'));
+ }finally{f.dom.window.close()}
+});
+
+test('all six bonuses expose summary/detail and retain numerical values on return',async()=>{
+ const f=await setup({bonusResponse:async url=>({ok:true,json:async()=>({
+   is_v330:true,bonus_no:Number(new URL(url,'https://test').searchParams.get('bonus')),
+   month:'2026-10',months:[{value:'2026-10',label:'Octubre 2026'}],stores:['Olivar'],selected_store:'Olivar',
+   model:{name:'Seguimiento',design:'Prueba',cut_comparable:true},
+   summary:{sales_pct:98,attendance_reference:95,ddi_models_pct:33,ddi_models:9,ddi_improved_models:3,inventory:{}},
+   selected:null,ranking:[],details:[],source_dates:{},processing:{}
+ })})});
+ try{
+  for(let n=1;n<=6;n++){
+   f.w.document.querySelector(`[data-v313-bonus="${n}"]`).click();await tick();await tick();
+   const before=f.w.document.querySelector('.v313-kpis').textContent;
+   const toggle=f.w.document.querySelector('#compactBonusToggle');assert.equal(toggle.getAttribute('aria-expanded'),'false');
+   toggle.click();assert.equal(f.w.document.querySelector('#compactBonusToggle').getAttribute('aria-expanded'),'true');
+   f.w.document.querySelector('#compactBonusToggle').click();
+   assert.equal(f.w.document.querySelector('.v313-kpis').textContent,before);
+   assert.equal(f.w.document.querySelector('#v313Store').value,'Olivar');
+  }
  }finally{f.dom.window.close()}
 });
