@@ -14,14 +14,20 @@ const ops={...report,metrics:mt,goals:{conversion:80},stores:[{...report.stores[
 function bonus(q){const n=Number(q.get('bonus')||1);return {bonus_no:n,is_v330:n>=3,month:'2026-10',months:[{value:'2026-10',label:'Octubre 2026'}],stores:['Compañía','Iztapalapa'],selected_store:q.get('store')||'Compañía',details:Array.from({length:31},(_,i)=>({id_art:String(1100000+i),model:'Modelo '+i,catalog:['Abrigador','Licencias','Básicos'][i%3],initial_ddi:140,current_ddi:105,ddi_reduction_pct:25,initial_existence:100,current_existence:70,initial_investment:9000,current_investment:6000})),ranking:[{rank:1,store:'Iztapalapa',sales_pct:98,eligible:true,ready:true,classification:'En avance',indicator:'33%'}],summary:{sales_pct:98,attendance_reference:98,stores_total:17,stores_enabled:12,ddi_models_pct:33,ddi_models:120,ddi_improved_models:40,inventory:{ddi_reduction_pct:33,initial_ddi:140,current_ddi:105,initial_investment:90000,current_investment:60000}},legacy_components:{sales_pct:98,ddi_pct:70,attendance_pct:98,legacy_score_avg:88,stores_with_score:17},source_dates:{opening_capacity:'2026-10-01',current_capacity:'2026-10-12'},processing:{capacity:false,sales:false},selected:{formula:'Criterios vigentes'},model:{name:'Indicadores vigentes',design:'Criterios vigentes',cut_comparable:true}};}
 (async()=>{
  const b=await chromium.launch({executablePath:process.env.ROPA_CHROMIUM_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage','--single-process','--no-zygote','--in-process-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'],headless:true});
+ let holdDigital=false,digitalStarted=null,releaseDigital=null,holdCapture=false,captureStarted=null,releaseCapture=null;
  const page=await b.newPage({viewport:{width:1366,height:950}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.pathname==='/'){await route.fulfill({contentType:'text/html',body:fs.readFileSync(output+'/page.html','utf8')});return;}
  if(u.pathname.startsWith('/static/')){const f=output+'/web/'+u.pathname.slice(8);if(fs.existsSync(f)){await route.fulfill({path:f});return;}}
+ if(u.pathname==='/api/cm-productivity/report'&&holdDigital){digitalStarted?.();await new Promise(resolve=>{releaseDigital=resolve;});}
+ if(u.pathname==='/api/cm-productivity/meta'&&holdCapture){captureStarted?.();await new Promise(resolve=>{releaseCapture=resolve;});}
  if(u.pathname.startsWith('/api/')){let d=fixture(u.pathname,u.searchParams);if(u.pathname==='/api/operations')d=ops;
+ if(u.pathname==='/api/cm-productivity/report')d={use_digital:true,productivity:[{name:'Prueba digital',store:'Iztapalapa',pieces:610,days:1,daily:610,target:784,pct:77.8,duration_seconds:132}]};
  if(['/api/operations/recovery-rate','/api/operations/recovery-rate-audit-v331'].includes(u.pathname))d={available:true,status:'ready',period_start:'2026-10-01',period_end:'2026-10-19',period_value:'2026-10',stock_source_date:'2026-10-01',stock_source_name:'Corte de prueba',metrics:{inv_initial_pzs:1000,dev_pzs:100,inv_total_pzs:1100,sales_pzs:440,sales_value:42000,inv_final_pzs:660,sell_through_pct:40,stock_complete:true,valid_stores:1,stores_in_scope:1},rows:[{store:'Iztapalapa',inv_initial_pzs:1000,dev_pzs:100,inv_total_pzs:1100,sales_pzs:440,sales_value:42000,inv_final_pzs:660,sell_through_pct:40,stock_complete:true,audit_valid:true}],audit:{stock_phase:'ready'},warnings:[],trend:[{period:'2026-10',sell_through_pct:40}]};if(/bonuses-v313|bonuses-v330|bonuses-b2/.test(u.pathname))d=bonus(u.searchParams);if(u.pathname==='/api/operations/routes-calendar-v240')d={period_type:'week',columns:[{label:'Lun'}],rows:[{store:'Iztapalapa',cells:[5],total:5}],totals:[5],grand_total:5};if(u.pathname==='/api/goals')d={values:{productividad_diaria:784,recorridos_semanales:47},labels:{productividad_diaria:'Productividad diaria',recorridos_semanales:'Recorridos semanales'},editable:true,history:[]};if(u.pathname==='/api/stores')d={stores:[{id:1,name:'Iztapalapa',active:true,project:true}],editable:true,history:[]};await route.fulfill({json:d});return;}await route.fulfill({status:204,body:''});});
  await page.goto('https://app.test/');await page.waitForTimeout(1800);await page.evaluate(async()=>{await enter({id:1,username:'Prueba',role:'admin',store:'',can_preview_roles:false})});await page.waitForTimeout(1800);
  const metrics=async()=>page.evaluate(()=>({overflow:document.documentElement.scrollWidth-innerWidth,headers:[...document.querySelectorAll('#operativoDynamicContent .compact-monthly-sections>.compact-section>summary')].filter(el=>el.getBoundingClientRect().width).map(el=>el.getBoundingClientRect().height),cards:[...document.querySelectorAll('.page.active .compact-summary-band')].map(b=>[...b.children].filter(el=>el.getBoundingClientRect().width).length),nav:[...document.querySelectorAll('#operativoNav>[data-opview]')].filter(el=>el.getBoundingClientRect().width).map(el=>({x:el.getBoundingClientRect().x,w:el.getBoundingClientRect().width})),filters:['operPeriodMode','operPeriodSelect','operStoreSelect'].map(id=>{const el=document.getElementById(id);return el?el.getBoundingClientRect().width:0})}));
- const measure=async name=>{const m=await metrics();const hero=await page.locator('#heroTitle').boundingBox();assert.ok(hero.height<40,name+' has a broken application title');
+ const measure=async name=>{const m=await metrics();
+ const wrongLabels=await page.locator('.page.active details.compact-section').evaluateAll(els=>els.filter(el=>el.querySelector('.compact-section-action')?.textContent!==(el.open?'Cerrar detalle':'Ver detalle')).length);assert.equal(wrongLabels,0,name+' has an incorrect detail action');
+ const hero=await page.locator('#heroTitle').boundingBox();assert.ok(hero.height<40,name+' has a broken application title');
  const collisions=await page.locator('.page.active .compact-summary-band>.compact-kpi').evaluateAll(cards=>cards.filter(c=>c.getBoundingClientRect().width).flatMap(c=>{const label=c.querySelector('.rk-label,.lab,.label,.mct-kpi-label'),value=c.querySelector('.rk-value,.val,.number,.mct-kpi-value');if(!label||!value)return [];const l=label.getBoundingClientRect(),v=value.getBoundingClientRect();return l.bottom>v.top+1?['overlapping KPI '+label.textContent]:[];}));assert.deepEqual(collisions,[],name);assert.ok(m.overflow<=1,name+' causes page overflow: '+m.overflow);m.cards.forEach(n=>assert.ok(n<=2,name+' shows more than two primary cards'));return m;};
  for(const width of [320,390,768,1366,1920]){
   await page.setViewportSize({width,height:950});await page.waitForTimeout(250);
@@ -40,6 +46,21 @@ function bonus(q){const n=Number(q.get('bonus')||1);return {bonus_no:n,is_v330:n
   assert.equal(await page.locator('#operStoreSelect').inputValue(),filter);
  }
 
+ // Reproduce a slow digital response arriving after the user returns to Centro.
+ for(const kind of ['digital','capture']){
+  const ready=new Promise(resolve=>{if(kind==='digital'){holdDigital=true;digitalStarted=resolve;}else{holdCapture=true;captureStarted=resolve;}});
+  const target=kind==='digital'?'Productividad por Colaborador':'Cargar productividad';
+  await page.locator('#operativoNav>[data-opview]').evaluateAll((els,name)=>els.find(el=>el.dataset.opview===name)?.click(),target);
+  await Promise.race([ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('missing delayed '+kind+' request')),10000))]);
+  await page.locator('#operativoNav>[data-opview="Centro Ejecutivo"]').evaluate(el=>el.click());
+  await page.locator('#operativoDynamicContent .compact-monthly-sections').waitFor();
+  const center=await page.locator('#operativoDynamicContent .compact-summary-band').textContent();
+  if(kind==='digital'){holdDigital=false;releaseDigital();}else{holdCapture=false;releaseCapture();}
+  await page.waitForTimeout(450);
+  assert.ok(await page.locator('#operativoDynamicContent .compact-monthly-sections').count(),'stale '+kind+' response replaced Centro');
+  assert.equal(await page.locator('#operativoDynamicContent .compact-summary-band').textContent(),center);
+  assert.match(await page.locator('#operativoDynamicTitle').textContent(),/Centro Operativo/);
+ }
  const views=await page.locator('#operativoNav>[data-opview]').evaluateAll(els=>els.filter(el=>el.getBoundingClientRect().width).map(el=>el.dataset.opview));
  for(const name of views){
   await page.locator('#operativoNav>[data-opview]').evaluateAll((els,name)=>els.find(el=>el.dataset.opview===name)?.click(),name);

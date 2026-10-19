@@ -802,7 +802,14 @@ function updateTimer(){
 }
 function startTimer(){clearInterval(timerId);updateTimer();timerId=setInterval(updateTimer,1000)}
 
+function activeCMView(){return q('#operativoNav [data-opview].active')?.dataset.opview||''}
+function cmScope(){return [currentPeriodType(),currentPeriodValue(),currentStore()].join('|')}
+function captureIsCurrent(){return activeCMView()===C&&q('#page-operativo')?.classList.contains('active')}
+let digitalRenderSeq=0,captureRenderSeq=0;
 async function renderCapture(){
+  const captureSeq=++captureRenderSeq;
+  const current=()=>captureSeq===captureRenderSeq&&captureIsCurrent();
+  if(!current())return;
   const centro=q('#operativoCentro'),dyn=q('#operativoDynamic');centro?.classList.add('hidden');dyn?.classList.remove('hidden');
   q('#operativoPeriodBar')?.classList.add('hidden');
   if(q('#operativoDynamicTitle'))q('#operativoDynamicTitle').textContent='Cargar productividad';
@@ -812,14 +819,17 @@ async function renderCapture(){
   let meta,act,hist;
   try{
     [meta,act]=await Promise.all([capApi('/api/cm-productivity/meta'),capApi('/api/cm-productivity/active')]);
+    if(!current())return;
     if(meta.user?.profile_required){
       const updated=await requireProfile(meta.user);
       meta.user=updated;
+      if(!current())return;
     }
     activeRecord=act.item||null;
     const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const selected=(meta.user?.store||currentStore()||meta.stores?.[0]||'');
     hist=await capApi('/api/cm-productivity/history?date='+encodeURIComponent(today)+'&store='+encodeURIComponent(selected));
+    if(!current())return;
     const a=activeRecord;
     const activity=a?.activity||'Recolección';
     const isCollection=String(activity).toLowerCase()==='recolección';
@@ -876,7 +886,7 @@ async function renderCapture(){
         msg.textContent=r.message;activeRecord=null;clearInterval(timerId);await renderCapture();
       }catch(e){msg.textContent=e.message}
     });
-  }catch(e){host.innerHTML='<div class="infoempty">No fue posible abrir Cargar productividad: '+esc(e.message||e)+'</div>'}
+  }catch(e){if(!current())return;host.innerHTML='<div class="infoempty">No fue posible abrir Cargar productividad: '+esc(e.message||e)+'</div>'}
 }
 
 function digitalReportHtml(rep){
@@ -897,13 +907,16 @@ function installRenderer(){
   if(typeof window.renderOperativoView!=='function'||window.renderOperativoView.__v199)return;
   const prev=window.renderOperativoView;
   const wrapped=async function(name,force){
+    const renderSeq=++digitalRenderSeq;
+    const current=()=>renderSeq===digitalRenderSeq&&activeCMView()===name&&q('#page-operativo')?.classList.contains('active');
     if(name===C)return renderCapture();
     const result=await prev.call(this,name,force);
-    if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores'){
+    if(current()&&(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores')){
       try{
+        const scope=cmScope();
         const qs=new URLSearchParams({period_type:currentPeriodType(),period_value:currentPeriodValue(),store:currentStore()||'Compañía'});
         const rep=await capApi('/api/cm-productivity/report?'+qs,{timeoutMs:30000});
-        if(rep.use_digital&&q('#operativoDynamicContent'))q('#operativoDynamicContent').innerHTML=digitalReportHtml(rep);
+        if(current()&&scope===cmScope()&&rep.use_digital&&q('#operativoDynamicContent'))q('#operativoDynamicContent').innerHTML=digitalReportHtml(rep);
       }catch(e){console.warn('[V199] productividad digital',e)}
     }
     return result;

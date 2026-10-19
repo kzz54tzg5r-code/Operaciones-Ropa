@@ -46,6 +46,7 @@ function brandCards(root){
  });
  root.querySelectorAll('.compact-section').forEach(section=>{
   const head=section.querySelector(':scope>summary,:scope>.compact-bonus-summary');if(!head)return;
+  if(section.tagName==='DETAILS'){const action=head.querySelector('.compact-section-action'),label=section.open?'Cerrar detalle':'Ver detalle';if(action&&action.textContent!==label)action.textContent=label;}
   if(!head.querySelector(':scope>.compact-icon')){
    const label=head.querySelector('strong'),spec=theme(text(label));head.insertAdjacentHTML('afterbegin',icon(spec[0],spec[1]));
   }
@@ -66,6 +67,7 @@ function disclosure(root,block,title,metric,id,captionText){
   if(section.open){y=window.scrollY;root.querySelectorAll('details.compact-section').forEach(other=>{if(other!==section)other.open=false;});window.dispatchEvent(new Event('resize'));}
   action.textContent=section.open?'Cerrar detalle':'Ver detalle';
  });
+ new MutationObserver(()=>{const label=section.open?'Cerrar detalle':'Ver detalle';if(action.textContent!==label)action.textContent=label;}).observe(section,{attributes:true,attributeFilter:['open']});
  section.append(head,body);body.append(block,back);section.open=!!state.get(sectionKey);return section;
 }
 function metricGrid(rows,headers){

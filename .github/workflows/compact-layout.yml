@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'web/**'
+      - 'v199_access_perf_productivity_patch.py'
       - 'v229_mobile_tabs_final_patch.py'
       - 'v234_exact_mobile_tabs_patch.py'
       - 'v237_final_ui_patch.py'
