@@ -15,6 +15,15 @@ find web -maxdepth 1 -type f ! -name 'index.html' -exec cp "{}" "$OUT/static/" \
 cp web/manifest.webmanifest "$OUT/manifest.webmanifest"
 cp web/service-worker.js "$OUT/service-worker.js"
 
+# Exponer el SHA real del build para detectar cuando Netlify queda desactualizado.
+# COMMIT_REF es el SHA nativo del despliegue Git de Netlify.
+DEPLOY_SHA="${COMMIT_REF:-$(git rev-parse HEAD 2>/dev/null || true)}"
+if [[ ! "$DEPLOY_SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "ERROR: commit del despliegue Netlify no identificable" >&2
+  exit 1
+fi
+printf '{"provider":"netlify","sha":"%s"}\n' "$DEPLOY_SHA" > "$OUT/deploy-version.json"
+
 # Página informativa para errores locales del alojamiento.
 cat > "$OUT/404.html" <<'EOF'
 <!doctype html><html lang="es"><meta charset="utf-8">
