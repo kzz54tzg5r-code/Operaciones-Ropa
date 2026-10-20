@@ -1,0 +1,44 @@
+name: Netlify primary preview smoke
+on:
+  push:
+    branches:
+      - netlify-primary-preparation-20261020
+  pull_request:
+    paths:
+      - netlify.toml
+      - scripts/build_netlify_frontend.sh
+      - web/**
+      - .github/workflows/netlify-primary-smoke.yml
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Netlify static assets
+        run: bash scripts/build_netlify_frontend.sh
+      - name: Validate Netlify configuration, PWA, and assets
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, tomllib
+          root = pathlib.Path("netlify-public")
+          conf = tomllib.loads(pathlib.Path("netlify.toml").read_text())
+          assert conf["build"]["publish"] == str(root)
+          for file in (
+              "static/pwa_install.js",
+              "static/compact_reports.css",
+              "static/compact_reports.js",
+              "static/offline.html",
+              "static/manifest.webmanifest",
+              "manifest.webmanifest",
+              "service-worker.js",
+              "static/app-icon-192.svg",
+          ):
+              assert (root/file).is_file(), f"Missing: {file}"
+          assert not (root/"index.html").exists(), "Dynamic HTML patches must not be bypassed"
+          manifest=json.loads((root/"manifest.webmanifest").read_text())
+          assert manifest.get("start_url"), "Missing PWA start_url"
+          paths=[r["from"] for r in conf["redirects"]]
+          assert paths==["/api/*", "/", "/*"], paths
+          assert all(r["to"].startswith("https://operaciones-ropa-production.up.railway.app/") for r in conf["redirects"])
+          print("PASS: Netlify static assets, service worker, rewrites and manifest")
+          PY
