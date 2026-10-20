@@ -5,6 +5,7 @@ on:
       - .github/workflows/netlify-live-site-validation.yml
   push:
     branches:
+      - main
       - netlify-live-validation-20261020
   workflow_dispatch:
 
