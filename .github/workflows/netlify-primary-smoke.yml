@@ -19,11 +19,12 @@ jobs:
       - name: Validate Netlify configuration, PWA, and assets
         run: |
           python3 - <<'PY'
-          import json, pathlib, tomllib
+          import json, pathlib, tomllib, subprocess
           root = pathlib.Path("netlify-public")
           conf = tomllib.loads(pathlib.Path("netlify.toml").read_text())
           assert conf["build"]["publish"] == str(root)
           for file in (
+              "deploy-version.json",
               "static/pwa_install.js",
               "static/compact_reports.css",
               "static/compact_reports.js",
@@ -35,6 +36,9 @@ jobs:
           ):
               assert (root/file).is_file(), f"Missing: {file}"
           assert not (root/"index.html").exists(), "Dynamic HTML patches must not be bypassed"
+          released=json.loads((root/"deploy-version.json").read_text())
+          current_commit=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
+          assert released["provider"]=="netlify" and released["sha"]==current_commit
           manifest=json.loads((root/"manifest.webmanifest").read_text())
           assert manifest.get("start_url"), "Missing PWA start_url"
           paths=[r["from"] for r in conf["redirects"]]
