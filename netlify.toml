@@ -1,0 +1,39 @@
+# Operaciones Ropa · fase de transición hacia Netlify como dominio principal.
+# La página raíz sigue viniendo de FastAPI porque los parches V### inyectan
+# HTML/CSS/JS en la respuesta del servidor. NO servir web/index.html sin parches.
+[build]
+  command = "bash scripts/build_netlify_frontend.sh"
+  publish = "netlify-public"
+
+# Las solicitudes autenticadas se procesan en el backend actual.
+# IMPORTANTE: los proxies de Netlify tienen un límite de 26 segundos.
+# No cambiar el dominio de producción hasta validar cargas y descargas pesadas.
+[[redirects]]
+  from = "/api/*"
+  to = "https://operaciones-ropa-production.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
+# Mantiene todas las modificaciones de frontend inyectadas por FastAPI.
+[[redirects]]
+  from = "/"
+  to = "https://operaciones-ropa-production.up.railway.app/"
+  status = 200
+  force = true
+
+# El CDN atiende los archivos existentes en /static, manifest y service worker.
+# Los demás endpoints (p.ej. health y rutas dinámicas) usan el backend.
+[[redirects]]
+  from = "/*"
+  to = "https://operaciones-ropa-production.up.railway.app/:splat"
+  status = 200
+
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
