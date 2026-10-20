@@ -1,0 +1,64 @@
+name: Netlify live site validation
+on:
+  pull_request:
+    paths:
+      - .github/workflows/netlify-live-site-validation.yml
+  push:
+    branches:
+      - netlify-live-validation-20261020
+  workflow_dispatch:
+
+jobs:
+  probe-public-netlify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe real Netlify URL and backend rewrites
+        env:
+          NETLIFY_ORIGIN: https://stellular-salamander-5b2f01.netlify.app
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          origin=os.environ["NETLIFY_ORIGIN"]
+          paths=[
+              ("/", "text/html"),
+              ("/health", "application/json"),
+              ("/manifest.webmanifest", None),
+              ("/service-worker.js", "javascript"),
+              ("/static/pwa_install.js", "javascript"),
+              ("/static/app-icon-192.svg", "image/svg"),
+          ]
+          errors=[]
+          for path,ctype in paths:
+              result=None
+              for attempt in range(3):
+                  try:
+                      request=urllib.request.Request(origin+path, headers={"User-Agent":"OperacionesRopa-GitHub-DeploySmoke/1.0"})
+                      with urllib.request.urlopen(request, timeout=16) as response:
+                          status=response.status
+                          media=response.headers.get("Content-Type","").lower()
+                          body=response.read(1200000)
+                      if status!=200 or not body:
+                          raise ValueError(f"status={status} bytes={len(body)}")
+                      if ctype and ctype not in media:
+                          raise ValueError(f"unexpected content-type: {media}")
+                      if path=="/" and b"Operaciones Ropa" not in body:
+                          raise ValueError("No Operaciones Ropa application in HTML")
+                      if path=="/health" and not json.loads(body).get("ok"):
+                          raise ValueError("backend /health does not respond ok")
+                      if path=="/manifest.webmanifest" and not json.loads(body).get("start_url"):
+                          raise ValueError("PWA manifest missing start_url")
+                      result=(path,status,media,len(body),b"v332-universal-multiline-headers" in body if path=="/" else None)
+                      break
+                  except Exception as e:
+                      detail=f"{type(e).__name__}: {e}"
+                      if attempt<2:time.sleep(5)
+              if result:
+                  print(f"PASS {result[0]} code={result[1]} type={result[2]} bytes={result[3]} patched_html={result[4]}", flush=True)
+              else:
+                  errors.append((path,detail))
+                  print(f"FAIL {path}: {detail}", flush=True)
+          if errors:
+              raise SystemExit(f"Netlify validation failed for {len(errors)} endpoint(s)")
+          print("All public Netlify smoke tests succeeded.")
+          PY
