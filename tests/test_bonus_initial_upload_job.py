@@ -54,7 +54,7 @@ def test_initial_bonus_cut_upload_returns_quickly_and_finishes_in_background(tmp
 
     target._save_upload_stream = save_upload
 
-    def save_source(source, filename):
+    def save_source(source, filename, exclusive_initial_cut=False):
         destination = capacity_dir / filename
         shutil.copy2(source, destination)
         entry = {
