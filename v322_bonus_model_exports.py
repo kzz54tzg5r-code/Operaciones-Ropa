@@ -33,6 +33,7 @@ FIELDS_B2 = [
     ("Días desde llegada", "arrival_age_days"),("DDI inicial", "initial_ddi"),
     ("Existencia inicial", "initial_existence"),("Inversión inicial ($)", "initial_investment"),
 ]
+FIELDS_B2_SUBCATEGORIES = [("Foto","photo"),("ID","id_art"),("Modelo","model"),("Subcategoría","catalog"),("Inventario inicial (pzas)","initial_existence"),("Entregas periodo","deliveries_status"),("Inventario final (pzas)","current_existence"),("SUG 7 inicial","initial_sug7"),("SUG 7 actual","current_sug7"),("DDI inicial","initial_ddi"),("DDI final SUG inicial","fixed_ddi"),("DDI final SUG actual","current_ddi"),("Reducción DDI comparable (%)","ddi_reduction_pct"),("Inversión inicial ($)","initial_investment"),("Inversión final ($)","current_investment"),("Estado","comparison_status")]
 CATALOGS = ("Abrigador", "Licencias", "Básicos")
 IMG_BASE = "http://static.priceshoes.com.mx/imgs/original/articulo/"
 
@@ -101,7 +102,7 @@ def install(m):
         value = row.get(key)
         if value is None:
             return ""
-        if key in ("id_art", "model", "catalog", "last_arrival"):
+        if key in ("id_art", "model", "catalog", "last_arrival", "deliveries_status", "comparison_status"):
             return str(value)
         try:
             return float(value)
@@ -121,7 +122,8 @@ def install(m):
         ws["A1"].font=Font(size=16, bold=True, color="FFFFFF")
         ws["A1"].fill=PatternFill("solid",fgColor="123B73")
         ws.merge_cells(f"A2:{get_column_letter(len(fields))}2")
-        ws["A2"]=f"Tienda: {store}  |  Periodo: {month}  |  Catálogo: {catalog}  |  Modelos: {len(rows)}"
+        group_label="Subcategoría" if fields is FIELDS_B2_SUBCATEGORIES else "Catálogo"
+        ws["A2"]=f"Tienda: {store}  |  Periodo: {month}  |  {group_label}: {catalog}  |  Modelos: {len(rows)}"
         ws["A2"].font=Font(size=11, bold=True, color="123B73")
         ws.append([])
         for col,(label,_key) in enumerate(fields,1):
@@ -158,6 +160,7 @@ def install(m):
                 if idx%2==0:
                     c.fill=PatternFill("solid",fgColor="F1F5FB")
         widths=([14,16,18,17,16,16,19,18,18,20,20,20] if fields is FIELDS else [14,16,18,20,22,20,20,17,21,23])
+        if fields is FIELDS_B2_SUBCATEGORIES: widths=[14,16,22,18,20,35,20,18,18,18,20,20,22,22,22,35]
         for col,w in enumerate(widths,1):
             ws.column_dimensions[get_column_letter(col)].width=w
         ws.freeze_panes="C5"
@@ -200,11 +203,12 @@ def install(m):
             fontSize=8.1, leading=9.7, textColor=colors.white,
             alignment=TA_CENTER
         )
+        group_label="Subcategoría" if fields is FIELDS_B2_SUBCATEGORIES else "Catálogo"
         story = [
             Paragraph("Operaciones Ropa — Bonos · Modelos a Detalle", title_style),
             Paragraph(
                 f"Tienda: {xml_escape(str(store))}  |  Periodo: {xml_escape(str(month))}"
-                f"  |  Catálogo: {xml_escape(str(catalog))}  |  Modelos: {len(rows)}",
+                f"  |  {group_label}: {xml_escape(str(catalog))}  |  Modelos: {len(rows)}",
                 label_style
             ),
             Spacer(1, 10),
@@ -216,6 +220,7 @@ def install(m):
             if fields is FIELDS else
             [59, 68, 77, 76, 98, 93, 82, 79, 80, 108]
         )
+        if fields is FIELDS_B2_SUBCATEGORIES: weights=[45,55,70,65,65,90,65,55,55,55,65,65,65,75,75,90]
         total = sum(weights)
         widths = [doc.width * weight / total for weight in weights]
         data = [[Paragraph(xml_escape(label), heading_style) for label, _ in fields]]
@@ -282,17 +287,17 @@ def install(m):
     @m.app.get("/api/bonuses/models-export")
     def export_bonus_models(request:Request,month:str="",store:str="",bonus:int=1,catalog:str="Abrigador",format:str="xlsx",photos:bool=True):
         m.require_user(request)
-        if bonus not in range(1,7) or catalog not in (*CATALOGS,"Todos") or format not in ("xlsx","pdf"):
+        if bonus not in range(1,7) or catalog not in (*(("Chamarra","Sudadera","Jeans") if bonus==2 else CATALOGS),"Todos") or format not in ("xlsx","pdf"):
             raise HTTPException(400,"Parámetros de exportación inválidos")
         if bonus == 2:
-            cohort=getattr(m, "_v327_bonus2_payload", None)
+            cohort=getattr(m, "_v340_bonus2_payload", None)
             if not cohort:
                 raise HTTPException(503,"La cartera específica del Bono 2 aún no está habilitada")
             data=cohort(request=request,month=month,store=store)
             if (data.get("b2_status") or "") == "pending":
                 raise HTTPException(409,"Bono 2 está preparando los modelos. Vuelve a intentar cuando termine la consulta.")
             if data.get("b2_status")=="error":
-                raise HTTPException(503,"No fue posible validar las ventas y la última llegada del corte")
+                raise HTTPException(503,"No fue posible validar los cortes de subcategorías")
         else:
             handler=next((r.endpoint for r in m.app.routes if getattr(r,"path",None)=="/api/bonuses-v313"),None)
             if not handler:
@@ -322,7 +327,7 @@ def install(m):
         safe_store=re.sub(r'[^\w -]', '', selected_store, flags=re.UNICODE).strip()
         safe_catalog=re.sub(r'[^\w -]', '', catalog, flags=re.UNICODE).strip()
         base=f"Modelos {safe_store} {safe_catalog} {issued_at}"
-        fields=FIELDS_B2 if bonus==2 else FIELDS
+        fields=FIELDS_B2_SUBCATEGORIES if bonus==2 else FIELDS
         output=excel(rows,selected_store,period,catalog,images,fields) if format=="xlsx" else pdf(rows,selected_store,period,catalog,images,fields)
         mimetype=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if format=="xlsx" else "application/pdf")
         return Response(output,media_type=mimetype,headers={

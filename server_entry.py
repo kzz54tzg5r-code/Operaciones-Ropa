@@ -451,4 +451,7 @@ _install_v331_recovery_audit_tab(web_app)
 from v332_compact_table_headers_patch import install as _install_v332_compact_table_headers_patch
 _install_v332_compact_table_headers_patch(web_app)
 
+from v340_bonus2_subcategories import install as _install_v340_bonus2
+_install_v340_bonus2(web_app)
+
 app = web_app.app

@@ -36,16 +36,13 @@ async function setup(opts={}){
   w.fetch=async (url,requestOpt)=>{
     if(String(url).startsWith("/api/bonuses-v330") && opts.bonusResponse)return opts.bonusResponse(url,requestOpt);
     if(String(url).startsWith('/api/bonuses-v313')){reportRequests++;return {ok:true,json:async()=>data};}
-    if(String(url).startsWith('/api/bonuses-b2-v327'))return {ok:true,json:async()=>({
-      ...data,b2_cohort:true,b2_status:'ready',source_error:'',cutoff_date:'2026-10-13',
-      details:[{
-        catalog:'Licencias',id_art:'10001',model:'P1',sales_30:0,
-        last_arrival:'2026-10-05',arrival_age_days:8,initial_ddi:135,
-        initial_existence:25,initial_investment:12000
-      }],b2_stats:{models:1,sales_30:0,avg_ddi:135,existence:25,investment:12000,
-         catalog_counts:{Abrigador:0,Licencias:1,'Básicos':0}},
-      selected:{formula:'0 ventas últimos 30 días; última entrada >=7 días; catálogo vigente'},
-      ranking:[{store:'Olivar',models:1,avg_ddi:135,investment:12000,classification:'En seguimiento',rank:1}]
+    if(String(url).startsWith('/api/bonuses-b2-v340'))return {ok:true,json:async()=>({
+      ...data,b2_subcategories:true,b2_status:'ready',subcategories:['Chamarra','Sudadera','Jeans'],
+      legacy_components:{sales_pct:100,ddi_pct:100,attendance_pct:100,legacy_score_avg:100},
+      details:[{catalog:'Jeans',id_art:'10001',model:'P1',initial_ddi:200,current_ddi:50,fixed_ddi:150,
+        initial_sug7:1,current_sug7:3,initial_existence:200,current_existence:150,initial_investment:12000,
+        current_investment:10000,ddi_reduction_pct:25,comparison_status:'Comparable'}],
+      bonus2_rows:[{store:'Olivar',score:100,score_ready:true,display_order:1,ddi_pct:100,sales_pct:100,attendance_pct:100,catalogs:[]}]
     })};
     if(String(url).startsWith('/api/bonuses/models-export')){
       if(exportMode==='error')return {ok:false,status:404,text:async()=>JSON.stringify({detail:'No hay modelos para exportar en este catálogo y periodo'})};
@@ -116,25 +113,26 @@ test('model table scroll arrows and return button preserve navigation',async()=>
   }finally{f.dom.window.close();}
 });
 
-test('Bono 2 shares the Bono 1 four-tab design and lists zero-sales recent-arrival models',async()=>{
+test('Bono 2 shares the Bono 1 four-tab design and lists subcategories and comparable inventory',async()=>{
   const f=await setup();try{
     f.w.document.querySelector('[data-v313-bonus="2"]').click();
     await tick();await tick();
     const tabs=Array.from(f.w.document.querySelectorAll('[data-v313-section]')).map(x=>x.dataset.v313Section);
     assert.deepEqual(tabs,['summary','ranking','panorama','models']);
-    assert.match(f.w.document.querySelector('#v313Host').textContent,/Venta últimos 30 días/);
+    assert.match(f.w.document.querySelector('#v313Host').textContent,/DDI por subcategoría/);
     f.w.document.querySelector('[data-v313-section="models"]').click();
     await tick();
     f.w.document.querySelector('#compactBonusToggle').click();await tick();
-    f.w.document.querySelector('[data-v313-cat="Licencias"]').click();
+    f.w.document.querySelector('[data-v313-cat="Jeans"]').click();
     await tick();
     const list=f.w.document.querySelector('.v313-model-table');
     assert.equal(list.querySelectorAll('tbody tr').length,1);
-    assert.match(list.textContent,/Venta pzas 30/);
-    assert.match(list.textContent,/05\/10\/2026/);
-    assert.match(list.textContent,/135/);
+    assert.match(list.textContent,/Inventario inicial/);
+    assert.match(list.textContent,/SUG 7/);
+    assert.match(list.textContent,/150/);
     assert.match(list.textContent,/DDI inicial/);
-    assert.match(f.w.document.querySelector('#v313Host').textContent,/hace 7 días o más/i);
+    assert.match(list.textContent,/No disponibles/);
+    assert.equal(f.w.document.querySelector('[data-v313-cat="Abrigador"]'),null);
     assert.ok(f.w.document.querySelector('[data-v313-return]'));
     assert.ok(f.w.document.querySelector('[data-v313-download="xlsx"]'));
   }finally{f.dom.window.close();}

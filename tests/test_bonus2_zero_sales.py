@@ -63,23 +63,23 @@ def test_unknown_sales_dates_or_missing_headers_do_not_count_as_zero():
 
 def test_bono2_exports_use_independent_filtered_rows_not_bono1():
     app=FastAPI()
-    model={"id_art":"10001","model":"M1","catalog":"Licencias","sales_30":0,
+    model={"id_art":"10001","model":"M1","catalog":"Jeans","sales_30":0,
            "last_arrival":"2026-10-05","arrival_age_days":8,"initial_ddi":135,
            "initial_existence":10,"initial_investment":1250}
     m=SimpleNamespace(app=app,require_user=lambda request:{"role":"admin"},
-      _v327_bonus2_payload=lambda request,month,store:{
+      _v340_bonus2_payload=lambda request,month,store:{
          "b2_status":"ready","details":[model],"selected_store":store,"month":month,
       })
     install_export(m)
     exp=next(r.endpoint for r in app.routes if getattr(r,"path",None)=="/api/bonuses/models-export")
-    result=exp(None,"2026-10","Olivar",2,"Licencias","xlsx",False)
+    result=exp(None,"2026-10","Olivar",2,"Jeans","xlsx",False)
     assert result.status_code==200
     sheet=load_workbook(BytesIO(result.body)).active
     assert sheet["B5"].value=="10001"
-    assert sheet["E5"].value==0
-    assert sheet["F5"].value=="2026-10-05"
-    assert sheet["H5"].value==135
-    pdf=exp(None,"2026-10","Olivar",2,"Licencias","pdf",False)
+    assert sheet["E5"].value==10
+    assert sheet["D5"].value=="Jeans"
+    assert sheet["J5"].value==135
+    pdf=exp(None,"2026-10","Olivar",2,"Jeans","pdf",False)
     assert pdf.body.startswith(b"%PDF-")
     assert pdf.status_code==200
 
@@ -87,11 +87,11 @@ def test_bono2_exports_use_independent_filtered_rows_not_bono1():
 def test_bono2_export_pending_gives_clear_409():
     app=FastAPI()
     m=SimpleNamespace(app=app,require_user=lambda request:{"role":"admin"},
-     _v327_bonus2_payload=lambda request,month,store:{"b2_status":"pending","details":[]})
+     _v340_bonus2_payload=lambda request,month,store:{"b2_status":"pending","details":[]})
     install_export(m)
     exp=next(r.endpoint for r in app.routes if getattr(r,"path",None)=="/api/bonuses/models-export")
     with pytest.raises(HTTPException) as err:
-        exp(None,"2026-10","Olivar",2,"Licencias","xlsx",False)
+        exp(None,"2026-10","Olivar",2,"Jeans","xlsx",False)
     assert err.value.status_code==409
 
 
