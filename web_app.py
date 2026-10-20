@@ -2605,6 +2605,22 @@ def parse_operations_excel(path: Path, persist: bool=True):
 def health():
     return {"ok": True, "app": "Operaciones Ropa", "version": "V47"}
 
+
+@app.get("/api/deploy-version")
+def deploy_version():
+    """Identificador público del commit que Railway tiene realmente en ejecución.
+
+    No expone variables de entorno privadas, información de usuarios ni archivos.
+    Permite comprobar que Netlify, Railway y GitHub comparten la versión.
+    """
+    return JSONResponse(
+        {
+            "provider": "railway",
+            "sha": os.environ.get("RAILWAY_GIT_COMMIT_SHA", ""),
+        },
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
+
 @app.head("/")
 def index_healthcheck():
     """Permite que la verificación predeterminada de Render responda 200."""
