@@ -80,3 +80,22 @@ jobs:
               raise SystemExit(f"Netlify validation failed for {len(errors)} endpoint(s)")
           print("All public Netlify smoke tests succeeded.")
           PY
+
+      - name: Verify full HTML contains runtime visual patches
+        run: |
+          python3 - <<'PY'
+          import urllib.request
+          url="https://stellular-salamander-5b2f01.netlify.app/"
+          req=urllib.request.Request(url,headers={"User-Agent":"OperacionesRopa-HTML-Parity-Check/1.0"})
+          with urllib.request.urlopen(req,timeout=25) as resp:
+              body=resp.read(16*1024*1024)
+              content_length=resp.headers.get("Content-Length")
+          markers={
+              "V332 multiline headers": b"v332-universal-multiline-headers" in body,
+              "V289 device fit": b"v289-device-fit-css" in body,
+              "end-of-html": b"</html>" in body[-2000:].lower(),
+          }
+          print("HTML bytes",len(body),"declared_length",content_length, "markers", markers)
+          assert markers["V332 multiline headers"] and markers["V289 device fit"], "Dynamic UI patches missing from Netlify home page"
+          assert markers["end-of-html"], "Incomplete HTML received"
+          PY
