@@ -135,6 +135,11 @@ test('Bono 2 shares the Bono 1 four-tab design and lists subcategories and compa
     assert.equal(f.w.document.querySelector('[data-v313-cat="Abrigador"]'),null);
     assert.ok(f.w.document.querySelector('[data-v313-return]'));
     assert.ok(f.w.document.querySelector('[data-v313-download="xlsx"]'));
+    f.w.document.querySelector('[data-v313-bonus="1"]').click();await tick();await tick();
+    f.w.document.querySelector('[data-v313-section="models"]').click();await tick();
+    const toggle=f.w.document.querySelector('#compactBonusToggle');if(toggle.getAttribute('aria-expanded')==='false')toggle.click();await tick();
+    assert.ok(f.w.document.querySelector('[data-v313-cat="Abrigador"].active'));
+    assert.equal(f.w.document.querySelectorAll('.v313-model-table tbody tr').length,30);
   }finally{f.dom.window.close();}
 });
 

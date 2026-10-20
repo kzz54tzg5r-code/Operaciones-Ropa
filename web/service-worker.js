@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v340';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v341';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',

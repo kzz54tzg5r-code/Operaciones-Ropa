@@ -430,7 +430,7 @@ return cutbar(d)+hero(d)+(subtabsHtml||"")+"<section class=\"v313-panel\"><div c
 }
 function models(d,onlyCatalog){
 if(onlyCatalog)S.catalog=onlyCatalog;
-var categories=d.b2_subcategories?d.subcategories:CAT();if(d.b2_subcategories&&!categories.includes(S.catalog))S.catalog=categories[0];
+var categories=d.b2_subcategories?d.subcategories:CAT();if(!categories.includes(S.catalog))S.catalog=categories[0];
 var all=d.details||[],rows=all.filter(function(x){return x.catalog===S.catalog});
 var tabsHtml=onlyCatalog?"":"<div class=\"v313-subtabs\">"+categories.map(function(c){return"<button data-v313-cat=\""+c+"\" class=\""+(S.catalog===c?"active":"")+"\">"+c+"</button>"}).join("")+"</div>";
 return modelTable(d,rows,S.catalog,false,tabsHtml)
