@@ -229,7 +229,100 @@ function compactControls(){
  document.querySelectorAll('#page-operativo .compact-summary-band,#page-bonuses .compact-summary-band').forEach(band=>{setStyle(band,'display','grid');setStyle(band,'grid-template-columns','repeat(2,minmax(0,1fr))');setStyle(band,'width','100%');});
 }
 
-function run(){queued=false;compactControls();document.querySelectorAll('#operativoDynamicContent').forEach(root=>{decorate(root);brandCards(root);});document.querySelectorAll('#v313Host').forEach(brandCards);}
+
+/* Opcion 1 - tablero gerencial derivado exclusivamente de los datos existentes. */
+function execOptionOne(root){
+  if(!root || root.querySelector(':scope > .op1-shell'))return;
+  if(!document.getElementById('op1-styles')){
+    const css=document.createElement('style');css.id='op1-styles';
+    css.textContent="\n#page-operativo #operativoDynamic .op1-shell{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,23%);gap:8px;margin-top:6px;align-items:start}\n#page-operativo #operativoDynamic .op1-kpis{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}\n#page-operativo #operativoDynamic .op1-kpi{border:1px solid #dce8f1;border-radius:9px;padding:9px 11px;min-width:0;background:#eafaf4}\n#page-operativo #operativoDynamic .op1-kpi:nth-child(4n+2){background:#fff2e9}\n#page-operativo #operativoDynamic .op1-kpi:nth-child(4n+3){background:#f3efff}\n#page-operativo #operativoDynamic .op1-kpi:nth-child(4n+4){background:#ebf4ff}\n#page-operativo #operativoDynamic .op1-kpi small{display:block;font-size:11px!important;font-weight:750;color:#426787;line-height:1.1}\n#page-operativo #operativoDynamic .op1-kpi strong{font-size:clamp(18px,1.85vw,25px)!important;line-height:1.1;font-weight:850;color:#047a62;display:block;margin-top:4px;overflow-wrap:anywhere}\n#page-operativo #operativoDynamic .op1-kpi:nth-child(4n+2) strong{color:#d6620e}\n#page-operativo #operativoDynamic .op1-kpi:nth-child(4n+3) strong{color:#7737c9}\n#page-operativo #operativoDynamic .op1-kpi:nth-child(4n+4) strong{color:#1560b3}\n#page-operativo #operativoDynamic .op1-kpi em{font:normal 10px Arial;color:#6e879d;display:block}\n#page-operativo #operativoDynamic .op1-main,#page-operativo #operativoDynamic .op1-card{border:1px solid #d6e5f3;border-radius:10px;padding:10px;background:white;min-width:0}\n#page-operativo #operativoDynamic .op1-main h3,#page-operativo #operativoDynamic .op1-card h3{font-size:13px!important;color:#144d91;margin:0 0 7px!important}\n#page-operativo #operativoDynamic .op1-aside{display:grid;gap:8px}\n#page-operativo #operativoDynamic .op1-metric{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #e7eef7;padding:6px 0;font-size:11px;color:#355b82}\n#page-operativo #operativoDynamic .op1-metric b{color:#134e90;font-size:11px}\n#page-operativo #operativoDynamic .op1-table{max-width:100%;overflow-x:auto;overflow-y:visible;scrollbar-width:thin;-webkit-overflow-scrolling:touch}\n#page-operativo #operativoDynamic .op1-table table{border-collapse:collapse!important;width:100%;line-height:1.1!important;table-layout:auto!important}\n#page-operativo #operativoDynamic .op1-table th{background:#e2effb!important;color:#174677!important;font-size:10px!important;padding:6px 5px!important;white-space:normal!important;line-height:1.1!important}\n#page-operativo #operativoDynamic .op1-table td{font-size:10.5px!important;line-height:1.1!important;padding:4px 5px!important;height:auto!important;white-space:nowrap!important}\n#page-operativo #operativoDynamic .op1-table tbody tr:nth-child(even){background:#f8fbff}\n#page-operativo #operativoDynamic .op1-actions{display:flex;gap:5px;flex-wrap:wrap;margin:3px 0 6px}\n#page-operativo #operativoDynamic .op1-actions button{padding:5px 8px!important;font-size:10px!important;min-height:27px!important}\n#page-operativo #operativoDynamic .op1-mini{width:100%;border-collapse:collapse;font-size:10px}\n#page-operativo #operativoDynamic .op1-mini th{text-align:left;background:#e4effa;padding:5px}\n#page-operativo #operativoDynamic .op1-mini td{padding:5px;border-bottom:1px solid #e9eef5}\n#page-operativo #operativoDynamic .op1-mini td:last-child{text-align:right}\n#page-operativo #operativoDynamic .op1-extra{border:1px solid #d5e4f2;border-radius:9px;margin-top:7px;padding:0;background:#fff}\n#page-operativo #operativoDynamic .op1-extra>summary{cursor:pointer;padding:8px 10px;font-size:11px;font-weight:750;color:#145393}\n#page-operativo #operativoDynamic .op1-extra-body{padding:9px;max-width:100%;overflow-x:auto}\n#page-operativo #operativoDynamic .op1-extra-body :is(.chart-box,.bars,.plotly-graph-div,.combo-svg,.recovery-svg,.rr243-chart,.rr243-chart-panel,.compact-progress-track){display:none!important}\n#page-operativo #operativoDynamicTitle{font-size:17px!important;margin:4px 0 2px!important}\n#page-operativo #operativoDynamicSub{font-size:11px!important;margin:0 0 5px!important}\n#page-operativo #operativoPeriodBar{padding:7px!important;margin-bottom:5px!important}\n#page-operativo #operativoPeriodBar .or-report-filter-brand{display:none!important}\n#page-operativo #operativoPeriodBar select{min-height:32px!important;font-size:11px!important;padding:5px!important}\n#page-operativo #operativoPeriodBar label{font-size:10px!important}\n@media(max-width:860px){#page-operativo #operativoDynamic .op1-shell{grid-template-columns:1fr}#page-operativo #operativoDynamic .op1-aside{grid-template-columns:repeat(2,minmax(0,1fr))}}\n@media(max-width:540px){#page-operativo #operativoDynamic .op1-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#page-operativo #operativoDynamic .op1-aside{grid-template-columns:1fr}}\n@media print{#page-operativo #operativoDynamic .op1-shell{grid-template-columns:minmax(0,1fr) 22%!important}#page-operativo #operativoDynamic .op1-extra{display:none!important}}\n";
+    document.body.appendChild(css);
+  }
+  const view=(document.getElementById('operativoDynamicTitle')?.textContent||'').trim();
+  if(!root.querySelector('table,.mct-kpi-grid,.report-kpis,.rr243-kpis,.v331-kpis,.kpis'))return;
+  if(root.querySelector('input[type=file],.goalInput,#opsDropzone')||/carga de datos|cargar productividad|metas y tiendas|configuraci[oó]n/i.test(view))return;
+  const txt=n=>(n?.textContent||'').replace(/\s+/g,' ').trim();
+  const mk=(tag,cls,content)=>{
+    const el=document.createElement(tag);if(cls)el.className=cls;
+    if(content!==undefined)el.textContent=content;return el;
+  };
+  const band=root.querySelector('.mct-kpi-grid,.report-kpis,.rr243-kpis,.v331-kpis,.kpis');
+  let data=band?[...band.children].map(c=>({
+    label:txt(c.querySelector('.mct-kpi-label,.rk-label,.lab,.label,.rr243-kpi-label,.v331-kpi-label')),
+    value:txt(c.querySelector('.mct-kpi-value,.rk-value,.val,.big,.rr243-kpi-value,.v331-kpi-value')),
+    note:txt(c.querySelector('.mct-kpi-sub,.rk-sub,.note,small'))
+  })).filter(k=>k.label&&k.value):[];
+  if(/Centro Ejecutivo|Centro Operativo/i.test(view)&&data.length>4){
+    const selected=[/total operaci[oó]n|operaci[oó]n/i,/pendientes/i,/acondicionado/i,/ubicado/i]
+      .map(rx=>data.find(k=>rx.test(k.label))).filter(Boolean);
+    if(selected.length>=3)data=selected.concat(data.filter(k=>!selected.includes(k)));
+  }
+  const eligible=[...root.querySelectorAll('table')].filter(t=>t.querySelector('thead th,thead td')&&t.querySelector('tbody tr'));
+  const score=table=>{
+    const headers=[...table.querySelectorAll('thead th')].map(txt);
+    const count=table.querySelectorAll('tbody tr').length;
+    return (headers.some(h=>/tienda|colaborador|archivo|fecha|modelo/i.test(h))?90:0)
+      +Math.min(count,25)*3+(headers.length>=4?10:0)
+      -(table.matches('.monthly-cross-table')?120:0);
+  };
+  eligible.sort((a,b)=>score(b)-score(a));
+  const primary=eligible[0]||null;
+  if(!primary&&!data.length)return;
+  const headers=primary?[...primary.querySelectorAll('thead tr:last-child th')].map(txt):[];
+  let labelIndex=headers.findIndex(h=>/tienda|colaborador|archivo|fecha|modelo/i.test(h));
+  if(labelIndex<0)labelIndex=0;
+  let valueIndex=headers.findIndex((h,i)=>i!==labelIndex&&/pendientes|venta|recuperaci[oó]n|piezas|cumplimiento|score|realizados/i.test(h));
+  if(valueIndex<0)valueIndex=headers.findIndex((h,i)=>i!==labelIndex);
+  const firstRows=primary?[...primary.querySelectorAll('tbody tr')].map(tr=>[...tr.cells].map(txt))
+    .filter(row=>row.length>labelIndex&&!/^(total|compa[nñ][ií]a)/i.test(row[labelIndex]||'')).slice(0,5):[];
+  const shell=mk('div','op1-shell');
+  if(data.length){
+    const cards=mk('div','op1-kpis');
+    data.slice(0,4).forEach(k=>{
+      const c=mk('div','op1-kpi');c.append(mk('small',null,k.label),mk('strong',null,k.value));
+      if(k.note)c.append(mk('em',null,k.note));cards.append(c);
+    });shell.append(cards);
+  }
+  const main=mk('section','op1-main');
+  main.append(mk('h3',null,primary?'Detalle por tienda / indicador':'Resumen de indicadores'));
+  const actions=mk('div','op1-actions');main.append(actions);
+  const side=mk('aside','op1-aside'),overview=mk('section','op1-card');
+  overview.append(mk('h3',null,'Resumen gerencial'));
+  data.slice(0,6).forEach(k=>{
+    const line=mk('div','op1-metric');line.append(mk('span',null,k.label),mk('b',null,k.value));overview.append(line);
+  });
+  if(!data.length)overview.append(mk('div','op1-metric','Consulta el detalle de la tabla'));
+  side.append(overview);
+  if(firstRows.length){
+    const panel=mk('section','op1-card');
+    panel.append(mk('h3',null,'Primeras 5 filas'));
+    const table=mk('table','op1-mini'),thead=mk('thead'),theadRow=mk('tr');
+    [headers[labelIndex]||'Tienda',headers[valueIndex]||'Valor'].forEach(h=>theadRow.append(mk('th',null,h)));
+    thead.append(theadRow);table.append(thead);
+    const tb=mk('tbody');
+    firstRows.forEach(row=>{
+      const tr=mk('tr');tr.append(mk('td',null,row[labelIndex]||'—'),mk('td',null,row[valueIndex]||'—'));tb.append(tr);
+    });table.append(tb);panel.append(table);side.append(panel);
+  }
+  shell.append(main,side);
+  const extra=mk('details','op1-extra');
+  const summary=mk('summary',null,'Detalles y herramientas adicionales');
+  const extraBody=mk('div','op1-extra-body');
+  const controls=!!root.querySelector('input,select,textarea,form');
+  while(root.firstChild)extraBody.append(root.firstChild);
+  extra.append(summary,extraBody);
+  root.append(shell,extra);
+  [...extraBody.querySelectorAll('.report-actions,.report-downloads,.download-bar')]
+    .forEach(node=>actions.append(node));
+  if(primary){
+    const holder=primary.closest('.tablewrap,.compact-table-scroll,.rr243-tablewrap,.v331-tablewrap')||primary;
+    holder.classList.add('op1-table');
+    main.append(holder);
+  }else main.append(mk('p',null,'Sin tabla disponible en el periodo seleccionado; revisa los indicadores y el detalle.'));
+  if(controls)extra.open=true;
+}
+
+function run(){queued=false;compactControls();document.querySelectorAll('#operativoDynamicContent').forEach(execOptionOne);document.querySelectorAll('#v313Host').forEach(brandCards);}
 function schedule(){if(!queued){queued=true;requestAnimationFrame(run);}}
 function start(){
  window.addEventListener('resize',schedule);
