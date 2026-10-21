@@ -3,6 +3,7 @@ const fs=require('fs'),path=require('path'),os=require('os'),Module=require('mod
 const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright');
 const root=path.resolve(__dirname,'../..'),out=fs.mkdtempSync(path.join(os.tmpdir(),'ropa-center-'));
 const rendered=spawnSync(process.env.PYTHON||'python3',[root+'/tests/ui/render_production_page.py',out],{cwd:root,encoding:'utf8',timeout:60000});assert.equal(rendered.status,0,rendered.stderr);
+if(process.env.ROPA_LEGACY_HTML){const file=out+'/page.html';fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/<script src="\/static\/center_lanes.js[^"]*" defer><\/script>/,''));}
 const fixtureFile=root+'/tests/ui/runtime-fixture.cjs',mod=new Module(fixtureFile,module);mod.filename=fixtureFile;mod.paths=Module._nodeModulePaths(path.dirname(fixtureFile));mod._compile(fs.readFileSync(fixtureFile,'utf8')+'\nmodule.exports.fixture=fixture;module.exports.report=report;',fixtureFile);const {fixture,report}=mod.exports;
 const metrics={...report.metrics,dev_pzs:600,muertos:200,cajas:150,probador:50,ingresos:1000,total_pzs:1000,acondicionado:800,ubicado:600,recorridos:5,meta_recorridos:10,pct_acondicionado:80,pct_ubicado:60,pct_recorridos:50,pendiente_acondicionar:200,pendiente_ubicar:200};
 (async()=>{

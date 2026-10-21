@@ -324,7 +324,23 @@ function execOptionOne(root){
   if(controls)extra.open=true;
 }
 
-function run(){queued=false;document.body.classList.toggle('center-three-lanes',!!window.RopaCenterLanes?.isActive());compactControls();document.querySelectorAll('#operativoDynamicContent').forEach(root=>{if(!window.RopaCenterLanes?.mount(root))execOptionOne(root);});window.RopaCenterLanes?.fit();window.RopaCenterLanes?.filters();document.querySelectorAll('#v313Host').forEach(brandCards);}
+// Netlify may publish static assets before Railway can publish the HTML shell.
+// Load the center module for older HTML that does not yet reference its script.
+let centerLoading=false,centerUnavailable=false;
+function centerReady(){
+ if(window.RopaCenterLanes||centerUnavailable)return true;
+ const active=document.querySelector('#operativoNav [data-opview].active');
+ if(!/^(Centro Ejecutivo|Centro Operativo)$/.test(active?.dataset.opview||''))return true;
+ if(!centerLoading){
+  centerLoading=true;
+  const script=document.createElement('script');script.src='/static/center_lanes.js?v=344';
+  script.onload=schedule;
+  script.onerror=()=>{centerUnavailable=true;schedule();};
+  document.head.append(script);
+ }
+ return false;
+}
+function run(){queued=false;if(!centerReady())return;document.body.classList.toggle('center-three-lanes',!!window.RopaCenterLanes?.isActive());compactControls();document.querySelectorAll('#operativoDynamicContent').forEach(root=>{if(!window.RopaCenterLanes?.mount(root))execOptionOne(root);});window.RopaCenterLanes?.fit();window.RopaCenterLanes?.filters();document.querySelectorAll('#v313Host').forEach(brandCards);}
 function schedule(){if(!queued){queued=true;requestAnimationFrame(run);}}
 function start(){
  window.addEventListener('resize',schedule);
