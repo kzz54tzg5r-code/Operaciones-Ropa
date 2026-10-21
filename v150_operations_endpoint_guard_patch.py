@@ -18,6 +18,7 @@ import traceback
 
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
+from starlette.concurrency import run_in_threadpool
 
 
 def install(m):
@@ -51,7 +52,7 @@ def install(m):
         project_only: bool = False,
     ):
         try:
-            result = m.operations(
+            result = await run_in_threadpool(m.operations,
                 request,
                 store=store,
                 period_type=period_type,

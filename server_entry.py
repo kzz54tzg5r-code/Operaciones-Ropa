@@ -454,4 +454,8 @@ _install_v332_compact_table_headers_patch(web_app)
 from v340_bonus2_subcategories import install as _install_v340_bonus2
 _install_v340_bonus2(web_app)
 
+# Install after the report authorities; endpoints and numerical rules are retained.
+from runtime_performance import install as _install_runtime_performance
+_install_runtime_performance(web_app)
+
 app = web_app.app

@@ -12,6 +12,7 @@ import re
 import secrets
 import shutil
 import tempfile
+from contextlib import nullcontext
 from datetime import datetime
 from fastapi import File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -78,65 +79,68 @@ def install(m):
             if not result.get("ok"):
                 raise ValueError(str(result.get("message") or "No se pudo procesar el Excel."))
 
-            manifest = m.load_manifest()
-            entry_id = str(entry.get("id") or "")
-            processed = next(
-                (dict(x) for x in (manifest.get("capacities") or [])
-                 if str(x.get("id") or "") == entry_id
-                 and str(x.get("status") or "").lower() == "procesado"),
-                None,
-            )
-            if not processed:
+            # Share the source-registration lock: another upload must not be
+            # lost between reading the manifest and assigning this monthly cut.
+            with getattr(m, "_CAPACITY_SOURCE_LOCK", nullcontext()):
+                manifest = m.load_manifest()
+                entry_id = str(entry.get("id") or "")
                 processed = next(
-                    (dict(x) for x in (manifest.get("bonus_initial_capacity_entries") or [])
+                    (dict(x) for x in (manifest.get("capacities") or [])
                      if str(x.get("id") or "") == entry_id
                      and str(x.get("status") or "").lower() == "procesado"),
                     None,
                 )
-            if not processed:
-                raise RuntimeError("El Excel terminó sin quedar registrado como procesado; no se asignó al mes.")
+                if not processed:
+                    processed = next(
+                        (dict(x) for x in (manifest.get("bonus_initial_capacity_entries") or [])
+                         if str(x.get("id") or "") == entry_id
+                         and str(x.get("status") or "").lower() == "procesado"),
+                        None,
+                    )
+                if not processed:
+                    raise RuntimeError("El Excel terminó sin quedar registrado como procesado; no se asignó al mes.")
 
-            # Una fuente nueva queda separada del catálogo comercial normal.
-            # Si ya existía como Capacidades comercial procesada, se conserva su registro.
-            if not entry.get("duplicate"):
-                source_path = m.resolve_entry_path(processed)
-                target_dir = m.Path(m.COMMERCIAL_DATA_ROOT) / "bonus_initial_capacity"
-                target_dir.mkdir(parents=True, exist_ok=True)
-                target_path = target_dir / (
-                    str(processed.get("id") or "initial") + "_" +
-                    m.Path(processed.get("name") or filename).name
-                )
-                try:
-                    if source_path.exists() and source_path.resolve() != target_path.resolve():
-                        m.shutil.move(str(source_path), str(target_path))
-                    if not target_path.exists():
-                        raise FileNotFoundError("No se pudo mover el Excel al histórico aislado de Bonos.")
-                except Exception as exc:
-                    raise RuntimeError(f"No se pudo aislar el corte inicial: {str(exc)[:250]}") from exc
+                # Una fuente nueva queda separada del catálogo comercial normal.
+                # Si ya existía como Capacidades comercial procesada, se conserva su registro.
+                if not entry.get("duplicate"):
+                    source_path = m.resolve_entry_path(processed)
+                    target_dir = m.Path(m.COMMERCIAL_DATA_ROOT) / "bonus_initial_capacity"
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    target_path = target_dir / (
+                        str(processed.get("id") or "initial") + "_" +
+                        m.Path(processed.get("name") or filename).name
+                    )
+                    try:
+                        if source_path.exists() and source_path.resolve() != target_path.resolve():
+                            m.shutil.move(str(source_path), str(target_path))
+                        if not target_path.exists():
+                            raise FileNotFoundError("No se pudo mover el Excel al histórico aislado de Bonos.")
+                    except Exception as exc:
+                        raise RuntimeError(f"No se pudo aislar el corte inicial: {str(exc)[:250]}") from exc
 
-                processed["path"] = str(target_path.relative_to(m.COMMERCIAL_DATA_ROOT))
-                manifest["capacities"] = [
-                    dict(x) for x in (manifest.get("capacities") or [])
-                    if str(x.get("id") or "") != entry_id
-                ]
-                bonus_entries = manifest.setdefault("bonus_initial_capacity_entries", [])
-                existing_index = next(
-                    (i for i, x in enumerate(bonus_entries) if str(x.get("id") or "") == entry_id),
-                    None,
-                )
-                processed["bonus_initial_only"] = True
-                if existing_index is None:
-                    bonus_entries.append(processed)
-                else:
-                    updated_entry = dict(bonus_entries[existing_index])
-                    updated_entry.update(processed)
-                    bonus_entries[existing_index] = updated_entry
-                    processed = updated_entry
+                    processed["path"] = str(target_path.relative_to(m.COMMERCIAL_DATA_ROOT))
+                    manifest["capacities"] = [
+                        dict(x) for x in (manifest.get("capacities") or [])
+                        if str(x.get("id") or "") != entry_id
+                    ]
+                    bonus_entries = manifest.setdefault("bonus_initial_capacity_entries", [])
+                    existing_index = next(
+                        (i for i, x in enumerate(bonus_entries) if str(x.get("id") or "") == entry_id),
+                        None,
+                    )
+                    processed["bonus_initial_only"] = True
+                    if existing_index is None:
+                        bonus_entries.append(processed)
+                    else:
+                        updated_entry = dict(bonus_entries[existing_index])
+                        updated_entry.update(processed)
+                        bonus_entries[existing_index] = updated_entry
+                        processed = updated_entry
 
-            cuts = manifest.setdefault("bonus_initial_cuts", {})
-            previous = cuts.get(month)
-            cuts[month] = entry_id
-            m.save_manifest(manifest)
+                cuts = manifest.setdefault("bonus_initial_cuts", {})
+                previous = cuts.get(month)
+                cuts[month] = entry_id
+                m.save_manifest(manifest)
 
             payload = {
                 "ok": True,
@@ -268,12 +272,12 @@ def install(m):
                 ensure_ascii=False,
             ),
         )
-        m.threading.Thread(
-            target=_run_bonus_initial_cut_job,
-            args=(job["id"], entry, filename, month, str(actor.get("username") or "admin")),
-            daemon=True,
-            name=f"bonus-initial-{job['id'][:8]}",
-        ).start()
+        args = (job["id"], entry, filename, month, str(actor.get("username") or "admin"))
+        if callable(getattr(m, "_submit_upload_job", None)):
+            m._submit_upload_job(job["id"], _run_bonus_initial_cut_job, args)
+        else:
+            m.threading.Thread(target=_run_bonus_initial_cut_job, args=args,
+                               daemon=True, name=f"bonus-initial-{job['id'][:8]}").start()
         return JSONResponse(
             status_code=202,
             content={

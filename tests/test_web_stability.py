@@ -108,17 +108,16 @@ def test_operations_job_survives_restart_and_is_resumed(monkeypatch,tmp_path):
              "2026-09-03T00:00:00","","","admin")
         )
 
-    class ImmediateThread:
-        def __init__(self,target,args,**_kwargs):self.target=target;self.args=args
-        def start(self):started.append((self.target,self.args))
-
-    monkeypatch.setattr(web_app.threading,"Thread",ImmediateThread)
+    def submit(job_id,target,args):
+        started.append((target,args))
+        return True
+    monkeypatch.setattr(web_app,"_submit_upload_job",submit)
     assert web_app._resume_pending_upload_jobs()==1
     assert started[0][0] is web_app._run_operations_job
     assert started[0][1]==("job1",source,"base.xlsx","admin")
 
 
-def test_model_detail_is_capped_to_keep_browser_responsive(monkeypatch):
+def test_model_detail_preserves_all_rows_for_complete_exports(monkeypatch):
     count=220
     frame=pd.DataFrame({
         "Tienda":["Iztapalapa"]*count,
@@ -149,7 +148,10 @@ def test_model_detail_is_capped_to_keep_browser_responsive(monkeypatch):
 
     rows=web_app._capacity_model_rows("Compañía","Todas","80_20","2026-W35","Todos")
 
-    assert len(rows)==150
+    # Browser pagination is applied by the view; the data feeding full exports
+    # must retain all models, including rows beyond the first screen.
+    assert len(rows)==count
+    assert rows[-1]["id_art"]==str(count-1)
 
 
 def test_legacy_operations_json_is_compacted_without_daily_history(monkeypatch,tmp_path):

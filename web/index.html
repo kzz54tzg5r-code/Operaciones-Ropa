@@ -729,8 +729,25 @@ const rememberAnalysisStore=value=>{
 };
 const roleLabel={superadmin:'Super Administrador · Propietario',admin:'Administrador',director:'Director / Consulta',tienda:'Tienda',colaborador_lenceria:'Colaborador de Lencería',colaborador_operativo:'Colaborador Operativo · Productividad'};
 function state(ddi){return ddi>=121?['Exceso','bad']:ddi>=91?['Atención','warn']:['Óptimo','ok']}
+const ropaApiInflight=new Map();
 async function api(url,opt={}){
+  const isGet=String(opt.method||'GET').toUpperCase()==='GET';
+  const shared=isGet&&!opt.signal&&!opt.body&&/^\/api\/(operations(?:[/?]|$)|operation\/(?:report|meta)(?:[/?]|$)|commercial-)/.test(String(url));
+  const key=shared?JSON.stringify([String(url),opt.timeoutMs??30000,opt.credentials||'same-origin',(typeof Headers==='function'?Array.from(new Headers(opt.headers||{}).entries()):Object.entries(opt.headers||{}))]):null;
+  if(key&&ropaApiInflight.has(key)){
+    const data=await ropaApiInflight.get(key);
+    return typeof structuredClone==='function'?structuredClone(data):JSON.parse(JSON.stringify(data));
+  }
+  const work=apiRequest(url,opt);
+  if(key)ropaApiInflight.set(key,work);
+  try{return await work}finally{if(key&&ropaApiInflight.get(key)===work)ropaApiInflight.delete(key)}
+}
+async function apiRequest(url,opt={}){
   const controller=new AbortController();
+  const callerSignal=opt.signal;
+  const cancel=()=>controller.abort(callerSignal.reason);
+  if(callerSignal?.aborted)cancel();
+  else callerSignal?.addEventListener('abort',cancel,{once:true});
   // Respeta timeoutMs. Para cargas pesadas se pasan 900000 ms (15 min).
   const timeoutMs=Number(opt.timeoutMs ?? 30000);
   const timer=timeoutMs>0 ? setTimeout(()=>controller.abort(),timeoutMs) : null;
@@ -747,12 +764,30 @@ async function api(url,opt={}){
     }
     return j;
   }catch(e){
+    if(callerSignal?.aborted)throw e;
     if(e?.name==='AbortError')throw new Error('El servidor tardó demasiado en responder.');
     throw e;
   }finally{
     if(timer)clearTimeout(timer);
+    callerSignal?.removeEventListener('abort',cancel);
   }
 }
+async function uploadSalesPdfs(form,onProgress){
+  const job=await api('/api/upload/jobs/sales-pdfs',{method:'POST',body:form,timeoutMs:120000});
+  if(!job.id)throw new Error('El servidor no confirmó la recepción de los PDF.');
+  const storageKey='operacionesRopaUploadJob.sales-pdfs';
+  try{localStorage.setItem(storageKey,job.id)}catch(_){}
+  const deadline=Date.now()+15*60*1000;
+  while(Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,1500));
+    const state=await api('/api/upload/jobs/'+encodeURIComponent(job.id),{timeoutMs:15000});
+    if(typeof onProgress==='function')onProgress(state.message||'Procesando PDF de ventas…');
+    if(state.status==='complete'){try{localStorage.removeItem(storageKey)}catch(_){}return state.result||{}}
+    if(state.status==='error'){try{localStorage.removeItem(storageKey)}catch(_){}throw new Error(state.error||state.message||'No se pudo procesar el PDF.')}
+  }
+  throw new Error('El procesamiento continúa en segundo plano. Consulta el historial antes de volver a cargar el archivo.');
+}
+window.uploadSalesPdfs=uploadSalesPdfs;
 async function start(){
   $('#loginView').classList.remove('hidden');
   $('#appView').classList.add('hidden');
@@ -1163,6 +1198,10 @@ async function goSub(p){
   }
   if(p==='analysis-upload'){
     loadUploadHistories();
+    resumePendingUploadJob('sales-pdfs',job=>analysisUploadMessage(job.message||'Procesando PDF de ventas…'),async result=>{
+      analysisUploadMessage('Ventas procesadas: '+JSON.stringify(result.results||[],null,2));
+      await safeRefreshDash();await loadUploadHistories();
+    });
     resumePendingUploadJob(
       'capacity',
       job=>analysisUploadMessage('Carga recuperada después de actualizar la página.\n'+uploadStatusText(job)),
@@ -3311,7 +3350,7 @@ $('#analysisCapUploadBtn').onclick=async()=>{
 $('#analysisSalesUploadBtn').onclick=async()=>{
   const fs=Array.from($('#analysisSalesFiles').files||[]);if(!fs.length)return analysisUploadMessage('Selecciona PDF de ventas.');
   const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));fd.append('year',$('#analysisSalesYear').value);fd.append('month',$('#analysisSalesMonth').value);
-  try{const r=await api('/api/upload/sales-pdfs',{method:'POST',body:fd});analysisUploadMessage('Ventas procesadas: '+JSON.stringify(r.results,null,2));await loadDash()}
+  try{const r=await uploadSalesPdfs(fd,analysisUploadMessage);analysisUploadMessage('Ventas procesadas: '+JSON.stringify(r.results,null,2));await loadDash()}
   catch(e){analysisUploadMessage('Error: '+e.message)}
 };
 

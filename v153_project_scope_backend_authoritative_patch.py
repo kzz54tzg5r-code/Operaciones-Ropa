@@ -22,15 +22,33 @@ from __future__ import annotations
 import inspect
 import io
 import re
+import threading
 import traceback
 
 from fastapi import HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, Response
 
 
 def install(m):
     if getattr(m, "_V153_PROJECT_SCOPE_BACKEND", False):
         return
+    export_lock = threading.Lock()
+
+    def _pdf_bytes(data, report, store):
+        with export_lock:
+            return m._build_operations_pdf(data, report, scope=store)
+
+    def _xlsx_bytes(data, report):
+        with export_lock:
+            summary, stores, recovery, productivity = m._report_export_payload(data, report)
+            bio = io.BytesIO()
+            with m.pd.ExcelWriter(bio, engine="openpyxl") as writer:
+                m.pd.DataFrame(summary, columns=["Indicador", "Valor"]).to_excel(writer, sheet_name="Resumen Proyecto", index=False)
+                m.pd.DataFrame(stores).to_excel(writer, sheet_name="Detalle Proyecto", index=False)
+                m.pd.DataFrame(recovery).to_excel(writer, sheet_name="Recuperacion Todas", index=False)
+                m.pd.DataFrame(productivity).to_excel(writer, sheet_name="Productividad Proyecto", index=False)
+            return bio.getvalue()
 
     project_names_at_boot = list(m.project_store_names(True))
     print(
@@ -61,7 +79,7 @@ def install(m):
         compact: bool,
         project_only: bool,
     ):
-        result = m.operations(
+        result = await run_in_threadpool(m.operations,
             request,
             store=store,
             period_type=period_type,
@@ -366,7 +384,7 @@ def install(m):
         filename = f"{safe}_{period_safe}_proyecto" if period_safe else f"{safe}_proyecto"
 
         if format.lower() == "pdf":
-            payload = m._build_operations_pdf(data, report, scope=store)
+            payload = await run_in_threadpool(_pdf_bytes, data, report, store)
             return Response(
                 content=payload,
                 media_type="application/pdf",
@@ -376,16 +394,9 @@ def install(m):
                 },
             )
         if format.lower() == "xlsx":
-            summary, stores, recovery, productivity = m._report_export_payload(data, report)
-            bio = io.BytesIO()
-            with m.pd.ExcelWriter(bio, engine="openpyxl") as writer:
-                m.pd.DataFrame(summary, columns=["Indicador", "Valor"]).to_excel(writer, sheet_name="Resumen Proyecto", index=False)
-                m.pd.DataFrame(stores).to_excel(writer, sheet_name="Detalle Proyecto", index=False)
-                m.pd.DataFrame(recovery).to_excel(writer, sheet_name="Recuperacion Todas", index=False)
-                m.pd.DataFrame(productivity).to_excel(writer, sheet_name="Productividad Proyecto", index=False)
-            bio.seek(0)
+            payload = await run_in_threadpool(_xlsx_bytes, data, report)
             return Response(
-                content=bio.getvalue(),
+                content=payload,
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 headers={
                     "Content-Disposition": f'attachment; filename="{filename}.xlsx"',

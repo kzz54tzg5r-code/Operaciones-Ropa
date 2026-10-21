@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc, zipfile, gzip
 from functools import wraps, lru_cache
 from contextlib import contextmanager, nullcontext
+from runtime_performance import SerialJobQueue, file_stamp, serialized
 from xml.etree import ElementTree as ET
 
 # Compatibilidad Windows para este equipo:
@@ -42,6 +43,7 @@ from commercial.storage import (
     save_capacity_upload, save_sales_upload, resolve_entry_path, update_entry, save_manifest,
 )
 from commercial.config import CAPACITY_DIR, DATA_ROOT as COMMERCIAL_DATA_ROOT
+from commercial.storage import _manifest_lock as _CAPACITY_SOURCE_LOCK
 from commercial.parsers import extract_pdf_snapshot, read_capacity_file, read_sales_file
 
 ROOT = Path(__file__).resolve().parent
@@ -75,6 +77,11 @@ CHECKLIST_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 _RESOURCE_HEAVY_LOCK = threading.RLock()
 _UPLOAD_JOB_LOCK = threading.RLock()
 _ACTIVE_UPLOAD_JOBS: set[str] = set()
+_UPLOAD_QUEUE = SerialJobQueue(on_error=lambda job_id, exc: _fail_upload_job(job_id, exc))
+
+
+def _submit_upload_job(job_id, target, args):
+    return _UPLOAD_QUEUE.submit(job_id, target, args)
 
 REPORT_TABS = {
     "operations.center": "Centro Ejecutivo",
@@ -386,6 +393,7 @@ async def _save_upload_stream(upload: UploadFile, target: Path) -> int:
     return await asyncio.to_thread(copy_file)
 
 
+@serialized(_CAPACITY_SOURCE_LOCK)
 def _save_capacity_source_path(source: Path, original_name: str, include_bonus_initial: bool = False) -> dict:
     """Registra una capacidad desde disco sin duplicar el Excel en memoria."""
     digest=hashlib.sha256()
@@ -427,13 +435,24 @@ def _save_capacity_source_path(source: Path, original_name: str, include_bonus_i
     manifest.setdefault("capacities",[]).append(entry);save_manifest(manifest)
     return {**entry,"duplicate":False}
 
+@contextmanager
 def db():
-    con = sqlite3.connect(DB)
+    con = sqlite3.connect(DB, timeout=15)
     con.row_factory = sqlite3.Row
-    return con
+    try:
+        yield con
+        con.commit()
+    except BaseException:
+        con.rollback()
+        raise
+    finally:
+        con.close()
 
 def init_db():
     with db() as con:
+        # Readers can keep consulting committed data while a job writes.
+        # Keep SQLite's default FULL synchronization/durability.
+        con.execute("PRAGMA journal_mode=WAL")
         con.execute("""CREATE TABLE IF NOT EXISTS users(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -564,7 +583,8 @@ def init_db():
             created_at TEXT NOT NULL,
             started_at TEXT DEFAULT '',
             finished_at TEXT DEFAULT '',
-            created_by TEXT NOT NULL
+            created_by TEXT NOT NULL,
+            resume_count INTEGER NOT NULL DEFAULT 0
         )""")
 
         con.execute("""CREATE TABLE IF NOT EXISTS report_tab_visibility(
@@ -627,7 +647,7 @@ def ensure_upload_history_columns():
             if name not in cols:
                 con.execute(f"ALTER TABLE upload_history ADD COLUMN {name} {definition}")
 
-def ensure_upload_job_columns():
+def ensure_upload_job_columns(count_restarts: bool = True):
     """Evita ciclos infinitos si una carga pesada reinicia Render repetidamente."""
     with db() as con:
         cols={str(r["name"]) for r in con.execute("PRAGMA table_info(upload_jobs)").fetchall()}
@@ -635,10 +655,11 @@ def ensure_upload_job_columns():
             con.execute("ALTER TABLE upload_jobs ADD COLUMN resume_count INTEGER NOT NULL DEFAULT 0")
         # init_db convierte processing/publishing a queued con este mensaje. Contar
         # ese evento permite un reintento automático y después detiene el ciclo.
-        con.execute(
-            "UPDATE upload_jobs SET resume_count=COALESCE(resume_count,0)+1 "
-            "WHERE status='queued' AND message='El servicio se reinició; la carga se retomará automáticamente.'"
-        )
+        if count_restarts:
+            con.execute(
+                "UPDATE upload_jobs SET resume_count=COALESCE(resume_count,0)+1 "
+                "WHERE status='queued' AND message='El servicio se reinició; la carga se retomará automáticamente.'"
+            )
 
 init_db()
 ensure_user_security_columns()
@@ -4152,9 +4173,11 @@ def _capacity_area_report_series(frame: pd.DataFrame) -> pd.Series:
         return pd.Series(dtype=str)
     if "Área reporte" in frame.columns:
         return frame["Área reporte"]
-    sub=frame.get("Subcategoría",pd.Series("",index=frame.index)).fillna("").astype(str).str.upper()
-    cat=frame.get("Categoría",pd.Series("",index=frame.index)).fillna("").astype(str).str.upper()
-    aisle=frame.get("Pasillo",pd.Series("",index=frame.index)).fillna("").astype(str).str.upper()
+    # Normalized low-memory columns can be Categorical without an empty category.
+    # Convert labels before filling missing values; the classification is identical.
+    sub=frame.get("Subcategoría",pd.Series("",index=frame.index)).astype("string").fillna("").str.upper()
+    cat=frame.get("Categoría",pd.Series("",index=frame.index)).astype("string").fillna("").str.upper()
+    aisle=frame.get("Pasillo",pd.Series("",index=frame.index)).astype("string").fillna("").str.upper()
     text=sub.str.cat(cat,sep=" ").str.cat(aisle,sep=" ")
     out=pd.Series("Doblado",index=frame.index,dtype="object")
     lenc=text.str.contains(r"LENCER|BRASIER|PANTIB|BOXER|BIKINI|INTERIOR",regex=True,na=False)
@@ -4214,9 +4237,9 @@ def _operational_location_series(frame: pd.DataFrame) -> pd.Series:
         return pd.Series(dtype=str)
     if "Pasillo operativo" in frame.columns:
         return frame["Pasillo operativo"]
-    areas=frame.get("Área reporte",_capacity_area_report_series(frame)).fillna("").astype(str)
-    raw=frame.get("Pasillo",frame.get("Ubicación detalle",pd.Series("",index=frame.index))).fillna("").astype(str).str.strip()
-    stores=frame.get("Tienda",pd.Series("",index=frame.index)).fillna("").astype(str)
+    areas=frame.get("Área reporte",_capacity_area_report_series(frame)).astype("string").fillna("")
+    raw=frame.get("Pasillo",frame.get("Ubicación detalle",pd.Series("",index=frame.index))).astype("string").fillna("").str.strip()
+    stores=frame.get("Tienda",pd.Series("",index=frame.index)).astype("string").fillna("")
     # Explota únicamente los componentes de ubicación. Es vectorizado y mucho más
     # rápido que recorrer ~196 mil filas con Python.
     parts=raw.str.split(r"[,;/]+",regex=True).explode().astype(str).str.strip()
@@ -5356,7 +5379,7 @@ def operations(
     # desde aquí sólo se consulta la base persistente ya procesada.
 
     # Las vistas del navegador usan compact=true. Cacheamos por archivo + filtro.
-    source_stamp=_ops_source_stamp()
+    source_stamp=(_ops_source_stamp(), file_stamp(DB), file_stamp(str(DB)+"-wal"))
     cache_key=(source_stamp,store,period_type,period_value,area,activity,start_date,end_date,bool(compact),bool(project_only))
     if compact and cache_key in _OPS_RESPONSE_CACHE:
         return _OPS_RESPONSE_CACHE[cache_key]
@@ -6325,7 +6348,7 @@ async def start_capacity_job(request: Request,file:UploadFile=File(...)):
     finally:
         stage_path.unlink(missing_ok=True)
     job=_create_upload_job("capacity",filename,resolve_entry_path(entry),u["username"])
-    threading.Thread(target=_run_capacity_job,args=(job["id"],entry,filename),daemon=True,name=f"capacity-{job['id'][:8]}").start()
+    _submit_upload_job(job["id"],_run_capacity_job,(job["id"],entry,filename))
     return job
 
 @app.post("/api/upload/sales-pdfs")
@@ -6339,12 +6362,20 @@ async def upload_sales_pdfs(
     if year < 2020 or year > 2100 or month < 1 or month > 12:
         raise HTTPException(400, "Año o mes inválido")
     results = []
-    for f in files:
-        filename = f.filename or "ventas.pdf"
+    for upload in files:
+        source = (upload.filename or "ventas.pdf", await upload.read())
+        part = await asyncio.to_thread(_process_sales_pdf_sources, [source], year, month)
+        results.extend(part["results"])
+    return {"results": results}
+
+
+@serialized(_RESOURCE_HEAVY_LOCK)
+def _process_sales_pdf_sources(sources, year, month):
+    results = []
+    for filename, data in sources:
         if not filename.lower().endswith(".pdf"):
             results.append({"file": filename, "ok": False, "error": "La venta mensual debe cargarse en PDF"})
             continue
-        data = await f.read()
         if not data.startswith(b"%PDF"):
             results.append({"file": filename, "ok": False, "error": "El archivo no parece ser un PDF válido"})
             continue
@@ -6363,6 +6394,71 @@ async def upload_sales_pdfs(
             update_entry("sales", entry["id"], status="Error", error=str(exc), year=year, month=month)
             results.append({"file": filename, "ok": False, "error": str(exc)})
     return {"results": results}
+
+def _run_sales_pdf_job(job_id: str, source_path: Path) -> None:
+    with _UPLOAD_JOB_LOCK:
+        if job_id in _ACTIVE_UPLOAD_JOBS:
+            return
+        _ACTIVE_UPLOAD_JOBS.add(job_id)
+    paths = []
+    try:
+        spec = json.loads(source_path.read_text(encoding="utf-8"))
+        paths = [Path(item["path"]) for item in spec["files"]]
+        _update_upload_job(job_id, status="processing", progress=25,
+                           message="Procesando PDF de ventas. Puedes seguir consultando reportes.",
+                           started_at=datetime.now().isoformat(timespec="seconds"))
+        # Read one PDF at a time, after the HTTP request has returned 202.
+        sources = ((item["name"], Path(item["path"]).read_bytes()) for item in spec["files"])
+        with _RESOURCE_HEAVY_LOCK:
+            result = _process_sales_pdf_sources(sources, spec["year"], spec["month"])
+        result["message"] = "Procesamiento de PDF de ventas terminado."
+        _finish_upload_job(job_id, result)
+    except Exception as exc:
+        _fail_upload_job(job_id, exc)
+    finally:
+        for path in paths + [source_path]:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        with _UPLOAD_JOB_LOCK:
+            _ACTIVE_UPLOAD_JOBS.discard(job_id)
+
+
+@app.post("/api/upload/jobs/sales-pdfs", status_code=202)
+async def start_sales_pdf_job(request: Request, files: List[UploadFile] = File(...),
+                              year: int = Form(...), month: int = Form(...)):
+    actor = require_user(request, ("superadmin", "admin"))
+    if not 2020 <= year <= 2100 or not 1 <= month <= 12:
+        raise HTTPException(400, "Año o mes inválido")
+    if not files:
+        raise HTTPException(400, "Selecciona al menos un PDF")
+    token = secrets.token_hex(12)
+    source_path = STAGING_DIR / f"sales_pdf_job_{token}.json"
+    spec = {"year": year, "month": month, "files": []}
+    try:
+        for index, upload in enumerate(files):
+            name = upload.filename or "ventas.pdf"
+            if not name.lower().endswith(".pdf"):
+                raise HTTPException(400, "La venta mensual debe cargarse en PDF")
+            path = STAGING_DIR / f"sales_pdf_job_{token}_{index}.pdf"
+            spec["files"].append({"path": str(path), "name": name})
+            size = await _save_upload_stream(upload, path)
+            with path.open("rb") as stream:
+                valid = stream.read(4) == b"%PDF"
+            if not size or not valid:
+                raise HTTPException(400, "El archivo no parece ser un PDF válido")
+        source_path.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
+        job = _create_upload_job("sales_pdfs", ", ".join(item["name"] for item in spec["files"]),
+                                 source_path, actor["username"])
+    except BaseException:
+        for item in spec["files"]:
+            Path(item["path"]).unlink(missing_ok=True)
+        source_path.unlink(missing_ok=True)
+        raise
+    _submit_upload_job(job["id"], _run_sales_pdf_job, (job["id"], source_path))
+    return job
+
 
 @app.post("/api/upload/sales")
 async def upload_sales_legacy(request: Request):
@@ -6596,6 +6692,7 @@ def _run_operations_job(job_id: str, stage_path: Path, filename: str, username: 
 
 def _resume_pending_upload_jobs() -> int:
     """Retoma cargas desde el disco persistente después de un reinicio."""
+    ensure_upload_job_columns(count_restarts=False)
     with db() as con:
         pending=con.execute(
             "SELECT id,module,filename,source_path,created_by,resume_count,result_json FROM upload_jobs "
@@ -6645,6 +6742,9 @@ def _resume_pending_upload_jobs() -> int:
             if job["module"]=="operations":
                 target=_run_operations_job
                 args=(job["id"],source,job["filename"],job["created_by"])
+            elif job["module"]=="sales_pdfs":
+                target=_run_sales_pdf_job
+                args=(job["id"],source)
             elif job["module"]=="capacity":
                 entry=next((item for item in capacity_entries if resolve_entry_path(item)==source),None)
                 if entry is None:
@@ -6655,8 +6755,8 @@ def _resume_pending_upload_jobs() -> int:
             else:
                 _fail_upload_job(job["id"],ValueError(f"Tipo de carga desconocido: {job['module']}"))
                 continue
-        threading.Thread(target=target,args=args,daemon=True,name=f"resume-{job['module']}-{job['id'][:8]}").start()
-        resumed+=1
+        if _submit_upload_job(job["id"],target,args):
+            resumed+=1
     return resumed
 
 @app.on_event("startup")
@@ -6682,7 +6782,7 @@ async def start_operations_job(request: Request,file:UploadFile=File(...)):
         stage_path.unlink(missing_ok=True)
         raise HTTPException(400,"El archivo está vacío")
     job=_create_upload_job("operations",filename,stage_path,u["username"])
-    threading.Thread(target=_run_operations_job,args=(job["id"],stage_path,filename,u["username"]),daemon=True,name=f"operations-{job['id'][:8]}").start()
+    _submit_upload_job(job["id"],_run_operations_job,(job["id"],stage_path,filename,u["username"]))
     return job
 
 @app.get("/api/upload/jobs/{job_id}")
