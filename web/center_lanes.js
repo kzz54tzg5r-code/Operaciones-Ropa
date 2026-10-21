@@ -90,6 +90,11 @@ function filters(){
  const modeLabel=document.querySelector('#operPeriodModeWrap label');
  if(!active){button?.remove();if(modeLabel?.dataset.centerLabel){modeLabel.innerHTML=modeLabel.dataset.centerLabel;delete modeLabel.dataset.centerLabel;}return;}
  if(modeLabel&&!modeLabel.dataset.centerLabel){modeLabel.dataset.centerLabel=modeLabel.innerHTML;const caption=modeLabel.querySelector('#operPeriodModeLabel');if(caption)caption.textContent='Vista';else modeLabel.textContent='Vista';}
+ const apply=document.getElementById('operPeriodApply');
+ if(apply){
+   if(apply.getAttribute('aria-hidden')==='true')apply.removeAttribute('aria-hidden');
+   if(apply.hasAttribute('tabindex')&&apply.tabIndex<0)apply.removeAttribute('tabindex');
+ }
  if(!button){button=el('button','ocl-filter-refresh','↻');button.id='centerLaneRefresh';button.type='button';button.title='Actualizar reporte';button.setAttribute('aria-label','Actualizar reporte');button.addEventListener('click',async()=>{button.disabled=true;try{if(typeof window.V240_renderCenter==='function')await window.V240_renderCenter(document.querySelector('#operPeriodMode')?.value||'month',false);else document.querySelector('#operPeriodSelect')?.dispatchEvent(new Event('change',{bubbles:true}));}finally{button.disabled=false;}});grid.append(button);}
 }
 window.RopaCenterLanes={isActive,mount,fit,filters};
