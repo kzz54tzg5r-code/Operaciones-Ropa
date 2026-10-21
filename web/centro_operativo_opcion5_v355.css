@@ -1,44 +1,44 @@
 /* V355 · Centro Operativo / quinta propuesta seleccionada.
    Capa exclusivamente visual: nunca recalcula indicadores ni sustituye reportes.
    El menú contextual dispara los botones ya existentes. */
-body.or355-center-choice{--or355-navy:#0a3671;--or355-line:#d8e6f5}
+body.or355-module-choice{--or355-navy:#0a3671;--or355-line:#d8e6f5}
 @media (min-width:1001px){
- body.or355-center-choice .shell:not(.sidebar-collapsed){grid-template-columns:174px minmax(0,1fr)!important}
- body.or355-center-choice .shell:not(.sidebar-collapsed)>.side{
+ body.or355-module-choice .shell:not(.sidebar-collapsed){grid-template-columns:174px minmax(0,1fr)!important}
+ body.or355-module-choice .shell:not(.sidebar-collapsed)>.side{
    width:174px!important;min-width:174px!important;padding:8px 6px!important;
    position:sticky!important;top:0!important;height:100dvh!important;
    overflow-y:auto!important;overflow-x:hidden!important;
    background:linear-gradient(180deg,#082e63,#0c4385)!important;
    border-right:1px solid #15518d!important;scrollbar-width:thin;
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed)>.main{
+ body.or355-module-choice .shell:not(.sidebar-collapsed)>.main{
    margin-left:174px!important;width:calc(100% - 174px)!important;
    padding:8px 12px 32px!important;min-width:0!important;
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed) .sidebrand{
+ body.or355-module-choice .shell:not(.sidebar-collapsed) .sidebrand{
    padding:5px 3px 8px!important;margin:0 0 4px!important;
    border-color:rgba(255,255,255,.15)!important;
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed) .sidebrand-text :is(b,small){color:#fff!important}
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebar .group{color:#bcd5f4!important}
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebar>.nav{
+ body.or355-module-choice .shell:not(.sidebar-collapsed) .sidebrand-text :is(b,small){color:#fff!important}
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebar .group{color:#bcd5f4!important}
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebar>.nav{
    color:#f2f8ff!important;background:transparent!important;
    padding:8px 7px!important;margin:1px 0!important;
    border-radius:7px!important;font-size:11px!important;line-height:1.12!important;
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebar>.nav small{
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebar>.nav small{
    color:#bad2ee!important;font-size:9px!important;
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebar>.nav.active{
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebar>.nav.active{
    background:#1567d8!important;color:#fff!important
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebar>.profile{
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebar>.profile{
    background:transparent!important;color:#edf5ff!important;
    border-top:1px solid rgba(255,255,255,.16)!important;
    margin-top:auto!important;padding-top:10px!important;
  }
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebar>.profile :is(b,small){color:#edf5ff!important}
- body.or355-center-choice .shell:not(.sidebar-collapsed) #sidebarToggle{
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebar>.profile :is(b,small){color:#edf5ff!important}
+ body.or355-module-choice .shell:not(.sidebar-collapsed) #sidebarToggle{
    color:#fff!important;background:#174d87!important;border-color:#3870ae!important
  }
 }
@@ -59,7 +59,7 @@ body.or355-center-choice #operativoDynamicTitle,
 body.or355-center-choice #operativoDynamicSub{display:none!important}
 .or355-page-header{display:none!important}
 #sidebar .or355-submenu{display:none}
-body.or355-center-choice #sidebar .or355-submenu{
+body.or355-module-choice #sidebar .or355-submenu{
  display:flex!important;flex-direction:column!important;gap:2px!important;
  margin:7px 0 8px!important;padding:7px 0!important;
  border-top:1px solid rgba(255,255,255,.15)!important;
@@ -70,7 +70,7 @@ body.or355-center-choice #sidebar .or355-submenu{
  letter-spacing:.055em;font-size:9px;font-weight:800;
  padding:2px 8px 5px;
 }
-body.or355-center-choice #sidebar .or355-subtab{
+body.or355-module-choice #sidebar .or355-subtab{
  display:flex!important;gap:7px!important;align-items:center!important;
  width:100%!important;border:0!important;border-radius:7px!important;
  padding:7px 6px!important;background:transparent!important;color:#dbeaff!important;
@@ -84,33 +84,33 @@ body.or355-center-choice #sidebar .or355-subtab{
  color:inherit;font-size:11px;font-weight:800;
 }
 #sidebar .or355-subtab .or355-text{min-width:0;overflow-wrap:anywhere}
-body.or355-center-choice #sidebar .or355-subtab:is(:hover,:focus-visible){
+body.or355-module-choice #sidebar .or355-subtab:is(:hover,:focus-visible){
  background:rgba(255,255,255,.13)!important;color:#fff!important
 }
-body.or355-center-choice #sidebar .or355-subtab.active{
+body.or355-module-choice #sidebar .or355-subtab.active{
  background:#1168e7!important;color:#fff!important
 }
 #sidebar .or355-subtab[hidden]{display:none!important}
-body.or355-center-choice .shell.sidebar-collapsed #sidebar .or355-submenu{
+body.or355-module-choice .shell.sidebar-collapsed #sidebar .or355-submenu{
  padding:4px 2px!important
 }
-body.or355-center-choice .shell.sidebar-collapsed #sidebar .or355-subtab{
+body.or355-module-choice .shell.sidebar-collapsed #sidebar .or355-subtab{
  display:grid!important;place-items:center!important;padding:7px 2px!important;
  background:#134c87!important;color:#fff!important
 }
-body.or355-center-choice .shell.sidebar-collapsed #sidebar .or355-submenu-label,
-body.or355-center-choice .shell.sidebar-collapsed #sidebar .or355-subtab .or355-text{
+body.or355-module-choice .shell.sidebar-collapsed #sidebar .or355-submenu-label,
+body.or355-module-choice .shell.sidebar-collapsed #sidebar .or355-subtab .or355-text{
  display:none!important
 }
 /* Pestañas reales, icono y texto uno al lado del otro, sin tarjetas de 74px. */
-body.or355-center-choice :is(.rt-icon-rail-v1-shell,.rt-carousel-shell){
+body.or355-module-choice :is(.rt-icon-rail-v1-shell,.rt-carousel-shell){
  margin-bottom:5px!important;min-height:0!important;padding-top:0!important;padding-bottom:0!important
 }
-body.or355-center-choice .rt-icon-rail-v1-current,
-body.or355-center-choice .rt-icon-rail-v1-shell::before,
-body.or355-center-choice .rt-icon-rail-v1-shell::after{display:none!important}
-body.or355-center-choice #operativoNav,
-body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1{
+body.or355-module-choice .rt-icon-rail-v1-current,
+body.or355-module-choice .rt-icon-rail-v1-shell::before,
+body.or355-module-choice .rt-icon-rail-v1-shell::after{display:none!important}
+body.or355-module-choice #operativoNav,
+body.or355-module-choice #operativoNav.rt-carousel.rt-icon-rail-v1{
  --rt-gap:4px!important;--rt-card-w:auto!important;
  display:flex!important;flex-wrap:nowrap!important;align-items:stretch!important;
  min-height:0!important;height:auto!important;max-height:48px!important;
@@ -120,8 +120,8 @@ body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1{
  overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;
  scroll-snap-type:x proximity!important;touch-action:pan-x pan-y!important
 }
-body.or355-center-choice #operativoNav>.switch,
-body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch{
+body.or355-module-choice #operativoNav>.switch,
+body.or355-module-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch{
  display:flex!important;align-items:center!important;justify-content:center!important;
  flex:0 0 auto!important;width:auto!important;min-width:0!important;
  max-width:185px!important;height:34px!important;min-height:34px!important;
@@ -131,24 +131,24 @@ body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch{
  box-shadow:none!important;transform:none!important;white-space:nowrap!important;
  scroll-snap-align:start!important;
 }
-body.or355-center-choice #operativoNav>.switch.active,
-body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active{
+body.or355-module-choice #operativoNav>.switch.active,
+body.or355-module-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch.active{
  background:#0e62d3!important;border-color:#0e62d3!important;
  color:#fff!important;box-shadow:none!important;
 }
-body.or355-center-choice #operativoNav .switch .rt-tab-icon{
+body.or355-module-choice #operativoNav .switch .rt-tab-icon{
  position:static!important;width:17px!important;height:17px!important;
  min-width:17px!important;max-width:17px!important;flex:0 0 17px!important;
  border:0!important;box-shadow:none!important;border-radius:0!important;
  display:flex!important;align-items:center!important;justify-content:center!important;
  transform:none!important;background:transparent!important;color:inherit!important;
 }
-body.or355-center-choice #operativoNav .switch .rt-tab-icon svg{
+body.or355-module-choice #operativoNav .switch .rt-tab-icon svg{
  width:15px!important;height:15px!important;min-width:15px!important;
  max-width:15px!important;transform:none!important;
 }
-body.or355-center-choice #operativoNav .switch .rt-tab-label,
-body.or355-center-choice #operativoNav .switch.active .rt-tab-label{
+body.or355-module-choice #operativoNav .switch .rt-tab-label,
+body.or355-module-choice #operativoNav .switch.active .rt-tab-label{
  display:block!important;position:static!important;width:auto!important;
  max-width:146px!important;min-width:0!important;height:auto!important;
  margin:0!important;padding:0!important;border:0!important;
@@ -157,7 +157,7 @@ body.or355-center-choice #operativoNav .switch.active .rt-tab-label{
  opacity:1!important;white-space:normal!important;overflow:hidden!important;
  text-overflow:ellipsis!important;-webkit-line-clamp:2!important;
 }
-body.or355-center-choice #operativoNav .switch:after{display:none!important}
+body.or355-module-choice #operativoNav .switch:after{display:none!important}
 /* Barra de filtros: una línea cuando cabe, sin controles aislados o gigantes. */
 body.or355-center-choice #page-operativo #operativoPeriodBar{
  border:1px solid var(--or355-line)!important;border-radius:9px!important;
@@ -273,11 +273,11 @@ body.or355-center-choice #page-operativo .or355-jumps button:is(:hover,:focus-vi
 @media(max-width:700px){
  body.or355-center-choice .main>.or355-page-header{margin:3px 0 5px!important}
  body.or355-center-choice .or355-page-header h2{font-size:16px!important}
- body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1{max-height:44px!important;padding:3px 28px 3px 3px!important}
- body.or355-center-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch{
+ body.or355-module-choice #operativoNav.rt-carousel.rt-icon-rail-v1{max-height:44px!important;padding:3px 28px 3px 3px!important}
+ body.or355-module-choice #operativoNav.rt-carousel.rt-icon-rail-v1>.switch{
    height:34px!important;min-height:34px!important;padding:4px 6px!important
  }
- body.or355-center-choice #operativoNav .switch .rt-tab-label{font-size:10px!important}
+ body.or355-module-choice #operativoNav .switch .rt-tab-label{font-size:10px!important}
  body.or355-center-choice #page-operativo #operativoPeriodBar>.or-report-filter-grid,
  body.or355-center-choice #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden))>.or-report-filter-grid{
    grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important
