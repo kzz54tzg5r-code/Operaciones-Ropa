@@ -42,7 +42,18 @@ body.or355-module-choice{--or355-navy:#0a3671;--or355-line:#d8e6f5}
    color:#fff!important;background:#174d87!important;border-color:#3870ae!important
  }
 }
-body.or355-center-choice .main>.hero{display:none!important}
+body.or355-center-choice .main>.hero{
+ display:flex!important;align-items:center!important;justify-content:flex-start!important;
+ min-height:26px!important;max-height:30px!important;
+ padding:2px 5px!important;margin:0 0 3px!important;
+ border:0!important;border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;color:#234b79!important
+}
+body.or355-center-choice .main>.hero #heroTitle{
+ color:#234b79!important;font-size:11px!important;line-height:1.1!important;margin:0!important
+}
+body.or355-center-choice .main>.hero #heroSub,
+body.or355-center-choice .main>.hero .hero-greeting{display:none!important}
 body.or355-center-choice .main>.or355-page-header{
  display:flex!important;justify-content:space-between;align-items:end;
  flex-wrap:wrap;gap:4px 10px;margin:0 0 5px!important;min-width:0!important;
