@@ -1,0 +1,269 @@
+/* Centro Operativo V356 — diseño aprobado con menú de iconos y reporte 2 columnas.
+   Presentación únicamente: datos, cálculos y acciones vienen de reportes reales. */
+@media(min-width:1001px){
+ html body.or356-module-active .shell{grid-template-columns:74px minmax(0,1fr)!important}
+ html body.or356-module-active .shell>.side{
+  position:fixed!important;inset:0 auto 0 0!important;height:100dvh!important;
+  width:74px!important;min-width:74px!important;max-width:74px!important;
+  background:linear-gradient(180deg,#082e63 0%,#0e4f93 100%)!important;
+  color:white!important;border-right:1px solid #235c92!important;
+  padding:8px 5px!important;overflow-y:auto!important;overflow-x:hidden!important;
+  gap:6px!important;scrollbar-width:none!important;
+ }
+ html body.or356-module-active .shell>.main{
+  margin-left:74px!important;width:calc(100% - 74px)!important;
+  padding:7px 10px 25px!important;max-width:none!important
+ }
+ html body.or356-module-active #sidebar .sidebrand{
+  padding:3px 0 8px!important;margin:0!important;display:flex!important;
+  align-items:center!important;justify-content:center!important;
+  border-color:rgba(255,255,255,.16)!important
+ }
+ html body.or356-module-active #sidebar .sidebrand img{
+  width:48px!important;max-width:48px!important;height:auto!important
+ }
+ html body.or356-module-active #sidebar .sidebrand-text,
+ html body.or356-module-active #sidebar .group,
+ html body.or356-module-active #sidebar .nav small{display:none!important}
+ html body.or356-module-active #sidebar>.nav{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;height:46px!important;min-height:46px!important;
+  padding:7px 2px!important;margin:0!important;font-size:0!important;
+  color:#f5faff!important;background:transparent!important;
+  border:0!important;border-radius:9px!important;
+ }
+ html body.or356-module-active #sidebar>.nav.active{background:#126be4!important}
+ html body.or356-module-active #sidebar>.nav:before{
+  display:block!important;font-size:23px!important;line-height:1!important;
+  margin:0!important;color:inherit!important
+ }
+ html body.or356-module-active #sidebar>.nav[data-main="operativo"]:before{content:"▥"!important}
+ html body.or356-module-active #sidebar>.nav[data-main="analysis"]:before{content:"▦"!important}
+ html body.or356-module-active #sidebar>.nav[data-main="users"]:before{content:"♙"!important}
+ html body.or356-module-active #sidebar>.nav[data-main="share"]:before{content:"♧"!important}
+ html body.or356-module-active #sidebar .profile{
+  margin-top:auto!important;background:transparent!important;color:#fff!important;
+  padding:7px 2px!important;min-width:0!important
+ }
+ html body.or356-module-active #sidebar .profile>b,
+ html body.or356-module-active #sidebar .profile>small{display:none!important}
+ html body.or356-module-active #sidebar .logout{font-size:0!important;min-height:34px!important;width:100%!important}
+ html body.or356-module-active #sidebar .logout:before{content:"⇥";font-size:20px!important}
+ html body.or356-module-active #sidebar .sidebar-toggle{display:none!important}
+}
+/* Menú superior de reportes, manteniendo las pestañas y sus listeners. */
+html body.or356-module-active .rt-icon-rail-v1-current,
+html body.or356-module-active .rt-icon-rail-v1-shell::before,
+html body.or356-module-active .rt-icon-rail-v1-shell::after{display:none!important}
+html body.or356-module-active :is(.rt-icon-rail-v1-shell,.rt-carousel-shell){
+ margin:0 0 5px!important;padding-top:0!important;padding-bottom:0!important;
+ min-height:0!important
+}
+html body.or356-module-active #operativoNav.rt-carousel.rt-icon-rail-v1,
+html body.or356-module-active #operativoNav{
+ --rt-card-w:auto!important;--rt-gap:4px!important;
+ display:flex!important;flex-wrap:nowrap!important;gap:4px!important;
+ align-items:center!important;min-height:42px!important;height:42px!important;
+ max-height:42px!important;margin:0 0 5px!important;padding:3px 30px 3px 5px!important;
+ background:#fff!important;border:1px solid #d9e5f3!important;border-radius:8px!important;
+ overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none!important;
+ scroll-snap-type:x proximity!important;scroll-behavior:auto!important
+}
+html body.or356-module-active #operativoNav.rt-carousel.rt-icon-rail-v1>.switch,
+html body.or356-module-active #operativoNav>.switch{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:auto!important;min-width:0!important;max-width:185px!important;
+ height:33px!important;min-height:33px!important;max-height:33px!important;
+ flex:0 0 auto!important;margin:0!important;padding:4px 8px!important;gap:5px!important;
+ border:1px solid #d7e5f5!important;border-radius:7px!important;
+ background:white!important;color:#0b478c!important;opacity:1!important;
+ box-shadow:none!important;transform:none!important;scroll-snap-align:start!important;
+}
+html body.or356-module-active #operativoNav>.switch.active{
+ background:#0865da!important;color:white!important;border-color:#0865da!important
+}
+html body.or356-module-active #operativoNav .rt-tab-icon,
+html body.or356-module-active #operativoNav .switch.active .rt-tab-icon{
+ width:17px!important;min-width:17px!important;max-width:17px!important;
+ height:17px!important;min-height:17px!important;max-height:17px!important;
+ display:flex!important;flex:0 0 17px!important;place-items:center!important;
+ background:transparent!important;border:0!important;border-radius:0!important;
+ margin:0!important;box-shadow:none!important;transform:none!important;color:inherit!important
+}
+html body.or356-module-active #operativoNav .rt-tab-icon svg,
+html body.or356-module-active #operativoNav .switch.active .rt-tab-icon svg{
+ width:15px!important;min-width:15px!important;height:15px!important;
+ min-height:15px!important;transform:none!important
+}
+html body.or356-module-active #operativoNav .rt-tab-label,
+html body.or356-module-active #operativoNav .switch.active .rt-tab-label{
+ position:static!important;display:block!important;width:auto!important;
+ min-width:0!important;max-width:150px!important;height:auto!important;min-height:0!important;
+ margin:0!important;padding:0!important;clip:auto!important;clip-path:none!important;
+ color:inherit!important;opacity:1!important;overflow:hidden!important;
+ font-size:10px!important;line-height:1.13!important;font-weight:800!important;
+ white-space:normal!important;-webkit-line-clamp:2!important;text-overflow:ellipsis!important
+}
+html body.or356-module-active #operativoNav .switch:after{display:none!important}
+/* Título discreto y filtros: nunca ocultamos el título original a lectores de pantalla. */
+html body.or356-center-active .main>.hero{
+ display:flex!important;min-height:29px!important;max-height:34px!important;
+ padding:3px 8px!important;margin:0 0 4px!important;box-shadow:none!important;
+ background:transparent!important;color:#0e3e7d!important;border-radius:0!important
+}
+html body.or356-center-active .main>.hero #heroTitle{
+ font-size:13px!important;line-height:1.18!important;color:#0e3e7d!important
+}
+html body.or356-center-active .main>.hero :is(#heroSub,.hero-greeting){display:none!important}
+html body.or356-center-active :is(#operativoDynamicTitle,#operativoDynamicSub){
+ margin:2px 0 3px!important
+}
+html body.or356-center-active #page-operativo #operativoPeriodBar{
+ padding:7px!important;margin:3px 0 7px!important;
+ border:1px solid #d8e6f6!important;box-shadow:none!important;border-radius:9px!important
+}
+@media(min-width:850px){
+ html body.or356-center-active #page-operativo #operativoPeriodBar>.or-report-filter-grid,
+ html body.or356-center-active #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden))>.or-report-filter-grid{
+  display:grid!important;grid-template-columns:minmax(200px,1.1fr) minmax(130px,1fr) minmax(160px,1.15fr) minmax(94px,.35fr) 36px!important;
+  grid-template-rows:auto!important;align-items:end!important;gap:6px!important
+ }
+ html body.or356-center-active #operativoPeriodBar :is(.v266-period-view,#operPeriodModeWrap){
+  grid-column:1!important;grid-row:1!important;min-width:0!important
+ }
+ html body.or356-center-active #operativoPeriodBar #operPeriodSelectWrap{grid-column:2!important;grid-row:1!important;min-width:0!important}
+ html body.or356-center-active #operativoPeriodBar #operStoreWrap{grid-column:3!important;grid-row:1!important;min-width:0!important}
+ html body.or356-center-active #operativoPeriodBar #operPeriodApply{
+  grid-column:4!important;grid-row:1!important;width:100%!important;
+  min-width:0!important;max-width:100%!important;
+  min-height:35px!important;height:35px!important;padding:5px!important
+ }
+ html body.or356-center-active #operativoPeriodBar #centerLaneRefresh{
+  grid-column:5!important;grid-row:1!important;min-width:36px!important;
+  width:36px!important;max-width:36px!important;height:35px!important;
+  min-height:35px!important;padding:0!important
+ }
+ html body.or356-center-active #operativoPeriodBar :is(#operPeriodSelect,#operStoreSelect){
+  min-height:35px!important;height:35px!important;font-size:12px!important
+ }
+ html body.or356-center-active #operativoPeriodBar :is(label,.v266-period-title){font-size:10px!important;margin:0 0 3px!important}
+}
+html body.or356-center-active #page-operativo .ocl-lanes{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ gap:7px!important;margin:3px 0 7px!important
+}
+html body.or356-center-active #page-operativo .ocl-lanes>.ocl-lane{
+ display:flex!important;flex-direction:column!important;min-width:0!important;
+ padding:8px!important;gap:6px!important;min-height:0!important;border-radius:8px!important
+}
+html body.or356-center-active #page-operativo .ocl-lane .ocl-lane-metric{
+ min-height:88px!important;gap:4px!important;padding:8px!important
+}
+html body.or356-center-active #page-operativo .ocl-lane :is(.ocl-number,.ocl-route-number){
+ font-size:clamp(19px,2vw,29px)!important;white-space:normal!important
+}
+html body.or356-center-active #page-operativo .ocl-lane>.ocl-detail-button{
+ min-height:31px!important;padding:5px 7px!important
+}
+/* Panel aprobado: tabla operativa grande a la izquierda + 3 paneles a la derecha. */
+html body.or356-center-active #page-operativo .or356-dashboard{
+ display:grid!important;grid-template-columns:minmax(0,1.34fr) minmax(260px,.86fr)!important;
+ align-items:stretch!important;gap:8px!important;width:100%!important;
+ margin:4px 0 9px!important;padding:0!important;min-width:0!important
+}
+html body.or356-center-active #page-operativo .or356-card{
+ min-width:0!important;border:1px solid #d7e4f3!important;background:white!important;
+ border-radius:9px!important;padding:8px!important;overflow:hidden!important
+}
+html body.or356-center-active #page-operativo .or356-cardhead{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ margin:0 0 7px!important;min-width:0!important
+}
+html body.or356-center-active #page-operativo .or356-cardhead strong{
+ display:block;color:#0c396e;font-size:14px;font-weight:850;line-height:1.15
+}
+html body.or356-center-active #page-operativo .or356-cardhead small{
+ display:block;color:#6984a0;font-size:10px;line-height:1.2;margin-top:3px
+}
+html body.or356-center-active #page-operativo .or356-action{
+ padding:5px 8px!important;min-height:30px!important;border:1px solid #d6e6f8!important;
+ border-radius:6px!important;background:#f2f7ff!important;
+ color:#0d5abc!important;font-size:11px!important;font-weight:700!important;cursor:pointer
+}
+html body.or356-center-active #page-operativo .or356-sidepanels{
+ display:grid!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;gap:7px!important;min-width:0!important
+}
+html body.or356-center-active #page-operativo .or356-scroll{
+ min-width:0!important;max-width:100%!important;overflow-x:auto!important;
+ touch-action:pan-x pan-y!important;-webkit-overflow-scrolling:touch!important
+}
+html body.or356-center-active #page-operativo .or356-table{
+ width:100%!important;border-collapse:collapse!important;min-width:555px!important;
+ font-size:11px!important;font-variant-numeric:tabular-nums
+}
+html body.or356-center-active #page-operativo .or356-table th{
+ padding:8px 5px!important;background:#eaf2fb!important;color:#254d80!important;
+ border-bottom:1px solid #c9d9ed!important;font-size:10px!important;
+ line-height:1.13!important;text-align:right!important;white-space:normal!important
+}
+html body.or356-center-active #page-operativo .or356-table td{
+ padding:7px 5px!important;border-bottom:1px solid #e7eef8!important;
+ color:#20426d!important;font-size:11px!important;line-height:1.2!important;
+ text-align:right!important;white-space:nowrap!important
+}
+html body.or356-center-active #page-operativo .or356-table :is(th,td):nth-child(2){text-align:left!important}
+html body.or356-center-active #page-operativo .or356-table tr:nth-child(even) td{background:#f8fbff!important}
+html body.or356-center-active #page-operativo .or356-table tr:last-child td{border-bottom:0!important}
+html body.or356-center-active #page-operativo .or356-table td:first-child{color:#0e65d2!important;font-weight:800!important}
+html body.or356-center-active #page-operativo .or356-rows{display:flex;flex-direction:column;gap:6px}
+html body.or356-center-active #page-operativo .or356-row{
+ display:grid;grid-template-columns:minmax(74px,.85fr) minmax(45px,1fr) minmax(46px,.48fr);
+ align-items:center;gap:6px;min-width:0;font-size:10px;color:#27476c
+}
+html body.or356-center-active #page-operativo .or356-row .or356-name{
+ text-overflow:ellipsis;overflow:hidden;white-space:nowrap
+}
+html body.or356-center-active #page-operativo .or356-row .or356-value{
+ font-variant-numeric:tabular-nums;text-align:right;font-weight:800;
+ color:#173e71;white-space:nowrap
+}
+html body.or356-center-active #page-operativo .or356-track{
+ height:8px;border-radius:50px;background:#e6edf5;overflow:hidden;min-width:0
+}
+html body.or356-center-active #page-operativo .or356-fill{
+ height:100%;width:0%;border-radius:50px;background:var(--or356-color,#0ea59b)
+}
+html body.or356-center-active #page-operativo .or356-empty{
+ display:flex;align-items:center;justify-content:center;min-height:80px;
+ color:#6a829f;font-size:11px;text-align:center;padding:8px
+}
+html body.or356-center-active #page-operativo .or356-divider{
+ text-align:center;border-top:1px dashed #8eb6e2;
+ margin:8px 0 0;padding:7px 0 0;color:#406d9f;font-size:10px;font-weight:700
+}
+html body.or356-center-active #page-operativo .ocl-full{
+ margin:4px 0 8px!important;padding:0!important;border-radius:9px!important
+}
+html body.or356-center-active #page-operativo .ocl-full>summary{
+ padding:8px 10px!important;min-height:0!important;font-size:12px!important;background:#f0f7ff!important
+}
+html body.or356-center-active #page-operativo .ocl-original{padding:7px!important}
+html body.or356-center-active #page-operativo .ocl-original :is(.tablewrap,.chart-box,.compact-section){margin:6px 0!important}
+html body.or356-center-active #page-operativo .ocl-original :is(.title,h3){margin:6px 0 4px!important}
+@media(max-width:1000px){
+ html body.or356-center-active #page-operativo .or356-dashboard{grid-template-columns:minmax(0,1fr)!important}
+ html body.or356-center-active #page-operativo .or356-sidepanels{grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-template-rows:1fr!important}
+ html body.or356-center-active #page-operativo .or356-row{grid-template-columns:minmax(55px,.8fr) 1fr auto;gap:3px;font-size:9px}
+ html body.or356-center-active #page-operativo .or356-card{padding:7px!important}
+}
+@media(max-width:700px){
+ html body.or356-center-active #page-operativo .ocl-lanes{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+ html body.or356-center-active #page-operativo .or356-sidepanels{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:none!important}
+ html body.or356-center-active #page-operativo .or356-table{min-width:515px!important}
+ html body.or356-center-active #page-operativo .or356-row{grid-template-columns:minmax(75px,.8fr) 1fr auto;font-size:11px;gap:6px}
+ html body.or356-center-active #page-operativo #operativoPeriodBar{padding:6px!important}
+}
+@media print{
+ html body.or356-center-active #page-operativo .or356-action{display:none!important}
+ html body.or356-center-active #page-operativo .or356-dashboard{break-inside:avoid!important}
+}
