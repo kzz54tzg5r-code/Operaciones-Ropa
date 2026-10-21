@@ -15,9 +15,9 @@ def install(m):
 
     css = r'''<style id="v262-hide-filter-actions-css">
 /* Autoridad máxima sobre V259/V254. Los nodos siguen en DOM para compatibilidad. */
-html body:not(.center-three-lanes) #operativoPeriodBar.v250-option9b.v259-has-period > .or-report-filter-grid > button#operPeriodApply,
-html body:not(.center-three-lanes) #operativoPeriodBar.v250-option9b > .or-report-filter-grid > button#operPeriodApply,
-html body:not(.center-three-lanes) #operativoPeriodBar > .or-report-filter-grid > button#operPeriodApply,
+html body #operativoPeriodBar:not(:has(.v266-period-view:not(.hidden))).v250-option9b.v259-has-period > .or-report-filter-grid > button#operPeriodApply,
+html body #operativoPeriodBar:not(:has(.v266-period-view:not(.hidden))).v250-option9b > .or-report-filter-grid > button#operPeriodApply,
+html body #operativoPeriodBar:not(:has(.v266-period-view:not(.hidden))) > .or-report-filter-grid > button#operPeriodApply,
 html body:not(.center-three-lanes) #operativoPeriodBar.v250-option9b.v259-has-period > .or-report-filter-grid > button#v254ResetFilters,
 html body:not(.center-three-lanes) #operativoPeriodBar.v250-option9b > .or-report-filter-grid > button#v254ResetFilters,
 html body:not(.center-three-lanes) #operativoPeriodBar > .or-report-filter-grid > button#v254ResetFilters,
@@ -119,10 +119,12 @@ html body:not(.center-three-lanes) #operativoPeriodBar #v253ResetFilters{
 
   // Centro Operativo usa la opción 3 aprobada, que sí tiene Consultar.
   // Conservar el ocultamiento histórico únicamente en las otras pestañas.
-  function isCenter(){
-    // Clase fijada por el controlador operativo real (no por un tab oculto).
-    // Las vistas no activas pueden mantener el botón Centro con clase active.
-    return document.body.classList.contains('center-three-lanes');
+  function hasQuickPeriod(){
+    // La opción 3 usa la barra de periodos V266 sólo en pestañas compatibles.
+    // La pestaña activa decide si el host está visible y tiene controles.
+    const host=q('#operativoPeriodBar .v266-period-view:not(.hidden)');
+    const page=q('#page-operativo');
+    return !!host && !!page && page.classList.contains('active');
   }
   const forced=['display','visibility','opacity','pointer-events','position',
     'width','min-width','max-width','height','min-height','max-height',
@@ -141,10 +143,10 @@ html body:not(.center-three-lanes) #operativoPeriodBar #v253ResetFilters{
   function enforce(){
     const bar=q('#operativoPeriodBar');
     if(!bar)return;
-    const center=isCenter();
+    const quick=hasQuickPeriod();
     ['#operPeriodApply','#v254ResetFilters','#v253ResetFilters','#v252ResetFilters'].forEach(sel=>{
       qa(sel,bar).forEach(el=>{
-        if(center&&sel==='#operPeriodApply')restoreApply(el);
+        if(quick&&sel==='#operPeriodApply')restoreApply(el);
         else hardHide(el);
       });
     });
