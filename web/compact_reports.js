@@ -224,7 +224,7 @@ function compactControls(){
   grid.querySelectorAll('label').forEach(label=>{setStyle(label,'font-size',mini?'10px':'12px');setStyle(label,'line-height','1.25');});
   grid.querySelectorAll('select').forEach(select=>{if(mini){if(!select.dataset.centerStyle)select.dataset.centerStyle=JSON.stringify(['font-size','padding'].map(prop=>[prop,select.style.getPropertyValue(prop),select.style.getPropertyPriority(prop)]));setStyle(select,'font-size','var(--ocl-filter-font, 12px)');setStyle(select,'padding','var(--ocl-filter-select-padding, 4px 22px 4px 8px)');}else if(select.dataset.centerStyle){JSON.parse(select.dataset.centerStyle).forEach(([prop,value,priority])=>{if(value)select.style.setProperty(prop,value,priority);else select.style.removeProperty(prop);});delete select.dataset.centerStyle;}});
   const mode=document.getElementById('operPeriodMode'),wrap=document.getElementById('operPeriodModeWrap');
-  if(mode&&wrap){const on=mode.options.length>1;wrap.dataset.compactMode=on?'1':'0';if(on){setStyle(wrap,'display','flex');setStyle(wrap,'order','-3');}}
+  if(mode&&wrap){const on=mode.options.length>1;const quick=!!grid.querySelector(':scope>.v266-period-view:not(.hidden)');wrap.dataset.compactMode=on?'1':'0';if(on){setStyle(wrap,'display',quick?'none':'flex');setStyle(wrap,'order',quick?'0':'-3');}}
   const period=document.getElementById('operPeriodSelectWrap'),store=document.getElementById('operStoreWrap');
   setStyle(period,'order','-2');setStyle(store,'order','-1');if(small&&!mini)setStyle(store,'grid-column','1 / -1');
  }
