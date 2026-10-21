@@ -128,9 +128,9 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
 
   const q=(s,r=document)=>r.querySelector(s);
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const FULL=[['day','Día'],['week','Semanal'],['month','Mensual'],['year','Anual']];
-  const PROD=[['day','Día'],['week','Semanal'],['month','Mensual']];
-  const FLEX=[['week','Semanal'],['month','Mensual']];
+  const FULL=[['day','Día'],['week','Semana'],['month','Mensual'],['year','Anual']];
+  const PROD=[['day','Día'],['week','Semana'],['month','Mensual']];
+  const FLEX=[['week','Semana'],['month','Mensual']];
   const EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
   const ICONS={
     day:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M9 15h6"/></svg>',
