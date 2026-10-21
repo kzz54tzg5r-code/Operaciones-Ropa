@@ -55,12 +55,12 @@ function bonus(q){const n=Number(q.get('bonus')||1);return {b2_subcategories:n==
   await page.locator('#operativoNav>[data-opview]').evaluateAll((els,name)=>els.find(el=>el.dataset.opview===name)?.click(),target);
   await Promise.race([ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('missing delayed '+kind+' request')),10000))]);
   await page.locator('#operativoNav>[data-opview="Centro Ejecutivo"]').evaluate(el=>el.click());
-  await page.locator('#operativoDynamicContent .compact-monthly-sections').waitFor();
-  const center=await page.locator('#operativoDynamicContent .compact-summary-band').textContent();
+  await page.locator('#operativoDynamicContent .ocl-shell').waitFor();
+  const center=await page.locator('#operativoDynamicContent .ocl-lanes').textContent();
   if(kind==='digital'){holdDigital=false;releaseDigital();}else{holdCapture=false;releaseCapture();}
   await page.waitForTimeout(450);
-  assert.ok(await page.locator('#operativoDynamicContent .compact-monthly-sections').count(),'stale '+kind+' response replaced Centro');
-  assert.equal(await page.locator('#operativoDynamicContent .compact-summary-band').textContent(),center);
+  assert.ok(await page.locator('#operativoDynamicContent .ocl-shell').count(),'stale '+kind+' response replaced Centro');
+  assert.equal(await page.locator('#operativoDynamicContent .ocl-lanes').textContent(),center);
   assert.match(await page.locator('#operativoDynamicTitle').textContent(),/Centro Operativo/);
  }
  views=await page.locator('#operativoNav>[data-opview]').evaluateAll(els=>els.filter(el=>el.getBoundingClientRect().width).map(el=>el.dataset.opview));
