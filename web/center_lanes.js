@@ -72,7 +72,18 @@ function fit(){document.querySelectorAll('.ocl-number').forEach(n=>{n.style.remo
 function filters(){
  const active=isActive(),grid=document.querySelector('#operativoPeriodBar>.or-report-filter-grid'),period=document.querySelector('#operPeriodSelect');
  if(period){const months={enero:'Ene',febrero:'Feb',marzo:'Mar',abril:'Abr',mayo:'May',junio:'Jun',julio:'Jul',agosto:'Ago',septiembre:'Sep',octubre:'Oct',noviembre:'Nov',diciembre:'Dic'};
-  [...period.options].forEach(option=>{const full=option.dataset.centerFullLabel||option.textContent,m=full.match(/^(\w+) (\d{4})$/i);if(m&&months[m[1].toLowerCase()]){option.dataset.centerFullLabel=full;const target=active&&innerWidth<=700?months[m[1].toLowerCase()]+' '+m[2]:full;if(option.textContent!==target)option.textContent=target;}});
+  const names=Object.keys(months);
+  [...period.options].forEach(option=>{
+    const raw=option.dataset.centerFullLabel||option.textContent;
+    const iso=raw.trim().match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+    const full=iso?names[Number(iso[2])-1]+' '+iso[1]:raw;
+    const m=full.match(/^(\w+) (\d{4})$/i);
+    if(m&&months[m[1].toLowerCase()]){
+      option.dataset.centerFullLabel=full;
+      const target=active&&innerWidth<=700?months[m[1].toLowerCase()]+' '+m[2]:full;
+      if(option.textContent!==target)option.textContent=target;
+    }
+  });
  }
  if(!grid)return;
  let button=document.getElementById('centerLaneRefresh');
