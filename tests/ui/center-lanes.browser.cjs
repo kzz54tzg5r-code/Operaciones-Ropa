@@ -1,6 +1,6 @@
 // Full production HTML, isolated API fixtures. Never signs into production.
 const fs=require('fs'),path=require('path'),os=require('os'),Module=require('module'),assert=require('node:assert/strict'),{spawnSync}=require('child_process');
-const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES?process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright':'playwright'));
 const root=path.resolve(__dirname,'../..'),out=fs.mkdtempSync(path.join(os.tmpdir(),'ropa-center-'));
 const rendered=spawnSync(process.env.PYTHON||'python3',[root+'/tests/ui/render_production_page.py',out],{cwd:root,encoding:'utf8',timeout:60000});assert.equal(rendered.status,0,rendered.stderr);
 if(process.env.ROPA_LEGACY_HTML){const file=out+'/page.html';fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace(/<script src="\/static\/center_lanes.js[^"]*" defer><\/script>/,''));}
