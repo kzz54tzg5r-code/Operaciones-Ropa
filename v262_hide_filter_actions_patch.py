@@ -128,11 +128,15 @@ html body:not(.center-three-lanes) #operativoPeriodBar #v253ResetFilters{
     'width','min-width','max-width','height','min-height','max-height',
     'flex','padding','margin','border','overflow'];
   function restoreApply(el){
-    if(!el||el.dataset.v262Hidden!=='1')return;
-    forced.forEach(prop=>el.style.removeProperty(prop));
-    el.removeAttribute('aria-hidden');
-    el.removeAttribute('tabindex');
-    delete el.dataset.v262Hidden;
+    if(!el)return;
+    // Algunas capas antiguas dejan aria-hidden/tabindex sin marcas de propiedad.
+    // Retirarlos siempre que Centro Operativo esté realmente activo.
+    if(el.dataset.v262Hidden==='1'){
+      forced.forEach(prop=>el.style.removeProperty(prop));
+      delete el.dataset.v262Hidden;
+    }
+    if(el.hasAttribute('aria-hidden'))el.removeAttribute('aria-hidden');
+    if(el.hasAttribute('tabindex')&&el.tabIndex<0)el.removeAttribute('tabindex');
   }
   function enforce(){
     const bar=q('#operativoPeriodBar');
