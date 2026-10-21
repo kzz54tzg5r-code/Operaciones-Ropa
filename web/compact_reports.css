@@ -570,3 +570,197 @@ html body #page-operativo .ocl-scope{margin:3px 0 4px!important;}
   html body #page-operativo .ocl-lane .ocl-percent span{font-size:8px!important;}
   html body #page-operativo .ocl-lane>.ocl-detail-button{font-size:9px!important;}
 }
+
+/* Opcion 3 aprobada: solo filtros de Centro Operativo.
+   Iconos + divisores, barras compactas, sin tocar indicadores ni graficas.
+   Los select y botones originales conservan el control de periodos y tienda. */
+html body.center-three-lanes #page-operativo #operativoPeriodBar{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  padding:6px 9px!important;margin:4px 0 7px!important;
+  border:1px solid #cddff2!important;border-radius:10px!important;
+  background:#f8fbff!important;overflow:visible!important;
+  box-shadow:none!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar>.or-report-filter-brand{
+  display:none!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar>.or-report-filter-grid{
+  --ocl-filter-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.25fr) minmax(95px,.38fr) 36px;
+  --ocl-filter-gap:6px;
+  --ocl-filter-font:12px;
+  --ocl-filter-select-padding:5px 24px 5px 7px;
+  display:grid!important;
+  grid-template-columns:var(--ocl-filter-columns)!important;
+  grid-auto-flow:row!important;align-items:center!important;
+  gap:var(--ocl-filter-gap)!important;
+  width:100%!important;max-width:100%!important;
+  padding:0!important;margin:0!important;
+  overflow:visible!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar .v266-period-view{
+  display:none!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodModeWrap,
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodSelectWrap,
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operStoreWrap{
+  display:flex!important;flex-direction:row!important;
+  align-items:center!important;justify-content:stretch!important;
+  gap:7px!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  min-height:36px!important;height:auto!important;
+  padding:0 8px 0 0!important;margin:0!important;
+  border:0!important;border-right:1px solid #d4e1f0!important;
+  background:transparent!important;
+  grid-row:auto!important;grid-column:auto!important;
+  box-sizing:border-box!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodModeWrap{order:0!important;}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodSelectWrap{order:1!important;}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operStoreWrap{order:2!important;}
+html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operAreaWrap,#operActivityWrap,#operStartWrap,#operEndWrap){
+  display:none!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) label{
+  display:inline-flex!important;flex:0 0 auto!important;
+  align-items:center!important;justify-content:flex-start!important;
+  gap:4px!important;min-width:0!important;max-width:35%!important;
+  height:auto!important;min-height:0!important;
+  margin:0!important;padding:0!important;
+  font-size:10px!important;line-height:1.1!important;
+  font-weight:750!important;white-space:nowrap!important;
+  color:#204b7d!important;overflow:visible!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) .or-fcontrol-icon,
+html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) .or-fcontrol-icon svg{
+  display:inline-flex!important;flex:0 0 15px!important;
+  width:15px!important;height:15px!important;min-width:15px!important;
+  color:#136be3!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodMode,#operPeriodSelect,#operStoreSelect){
+  display:block!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  flex:1 1 0!important;
+  height:34px!important;min-height:34px!important;
+  border:1px solid #cbdcf1!important;
+  border-radius:7px!important;
+  padding:5px 21px 5px 7px!important;
+  margin:0!important;
+  font-size:12px!important;line-height:1.2!important;
+  font-weight:650!important;
+  background-color:#fff!important;color:#103a6f!important;
+  text-overflow:ellipsis!important;
+  appearance:auto!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodApply{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:5px!important;order:3!important;
+  grid-row:auto!important;grid-column:auto!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  height:34px!important;min-height:34px!important;
+  padding:5px 8px!important;margin:0!important;
+  background:#0967df!important;color:#fff!important;
+  border:1px solid #0967df!important;border-radius:7px!important;
+  font-size:11px!important;line-height:1.15!important;
+  box-shadow:none!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodApply .or-filter-apply-icon,
+html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodApply svg{
+  display:inline-flex!important;flex:0 0 15px!important;
+  width:15px!important;height:15px!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar #centerLaneRefresh{
+  display:grid!important;place-items:center!important;order:4!important;
+  grid-row:auto!important;grid-column:auto!important;
+  align-self:center!important;justify-self:stretch!important;
+  width:36px!important;max-width:36px!important;min-width:36px!important;
+  height:34px!important;min-height:34px!important;
+  margin:0!important;padding:0!important;
+  color:#0967df!important;background:#edf5ff!important;
+  border:1px solid #cadff7!important;border-radius:7px!important;
+  font-size:22px!important;line-height:1!important;
+}
+html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodMode,#operPeriodSelect,#operStoreSelect,#operPeriodApply,#centerLaneRefresh):focus-visible{
+  outline:2px solid #0056c7!important;outline-offset:2px!important;
+}
+@media(max-width:1000px) and (min-width:761px){
+ html body.center-three-lanes #page-operativo #operativoPeriodBar>.or-report-filter-grid{
+   --ocl-filter-columns:minmax(0,.97fr) minmax(0,1.13fr) minmax(0,1.13fr) 85px 34px;
+   --ocl-filter-gap:4px;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap){
+   gap:4px!important;padding-right:5px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) label{
+   font-size:9px!important;gap:2px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodMode,#operPeriodSelect,#operStoreSelect){
+   font-size:10px!important;
+ }
+}
+@media(max-width:760px){
+ html body.center-three-lanes #page-operativo #operativoPeriodBar{
+   padding:5px!important;margin:3px 0 6px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar>.or-report-filter-grid{
+   --ocl-filter-columns:repeat(3,minmax(0,1fr));
+   --ocl-filter-gap:4px;
+   --ocl-filter-font:11px;
+   --ocl-filter-select-padding:3px 18px 3px 4px;
+   grid-template-columns:var(--ocl-filter-columns)!important;
+   grid-template-rows:auto auto!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodModeWrap,
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodSelectWrap,
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operStoreWrap{
+   flex-direction:column!important;align-items:stretch!important;
+   gap:3px!important;
+   border-right:0!important;
+   height:auto!important;min-height:0!important;
+   padding:0 4px 0 0!important;
+   grid-row:1!important;grid-column:auto!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodModeWrap{
+   grid-column:1!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodSelectWrap{
+   grid-column:2!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operStoreWrap{
+   grid-column:3!important;padding-right:0!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) label{
+   max-width:100%!important;
+   min-height:14px!important;height:14px!important;
+   justify-content:flex-start!important;
+   font-size:10px!important;line-height:1!important;
+   gap:3px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) .or-fcontrol-icon,
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) .or-fcontrol-icon svg{
+   flex-basis:13px!important;width:13px!important;height:13px!important;min-width:13px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodMode,#operPeriodSelect,#operStoreSelect){
+   height:33px!important;min-height:33px!important;
+   width:100%!important;max-width:100%!important;
+   padding:3px 15px 3px 4px!important;
+   font-size:clamp(10px,2.7vw,12px)!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #operPeriodApply{
+   grid-column:1 / span 2!important;grid-row:2!important;
+   height:32px!important;min-height:32px!important;
+   font-size:11px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar #centerLaneRefresh{
+   grid-column:3!important;grid-row:2!important;
+   width:100%!important;max-width:none!important;min-width:0!important;
+   height:32px!important;min-height:32px!important;
+ }
+}
+@media(max-width:360px){
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodModeWrap,#operPeriodSelectWrap,#operStoreWrap) label{
+   font-size:9px!important;
+ }
+ html body.center-three-lanes #page-operativo #operativoPeriodBar :is(#operPeriodMode,#operPeriodSelect,#operStoreSelect){
+   font-size:10px!important;min-height:32px!important;height:32px!important;
+ }
+}
