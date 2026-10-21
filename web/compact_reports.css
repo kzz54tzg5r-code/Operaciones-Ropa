@@ -376,3 +376,197 @@ html body.center-three-lanes #operativoPeriodBar #operStoreWrap{grid-column:auto
 
 html body #page-operativo .ocl-scope{font-size:11px;line-height:1.25;color:#536b8a;margin:3px 0 5px;overflow-wrap:anywhere}
 html body.center-three-lanes #operativoPeriodBar .ocl-filter-refresh{align-self:end;display:grid;place-items:center;width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;margin:0!important;padding:0!important;font-size:24px!important;line-height:1!important;color:#0969df;background:#f0f6ff;border:1px solid #cbdff4;border-radius:6px;cursor:pointer}
+
+/*
+ * Centro Operativo — Opción 1 aprobada (2026-10-21).
+ * Tarjetas compactas: sólo presentación; los importes, porcentajes y
+ * acciones siguen viniendo de center_lanes.js y de la API existente.
+ * Mantener las tres tarjetas juntas también en móvil.
+ */
+html body #page-operativo .ocl-lanes{
+  gap:8px!important;
+  margin:6px 0 8px!important;
+  align-items:stretch!important;
+}
+html body #page-operativo .ocl-lanes>.ocl-lane{
+  padding:11px 12px!important;
+  gap:8px!important;
+  min-height:0!important;
+  border-top-width:4px!important;
+  border-radius:11px!important;
+  box-shadow:0 3px 10px rgba(13,53,92,.045)!important;
+}
+html body #page-operativo .ocl-lane-head{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:0!important;
+  margin:0!important;
+}
+html body #page-operativo .ocl-lane-head>div{min-width:0!important;}
+html body #page-operativo .ocl-lane h3{
+  font-size:clamp(14px,1.32vw,18px)!important;
+  line-height:1.17!important;
+  margin:0 0 2px!important;
+}
+html body #page-operativo .ocl-lane .ocl-caption{
+  font-size:clamp(10px,.86vw,12px)!important;
+  line-height:1.24!important;
+}
+html body #page-operativo .ocl-lane .ocl-icon{
+  display:inline-flex!important;
+  flex:0 0 29px!important;
+  margin:0!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+html body #page-operativo .ocl-lane .ocl-icon .compact-icon{
+  width:29px!important;height:29px!important;
+}
+html body #page-operativo .ocl-lane .ocl-icon svg{
+  width:26px!important;height:26px!important;
+}
+html body #page-operativo .ocl-lane .ocl-lane-metric{
+  padding:10px 11px!important;
+  gap:7px!important;
+  min-height:0!important;
+  border:1px solid #edf3f9!important;
+  border-radius:8px!important;
+  background:linear-gradient(120deg,#f0f7ff,#f8fbff)!important;
+}
+html body #page-operativo .ocl-lane .ocl-label{
+  font-size:clamp(11px,.95vw,13px)!important;
+  line-height:1.2!important;
+}
+html body #page-operativo .ocl-lane .ocl-quantity{
+  display:flex!important;
+  align-items:baseline!important;
+  gap:3px 5px!important;
+  flex-wrap:wrap!important;
+}
+html body #page-operativo .ocl-lane .ocl-number{
+  font-size:clamp(19px,2.55vw,34px)!important;
+  line-height:1.08!important;
+  letter-spacing:-.025em!important;
+}
+html body #page-operativo .ocl-lane .ocl-unit{
+  display:inline!important;
+  font-size:clamp(11px,1.1vw,15px)!important;
+  margin:0!important;
+}
+html body #page-operativo .ocl-lane .ocl-percent{
+  display:flex!important;
+  align-items:baseline!important;
+  gap:4px!important;
+  font-size:clamp(10px,.88vw,12px)!important;
+}
+html body #page-operativo .ocl-lane .ocl-percent b{
+  display:inline!important;
+  font-size:clamp(14px,1.38vw,19px)!important;
+}
+html body #page-operativo .ocl-lane .ocl-track{
+  height:7px!important;margin:0!important;
+}
+html body #page-operativo .ocl-lane .ocl-pending{
+  display:flex!important;
+  align-items:baseline!important;
+  flex-wrap:wrap!important;
+  gap:2px 5px!important;
+  margin-top:auto!important;
+  padding:7px 8px!important;
+  font-size:clamp(10px,.88vw,12px)!important;
+  line-height:1.2!important;
+  overflow-wrap:anywhere!important;
+}
+html body #page-operativo .ocl-lane .ocl-pending b{
+  display:inline!important;
+  font-size:clamp(12px,1.2vw,16px)!important;
+  margin:0!important;
+}
+html body #page-operativo .ocl-lane>.ocl-detail-button{
+  min-height:38px!important;
+  padding:8px 10px!important;
+  font-size:12px!important;
+  border-radius:7px!important;
+}
+html body #page-operativo .ocl-lane>.ocl-detail-button::after{
+  font-size:19px!important;
+}
+html body #page-operativo .ocl-routes{
+  padding:10px 12px!important;
+  gap:8px!important;
+  border-top-width:4px!important;
+  border-radius:10px!important;
+}
+html body #page-operativo .ocl-route-number{font-size:clamp(18px,2.25vw,29px)!important;}
+html body #page-operativo .ocl-scope{margin:3px 0 4px!important;}
+@media(max-width:700px){
+  html body #page-operativo .ocl-lanes{gap:4px!important;margin:4px 0 7px!important;}
+  html body #page-operativo .ocl-lanes>.ocl-lane{
+    padding:7px 5px!important;gap:6px!important;
+    border-top-width:3px!important;border-radius:7px!important;
+  }
+  html body #page-operativo .ocl-lane-head{
+    display:block!important;min-height:0!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-icon{
+    display:block!important;width:21px!important;
+    height:21px!important;margin:0 0 4px!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-icon .compact-icon{
+    width:21px!important;height:21px!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-icon svg{
+    width:20px!important;height:20px!important;
+  }
+  html body #page-operativo .ocl-lane h3{
+    font-size:clamp(11px,2.7vw,14px)!important;
+    line-height:1.15!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-caption{
+    display:none!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-lane-metric{
+    padding:6px 4px!important;gap:6px!important;min-height:0!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-label{
+    font-size:clamp(9px,2.25vw,12px)!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-quantity{display:block!important;}
+  html body #page-operativo .ocl-lane .ocl-number{
+    font-size:clamp(13px,3.9vw,21px)!important;
+    letter-spacing:-.035em!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-unit{
+    display:block!important;font-size:10px!important;
+    margin:2px 0 0!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-percent{
+    display:block!important;font-size:9px!important;
+    line-height:1.2!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-percent b{
+    display:block!important;font-size:clamp(12px,2.9vw,15px)!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-track{height:6px!important;}
+  html body #page-operativo .ocl-lane .ocl-pending{
+    display:block!important;padding:5px 3px!important;
+    font-size:9px!important;line-height:1.2!important;
+  }
+  html body #page-operativo .ocl-lane .ocl-pending b{
+    display:block!important;font-size:clamp(10px,2.7vw,13px)!important;
+    margin:0 0 2px!important;
+  }
+  html body #page-operativo .ocl-lane>.ocl-detail-button{
+    min-height:40px!important;padding:6px 4px!important;
+    font-size:10px!important;gap:2px!important;
+  }
+  html body #page-operativo .ocl-lane>.ocl-detail-button::after{font-size:15px!important;}
+}
+@media(max-width:375px){
+  html body #page-operativo .ocl-lanes{gap:3px!important;}
+  html body #page-operativo .ocl-lanes>.ocl-lane{padding:6px 3px!important;gap:5px!important;}
+  html body #page-operativo .ocl-lane .ocl-lane-metric{padding:5px 3px!important;gap:5px!important;}
+  html body #page-operativo .ocl-lane .ocl-percent span{font-size:8px!important;}
+  html body #page-operativo .ocl-lane>.ocl-detail-button{font-size:9px!important;}
+}
