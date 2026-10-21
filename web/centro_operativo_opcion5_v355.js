@@ -131,6 +131,7 @@
  function update(){
   const active=selected();
   document.body.classList.toggle('or355-center-choice',active);
+  document.body.classList.toggle('or355-module-choice', !!(q('#page-operativo')?.classList.contains('active') && !q('#appView')?.classList.contains('hidden')));
   ensureHeader();
   ensureSidebar();
   updateHeader();
