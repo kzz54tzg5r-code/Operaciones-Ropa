@@ -94,6 +94,8 @@ html body:not(.center-three-lanes) #operativoPeriodBar #v253ResetFilters{
 
   function hardHide(el){
     if(!el)return;
+    // Evita reescribir los mismos estilos y activar continuamente el observer.
+    if(el.dataset.v262Hidden==='1'&&el.style.getPropertyValue('display')==='none'&&el.getAttribute('aria-hidden')==='true')return;
     el.style.setProperty('display','none','important');
     el.style.setProperty('visibility','hidden','important');
     el.style.setProperty('opacity','0','important');
