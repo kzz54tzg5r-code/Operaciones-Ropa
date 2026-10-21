@@ -283,3 +283,96 @@ html body #v313Host .v313-source-status{border:1px solid #eed8ad!important;backg
 html body #v313Host .v313-attendance-edit{display:flex!important;flex-wrap:wrap!important;gap:8px!important;margin:6px 0!important}
 html body #v313Host .v313-attendance-edit input{flex:1!important;min-width:140px!important;max-width:240px!important}
 html body #v313Host #v313AttendanceForm label{font-size:13px!important}
+
+/* Approved Centro Operativo: three lanes stay side by side on every device. */
+html body #page-operativo .ocl-shell{--ocl-blue:#0969df;width:100%;max-width:100%;color:#0b2e60;font-family:Inter,system-ui,sans-serif;container-type:inline-size}
+html body #page-operativo .ocl-shell *{box-sizing:border-box;min-width:0}
+html body #page-operativo .ocl-lanes{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px;margin:6px 0 10px}
+html body #page-operativo .ocl-lane{--lane:#008f98;display:flex;flex-direction:column;border:1px solid #d9e5f1;border-top:6px solid var(--lane);border-radius:8px;background:#fff;overflow:hidden;padding:16px;gap:14px}
+html body #page-operativo .ocl-conditioned{--lane:#833ce6}
+html body #page-operativo .ocl-located{--lane:#146df1}
+html body #page-operativo .ocl-lane-head{display:flex;align-items:flex-start;gap:10px;min-height:66px}
+html body #page-operativo .ocl-shell h3{margin:0 0 4px!important;font-size:clamp(14px,1.7vw,23px)!important;line-height:1.2!important;font-weight:800!important;color:#0b2e60}
+html body #page-operativo .ocl-caption{font-size:clamp(10px,1.05vw,13px);line-height:1.3;color:#536b8a;margin:0;overflow-wrap:normal}
+html body #page-operativo .ocl-icon{color:var(--lane);flex:0 0 36px}
+html body #page-operativo .ocl-icon .compact-icon{width:36px!important;height:36px!important;background:transparent!important;color:inherit!important;padding:0!important;margin:0!important;border:0!important}
+html body #page-operativo .ocl-icon svg{width:32px!important;height:32px!important}
+html body #page-operativo .ocl-lane-metric{flex:1;display:flex;flex-direction:column;gap:10px;background:linear-gradient(120deg,#f0f7ff,#f8fbff);padding:14px;border-radius:6px;min-height:190px}
+html body #page-operativo .ocl-label{font-size:clamp(11px,1.1vw,15px);line-height:1.25;font-weight:650;overflow-wrap:anywhere}
+html body #page-operativo .ocl-quantity{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 7px;color:var(--lane);font-variant-numeric:tabular-nums}
+html body #page-operativo .ocl-number{display:block;max-width:100%;font-size:clamp(18px,3.6vw,46px);line-height:1.1;font-weight:850;white-space:nowrap}
+html body #page-operativo .ocl-unit{font-size:clamp(12px,1.7vw,21px);font-weight:650}
+html body #page-operativo .ocl-percent{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;font-size:12px;line-height:1.2}
+html body #page-operativo .ocl-percent b{font-size:clamp(16px,1.7vw,23px)}
+html body #page-operativo .ocl-track{height:9px;width:100%;background:#e2eaf2;border-radius:8px;overflow:hidden;margin:0}
+html body #page-operativo .ocl-track i{display:block;height:100%;background:var(--lane,#eaa21a);border-radius:inherit}
+html body #page-operativo .ocl-pending{display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;margin-top:auto;padding:9px 10px;border-radius:5px;background:#fff2db;color:#a25408;font-size:clamp(10px,1.2vw,15px);line-height:1.25}
+html body #page-operativo .ocl-pending b{font-size:clamp(13px,1.7vw,22px)}
+html body #page-operativo .ocl-shell button{cursor:pointer;max-width:100%;font-family:inherit;line-height:1.2!important;white-space:normal!important}
+html body #page-operativo .ocl-detail-button{background:#edf5ff!important;color:#0965db!important;border:1px solid #dbeaff!important;border-radius:5px!important;padding:10px 8px!important;min-height:40px!important;font-size:14px!important;font-weight:650;box-shadow:none!important;width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:3px}
+html body #page-operativo .ocl-detail-button::after{content:'›';font-size:22px;line-height:1}
+html body #page-operativo .ocl-routes{--lane:#e59a13;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(100px,1fr);gap:12px;align-items:center;padding:14px 16px;border:1px solid #d9e5f1;border-top:6px solid var(--lane);border-radius:8px;background:#fff}
+html body #page-operativo .ocl-route-head{display:flex;align-items:center;gap:9px}
+html body #page-operativo .ocl-route-score{display:flex;align-items:center;gap:14px;font-variant-numeric:tabular-nums}
+html body #page-operativo .ocl-route-number{font-size:clamp(22px,3.5vw,44px);line-height:1.1;white-space:nowrap}
+html body #page-operativo .ocl-route-percent{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;font-size:12px}
+html body #page-operativo .ocl-route-percent b{font-size:clamp(16px,2vw,24px)}
+html body #page-operativo .ocl-routes>.ocl-detail-button{grid-column:1/-1}
+html body #page-operativo :is(.ocl-drawer,.ocl-full){border:1px solid #ccdff1;border-radius:8px;background:#fff;margin:10px 0;padding:12px;max-width:100%;min-width:0}
+html body #page-operativo .ocl-drawer[hidden]{display:none!important}
+html body #page-operativo .ocl-drawer-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+html body #page-operativo .ocl-context{font-size:12px;line-height:1.3;color:#536b8a;margin:5px 0 12px}
+html body #page-operativo :is(.ocl-back,.ocl-full-link){border:1px solid #cbdff4;background:#f0f6ff;color:#125596;border-radius:6px;padding:8px 10px;min-height:40px;font-size:13px!important}
+html body #page-operativo .ocl-detail-scroll{overflow-x:auto;overflow-y:visible;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;max-width:100%;margin:8px 0}
+html body #page-operativo .ocl-detail-table{border-collapse:collapse;width:100%;min-width:520px;font-variant-numeric:tabular-nums}
+html body #page-operativo .ocl-detail-table :is(th,td){padding:8px!important;text-align:right;white-space:normal!important;font-size:12px!important;border-bottom:1px solid #e3edf6}
+html body #page-operativo .ocl-detail-table :is(th,td):first-child{text-align:left}
+html body #page-operativo .ocl-detail-table thead{background:#edf5ff}
+html body #page-operativo .ocl-full{padding:0}
+html body #page-operativo .ocl-full>summary{cursor:pointer;font-size:13px!important;font-weight:650;padding:12px;line-height:1.3}
+html body #page-operativo .ocl-original{padding:10px;max-width:100%;overflow:visible}
+html body #page-operativo .ocl-original .monthly-cross-desktop{display:block!important;max-width:100%;overflow-x:auto!important;overflow-y:visible!important;touch-action:pan-x pan-y}
+html body #page-operativo .ocl-original .monthly-cross-mobile{display:none!important}
+html body #page-operativo .ocl-full>.ocl-back{margin:10px}
+html body.center-three-lanes #operativoPeriodBar>.or-report-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr)) 36px!important;gap:6px!important}
+html body.center-three-lanes #operativoPeriodBar select{width:100%!important;font-size:clamp(10px,1.3vw,14px)!important;padding:5px 3px!important;height:36px!important;min-height:36px!important}
+html body.center-three-lanes #operativoPeriodBar label{font-size:10px!important;line-height:1.1!important}
+html body.center-three-lanes #operativoPeriodBar #operStoreWrap{grid-column:auto!important}
+@media(max-width:700px){
+ html body #page-operativo .ocl-lanes{gap:4px;margin:4px 0 7px}
+ html body #page-operativo .ocl-lane{padding:7px 5px;gap:8px;border-top-width:4px;border-radius:5px}
+ html body #page-operativo .ocl-lane-head{display:block;min-height:92px}
+ html body #page-operativo .ocl-icon{display:block;margin-bottom:5px}
+ html body #page-operativo .ocl-icon .compact-icon{width:25px!important;height:25px!important}
+ html body #page-operativo .ocl-icon svg{width:24px!important;height:24px!important}
+ html body #page-operativo .ocl-lane h3{font-size:13px!important;margin-bottom:4px!important}
+ html body #page-operativo .ocl-lane-metric{padding:7px 4px;gap:8px;min-height:185px}
+ html body #page-operativo .ocl-quantity{display:block}
+ html body #page-operativo .ocl-number{font-size:clamp(18px,5.8vw,34px)}
+ html body #page-operativo .ocl-unit{display:block;margin-top:3px;font-size:12px}
+ html body #page-operativo .ocl-percent{display:block;font-size:10px;line-height:1.3}
+ html body #page-operativo .ocl-percent b{display:block;font-size:17px}
+ html body #page-operativo .ocl-track{height:7px}
+ html body #page-operativo .ocl-pending{padding:6px 3px;display:block;font-size:10px;line-height:1.2}
+ html body #page-operativo .ocl-pending b{display:block;font-size:13px;margin-bottom:3px}
+ html body #page-operativo .ocl-detail-button{font-size:11px!important;min-height:40px!important;padding:7px 4px!important;gap:1px}
+ html body #page-operativo .ocl-detail-button::after{font-size:18px}
+ html body #page-operativo .ocl-routes{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:9px 8px;border-top-width:4px}
+ html body #page-operativo .ocl-routes>.ocl-track{grid-column:1/-1}
+ html body #page-operativo .ocl-routes .ocl-caption{display:none}
+ html body #page-operativo .ocl-routes h3{font-size:14px!important}
+ html body #page-operativo .ocl-route-head{gap:3px}
+ html body #page-operativo .ocl-route-score{gap:8px}
+ html body #page-operativo .ocl-route-number{font-size:21px}
+ html body #page-operativo .ocl-route-percent{font-size:10px;gap:2px}
+ html body #page-operativo .ocl-route-percent b{font-size:15px}
+ html body #page-operativo .ocl-drawer{padding:8px}
+ html body #page-operativo .ocl-drawer-head{align-items:flex-start;flex-wrap:wrap}
+}
+@media print{
+ html body #page-operativo .ocl-lanes,html body #page-operativo .ocl-routes,html body #page-operativo .ocl-drawer,html body #page-operativo .ocl-full>summary,html body #page-operativo .ocl-full>.ocl-back{display:none!important}
+ html body #page-operativo .ocl-full,html body #page-operativo .ocl-original{padding:0;border:0;display:block!important}
+}
+
+html body #page-operativo .ocl-scope{font-size:11px;line-height:1.25;color:#536b8a;margin:3px 0 5px;overflow-wrap:anywhere}
+html body.center-three-lanes #operativoPeriodBar .ocl-filter-refresh{align-self:end;display:grid;place-items:center;width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;margin:0!important;padding:0!important;font-size:24px!important;line-height:1!important;color:#0969df;background:#f0f6ff;border:1px solid #cbdff4;border-radius:6px;cursor:pointer}

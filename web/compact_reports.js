@@ -218,13 +218,15 @@ function compactControls(){
  }
  const grid=document.querySelector('#operativoPeriodBar>.or-report-filter-grid');
  if(grid){
-  grid.dataset.compactOwned='1';setStyle(grid,'display','grid');setStyle(grid,'grid-template-columns',small?'repeat(2,minmax(0,1fr))':'repeat(3,minmax(0,1fr))');setStyle(grid,'grid-auto-flow','row');setStyle(grid,'gap','8px');setStyle(grid,'overflow','visible');setStyle(grid,'height','auto');
+  const mini=document.body.classList.contains('center-three-lanes');
+  grid.dataset.compactOwned='1';setStyle(grid,'display','grid');setStyle(grid,'grid-template-columns',mini?'repeat(3,minmax(0,1fr)) 36px':small?'repeat(2,minmax(0,1fr))':'repeat(3,minmax(0,1fr))');setStyle(grid,'grid-auto-flow','row');setStyle(grid,'gap',mini?'4px':'8px');setStyle(grid,'overflow','visible');setStyle(grid,'height','auto');
   grid.querySelectorAll('.or-fcontrol').forEach(el=>{setStyle(el,'width','100%');setStyle(el,'min-width','0px');setStyle(el,'max-width','100%');setStyle(el,'flex','initial');setStyle(el,'grid-row','auto');setStyle(el,'grid-column','auto');setStyle(el,'order','0');});
-  grid.querySelectorAll('label').forEach(label=>{setStyle(label,'font-size','12px');setStyle(label,'line-height','1.25');});
+  grid.querySelectorAll('label').forEach(label=>{setStyle(label,'font-size',mini?'10px':'12px');setStyle(label,'line-height','1.25');});
+  grid.querySelectorAll('select').forEach(select=>{if(mini){if(!select.dataset.centerStyle)select.dataset.centerStyle=JSON.stringify(['font-size','padding'].map(prop=>[prop,select.style.getPropertyValue(prop),select.style.getPropertyPriority(prop)]));setStyle(select,'font-size',small?'11px':'14px');setStyle(select,'padding','5px 3px');}else if(select.dataset.centerStyle){JSON.parse(select.dataset.centerStyle).forEach(([prop,value,priority])=>{if(value)select.style.setProperty(prop,value,priority);else select.style.removeProperty(prop);});delete select.dataset.centerStyle;}});
   const mode=document.getElementById('operPeriodMode'),wrap=document.getElementById('operPeriodModeWrap');
   if(mode&&wrap){const on=mode.options.length>1;wrap.dataset.compactMode=on?'1':'0';if(on){setStyle(wrap,'display','flex');setStyle(wrap,'order','-3');}}
   const period=document.getElementById('operPeriodSelectWrap'),store=document.getElementById('operStoreWrap');
-  setStyle(period,'order','-2');setStyle(store,'order','-1');if(small)setStyle(store,'grid-column','1 / -1');
+  setStyle(period,'order','-2');setStyle(store,'order','-1');if(small&&!mini)setStyle(store,'grid-column','1 / -1');
  }
  document.querySelectorAll('#page-operativo .compact-summary-band,#page-bonuses .compact-summary-band').forEach(band=>{setStyle(band,'display','grid');setStyle(band,'grid-template-columns','repeat(2,minmax(0,1fr))');setStyle(band,'width','100%');});
 }
@@ -322,7 +324,7 @@ function execOptionOne(root){
   if(controls)extra.open=true;
 }
 
-function run(){queued=false;compactControls();document.querySelectorAll('#operativoDynamicContent').forEach(execOptionOne);document.querySelectorAll('#v313Host').forEach(brandCards);}
+function run(){queued=false;document.body.classList.toggle('center-three-lanes',!!window.RopaCenterLanes?.isActive());compactControls();document.querySelectorAll('#operativoDynamicContent').forEach(root=>{if(!window.RopaCenterLanes?.mount(root))execOptionOne(root);});window.RopaCenterLanes?.fit();window.RopaCenterLanes?.filters();document.querySelectorAll('#v313Host').forEach(brandCards);}
 function schedule(){if(!queued){queued=true;requestAnimationFrame(run);}}
 function start(){
  window.addEventListener('resize',schedule);
