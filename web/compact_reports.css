@@ -950,3 +950,32 @@ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)
     font-size:clamp(9px,2.5vw,12px)!important;
   }
 }
+
+/* Teléfonos angostos: los dos selectores permanecen legibles.
+   El segundo renglón es para Periodo/Tienda; las acciones se desplazan
+   a una tercera línea sólo cuando el ancho físico es insuficiente. */
+@media(max-width:380px){
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden))>.or-report-filter-grid{
+   grid-template-rows:auto auto auto!important;
+ }
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)) .v266-period-view{
+   grid-row:1!important;padding-right:0!important;
+ }
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)) #operPeriodSelectWrap{
+   grid-column:1/span 6!important;grid-row:2!important;
+ }
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)) #operStoreWrap{
+   grid-column:7/span 6!important;grid-row:2!important;
+ }
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)) #operPeriodApply{
+   grid-column:1/span 10!important;grid-row:3!important;
+ }
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)) #operPeriodApply>span:last-child{
+   display:inline!important;
+ }
+ html body #page-operativo #operativoPeriodBar:has(.v266-period-view:not(.hidden)) #centerLaneRefresh{
+   grid-column:11/span 2!important;grid-row:3!important;
+   width:100%!important;max-width:none!important;min-width:0!important;
+   height:34px!important;min-height:34px!important;
+ }
+}
