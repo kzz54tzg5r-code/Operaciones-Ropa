@@ -56,14 +56,23 @@ function mount(root){
   if(s.pending){const pending=el('div','ocl-pending');pending.append(el('b',null,s.pending+' pzas'),el('span',null,s.pendingLabel));body.append(pending);}
   card.append(body,detailButton(s.id));lanes.append(card);
  });
- const route=el('section','ocl-routes'),routeHead=el('div','ocl-route-head'),routeText=el('div');routeText.append(el('h3',null,'Recorridos'),el('p','ocl-caption','Realizados frente a la meta del periodo'));routeHead.append(icon('chart'),routeText);
- const routeScore=el('div','ocl-route-score');routeScore.append(el('b','ocl-route-number',amount(routes)+' / '+(routes?.cells[2]||'N/D')));const rp=el('div','ocl-route-percent');rp.append(el('b',null,routes?.cells[1]||'N/D'),el('span',null,'de meta'));routeScore.append(rp);
- route.append(routeHead,routeScore,meter(routes?.cells[1]||''),detailButton('routes'));
+ // Opción 3 aprobada: Recorridos comparte la misma fila visual con
+ // Recibido, En proceso y En piso. Las cifras proceden del reporte original.
+ const route=el('section','ocl-lane ocl-routes ocl-route-lane'),routeHead=el('div','ocl-lane-head ocl-route-head'),routeText=el('div');
+ routeText.append(el('h3',null,'Recorridos'),el('p','ocl-caption','Realizados frente a la meta del periodo'));
+ routeHead.append(icon('chart'),routeText);
+ const routeMetric=el('div','ocl-lane-metric ocl-route-metric'),routeScore=el('div','ocl-route-score');
+ routeScore.append(el('b','ocl-route-number',amount(routes)+' / '+(routes?.cells[2]||'N/D')));
+ const rp=el('div','ocl-route-percent');rp.append(el('b',null,routes?.cells[1]||'N/D'),el('span',null,'de meta'));
+ routeScore.append(rp);routeMetric.append(routeScore,meter(routes?.cells[1]||''));
+ route.append(routeHead,routeMetric,detailButton('routes'));lanes.append(route);
  const complete=el('details','ocl-full'),summary=el('summary',null,'Reporte completo por tienda · tablas y gráficos');
+ complete.open=true; // Resumen ultracompacto: tabla real y gráficos existentes visibles debajo de los 4 indicadores.
  const fullBack=el('button','ocl-back','← Regresar al resumen');fullBack.type='button';fullBack.addEventListener('click',()=>{complete.open=false;summary.focus({preventScroll:true});});
  while(root.firstChild)original.append(root.firstChild);
  complete.append(summary,original,fullBack);
- shell.append(el('p','ocl-scope',stamp()),lanes,route,drawer,complete);root.append(shell);
+ shell.dataset.design='ultracompact-four';
+ shell.append(el('p','ocl-scope',stamp()),lanes,drawer,complete);root.append(shell);
  complete.addEventListener('toggle',()=>{if(complete.open)window.dispatchEvent(new Event('resize'));});
  if(panel)open(panel);
  return true;
