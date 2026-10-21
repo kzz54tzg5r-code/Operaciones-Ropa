@@ -118,10 +118,9 @@ html body:not(.center-three-lanes) #operativoPeriodBar #v253ResetFilters{
   // Centro Operativo usa la opción 3 aprobada, que sí tiene Consultar.
   // Conservar el ocultamiento histórico únicamente en las otras pestañas.
   function isCenter(){
-    const tab=q('#operativoNav [data-tab-key="operations.center"].active')||
-              q('#operativoNav [data-opview="Centro Ejecutivo"].active');
-    const page=q('#page-operativo');
-    return !!tab && !!page && page.classList.contains('active');
+    // Clase fijada por el controlador operativo real (no por un tab oculto).
+    // Las vistas no activas pueden mantener el botón Centro con clase active.
+    return document.body.classList.contains('center-three-lanes');
   }
   const forced=['display','visibility','opacity','pointer-events','position',
     'width','min-width','max-width','height','min-height','max-height',
@@ -156,6 +155,7 @@ html body:not(.center-three-lanes) #operativoPeriodBar #v253ResetFilters{
     if(bar){
       observer.observe(bar,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']});
     }
+    observer.observe(document.body,{attributes:true,attributeFilter:['class']});
     enforce();
     [50,150,350,700,1400,2400].forEach(ms=>setTimeout(enforce,ms));
     setInterval(enforce,750);
