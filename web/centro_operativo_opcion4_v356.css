@@ -388,3 +388,65 @@ html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199
    font-size:9px!important
  }
 }
+
+/* V358: lectura directa de registros y pantalla principal realmente compacta */
+@media(min-width:701px){
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lanes>.ocl-lane{
+  height:auto!important;min-height:0!important;max-height:none!important;
+  padding:8px 9px!important;gap:5px!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane .ocl-lane-metric{
+  height:auto!important;min-height:0!important;max-height:none!important;
+  flex:0 1 auto!important;padding:7px 9px!important;gap:4px!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane-head{
+  margin-bottom:0!important;min-height:0!important;gap:7px!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane h3{
+  font-size:14px!important;margin:0 0 2px!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-caption{
+  font-size:10px!important;line-height:1.18!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane>.ocl-detail-button{
+  margin-top:auto!important;height:30px!important;min-height:30px!important;
+  padding:5px 8px!important;font-size:11px!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane :is(.ocl-number,.ocl-route-number){
+  font-size:25px!important;line-height:1!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-pending{
+  margin:2px 0 0!important;padding:5px!important;min-height:0!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-route-metric{
+  margin:0!important;min-height:0!important
+ }
+ html body.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-route-score{gap:3px!important}
+}
+html body.or356-center-active #page-operativo .or356-dashboard{
+ align-items:start!important;gap:7px!important;margin:3px 0 7px!important
+}
+html body.or356-center-active #page-operativo .or356-card{
+ padding:7px 8px!important;min-height:0!important
+}
+html body.or356-center-active #page-operativo .or356-sidepanels{
+ grid-template-rows:none!important;gap:7px!important
+}
+html body.or356-center-active #page-operativo .or356-rows{gap:4px!important}
+html body.or356-center-active #page-operativo .or356-row{min-height:16px!important}
+html body.or356-center-active #page-operativo .or356-table :is(th,td){padding:6px 4px!important}
+html body.or356-center-active #page-operativo .or356-cardhead{margin-bottom:6px!important}
+html body.or356-center-active #page-operativo .ocl-scope{
+ margin:2px 0 4px!important;font-size:10px!important
+}
+html body.or356-center-active #page-operativo .or356-divider{
+ margin:4px 0!important;padding:6px 0!important
+}
+html body.or356-center-active #page-operativo .ocl-full>summary{
+ margin:0!important;min-height:0!important
+}
+@media(max-width:700px){
+ html body.or356-center-active #page-operativo .or356-card{padding:7px!important}
+ html body.or356-center-active #page-operativo .or356-dashboard{grid-template-columns:1fr!important}
+ html body.or356-center-active #page-operativo .or356-sidepanels{grid-template-columns:1fr!important}
+}
