@@ -111,6 +111,29 @@
  }
  function init(){
   body.classList.add('or363-navigation');
+  const side=q('#sidebar'),toggle=q('#sidebarToggle');
+  if(toggle){
+   toggle.setAttribute('aria-label','Abrir o cerrar el menú lateral');
+   toggle.setAttribute('aria-expanded','false');
+   toggle.addEventListener('click',event=>{
+    if(window.innerWidth<=900)return; // En móvil permanece el menú nativo.
+    event.preventDefault();event.stopImmediatePropagation();
+    const expanded=side.classList.toggle('or363-sidebar-open');
+    toggle.setAttribute('aria-expanded',expanded?'true':'false');
+   },true);
+   document.addEventListener('click',event=>{
+    if(window.innerWidth<=900||!side?.classList.contains('or363-sidebar-open'))return;
+    if(side.contains(event.target))return;
+    side.classList.remove('or363-sidebar-open');
+    toggle.setAttribute('aria-expanded','false');
+   });
+   document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape'||!side?.classList.contains('or363-sidebar-open'))return;
+    side.classList.remove('or363-sidebar-open');
+    toggle.setAttribute('aria-expanded','false');
+    toggle.focus();
+   });
+  }
   navs.forEach(id=>wire(doc.getElementById(id)));
   refresh();
   const observer=new MutationObserver(mutations=>{
