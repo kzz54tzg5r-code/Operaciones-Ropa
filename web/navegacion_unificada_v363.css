@@ -1,0 +1,287 @@
+/* V363 · Única autoridad visual del menú y las pestañas.
+   Se aplica exclusivamente con .or363-navigation; mantiene los controles y listeners.
+   Evita anchos dobles, iconos repetidos y pestañas que se superponen. */
+html body.or363-navigation #appView .shell{
+ min-width:0!important;width:100%!important;max-width:none!important;
+}
+@media(min-width:901px){
+ html body.or363-navigation #appView .shell{
+  display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;
+ }
+ html body.or363-navigation #appView .shell > #sidebar{
+  position:sticky!important;top:0!important;left:auto!important;right:auto!important;
+  inset:auto!important;align-self:start!important;width:72px!important;
+  min-width:72px!important;max-width:72px!important;height:100dvh!important;
+  background:linear-gradient(180deg,#0b3a71,#115799)!important;color:#fff!important;
+  border-right:1px solid #2467a5!important;padding:8px 5px!important;
+  overflow-x:visible!important;overflow-y:auto!important;
+  gap:5px!important;z-index:180!important;box-shadow:none!important;
+  transition:width .16s ease,max-width .16s ease!important;
+ }
+ html body.or363-navigation #appView .shell > .main{
+  position:relative!important;display:block!important;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  margin:0!important;margin-left:0!important;margin-right:0!important;
+  padding:8px 11px 32px!important;transform:none!important;
+ }
+ html body.or363-navigation #appView #sidebar .sidebrand{
+  padding:4px 3px 8px!important;margin:0 0 6px!important;
+  justify-content:center!important;gap:5px!important;
+  border-bottom:1px solid #ffffff26!important;
+ }
+ html body.or363-navigation #appView #sidebar .sidebrand img{
+  width:48px!important;min-width:48px!important;max-width:48px!important;
+  height:auto!important;object-fit:contain!important;
+ }
+ html body.or363-navigation #appView #sidebar .sidebrand-text,
+ html body.or363-navigation #appView #sidebar .group,
+ html body.or363-navigation #appView #sidebar .or-nav-section,
+ html body.or363-navigation #appView #sidebar .nav small,
+ html body.or363-navigation #appView #sidebar .profile>b,
+ html body.or363-navigation #appView #sidebar .profile>small,
+ html body.or363-navigation #appView #sidebar #viewRoleBox{
+  display:none!important;
+ }
+ html body.or363-navigation #appView #sidebar >.nav,
+ html body.or363-navigation #appView .shell.sidebar-collapsed #sidebar >.nav{
+  display:flex!important;position:relative!important;flex:0 0 auto!important;
+  align-items:center!important;justify-content:center!important;
+  width:100%!important;max-width:100%!important;
+  min-height:44px!important;height:44px!important;
+  padding:6px!important;margin:0!important;border:0!important;
+  border-radius:9px!important;background:transparent!important;
+  font-size:0!important;color:#f5faff!important;
+  text-align:center!important;gap:0!important;box-shadow:none!important;
+ }
+ html body.or363-navigation #appView #sidebar >.nav:before{
+  content:none!important;display:none!important
+ }
+ html body.or363-navigation #appView #sidebar >.nav .or-icon{
+  display:grid!important;place-items:center!important;grid-row:auto!important;
+  width:23px!important;min-width:23px!important;height:23px!important;
+  margin:0!important;padding:0!important;color:inherit!important
+ }
+ html body.or363-navigation #appView #sidebar >.nav .or-icon svg{
+  width:21px!important;height:21px!important;stroke:currentColor!important
+ }
+ html body.or363-navigation #appView #sidebar >.nav:is(.active,[aria-current="page"]){
+  background:#126be4!important;color:white!important;box-shadow:none!important
+ }
+ html body.or363-navigation #appView #sidebar >.nav:hover{background:#206eb5!important;color:#fff!important}
+ html body.or363-navigation #appView #sidebar .sidebar-toggle{
+  display:grid!important;place-items:center!important;flex:0 0 auto!important;
+  width:40px!important;min-height:38px!important;height:38px!important;
+  padding:4px!important;margin:0 auto 3px!important;
+  color:#fff!important;background:#ffffff1c!important;border:1px solid #ffffff40!important;
+  font-size:20px!important;border-radius:9px!important
+ }
+ html body.or363-navigation #appView #sidebar .profile{
+  margin-top:auto!important;border-top:1px solid #ffffff30!important;
+  background:transparent!important;padding:7px 2px!important;min-width:0!important;
+  color:white!important
+ }
+ html body.or363-navigation #appView #sidebar #logout{
+  width:100%!important;min-height:34px!important;font-size:0!important;
+  border:1px solid #ffffff42!important;color:#fff!important;background:transparent!important;
+ }
+ html body.or363-navigation #appView #sidebar #logout:before{
+  content:"⇥"!important;display:block!important;font-size:19px!important
+ }
+ /* Expandir temporalmente al pasar el cursor o entrar mediante teclado;
+    la zona principal permanece estable sin perder anchura ni saltar. */
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within){
+  width:242px!important;max-width:242px!important;
+  padding:8px 9px!important;box-shadow:10px 0 24px #0b2e5980!important;
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand{
+  justify-content:flex-start!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand-text,
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .group,
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .or-nav-section{
+  display:block!important;color:#e8f2ff!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand-text b,
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand-text small{
+  color:#fff!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) >.nav,
+ html body.or363-navigation #appView .shell.sidebar-collapsed #sidebar:is(:hover,:focus-within) >.nav{
+  justify-content:flex-start!important;text-align:left!important;gap:8px!important;
+  font-size:12px!important;padding:8px!important;height:auto!important;min-height:44px!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .nav .or-icon{
+  flex:0 0 22px!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .nav small{
+  display:none!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .profile>b,
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .profile>small,
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) #viewRoleBox{
+  display:block!important;color:#fff!important;font-size:11px!important;
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .profile select{
+  max-width:100%!important;width:100%!important;min-height:30px!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) #logout{
+  font-size:11px!important
+ }
+ html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) #logout:before{display:none!important}
+}
+/* Cabecera compacta en todas las pestañas; sin recortar títulos o controles. */
+html body.or363-navigation #appView .main>.hero{
+ min-height:34px!important;max-height:none!important;
+ padding:6px 12px!important;margin:0 0 6px!important;
+ border-radius:9px!important;box-shadow:none!important
+}
+html body.or363-navigation #appView .main>.hero h1{
+ font-size:17px!important;line-height:1.1!important
+}
+html body.or363-navigation #appView .main>.hero #heroSub{
+ font-size:10px!important;margin:2px 0 0!important
+}
+/* Anula los tratamientos incompatibles: iconos enormes, ring y cuadrículas.
+   Soporta vista comercial, Cambios/Muertos y subpestañas de Operación. */
+html body.or363-navigation #appView .main :is(.rt-carousel-shell,.rt-icon-rail-v1-shell,.v222-tab-stage){
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ margin:0 0 6px!important;padding:0!important;
+ border:0!important;background:transparent!important;box-shadow:none!important;
+}
+html body.or363-navigation #appView .main :is(.rt-carousel-shell,.rt-icon-rail-v1-shell)::before,
+html body.or363-navigation #appView .main :is(.rt-carousel-shell,.rt-icon-rail-v1-shell)::after,
+html body.or363-navigation #appView .main .rt-icon-rail-v1-current,
+html body.or363-navigation #appView .main .rt-icon-rail-v1-indicator,
+html body.or363-navigation #appView .main .rt-m7-current,
+html body.or363-navigation #appView .main .rt-mundial-current{
+ display:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs){
+ --rt-card-w:108px!important;--rt-gap:5px!important;--rt-edge-pad:5px!important;
+ display:flex!important;grid-template-columns:none!important;
+ grid-template-rows:none!important;grid-auto-flow:initial!important;
+ flex-flow:row nowrap!important;align-items:center!important;
+ gap:5px!important;width:100%!important;max-width:100%!important;min-width:0!important;
+ height:60px!important;min-height:60px!important;max-height:60px!important;
+ margin:0 0 5px!important;padding:4px 5px!important;
+ background:#fff!important;border:1px solid #d7e4f2!important;
+ border-radius:10px!important;box-shadow:none!important;
+ overflow-x:auto!important;overflow-y:hidden!important;
+ white-space:nowrap!important;touch-action:pan-x pan-y!important;
+ overscroll-behavior-x:contain!important;scroll-snap-type:x proximity!important;
+ scroll-behavior:auto!important;scrollbar-width:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)::-webkit-scrollbar{display:none!important}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs).hidden{
+ display:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:is(.hidden,[hidden],[aria-hidden="true"]){
+ display:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button{
+ position:relative!important;display:flex!important;flex:0 0 108px!important;
+ flex-direction:column!important;align-items:center!important;justify-content:center!important;
+ gap:3px!important;box-sizing:border-box!important;
+ width:108px!important;min-width:108px!important;max-width:108px!important;
+ height:50px!important;min-height:50px!important;max-height:50px!important;
+ padding:4px 5px!important;margin:0!important;
+ border:1px solid #d9e6f4!important;border-radius:8px!important;
+ background:#fff!important;color:#164b82!important;opacity:1!important;
+ box-shadow:none!important;transform:none!important;
+ font-size:10px!important;font-weight:800!important;line-height:1.08!important;
+ text-align:center!important;white-space:normal!important;
+ overflow:hidden!important;scroll-snap-align:start!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:is(.active,[aria-selected="true"]){
+ background:#0b61ca!important;border-color:#0b61ca!important;
+ color:white!important;box-shadow:none!important;opacity:1!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:hover:not(.active){
+ border-color:#a6c7ed!important;background:#eff6ff!important;color:#124a86!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button::after{
+ display:none!important;content:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) .rt-tab-icon,
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) .or-tab-icon,
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) .v203-tab-icon{
+ position:static!important;display:grid!important;place-items:center!important;
+ flex:0 0 19px!important;width:19px!important;min-width:19px!important;max-width:19px!important;
+ height:19px!important;min-height:19px!important;max-height:19px!important;
+ padding:0!important;margin:0!important;border:0!important;border-radius:0!important;
+ background:transparent!important;color:inherit!important;opacity:1!important;
+ box-shadow:none!important;transform:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) :is(.rt-tab-icon,.or-tab-icon,.v203-tab-icon) svg{
+ display:block!important;width:17px!important;height:17px!important;
+ min-width:17px!important;min-height:17px!important;max-width:17px!important;
+ stroke:currentColor!important;color:inherit!important;opacity:1!important;
+ transform:none!important
+}
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) :is(.rt-tab-label,.v203-tab-label){
+ position:static!important;display:-webkit-box!important;-webkit-line-clamp:2!important;
+ -webkit-box-orient:vertical!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ height:auto!important;max-height:24px!important;min-height:0!important;
+ margin:0!important;padding:0!important;overflow:hidden!important;
+ clip:auto!important;clip-path:none!important;
+ color:inherit!important;opacity:1!important;
+ font-size:10px!important;font-weight:800!important;line-height:1.1!important;
+ white-space:normal!important;text-overflow:ellipsis!important;text-transform:none!important;
+ transform:none!important
+}
+/* Previene íconos duplicados. Se conserva uno solo por botón. */
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:has(.rt-tab-icon)>.or-tab-icon,
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:has(.rt-tab-icon)>.v203-tab-icon{
+ display:none!important
+}
+/* Flechas existentes de envoltorios heredados: sin posiciones encimadas */
+html body.or363-navigation #appView .main :is(.rt-carousel-arrow,.v222-tab-arrow){
+ flex:0 0 27px!important;width:27px!important;height:35px!important;min-width:27px!important;
+ padding:0!important;line-height:1!important;border-radius:7px!important
+}
+html body.or363-navigation #appView .main .rt-carousel-arrow{display:none!important}
+html body.or363-navigation #appView .main .v222-tab-stage{display:flex!important;align-items:center!important;gap:5px!important}
+html body.or363-navigation #appView .main .v222-tab-stage.v222-stage-hidden{display:none!important}
+@media(min-width:1250px){
+ html body.or363-navigation #appView .main #operativoNav>button{
+  flex-basis:104px!important;width:104px!important;min-width:104px!important;max-width:104px!important
+ }
+}
+@media(max-width:900px){
+ html body.or363-navigation #appView .main{
+  width:100%!important;min-width:0!important;
+  margin:0!important;padding:8px 9px 28px!important
+ }
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs){
+  height:55px!important;min-height:55px!important;max-height:55px!important;
+  padding:3px 5px!important;gap:4px!important
+ }
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button{
+  height:47px!important;min-height:47px!important;max-height:47px!important;
+  flex:0 0 91px!important;width:91px!important;min-width:91px!important;max-width:91px!important;
+  padding:3px!important
+ }
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) :is(.rt-tab-label,.v203-tab-label){
+  font-size:9.2px!important;line-height:1.07!important
+ }
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) :is(.rt-tab-icon,.or-tab-icon,.v203-tab-icon){
+  width:17px!important;min-width:17px!important;height:17px!important;min-height:17px!important;flex-basis:17px!important
+ }
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) :is(.rt-tab-icon,.or-tab-icon,.v203-tab-icon) svg{
+  width:15px!important;height:15px!important;min-width:15px!important;min-height:15px!important
+ }
+}
+@media(max-width:480px){
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button{
+  flex-basis:78px!important;width:78px!important;min-width:78px!important;max-width:78px!important
+ }
+ html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs) :is(.rt-tab-label,.v203-tab-label){
+  font-size:8.4px!important
+ }
+}
+@media print{
+ html body.or363-navigation #appView #sidebar{display:none!important}
+ html body.or363-navigation #appView .shell{grid-template-columns:1fr!important}
+ html body.or363-navigation #appView .shell>.main{width:100%!important;margin:0!important}
+}
