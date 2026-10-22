@@ -2792,6 +2792,7 @@ async function renderOperativoView(name,force=false){
   out+=reportDownloadBar(name);
   if(isStale())return;
   $('#operativoDynamicContent').innerHTML=out;
+  if(typeof window.OR362_ENHANCE_REPORT==='function')window.OR362_ENHANCE_REPORT(name,d);
 }
 
 function activeOperationalView(){
@@ -3512,5 +3513,7 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
 <script src="/static/compact_reports.js?v=358" defer></script>
 <link rel="stylesheet" href="/static/centro_operativo_opcion4_v356.css?v=361">
 <script src="/static/centro_operativo_opcion4_v356.js?v=360" defer></script>
+<link rel="stylesheet" href="/static/operaciones_aprobadas_v362.css?v=362">
+<script src="/static/operaciones_aprobadas_v362.js?v=362" defer></script>
 <script src="/static/cm_productivity_admin_v357.js?v=357" defer></script>
 </body></html>
