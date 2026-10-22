@@ -267,3 +267,124 @@ html body.or356-center-active #page-operativo .ocl-original :is(.title,h3){margi
  html body.or356-center-active #page-operativo .or356-action{display:none!important}
  html body.or356-center-active #page-operativo .or356-dashboard{break-inside:avoid!important}
 }
+
+/* V357 · Aplicar también la navegación compacta a Productividad y demás vistas C&M. */
+html body.or356-module-active .main>.hero{
+ min-height:30px!important;max-height:39px!important;height:auto!important;
+ margin:0 0 4px!important;padding:4px 10px!important;
+ border-radius:7px!important;box-shadow:none!important;
+ background:#124b87!important
+}
+html body.or356-module-active .main>.hero h1{
+ font-size:clamp(13px,1.2vw,16px)!important;line-height:1.18!important;
+ margin:0!important;color:#fff!important
+}
+html body.or356-module-active .main>.hero p,
+html body.or356-module-active .main>.hero .hero-greeting{display:none!important}
+html body.or356-module-active #page-operativo #operativoDynamicTitle{
+ font-size:clamp(16px,1.45vw,20px)!important;line-height:1.17!important;
+ margin:5px 0 2px!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicSub{
+ font-size:11px!important;line-height:1.2!important;
+ margin:0 0 5px!important
+}
+html body.or356-module-active #page-operativo #operativoPeriodBar{
+ padding:6px 8px!important;margin:3px 0 6px!important;
+ border-radius:8px!important;box-shadow:none!important
+}
+html body.or356-module-active #page-operativo #operativoPeriodBar :is(select,input){
+ height:35px!important;min-height:35px!important;font-size:12px!important
+}
+html body.or356-module-active #page-operativo #operativoPeriodBar label{
+ font-size:10px!important;line-height:1.1!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent{
+ margin:0!important;padding:0!important;min-width:0!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:6px!important;margin:5px 0 7px!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis>.report-kpi{
+ min-height:78px!important;padding:9px 11px!important;
+ border-radius:9px!important;margin:0!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis .rk-value{
+ font-size:clamp(19px,2.4vw,29px)!important;line-height:1.09!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis :is(.rk-label,.rk-sub){
+ font-size:11px!important;line-height:1.15!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.title{
+ margin:5px 0 4px!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.tablewrap{
+ margin:0 0 8px!important;overflow-x:auto!important;max-width:100%!important
+}
+html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge) .table :is(th,td){
+ padding:6px!important;line-height:1.2!important;font-size:11px!important
+}
+#page-operativo .or357-delete-toolbar{
+ border:1px solid #d6e5f7;border-radius:9px;background:#fff;
+ margin:9px 0 7px;padding:10px;min-width:0;
+}
+#page-operativo .or357-title{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:8px;flex-wrap:wrap;margin:0 0 8px
+}
+#page-operativo .or357-title h3{font-size:14px!important;color:#0f3b75;margin:0 0 2px!important}
+#page-operativo .or357-title p,
+#page-operativo .or357-note{font-size:11px;color:#5c7898;margin:0}
+#page-operativo .or357-title .or357-actions{
+ display:flex;align-items:center;gap:8px;flex-wrap:wrap
+}
+#page-operativo .or357-count{font-size:11px;font-weight:750;color:#38587d}
+#page-operativo .or357-delete{
+ border:1px solid #bf2e3e;border-radius:7px;background:#c82d42;
+ color:white;padding:6px 11px!important;font-size:12px!important;
+ line-height:1.2!important;min-height:34px!important;font-weight:750;cursor:pointer
+}
+#page-operativo .or357-delete:disabled{
+ background:#f4f6f9!important;color:#8694a4!important;
+ border-color:#d4dce6!important;cursor:not-allowed
+}
+#page-operativo .or357-scroll{
+ max-width:100%!important;overflow-x:auto!important;
+ touch-action:pan-x pan-y!important;-webkit-overflow-scrolling:touch
+}
+#page-operativo .or357-table{
+ width:100%;border-collapse:collapse;font-size:11px;
+ font-variant-numeric:tabular-nums;min-width:615px
+}
+#page-operativo .or357-table :is(th,td){
+ padding:6px 8px!important;border-bottom:1px solid #e5ecf4!important;
+ line-height:1.3!important;text-align:left
+}
+#page-operativo .or357-table th{
+ background:#eaf3fe!important;color:#1c4c82!important;font-size:10px!important;
+ font-weight:800
+}
+#page-operativo .or357-table tr:nth-child(even) td{background:#f8fbff}
+#page-operativo .or357-table :is(td,th):nth-child(1){width:48px;text-align:center!important}
+#page-operativo .or357-table :is(td,th):nth-child(6){text-align:right}
+#page-operativo .or357-table input[type=checkbox]{
+ width:17px!important;height:17px!important;min-height:17px!important;
+ cursor:pointer;vertical-align:middle
+}
+#page-operativo .or357-note{margin:7px 0 0;color:#405d7b}
+@media(max-width:700px){
+ html body.or356-module-active .main>.hero{min-height:27px!important;padding:4px 7px!important}
+ html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis{
+   grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important
+ }
+ html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis>.report-kpi{
+   padding:6px 5px!important;min-height:69px!important
+ }
+ html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis .rk-value{
+   font-size:clamp(14px,4vw,22px)!important
+ }
+ html body.or356-module-active #page-operativo #operativoDynamicContent:has(.v199-digital-badge)>.report-kpis :is(.rk-label,.rk-sub){
+   font-size:9px!important
+ }
+}
