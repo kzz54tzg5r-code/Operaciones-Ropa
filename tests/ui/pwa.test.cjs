@@ -103,7 +103,7 @@ test('capture restores all four areas and keeps draft on failed save',async()=>{
     const capture=patch.slice(patch.indexOf('  function paintCapture('),patch.indexOf('  async function renderCapture('));
     w.eval(`
       const q=s=>document.querySelector(s),qa=s=>[...document.querySelectorAll(s)];
-      const esc=x=>String(x),num=x=>Number(x)||0,hms=()=>'',startClock=()=>{};
+      const esc=x=>String(x),num=x=>Number(x)||0,hms=()=>'',clockTime=iso=>iso?'10:00:00':'—',startClock=()=>{};
       let captureState={},timerHandle=null,timerStartedAt='';
       const activityOptions=()=>['Ubicado'];
       const areasFromInputs=()=>Object.fromEntries(qa('[data-v222-area]').map(x=>[x.dataset.v222Area,Number(x.value)||0]));
@@ -119,6 +119,9 @@ test('capture restores all four areas and keeps draft on failed save',async()=>{
     w.paintCapture({employee_no:'123',store:'Tienda'},{id:17,activity:'Ubicado'},{items:[]});
     assert.deepEqual([...w.document.querySelectorAll('[data-v222-area]')].map(x=>x.value),['10','20','30','40']);
     assert.equal(JSON.parse(w.sessionStorage.getItem(key))['Lencería'],'40');
+    assert.ok(w.document.querySelector('.or362-time-grid'),'Debe conservar hora de inicio, fin y duración');
+    assert.ok(w.document.getElementById('v222Start'),'Debe conservar botón Inicio');
+    assert.ok(w.document.getElementById('v222Finish'),'Debe conservar botón Fin');
     w.document.getElementById('v222Finish').click();await settle();
     assert.ok(w.sessionStorage.getItem(key));
     assert.equal(w.document.getElementById('v222Finish').disabled,false);
