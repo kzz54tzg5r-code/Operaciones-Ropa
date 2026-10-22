@@ -1,440 +1,143 @@
-/* V356 — Centro Operativo, alternativa seleccionada: sin datos de demostración.
-   Sólo extrae celdas ya publicadas por el reporte original para representarlas
-   en una tabla amplia y tres paneles visuales. */
+/* V360: Centro Operativo compacto con registros del backend, sin datos ficticios.
+   Usa únicamente la respuesta real de Centro Operativo y conserva el reporte original. */
 (() => {
  'use strict';
- if(window.__or356Loaded)return;
- window.__or356Loaded=true;
- const $=s=>document.querySelector(s);
- const txt=n=>(n?.textContent||'').replace(/\s+/g,' ').trim();
- const lower=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
- const mk=(tag,cls,value)=>{
-  const n=document.createElement(tag);
-  if(cls)n.className=cls;
-  if(value!==undefined)n.textContent=value;
-  return n;
+ if (window.__or360CenterInstalled) return;
+ window.__or360CenterInstalled = true;
+ const q = selector => document.querySelector(selector);
+ const el = (tag,cls,text) => {
+  const node=document.createElement(tag);
+  if(cls) node.className=cls;
+  if(text!==undefined) node.textContent=String(text);
+  return node;
  };
- const number=value=>{
-  const s=String(value||'').replace(/[,\s$%]/g,'').replace(/[^0-9.\-]/g,'');
-  const n=Number(s);
-  return s!==''&&Number.isFinite(n)?n:null;
+ const num=value=>{
+  if(value===null||value===undefined||value==='')return null;
+  const n=Number(value);
+  return Number.isFinite(n)?n:null;
  };
- const fmt=n=>Number.isFinite(n)?new Intl.NumberFormat('es-MX',{maximumFractionDigits:0}).format(n):'—';
- const isCenter=()=>{
-  const active=$('#operativoNav [data-opview].active');
-  return !!(active&&/^(centro ejecutivo|centro operativo)$/i.test(active.dataset.opview||'')
-   && $('#page-operativo')?.classList.contains('active'));
- };
- const isModule=()=>!!($('#page-operativo')?.classList.contains('active')
-   && !$('#appView')?.classList.contains('hidden'));
- const tableByHeaders=(base,test)=>[...base.querySelectorAll('table')].find(t=>{
-  const cells=[...t.querySelectorAll('thead th')].map(txt).map(lower);
-  return test(cells);
- });
- // El backend de Centro Operativo ya devuelve registros por tienda; no
- // depender de que el HTML diferido se haya insertado en .ocl-original.
- const sourcePayload=()=>window.OR356_CENTER_DATA||null;
- const validNumber=v=>{const n=Number(v);return v!==null&&v!==undefined&&v!==''&&Number.isFinite(n)?n:null;};
- const getOperational=base=>{
-  const data=sourcePayload();
-  if(data){
-   const stores=data.response?.stores||[];
-   return stores.filter(r=>r&&r.store).map((r,i)=>({
-    rank:String(i+1),store:String(r.store),
-    received:fmt(validNumber(r.ingresos)),
-    routes:fmt(validNumber(r.recorridos)),
-    conditioned:fmt(validNumber(r.acondicionado)),
-    located:fmt(validNumber(r.ubicado)),
-    pendingCondition:fmt(validNumber(r.pendiente_acondicionar)),
-    pendingLocation:fmt(validNumber(r.pendiente_ubicar)),
-    rawPending:validNumber(r.pendiente_acondicionar),
-    rawLocated:validNumber(r.ubicado),
-    rawReceived:validNumber(r.ingresos),
-    rawRoutes:validNumber(r.recorridos),
-    rawAcconditioned:validNumber(r.acondicionado),
-    pctLocated:validNumber(r.pct_ubicado)
-   }));
+ const fmt=value=>value===null||value===undefined?'—':new Intl.NumberFormat('es-MX',{maximumFractionDigits:0}).format(value);
+ const pct=value=>value===null||value===undefined?'—':Number(value).toFixed(1)+'%';
+ const moduleActive=()=>!!q('#page-operativo.active')&&!q('#appView')?.classList.contains('hidden');
+ const centerActive=()=>moduleActive()&&!!q('#operativoNav [data-opview="Centro Ejecutivo"].active');
+ function panel(title,subtitle,color){
+  const box=el('section','or356-card');
+  box.style.borderTop='3px solid '+color;
+  const head=el('header','or356-cardhead'),copy=el('div');
+  copy.append(el('strong',null,title),el('small',null,subtitle));
+  head.append(copy);box.append(head);
+  return {box,head};
+ }
+ function table(rows,original,scope){
+  const out=panel('Detalle por tienda','Ingresos, acondicionado, ubicado y recorridos · '+scope,'#1676e6');
+  const exportBtn=el('button','or356-action','Exportar');
+  exportBtn.type='button';
+  exportBtn.addEventListener('click',()=>{
+   const target=original.querySelector('.report-actions');
+   (target||original).scrollIntoView({block:'start',behavior:'smooth'});
+   target?.querySelector('button')?.focus({preventScroll:true});
+  });
+  out.head.append(exportBtn);
+  if(!rows.length){
+   out.box.append(el('p','or356-empty','No hay registros por tienda para el periodo y alcance seleccionados.'));
+   return out.box;
   }
-  const t=tableByHeaders(base,cols=>cols.some(v=>v.includes('piezas recolectadas'))&&cols.some(v=>v.includes('pendiente de ubicar')));
-  if(!t)return [];
-  return [...t.querySelectorAll('tbody tr')].map(tr=>{
-   const c=[...tr.cells].map(txt);
-   if(c.length<11||!c[1])return null;
-   return {rank:c[0],store:c[1],received:c[5],routes:c[6],conditioned:c[7],located:c[8],
-    pendingCondition:c[9],pendingLocation:c[10],rawPending:number(c[9]),
-    rawLocated:number(c[8]),rawReceived:number(c[5])};
-  }).filter(Boolean);
- };
- const getRecovery=base=>{
-  const data=sourcePayload();
-  if(data){
-   return (data.response?.recovery_by_store||[]).filter(r=>r&&r.store).map(r=>({
-    store:String(r.store),
-    conversion:r.conversion_pct==null?'—':(Number(r.conversion_pct).toFixed(1)+'%'),
-    money:r.recovered_value==null?'—':'
- function button(title,onClick){
-  const b=mk('button','or356-action',title);b.type='button';b.addEventListener('click',onClick);return b;
+  const scroll=el('div','or356-scroll'),t=el('table','or356-table');
+  t.setAttribute('aria-label','Detalle operativo real por tienda');
+  const thead=el('thead'),tr=el('tr');
+  ['#','Tienda','Ingresos','Acondicionado','Ubicado','Pend. acond.','Pend. ubicar','Recorridos'].forEach(label=>tr.append(el('th',null,label)));
+  thead.append(tr);t.append(thead);
+  const tbody=el('tbody');
+  rows.forEach((r,i)=>{
+   const line=el('tr');
+   [i+1,r.store,fmt(num(r.ingresos)),fmt(num(r.acondicionado)),fmt(num(r.ubicado)),
+    fmt(num(r.pendiente_acondicionar)),fmt(num(r.pendiente_ubicar)),fmt(num(r.recorridos))]
+    .forEach(value=>line.append(el('td',null,value)));
+   tbody.append(line);
+  });
+  t.append(tbody);scroll.append(t);out.box.append(scroll);
+  return out.box;
  }
- function card(title,subtitle,accent){
-  const section=mk('section','or356-card');
-  if(accent)section.style.borderTop='3px solid '+accent;
-  const head=mk('header','or356-cardhead'),meta=mk('div');
-  meta.append(mk('strong',null,title),mk('small',null,subtitle));
-  head.append(meta);section.append(head);
-  return {section,head};
- }
- function makeTable(rows,original){
-  const c=card('Detalle por tienda','Recolección, acondicionamiento y ubicación','#1676e6');
-  c.head.append(button('Exportar',()=>{
-   const action=original.querySelector('.report-actions');
-   if(action){action.scrollIntoView({block:'center',behavior:'smooth'});action.querySelector('button')?.focus({preventScroll:true});}
-   else original.scrollIntoView({block:'start',behavior:'smooth'});
-  }));
-  if(!rows.length){c.section.append(mk('p','or356-empty','El detalle por tienda aparecerá cuando se carguen los datos del periodo.'));return c.section;}
-  const wrap=mk('div','or356-scroll'),table=mk('table','or356-table');
-  table.setAttribute('aria-label','Resumen operativo por tienda, valores reales del reporte');
-  const thead=mk('thead'),tr=mk('tr');
-  ['#','Tienda','Ingresos','Acondicionado','Ubicado','Pend. acond.','Pend. ubicar','Recorridos'].forEach(label=>tr.append(mk('th',null,label)));
-  thead.append(tr);table.append(thead);
-  const body=mk('tbody');
+ function bars(title,subtitle,source,color,limit){
+  const card=panel(title,subtitle,color);
+  const rows=source.filter(r=>r&&r.store&&num(r.n)!==null).slice(0,limit||6);
+  if(!rows.length){
+   card.box.append(el('p','or356-empty','No hay valores publicados para este indicador en el periodo.'));
+   return card.box;
+  }
+  const list=el('div','or356-rows');
+  const max=Math.max(1,...rows.map(r=>num(r.n)||0));
   rows.forEach(r=>{
-   const line=mk('tr');
-   [r.rank,r.store,r.received,r.conditioned,r.located,r.pendingCondition,r.pendingLocation,r.routes].forEach(v=>line.append(mk('td',null,v)));
-   body.append(line);
-  });
-  table.append(body);wrap.append(table);c.section.append(wrap);
-  return c.section;
- }
- function bars(cardTitle,sub,rows,metric,accent,format,limit=6){
-  const c=card(cardTitle,sub,accent);
-  const n=rows.filter(r=>Number.isFinite(metric(r))).slice(0,limit);
-  if(!n.length){c.section.append(mk('p','or356-empty','Sin datos disponibles para este indicador en el periodo seleccionado.'));return c.section;}
-  const max=Math.max(1,...n.map(metric)),container=mk('div','or356-rows');
-  n.forEach(r=>{
-   const value=metric(r),line=mk('div','or356-row');
-   const label=mk('span','or356-name',r.store);
-   label.title=r.store;
-   const track=mk('div','or356-track');
-   const fill=mk('div','or356-fill');
-   fill.style.setProperty('--or356-color',accent);
-   fill.style.width=Math.max(0,Math.min(100,value/max*100)).toFixed(2)+'%';
+   const n=num(r.n),line=el('div','or356-row'),name=el('span','or356-name',r.store);
+   name.title=r.store;
+   const track=el('div','or356-track'),fill=el('div','or356-fill');
+   fill.style.setProperty('--or356-color',color);
+   fill.style.width=Math.min(100,Math.max(0,100*n/max)).toFixed(2)+'%';
    track.append(fill);
-   const valueText=mk('span','or356-value',format(r));
-   line.append(label,track,valueText);container.append(line);
-  });
-  c.section.append(container);return c.section;
- }
- function recoveryChart(rows){
-  const c=card('Gráfico de recuperación','Porcentaje de recuperación por tienda, según el reporte original','#8842ef');
-  const data=rows.filter(r=>Number.isFinite(number(r.pct))).slice(0,6);
-  if(!data.length){c.section.append(mk('p','or356-empty','No hay porcentajes de recuperación publicados para este periodo.'));return c.section;}
-  const list=mk('div','or356-rows');
-  data.forEach(r=>{
-   const value=number(r.pct),line=mk('div','or356-row');
-   const label=mk('span','or356-name',r.store);label.title=r.store;
-   const track=mk('div','or356-track'),fill=mk('div','or356-fill');
-   fill.style.setProperty('--or356-color','#8842ef');
-   fill.style.width=Math.max(0,Math.min(100,value)).toFixed(2)+'%';
-   track.append(fill);
-   line.append(label,track,mk('span','or356-value',r.pct));
+   line.append(name,track,el('span','or356-value',r.label||fmt(n)));
    list.append(line);
   });
-  c.section.append(list);return c.section;
+  card.box.append(list);
+  return card.box;
  }
- let lastSignature='';
- function updateDashboard(){
-  if(!isCenter())return;
-  const shell=$('#operativoDynamicContent .ocl-shell');
-  const original=shell?.querySelector('.ocl-original');
-  const lanes=shell?.querySelector('.ocl-lanes');
+ let signature='',scheduled=false;
+ function render(){
+  document.body.classList.toggle('or356-module-active',moduleActive());
+  document.body.classList.toggle('or356-center-active',centerActive());
+  if(!centerActive())return;
+  const shell=q('#operativoDynamicContent .ocl-shell');
+  const original=shell?.querySelector('.ocl-original'),lanes=shell?.querySelector('.ocl-lanes');
   if(!shell||!original||!lanes)return;
-  const operation=getOperational(original),recovery=getRecovery(original);
-  const signature=JSON.stringify({request:sourcePayload()?.request,operation,recovery});
+  const payload=window.OR356_CENTER_DATA;
+  if(!payload||!payload.response||!payload.response.available)return;
+  const request=payload.request||{},data=payload.response;
+  const stores=Array.isArray(data.stores)?data.stores.filter(r=>r&&r.store):[];
+  const recovery=Array.isArray(data.recovery_by_store)?data.recovery_by_store.filter(r=>r&&r.store):[];
+  const key=JSON.stringify({request,stores,recovery});
   let dash=shell.querySelector(':scope > .or356-dashboard');
-  if(dash&&lastSignature===signature)return;
+  if(dash&&signature===key)return;
   if(!dash){
-   dash=mk('div','or356-dashboard');
+   dash=el('div','or356-dashboard');
    lanes.after(dash);
-   dash.after(mk('div','or356-divider','↓ Fin de pantalla principal · Desplaza para ver el reporte completo ↓'));
+   dash.after(el('div','or356-divider','↓ Fin de pantalla principal · Desplaza para ver el reporte completo ↓'));
   }
-  lastSignature=signature;
-  const right=mk('div','or356-sidepanels');
-  const pending=[...operation].sort((a,b)=>(b.rawPending??number(b.pendingCondition)??0)-(a.rawPending??number(a.pendingCondition)??0));
-  const pctScope=operation.map(r=>({
-   store:r.store,pct:r.pctLocated!=null?r.pctLocated:(r.rawReceived?100*(r.rawLocated||0)/r.rawReceived:null)
-  }));
+  signature=key;
+  const right=el('div','or356-sidepanels');
+  const pending=stores.map(r=>({
+   store:String(r.store),n:num(r.pendiente_acondicionar),label:fmt(num(r.pendiente_acondicionar))+' pzas'
+  })).sort((a,b)=>(b.n||0)-(a.n||0));
+  const recovered=recovery.map(r=>({
+   store:String(r.store),n:num(r.recovery_pct),label:pct(num(r.recovery_pct))
+  })).sort((a,b)=>(b.n||0)-(a.n||0));
+  const progress=stores.map(r=>{
+   const ingreso=num(r.ingresos),ubicado=num(r.ubicado);
+   const computed=ingreso>0&&ubicado!==null?100*ubicado/ingreso:null;
+   const n=num(r.pct_ubicado)??computed;
+   return {store:String(r.store),n,label:pct(n)};
+  }).sort((a,b)=>(b.n||0)-(a.n||0));
   right.append(
-   bars('Pendientes por tienda','Piezas pendientes de acondicionar',pending,r=>r.rawPending??number(r.pendingCondition),'#f04463',r=>r.pendingCondition),
-   bars('Recuperación por tienda','Porcentaje económico recuperado',recovery,r=>number(r.pct),'#18ae79',r=>r.pct),
-   bars('Avance en piso por tienda','Piezas ubicadas sobre ingresos',pctScope,r=>r.pct,'#8842ef',r=>r.pct==null?'—':r.pct.toFixed(1)+'%')
+   bars('Pendientes por tienda','Piezas pendientes de acondicionar',pending,'#f04463',6),
+   bars('Recuperación por tienda','Recuperación económica sobre valor devuelto',recovered,'#18ae79',6),
+   bars('Avance en piso por tienda','Piezas ubicadas sobre ingresos',progress,'#8842ef',6)
   );
-  dash.replaceChildren(makeTable(operation,original),right);
+  const scope=[request.value,request.store].filter(Boolean).join(' · ')||'Periodo consultado';
+  dash.replaceChildren(table(stores,original,scope),right);
  }
- function updateClasses(){
-  document.body.classList.toggle('or356-module-active',isModule());
-  document.body.classList.toggle('or356-center-active',isCenter());
- }
- let scheduled=false;
- function refresh(){
-  if(scheduled)return;scheduled=true;
-  requestAnimationFrame(()=>{scheduled=false;updateClasses();updateDashboard();});
+ function schedule(){
+  if(scheduled)return;
+  scheduled=true;
+  requestAnimationFrame(()=>{scheduled=false;render();});
  }
  function init(){
-  refresh();
-  const nav=$('#operativoNav'),page=$('#page-operativo'),app=$('#appView');
-  if(nav)new MutationObserver(refresh).observe(nav,{subtree:true,attributes:true,attributeFilter:['class','hidden','style','aria-selected'],childList:true});
-  if(page)new MutationObserver(refresh).observe(page,{attributes:true,attributeFilter:['class']});
-  if(app)new MutationObserver(refresh).observe(app,{attributes:true,attributeFilter:['class']});
-  const content=$('#operativoDynamicContent');
-  if(content)new MutationObserver(refresh).observe(content,{subtree:true,childList:true});
-  window.addEventListener('or356:center-data',refresh);\n  window.addEventListener('pageshow',refresh,{passive:true});
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
- else init();
-})();
-+fmt(validNumber(r.recovered_value)),
-    pct:r.recovery_pct==null?'—':(Number(r.recovery_pct).toFixed(1)+'%')
-   }));
-  }
-  const t=tableByHeaders(base,cols=>cols.some(v=>v.includes('recup. %'))&&cols.some(v=>v.includes('recuperacion 
- function button(title,onClick){
-  const b=mk('button','or356-action',title);b.type='button';b.addEventListener('click',onClick);return b;
- }
- function card(title,subtitle,accent){
-  const section=mk('section','or356-card');
-  if(accent)section.style.borderTop='3px solid '+accent;
-  const head=mk('header','or356-cardhead'),meta=mk('div');
-  meta.append(mk('strong',null,title),mk('small',null,subtitle));
-  head.append(meta);section.append(head);
-  return {section,head};
- }
- function makeTable(rows,original){
-  const c=card('Detalle por tienda','Recolección, acondicionamiento y ubicación','#1676e6');
-  c.head.append(button('Exportar',()=>{
-   const action=original.querySelector('.report-actions');
-   if(action){action.scrollIntoView({block:'center',behavior:'smooth'});action.querySelector('button')?.focus({preventScroll:true});}
-   else original.scrollIntoView({block:'start',behavior:'smooth'});
-  }));
-  if(!rows.length){c.section.append(mk('p','or356-empty','El detalle por tienda aparecerá cuando se carguen los datos del periodo.'));return c.section;}
-  const wrap=mk('div','or356-scroll'),table=mk('table','or356-table');
-  table.setAttribute('aria-label','Resumen operativo por tienda, valores reales del reporte');
-  const thead=mk('thead'),tr=mk('tr');
-  ['#','Tienda','Recolectadas (pzas)','Acondicionado','Ubicado','Pend. acond.','Pend. ubicar','Recorridos'].forEach(label=>tr.append(mk('th',null,label)));
-  thead.append(tr);table.append(thead);
-  const body=mk('tbody');
-  rows.forEach(r=>{
-   const line=mk('tr');
-   [r.rank,r.store,r.received,r.conditioned,r.located,r.pendingCondition,r.pendingLocation,r.routes].forEach(v=>line.append(mk('td',null,v)));
-   body.append(line);
-  });
-  table.append(body);wrap.append(table);c.section.append(wrap);
-  return c.section;
- }
- function bars(cardTitle,sub,rows,metric,accent,format,limit=6){
-  const c=card(cardTitle,sub,accent);
-  const n=rows.filter(r=>Number.isFinite(metric(r))).slice(0,limit);
-  if(!n.length){c.section.append(mk('p','or356-empty','Sin datos disponibles para este indicador en el periodo seleccionado.'));return c.section;}
-  const max=Math.max(1,...n.map(metric)),container=mk('div','or356-rows');
-  n.forEach(r=>{
-   const value=metric(r),line=mk('div','or356-row');
-   const label=mk('span','or356-name',r.store);
-   label.title=r.store;
-   const track=mk('div','or356-track');
-   const fill=mk('div','or356-fill');
-   fill.style.setProperty('--or356-color',accent);
-   fill.style.width=Math.max(0,Math.min(100,value/max*100)).toFixed(2)+'%';
-   track.append(fill);
-   const valueText=mk('span','or356-value',format(r));
-   line.append(label,track,valueText);container.append(line);
-  });
-  c.section.append(container);return c.section;
- }
- function recoveryChart(rows){
-  const c=card('Gráfico de recuperación','Porcentaje de recuperación por tienda, según el reporte original','#8842ef');
-  const data=rows.filter(r=>Number.isFinite(number(r.pct))).slice(0,6);
-  if(!data.length){c.section.append(mk('p','or356-empty','No hay porcentajes de recuperación publicados para este periodo.'));return c.section;}
-  const list=mk('div','or356-rows');
-  data.forEach(r=>{
-   const value=number(r.pct),line=mk('div','or356-row');
-   const label=mk('span','or356-name',r.store);label.title=r.store;
-   const track=mk('div','or356-track'),fill=mk('div','or356-fill');
-   fill.style.setProperty('--or356-color','#8842ef');
-   fill.style.width=Math.max(0,Math.min(100,value)).toFixed(2)+'%';
-   track.append(fill);
-   line.append(label,track,mk('span','or356-value',r.pct));
-   list.append(line);
-  });
-  c.section.append(list);return c.section;
- }
- let lastSignature='';
- function updateDashboard(){
-  if(!isCenter())return;
-  const shell=$('#operativoDynamicContent .ocl-shell');
-  const original=shell?.querySelector('.ocl-original');
-  const lanes=shell?.querySelector('.ocl-lanes');
-  if(!shell||!original||!lanes)return;
-  const operation=getOperational(original),recovery=getRecovery(original);
-  const signature=JSON.stringify({operation,recovery});
-  let dash=shell.querySelector(':scope > .or356-dashboard');
-  if(dash&&lastSignature===signature)return;
-  if(!dash){
-   dash=mk('div','or356-dashboard');
-   lanes.after(dash);
-   dash.after(mk('div','or356-divider','↓ Fin de pantalla principal · Desplaza para ver el reporte completo ↓'));
-  }
-  lastSignature=signature;
-  const right=mk('div','or356-sidepanels');
-  const pending=[...operation].sort((a,b)=>(number(b.pendingCondition)||0)-(number(a.pendingCondition)||0));
-  right.append(
-   bars('Pendientes por tienda','Piezas pendientes de acondicionar',pending,r=>number(r.pendingCondition),'#f04463',r=>r.pendingCondition),
-   bars('Recuperación por tienda','Recuperación económica (%) por tienda',recovery,r=>number(r.pct),'#18ae79',r=>r.pct),
-   recoveryChart(recovery)
-  );
-  dash.replaceChildren(makeTable(operation,original),right);
- }
- function updateClasses(){
-  document.body.classList.toggle('or356-module-active',isModule());
-  document.body.classList.toggle('or356-center-active',isCenter());
- }
- let scheduled=false;
- function refresh(){
-  if(scheduled)return;scheduled=true;
-  requestAnimationFrame(()=>{scheduled=false;updateClasses();updateDashboard();});
- }
- function init(){
-  refresh();
-  const nav=$('#operativoNav'),page=$('#page-operativo'),app=$('#appView');
-  if(nav)new MutationObserver(refresh).observe(nav,{subtree:true,attributes:true,attributeFilter:['class','hidden','style','aria-selected'],childList:true});
-  if(page)new MutationObserver(refresh).observe(page,{attributes:true,attributeFilter:['class']});
-  if(app)new MutationObserver(refresh).observe(app,{attributes:true,attributeFilter:['class']});
-  const content=$('#operativoDynamicContent');
-  if(content)new MutationObserver(refresh).observe(content,{subtree:true,childList:true});
-  window.addEventListener('pageshow',refresh,{passive:true});
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
- else init();
-})();
-)));
-  if(!t)return [];
-  return [...t.querySelectorAll('tbody tr')].map(tr=>{
-   const c=[...tr.cells].map(txt);
-   if(c.length<10||!c[1])return null;
-   return {store:c[1].replace(/\s*proyecto\s*/i,'').trim(),conversion:c[4],money:c[6],pct:c[7]};
-  }).filter(Boolean);
- };
- function button(title,onClick){
-  const b=mk('button','or356-action',title);b.type='button';b.addEventListener('click',onClick);return b;
- }
- function card(title,subtitle,accent){
-  const section=mk('section','or356-card');
-  if(accent)section.style.borderTop='3px solid '+accent;
-  const head=mk('header','or356-cardhead'),meta=mk('div');
-  meta.append(mk('strong',null,title),mk('small',null,subtitle));
-  head.append(meta);section.append(head);
-  return {section,head};
- }
- function makeTable(rows,original){
-  const c=card('Detalle por tienda','Recolección, acondicionamiento y ubicación','#1676e6');
-  c.head.append(button('Exportar',()=>{
-   const action=original.querySelector('.report-actions');
-   if(action){action.scrollIntoView({block:'center',behavior:'smooth'});action.querySelector('button')?.focus({preventScroll:true});}
-   else original.scrollIntoView({block:'start',behavior:'smooth'});
-  }));
-  if(!rows.length){c.section.append(mk('p','or356-empty','El detalle por tienda aparecerá cuando se carguen los datos del periodo.'));return c.section;}
-  const wrap=mk('div','or356-scroll'),table=mk('table','or356-table');
-  table.setAttribute('aria-label','Resumen operativo por tienda, valores reales del reporte');
-  const thead=mk('thead'),tr=mk('tr');
-  ['#','Tienda','Recolectadas (pzas)','Acondicionado','Ubicado','Pend. acond.','Pend. ubicar','Recorridos'].forEach(label=>tr.append(mk('th',null,label)));
-  thead.append(tr);table.append(thead);
-  const body=mk('tbody');
-  rows.forEach(r=>{
-   const line=mk('tr');
-   [r.rank,r.store,r.received,r.conditioned,r.located,r.pendingCondition,r.pendingLocation,r.routes].forEach(v=>line.append(mk('td',null,v)));
-   body.append(line);
-  });
-  table.append(body);wrap.append(table);c.section.append(wrap);
-  return c.section;
- }
- function bars(cardTitle,sub,rows,metric,accent,format,limit=6){
-  const c=card(cardTitle,sub,accent);
-  const n=rows.filter(r=>Number.isFinite(metric(r))).slice(0,limit);
-  if(!n.length){c.section.append(mk('p','or356-empty','Sin datos disponibles para este indicador en el periodo seleccionado.'));return c.section;}
-  const max=Math.max(1,...n.map(metric)),container=mk('div','or356-rows');
-  n.forEach(r=>{
-   const value=metric(r),line=mk('div','or356-row');
-   const label=mk('span','or356-name',r.store);
-   label.title=r.store;
-   const track=mk('div','or356-track');
-   const fill=mk('div','or356-fill');
-   fill.style.setProperty('--or356-color',accent);
-   fill.style.width=Math.max(0,Math.min(100,value/max*100)).toFixed(2)+'%';
-   track.append(fill);
-   const valueText=mk('span','or356-value',format(r));
-   line.append(label,track,valueText);container.append(line);
-  });
-  c.section.append(container);return c.section;
- }
- function recoveryChart(rows){
-  const c=card('Gráfico de recuperación','Porcentaje de recuperación por tienda, según el reporte original','#8842ef');
-  const data=rows.filter(r=>Number.isFinite(number(r.pct))).slice(0,6);
-  if(!data.length){c.section.append(mk('p','or356-empty','No hay porcentajes de recuperación publicados para este periodo.'));return c.section;}
-  const list=mk('div','or356-rows');
-  data.forEach(r=>{
-   const value=number(r.pct),line=mk('div','or356-row');
-   const label=mk('span','or356-name',r.store);label.title=r.store;
-   const track=mk('div','or356-track'),fill=mk('div','or356-fill');
-   fill.style.setProperty('--or356-color','#8842ef');
-   fill.style.width=Math.max(0,Math.min(100,value)).toFixed(2)+'%';
-   track.append(fill);
-   line.append(label,track,mk('span','or356-value',r.pct));
-   list.append(line);
-  });
-  c.section.append(list);return c.section;
- }
- let lastSignature='';
- function updateDashboard(){
-  if(!isCenter())return;
-  const shell=$('#operativoDynamicContent .ocl-shell');
-  const original=shell?.querySelector('.ocl-original');
-  const lanes=shell?.querySelector('.ocl-lanes');
-  if(!shell||!original||!lanes)return;
-  const operation=getOperational(original),recovery=getRecovery(original);
-  const signature=JSON.stringify({operation,recovery});
-  let dash=shell.querySelector(':scope > .or356-dashboard');
-  if(dash&&lastSignature===signature)return;
-  if(!dash){
-   dash=mk('div','or356-dashboard');
-   lanes.after(dash);
-   dash.after(mk('div','or356-divider','↓ Fin de pantalla principal · Desplaza para ver el reporte completo ↓'));
-  }
-  lastSignature=signature;
-  const right=mk('div','or356-sidepanels');
-  const pending=[...operation].sort((a,b)=>(number(b.pendingCondition)||0)-(number(a.pendingCondition)||0));
-  right.append(
-   bars('Pendientes por tienda','Piezas pendientes de acondicionar',pending,r=>number(r.pendingCondition),'#f04463',r=>r.pendingCondition),
-   bars('Recuperación por tienda','Recuperación económica (%) por tienda',recovery,r=>number(r.pct),'#18ae79',r=>r.pct),
-   recoveryChart(recovery)
-  );
-  dash.replaceChildren(makeTable(operation,original),right);
- }
- function updateClasses(){
-  document.body.classList.toggle('or356-module-active',isModule());
-  document.body.classList.toggle('or356-center-active',isCenter());
- }
- let scheduled=false;
- function refresh(){
-  if(scheduled)return;scheduled=true;
-  requestAnimationFrame(()=>{scheduled=false;updateClasses();updateDashboard();});
- }
- function init(){
-  refresh();
-  const nav=$('#operativoNav'),page=$('#page-operativo'),app=$('#appView');
-  if(nav)new MutationObserver(refresh).observe(nav,{subtree:true,attributes:true,attributeFilter:['class','hidden','style','aria-selected'],childList:true});
-  if(page)new MutationObserver(refresh).observe(page,{attributes:true,attributeFilter:['class']});
-  if(app)new MutationObserver(refresh).observe(app,{attributes:true,attributeFilter:['class']});
-  const content=$('#operativoDynamicContent');
-  if(content)new MutationObserver(refresh).observe(content,{subtree:true,childList:true});
-  window.addEventListener('pageshow',refresh,{passive:true});
+  schedule();
+  const nav=q('#operativoNav'),page=q('#page-operativo'),app=q('#appView');
+  if(nav)new MutationObserver(schedule).observe(nav,{attributes:true,attributeFilter:['class','style','aria-selected'],childList:true,subtree:true});
+  if(page)new MutationObserver(schedule).observe(page,{attributes:true,attributeFilter:['class']});
+  if(app)new MutationObserver(schedule).observe(app,{attributes:true,attributeFilter:['class']});
+  const content=q('#operativoDynamicContent');
+  if(content)new MutationObserver(schedule).observe(content,{childList:true,subtree:true});
+  window.addEventListener('or356:center-data',schedule);
+  window.addEventListener('pageshow',schedule,{passive:true});
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
  else init();
