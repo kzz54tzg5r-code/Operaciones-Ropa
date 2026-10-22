@@ -271,3 +271,13 @@ body[data-or362-view="operations.recovery_store"] #operativoDynamicContent > .gr
 @media(max-width:760px){
  #operativoDynamicContent .or362-routes-detail{grid-template-columns:1fr}
 }
+
+
+/* Revisión opción 1: conservar matriz de auditoría, sin barras de ranking. */
+body[data-or362-view="operations.recovery_audit"] #operativoDynamicContent .v331-bottom>.v331-panel:first-child{display:none!important}
+body[data-or362-view="operations.recovery_audit"] #operativoDynamicContent .v331-bottom{
+ display:block!important;width:100%!important
+}
+body[data-or362-view="operations.recovery_audit"] #operativoDynamicContent .v331-bottom>.v331-panel:last-child{
+ width:100%!important;max-width:none!important
+}
