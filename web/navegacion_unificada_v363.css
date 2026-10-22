@@ -89,45 +89,45 @@ html body.or363-navigation #appView .shell{
  }
  /* Expandir temporalmente al pasar el cursor o entrar mediante teclado;
     la zona principal permanece estable sin perder anchura ni saltar. */
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within){
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open{
   width:242px!important;max-width:242px!important;
   padding:8px 9px!important;box-shadow:10px 0 24px #0b2e5980!important;
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .sidebrand{
   justify-content:flex-start!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand-text,
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .group,
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .or-nav-section{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .sidebrand-text,
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .group,
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .or-nav-section{
   display:block!important;color:#e8f2ff!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand-text b,
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .sidebrand-text small{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .sidebrand-text b,
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .sidebrand-text small{
   color:#fff!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) >.nav,
- html body.or363-navigation #appView .shell.sidebar-collapsed #sidebar:is(:hover,:focus-within) >.nav{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open >.nav,
+ html body.or363-navigation #appView .shell.sidebar-collapsed #sidebar.or363-sidebar-open >.nav{
   justify-content:flex-start!important;text-align:left!important;gap:8px!important;
   font-size:12px!important;padding:8px!important;height:auto!important;min-height:44px!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .nav .or-icon{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .nav .or-icon{
   flex:0 0 22px!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .nav small{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .nav small{
   display:none!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .profile>b,
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .profile>small,
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) #viewRoleBox{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .profile>b,
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .profile>small,
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open #viewRoleBox{
   display:block!important;color:#fff!important;font-size:11px!important;
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) .profile select{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open .profile select{
   max-width:100%!important;width:100%!important;min-height:30px!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) #logout{
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open #logout{
   font-size:11px!important
  }
- html body.or363-navigation #appView #sidebar:is(:hover,:focus-within) #logout:before{display:none!important}
+ html body.or363-navigation #appView #sidebar.or363-sidebar-open #logout:before{display:none!important}
 }
 /* Cabecera compacta en todas las pestañas; sin recortar títulos o controles. */
 html body.or363-navigation #appView .main>.hero{
