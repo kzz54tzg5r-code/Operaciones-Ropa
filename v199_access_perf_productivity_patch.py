@@ -832,6 +832,8 @@ async function renderCapture(){
     hist=await capApi('/api/cm-productivity/history?date='+encodeURIComponent(today)+'&store='+encodeURIComponent(selected));
     if(!current())return;
     const a=activeRecord;
+    const lastFinished=(hist.items||[]).find(r=>r.status==='finished')||null;
+    const shown=a||lastFinished;
     const activity=a?.activity||'Recolección';
     const isCollection=String(activity).toLowerCase()==='recolección';
     const rowTotal=r=>{
@@ -851,7 +853,7 @@ async function renderCapture(){
         '<div class="v199-motive"><b>Probador · piezas</b><input id="v199Probador" type="number" min="0" inputmode="numeric" value="'+num(a?.probador)+'"></div>'+
       '</div>'+
       '<div id="v199SinglePieces" class="v199-single-pieces '+(isCollection?'hidden':'')+'"><div class="v199-motive"><b>Piezas</b><input id="v199Pieces" type="number" min="0" inputmode="numeric" value="'+num(a?.pieces)+'"></div></div>'+
-      '<div class="or362-time-grid"><div><small>Hora de inicio</small><b>'+clockTime(a?.started_at)+'</b></div><div><small>Hora de fin</small><b>'+clockTime(a?.ended_at)+'</b></div><div><small>Tiempo realizado</small><b id="or362CaptureElapsed">'+hms(a?.duration_seconds||0)+'</b></div></div>'+
+      '<div class="or362-time-grid"><div><small>Hora de inicio</small><b>'+clockTime(shown?.started_at)+'</b></div><div><small>Hora de fin</small><b>'+clockTime(a?.ended_at||(!a&&lastFinished?.ended_at))+'</b></div><div><small>Tiempo realizado</small><b id="or362CaptureElapsed">'+hms(shown?.duration_seconds||0)+'</b></div></div>'+
       '<div class="v199-prod-actions"><button id="v199Start" class="v199-start" '+(a?'disabled':'')+'>▶ Iniciar actividad</button><button id="v199Finish" class="v199-finish" '+(!a?'disabled':'')+'>■ Finalizar actividad</button></div>'+
       '<div id="v199Msg" class="v199-source-note"></div></div>'+
       '<div class="v199-prod-panel"><h3 style="margin-top:0">Capturas de hoy</h3><div class="tablewrap"><table class="table"><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle recolección</th><th>Inicio</th><th>Fin</th><th>Tiempo realizado</th><th>Estado</th></tr></thead><tbody>'+
