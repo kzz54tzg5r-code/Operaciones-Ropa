@@ -507,6 +507,7 @@ def install(m):
   const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const num=v=>{const n=Number(v||0);return Number.isFinite(n)?Math.max(n,0):0};
   const hms=sec=>{sec=Math.max(0,Math.floor(Number(sec)||0));const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;return[h,m,s].map(x=>String(x).padStart(2,'0')).join(':')};
+  const clockTime=iso=>{if(!iso)return '—';const d=new Date(iso);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(d)};
   let captureState={operation_type:'Origen',supply_reason:'Excedente',activity:'Clasificado'};
   let timerHandle=0;
   let timerStartedAt='';
@@ -548,7 +549,7 @@ def install(m):
       const el=q('#v222Timer');if(!el)return;
       if(!timerStartedAt){el.textContent='00:00:00';return}
       const ms=new Date(timerStartedAt).getTime();
-      el.textContent=hms((Date.now()-ms)/1000);
+      el.textContent=hms((Date.now()-ms)/1000);const out=q('#or362OpElapsed');if(out)out.textContent=el.textContent;
     };
     tick();
     if(timerStartedAt)timerHandle=setInterval(tick,1000);
@@ -593,7 +594,7 @@ def install(m):
       const p=r.pieces_by_area||{};
       return '<tr><td><b>'+esc(r.employee_name||'')+'</b></td><td>'+esc(r.operation_type||'Origen')+'</td><td>'+esc(r.supply_reason||'—')+'</td><td>'+esc(r.activity||'')+'</td>'+
         '<td>'+Math.round(num(p.Colgado)).toLocaleString('es-MX')+'</td><td>'+Math.round(num(p.Doblado)).toLocaleString('es-MX')+'</td><td>'+Math.round(num(p.Jeans)).toLocaleString('es-MX')+'</td><td>'+Math.round(num(p['Lencería'])).toLocaleString('es-MX')+'</td>'+
-        '<td><b>'+Math.round(num(r.total_pieces)).toLocaleString('es-MX')+'</b></td><td>'+hms(r.duration_seconds)+'</td></tr>';
+        '<td><b>'+Math.round(num(r.total_pieces)).toLocaleString('es-MX')+'</b></td><td>'+clockTime(r.started_at)+'</td><td>'+clockTime(r.ended_at)+'</td><td>'+hms(r.duration_seconds)+'</td></tr>';
     }).join('');
 
     host.innerHTML=
@@ -604,9 +605,10 @@ def install(m):
         reasonHtml+
         '<div class="v222-section"><label>Etapa</label><div class="v222-choice">'+activityButtons+'</div></div>'+
         '<div class="v222-section"><label>Captura de piezas por área</label><div class="v222-area-wrap"><div class="v222-area-grid">'+areaCards+'</div><div class="v222-area-total"><span>Total piezas</span><b id="v222AreaTotal">0</b></div></div></div>'+
-        '<div class="v222-actions"><button type="button" id="v222Start" class="v222-start" '+(running?'disabled':'')+'>▶ Inicio</button><button type="button" id="v222Finish" class="v222-finish" '+(!running?'disabled':'')+'>■ Fin</button><span id="v222Msg" class="v222-msg"></span></div>'+
+        '<div class="or362-time-grid"><div><small>Hora de inicio</small><b>'+clockTime(active?.started_at)+'</b></div><div><small>Hora de fin</small><b>'+clockTime(active?.ended_at)+'</b></div><div><small>Tiempo realizado</small><b id="or362OpElapsed">'+hms(active?.duration_seconds||0)+'</b></div></div>'+
+        '<div class="v222-actions"><button type="button" id="v222Start" class="v222-start" '+(running?'disabled':'')+'>▶ Iniciar actividad</button><button type="button" id="v222Finish" class="v222-finish" '+(!running?'disabled':'')+'>■ Finalizar actividad</button><span id="v222Msg" class="v222-msg"></span></div>'+
       '</div>'+
-      '<div class="v222-capture-card"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3><div class="v222-history-wrap"><table class="v222-history"><thead><tr><th>Colaborador</th><th>Tipo</th><th>Motivo</th><th>Actividad</th><th>Colgado</th><th>Doblado</th><th>Jeans</th><th>Lencería</th><th>Total</th><th>Tiempo</th></tr></thead><tbody>'+(hist||'<tr><td colspan="10">Sin capturas de hoy.</td></tr>')+'</tbody></table></div></div>';
+      '<div class="v222-capture-card"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3><div class="v222-history-wrap"><table class="v222-history"><thead><tr><th>Colaborador</th><th>Tipo</th><th>Motivo</th><th>Actividad</th><th>Colgado</th><th>Doblado</th><th>Jeans</th><th>Lencería</th><th>Total</th><th>Inicio</th><th>Fin</th><th>Tiempo realizado</th></tr></thead><tbody>'+(hist||'<tr><td colspan="12">Sin capturas de hoy.</td></tr>')+'</tbody></table></div></div>';
 
     startClock(active?.started_at||'');
 
