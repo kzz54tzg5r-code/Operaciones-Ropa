@@ -183,7 +183,9 @@ def install(m):
     if(centro)centro.classList.add('hidden');if(dyn)dyn.classList.remove('hidden');
     if(title)title.textContent=`Centro Operativo · ${LABEL[mode]||''}`;
     if(sub)sub.textContent=SUB[mode]||'';
-    window.OR356_CENTER_DATA = null;\n    window.dispatchEvent(new Event('or356:center-data'));\n    if(content)content.innerHTML='<div class="infoempty">Cargando reporte…</div>';
+    window.OR356_CENTER_DATA = null;
+    window.dispatchEvent(new Event('or356:center-data'));
+    if(content)content.innerHTML='<div class="infoempty">Cargando reporte…</div>';
   }
 
   function queryParams(mode,value){
@@ -203,7 +205,8 @@ def install(m):
     if(mySeq!==seq)return;
     const content=$q('#operativoDynamicContent'),title=$q('#operativoDynamicTitle'),sub=$q('#operativoDynamicSub');if(!content)return;
     if(title)title.textContent=`Centro Operativo · ${LABEL[p.type]||''}`;
-    const projectRaw=d?.v153_project_store_count ?? d?.v151_project_store_count ?? (d?.project_stores||[]).length;\n    const projectCount=Number(projectRaw||0);
+    const projectRaw=d?.v153_project_store_count ?? d?.v151_project_store_count ?? (d?.project_stores||[]).length;
+    const projectCount=Number(projectRaw||0);
     if(sub)sub.textContent=(SUB[p.type]||'')+(projectCount?` · KPIs: ${projectCount} tiendas Proyecto`:'');
     // V358: pasar los datos auténticos al tablero compacto.
     // Evita leer tablas que se montan de forma diferida en otros módulos.
