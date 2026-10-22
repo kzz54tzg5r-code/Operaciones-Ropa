@@ -1,0 +1,31 @@
+name: V362 Approved Tabs and Capture
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v199_access_perf_productivity_patch.py"
+      - "v222_operation_capture_nav_admin_patch.py"
+      - "web/operaciones_aprobadas_v362.css"
+      - "web/operaciones_aprobadas_v362.js"
+      - "web/index.html"
+      - "tests/ui/v362-contract.cjs"
+      - ".github/workflows/v362-approved-tabs.yml"
+  workflow_dispatch:
+jobs:
+  validated-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate Python sources
+        run: python -m py_compile v199_access_perf_productivity_patch.py v222_operation_capture_nav_admin_patch.py
+      - name: Validate JavaScript and selected views
+        run: |
+          node --check web/operaciones_aprobadas_v362.js
+          node tests/ui/v362-contract.cjs
