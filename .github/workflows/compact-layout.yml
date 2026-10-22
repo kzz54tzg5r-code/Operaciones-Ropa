@@ -38,6 +38,8 @@ jobs:
         working-directory: tests/ui
       - run: npm install --no-save playwright && npx playwright install --with-deps chromium
         working-directory: tests/ui
+      - name: Validate Centro Operativo JavaScript syntax
+        run: node tests/ui/check_center_scripts.cjs
       - run: node tests/ui/compact-layout.browser.cjs
         env:
           ROPA_UI_OUTPUT: ui-artifacts
