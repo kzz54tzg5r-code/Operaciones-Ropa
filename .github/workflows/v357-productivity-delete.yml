@@ -1,0 +1,37 @@
+name: V357 Productivity Delete Security
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v357_cm_productivity_deletion_patch.py"
+      - "v199_access_perf_productivity_patch.py"
+      - "web/cm_productivity_admin_v357.js"
+      - "web/centro_operativo_opcion4_v356.js"
+      - "web/centro_operativo_opcion4_v356.css"
+      - "tests/test_v357_cm_productivity_delete.py"
+      - ".github/workflows/v357-productivity-delete.yml"
+  workflow_dispatch:
+
+jobs:
+  secure-productivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install focused test dependencies
+        run: python -m pip install -q pytest fastapi
+      - name: Validate backend and tests
+        run: |
+          python -m py_compile v357_cm_productivity_deletion_patch.py v199_access_perf_productivity_patch.py server_entry.py
+          python -m pytest -q tests/test_v357_cm_productivity_delete.py
+      - name: Validate both browser scripts
+        run: |
+          node --check web/cm_productivity_admin_v357.js
+          node --check web/centro_operativo_opcion4_v356.js
