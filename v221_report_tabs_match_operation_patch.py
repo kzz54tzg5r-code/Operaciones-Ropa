@@ -494,7 +494,20 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     cleanLegacy(host);
     host.classList.remove('hidden');
     host.removeAttribute('hidden');
+    host.style.removeProperty('display');
     decorate(host);
+    // V363: mantener orden y una fila estable; CSS controla tamaño y desplazamiento.
+    if(window.OR363_NAV_SIMPLE){
+      host.dataset.v221Scroll='1';
+      host.style.removeProperty('grid-template-columns');
+      host.style.removeProperty('grid-auto-flow');
+      host.style.removeProperty('width');
+      host.style.removeProperty('max-width');
+      host.style.removeProperty('overflow');
+      host.style.removeProperty('overflow-x');
+      host.style.removeProperty('overflow-y');
+      return;
+    }
 
     const mobile=window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900);
     if(mobile){host.dataset.v221Scroll='1';return;}
@@ -506,7 +519,6 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     const cell=Math.max(18,(width-gap*(count-1))/count);
 
     // En móvil nunca comprimimos las tarjetas: siempre se navega horizontalmente.
-    const mobile=window.matchMedia?.('(max-width:900px)')?.matches ?? (window.innerWidth<=900);
     const shouldScroll=mobile || (count>5 && cell<78);
     const cardWidth=mobile?clamp(88,width*.27,102):(shouldScroll?clamp(82,width*.235,96):cell);
     const visualCell=shouldScroll?cardWidth:cell;
