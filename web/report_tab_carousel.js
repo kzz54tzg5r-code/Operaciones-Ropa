@@ -1,5 +1,7 @@
 (() => {
   'use strict';
+  // V363: la navegación compacta estable sustituye los carruseles heredados.
+  if(window.OR363_NAV_SIMPLE)return;
 
   /**
    * ReportTabCarousel
