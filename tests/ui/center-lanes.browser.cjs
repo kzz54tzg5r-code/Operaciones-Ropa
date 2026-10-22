@@ -12,6 +12,14 @@ const metrics={...report.metrics,dev_pzs:600,muertos:200,cajas:150,probador:50,i
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:fs.readFileSync(out+'/page.html','utf8')});if(u.pathname.startsWith('/static/')){const file=out+'/web/'+u.pathname.slice(8);if(fs.existsSync(file))return route.fulfill({path:file});}
  if(u.pathname.startsWith('/api/')){requests.push(u.pathname+u.search);if(u.pathname.includes('export')){const pdf=u.searchParams.get('format')==='pdf';return route.fulfill({contentType:pdf?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers:{'Content-Disposition':'attachment; filename="fixture.'+(pdf?'pdf':'xlsx')+'"'},body:Buffer.from(pdf?'%PDF-1.4 fixture':'xlsx fixture')});}let data=fixture(u.pathname,u.searchParams);if(u.pathname==='/api/operations/meta')data={...report,available_dates:['2026-09-16','2026-10-08'],dates:['2026-09-16','2026-10-08'],stores:['Iztapalapa'],stores_available:['Iztapalapa'],stores_detected:['Iztapalapa']};if(u.pathname==='/api/stores')data={stores:[{id:1,name:'Iztapalapa',active:true,project:true}],editable:true,history:[]};if(/^\/api\/operations(?:\/project-scope-v151|\/year)?$/.test(u.pathname))data={...report,metrics,stores:[{...report.stores[0],...metrics}],recovery_by_store:[{...report.recovery_by_store[0],recovery_pct:52.7,recovered_value:1000}],v153_project_store_count:1};return route.fulfill({json:data});}return route.fulfill({status:204,body:''});});
  await page.goto('https://app.test/');await page.waitForTimeout(1200);await page.evaluate(()=>enter({id:1,username:'QA',role:'admin',store:'',can_preview_roles:false}));await page.evaluate(()=>refreshOperativoMeta());await page.locator('.ocl-lanes').waitFor();await page.waitForTimeout(400);
+ // V361: los resúmenes repetidos deben desaparecer visualmente,
+ // pero seguir disponibles internamente para los botones "Ver detalle".
+ for(const selector of ['.ocl-original .mct-kpi-grid','.ocl-original .monthly-cross-desktop','.ocl-original .monthly-cross-mobile']){
+  const loc=page.locator(selector).first();
+  assert.equal(await loc.count(),1,'Debe conservarse el bloque original: '+selector);
+  assert.equal(await loc.evaluate(node=>getComputedStyle(node).display),'none','Resumen duplicado aún visible: '+selector);
+ }
+ assert.equal(await page.locator('.ocl-lanes>.ocl-lane').count(),4,'Las cuatro tarjetas principales deben mantenerse');
  await page.locator('.or356-dashboard .or356-table tbody tr').first().waitFor({timeout:12000});
  const snapshot=await page.evaluate(()=>({
   rows:[...document.querySelectorAll('.or356-dashboard .or356-table tbody tr')].map(tr=>tr.textContent),
