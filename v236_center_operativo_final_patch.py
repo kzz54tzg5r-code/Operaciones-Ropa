@@ -183,7 +183,7 @@ def install(m):
     if(centro)centro.classList.add('hidden');if(dyn)dyn.classList.remove('hidden');
     if(title)title.textContent=`Centro Operativo · ${LABEL[mode]||''}`;
     if(sub)sub.textContent=SUB[mode]||'';
-    if(content)content.innerHTML='<div class="infoempty">Cargando reporte…</div>';
+    window.OR356_CENTER_DATA = null;\n    window.dispatchEvent(new Event('or356:center-data'));\n    if(content)content.innerHTML='<div class="infoempty">Cargando reporte…</div>';
   }
 
   function queryParams(mode,value){
@@ -205,6 +205,16 @@ def install(m):
     if(title)title.textContent=`Centro Operativo · ${LABEL[p.type]||''}`;
     const projectRaw=d?.v153_project_store_count ?? d?.v151_project_store_count ?? (d?.project_stores||[]).length;\n    const projectCount=Number(projectRaw||0);
     if(sub)sub.textContent=(SUB[p.type]||'')+(projectCount?` · KPIs: ${projectCount} tiendas Proyecto`:'');
+    // V358: pasar los datos auténticos al tablero compacto.
+    // Evita leer tablas que se montan de forma diferida en otros módulos.
+    window.OR356_CENTER_DATA = {
+      request: {type:p.type,value:p.value,store:p.store},
+      response: {available:!!d?.available,period_type:d?.period_type,period_value:d?.period_value,
+        stores:Array.isArray(d?.stores)?d.stores:[],
+        recovery_by_store:Array.isArray(d?.recovery_by_store)?d.recovery_by_store:[],
+        metrics:d?.metrics||{}}
+    };
+    window.dispatchEvent(new Event('or356:center-data'));
     if(!d?.available){content.innerHTML='<div class="infoempty">No hay una Base de datos Muertos y Cambios procesada. Cárgala desde la pestaña Carga de datos.</div>';return;}
     try{
       content.innerHTML=typeof monthlyCrossTable==='function'?monthlyCrossTable(d.metrics||{}):'<div class="infoempty">Reporte recibido, pero no fue posible construir la tabla operativa.</div>';
