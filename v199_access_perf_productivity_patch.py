@@ -790,6 +790,7 @@ function currentStore(){return q('#operStoreSelect')?.value||''}
 function currentPeriodType(){try{return OPER_PERIOD.type||'day'}catch(_){return 'day'}}
 function currentPeriodValue(){try{return OPER_PERIOD.value||''}catch(_){return ''}}
 function hms(sec){sec=Math.max(0,Math.floor(sec||0));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':')}
+function clockTime(iso){if(!iso)return '—';const d=new Date(iso);return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(d)}
 let timerId=0,activeRecord=null;
 
 async function capApi(url,opt){if(typeof api==='function')return api(url,opt);const r=await fetch(url,{credentials:'same-origin',...(opt||{})});const d=await r.json();if(!r.ok)throw Error(d.detail||('HTTP '+r.status));return d}
@@ -798,7 +799,7 @@ function updateTimer(){
  const el=q('#v199Timer');if(!el)return;
  if(!activeRecord||!activeRecord.started_at){el.textContent='00:00:00';return}
  const start=new Date(activeRecord.started_at).getTime(),now=Date.now();
- el.textContent=hms((now-start)/1000);
+ el.textContent=hms((now-start)/1000);const elapsed=q('#or362CaptureElapsed');if(elapsed)elapsed.textContent=el.textContent;
 }
 function startTimer(){clearInterval(timerId);updateTimer();timerId=setInterval(updateTimer,1000)}
 
@@ -850,10 +851,11 @@ async function renderCapture(){
         '<div class="v199-motive"><b>Probador · piezas</b><input id="v199Probador" type="number" min="0" inputmode="numeric" value="'+num(a?.probador)+'"></div>'+
       '</div>'+
       '<div id="v199SinglePieces" class="v199-single-pieces '+(isCollection?'hidden':'')+'"><div class="v199-motive"><b>Piezas</b><input id="v199Pieces" type="number" min="0" inputmode="numeric" value="'+num(a?.pieces)+'"></div></div>'+
-      '<div class="v199-prod-actions"><button id="v199Start" class="v199-start" '+(a?'disabled':'')+'>▶ Inicio</button><button id="v199Finish" class="v199-finish" '+(!a?'disabled':'')+'>■ Fin</button></div>'+
+      '<div class="or362-time-grid"><div><small>Hora de inicio</small><b>'+clockTime(a?.started_at)+'</b></div><div><small>Hora de fin</small><b>'+clockTime(a?.ended_at)+'</b></div><div><small>Tiempo realizado</small><b id="or362CaptureElapsed">'+hms(a?.duration_seconds||0)+'</b></div></div>'+
+      '<div class="v199-prod-actions"><button id="v199Start" class="v199-start" '+(a?'disabled':'')+'>▶ Iniciar actividad</button><button id="v199Finish" class="v199-finish" '+(!a?'disabled':'')+'>■ Finalizar actividad</button></div>'+
       '<div id="v199Msg" class="v199-source-note"></div></div>'+
-      '<div class="v199-prod-panel"><h3 style="margin-top:0">Capturas de hoy</h3><div class="tablewrap"><table class="table"><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle recolección</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
-      ((hist.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+fmt(rowTotal(r))+'</b></td><td>'+esc(detail(r))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||'<tr><td colspan="6">Sin capturas de hoy.</td></tr>')+
+      '<div class="v199-prod-panel"><h3 style="margin-top:0">Capturas de hoy</h3><div class="tablewrap"><table class="table"><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle recolección</th><th>Inicio</th><th>Fin</th><th>Tiempo realizado</th><th>Estado</th></tr></thead><tbody>'+
+      ((hist.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+fmt(rowTotal(r))+'</b></td><td>'+esc(detail(r))+'</td><td>'+clockTime(r.started_at)+'</td><td>'+clockTime(r.ended_at)+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||'<tr><td colspan="8">Sin capturas de hoy.</td></tr>')+
       '</tbody></table></div></div>';
 
     const syncPiecesMode=()=>{
