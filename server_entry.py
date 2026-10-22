@@ -458,4 +458,7 @@ _install_v340_bonus2(web_app)
 from runtime_performance import install as _install_runtime_performance
 _install_runtime_performance(web_app)
 
+from v357_cm_productivity_deletion_patch import install as _install_v357_cm_productivity_deletion_patch
+_install_v357_cm_productivity_deletion_patch(web_app)
+
 app = web_app.app
