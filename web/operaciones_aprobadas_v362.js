@@ -4,6 +4,7 @@
  'use strict';
  if(window.__or362Installed)return;
  window.__or362Installed=true;
+ const APPROVED=new Set(['operations.center','operations.conversion','operations.recovery','operations.recovery_store','operations.recovery_audit','operations.productivity','operations.productivity_capture','operations.routes','operations.upload','operations.goals']);
  const q=(s,root=document)=>root.querySelector(s);
  const qa=(s,root=document)=>[...root.querySelectorAll(s)];
  const mk=(tag,cls,txt)=>{
@@ -29,7 +30,7 @@
  };
  function setView(){
   const key=visibleView();
-  if(key)document.body.dataset.or362View=key;
+  if(APPROVED.has(key))document.body.dataset.or362View=key;
   else delete document.body.dataset.or362View;
   const host=q('#operativoDynamicContent');
   if(key==='operations.goals'&&host)decorateGoals(host);
@@ -97,6 +98,7 @@
  // ya presentada por el motor original y no reinterpreta ningún cálculo.
  let lastProductivityReport=null;
  function collectReportRows(host){
+  if(!q('.v199-digital-badge',host))lastProductivityReport=null;
   if(lastProductivityReport?.length)return lastProductivityReport;
   const t=qa('.tablewrap table',host).find(table=>{
    const labels=qa('thead th',table).map(x=>x.textContent.trim().toLocaleLowerCase('es-MX'));
