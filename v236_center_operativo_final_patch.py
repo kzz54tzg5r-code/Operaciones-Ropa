@@ -238,7 +238,12 @@ def install(m):
     if('requestIdleCallback'in window)requestIdleCallback(appendHeavy,{timeout:900});else setTimeout(appendHeavy,80);
   }
 
-  async function renderCenter(resetPeriod=false){
+  async function renderCenter(modeOrReset=false){
+    // V359: V266 invoca V240_renderCenter('day'|'week'|'month'|'year',false).
+    // No interpretar el string como booleano de "restablecer periodo".
+    const requestedMode=typeof modeOrReset==='string'&&['day','week','month','year'].includes(modeOrReset)?modeOrReset:null;
+    const requestedValue=requestedMode?String(OPER_PERIOD?.value||$q('#operPeriodSelect')?.value||''):'';
+    const resetPeriod=typeof modeOrReset==='boolean'?modeOrReset:false;
     const mySeq=++seq;
     markCenter();fitCmTabs();
     let meta;
@@ -249,6 +254,17 @@ def install(m):
     }catch(e){meta=window.OPSDATA||{};}
     if(mySeq!==seq)return;
     setupPeriod(meta,!resetPeriod);
+    if(requestedMode){
+      const nativeMode=$q('#operPeriodMode'),periodSelect=$q('#operPeriodSelect');
+      if(nativeMode&&nativeMode.value!==requestedMode){
+        nativeMode.value=requestedMode;
+        setupPeriod(meta,false);
+      }
+      if(periodSelect&&requestedValue){
+        const matches=[...periodSelect.options].some(option=>option.value===requestedValue);
+        if(matches)periodSelect.value=requestedValue;
+      }
+    }
     const mode=modeValue(),value=String($q('#operPeriodSelect')?.value||'');
     try{OPER_PERIOD.type=mode;OPER_PERIOD.value=value}catch(_){}
     setLoading(mode);
