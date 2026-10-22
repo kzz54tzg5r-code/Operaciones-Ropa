@@ -450,3 +450,13 @@ html body.or356-center-active #page-operativo .ocl-full>summary{
  html body.or356-center-active #page-operativo .or356-dashboard{grid-template-columns:1fr!important}
  html body.or356-center-active #page-operativo .or356-sidepanels{grid-template-columns:1fr!important}
 }
+
+/* V361 · Centro Operativo: no repetir indicadores ya visibles en las cuatro tarjetas.
+   El resumen original permanece en el DOM como fuente para "Ver detalle";
+   se oculta únicamente su repetición visual dentro del reporte expandido.
+   Tablas por tienda, gráficos y botones de exportación se mantienen visibles. */
+#page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-original .mct-kpi-grid,
+#page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-original .monthly-cross-desktop,
+#page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-original .monthly-cross-mobile {
+  display:none!important;
+}
