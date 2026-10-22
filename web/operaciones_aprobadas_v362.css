@@ -245,3 +245,29 @@ body[data-or362-view="operations.upload"] #operativoDynamicContent .upload-actio
  #operativoDynamicContent .or362-goals-toolbar{display:none!important}
  #operativoDynamicContent :is(.v199-prod-actions,.v222-actions){display:none!important}
 }
+
+
+/* V362 no-chart tightening: no reemplazar gráficos con espacios vacíos. */
+body[data-or362-view="operations.productivity"] #operativoDynamicContent .grid:has(> .panel .bars),
+body[data-or362-view="operations.recovery_store"] #operativoDynamicContent > .grid > .panel:has(.bars),
+body[data-or362-view="operations.recovery_store"] #operativoDynamicContent .bars,
+body[data-or362-view="operations.productivity"] #operativoDynamicContent .bars{
+ display:none!important
+}
+body[data-or362-view="operations.recovery_store"] #operativoDynamicContent > .grid{
+ grid-template-columns:minmax(0,1fr)!important
+}
+#operativoDynamicContent .or362-routes-detail{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+ margin:7px 0;align-items:start
+}
+#operativoDynamicContent .or362-routes-table{
+ min-width:0;border:1px solid #dbe7f4;background:#fff;border-radius:9px;padding:9px
+}
+#operativoDynamicContent .or362-routes-table h3{
+ color:#174875;font-size:13px!important;margin:0 0 5px!important
+}
+#operativoDynamicContent tr[hidden]{display:none!important}
+@media(max-width:760px){
+ #operativoDynamicContent .or362-routes-detail{grid-template-columns:1fr}
+}
