@@ -916,7 +916,10 @@ function installRenderer(){
         const scope=cmScope();
         const qs=new URLSearchParams({period_type:currentPeriodType(),period_value:currentPeriodValue(),store:currentStore()||'Compañía'});
         const rep=await capApi('/api/cm-productivity/report?'+qs,{timeoutMs:30000});
-        if(current()&&scope===cmScope()&&rep.use_digital&&q('#operativoDynamicContent'))q('#operativoDynamicContent').innerHTML=digitalReportHtml(rep);
+        if(current()&&scope===cmScope()&&rep.use_digital&&q('#operativoDynamicContent')){
+          q('#operativoDynamicContent').innerHTML=digitalReportHtml(rep);
+          if(typeof window.OR_CM_MANAGE==='function')window.OR_CM_MANAGE(rep);
+        }
       }catch(e){console.warn('[V199] productividad digital',e)}
     }
     return result;
