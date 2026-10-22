@@ -198,7 +198,8 @@ function setStyle(el,prop,value){if(el&&(el.style.getPropertyValue(prop)!==value
 function compactControls(){
  const nav=document.getElementById('operativoNav'),small=window.innerWidth<=700;
  const modern=!!document.querySelector('#page-operativo.active')&&!document.getElementById('appView')?.classList.contains('hidden');
- if(nav){
+ // V363: evitar estilos inline incompatibles sobre pestañas en el nuevo diseño.
+ if(nav && !document.body.classList.contains('or363-navigation')){
   const active=nav.querySelector('[data-opview].active');
   if(!nav.dataset.compactOwned){
    nav.dataset.compactOwned='1';
