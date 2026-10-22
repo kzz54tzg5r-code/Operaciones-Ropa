@@ -292,7 +292,7 @@ def install(m):
         actor=m.require_user(request)
         day=str(date or datetime.now(MX).date().isoformat())[:10]
         role=str(actor.get("role") or "")
-        params=[day]; where=["date=?"]
+        params=[day]; where=["date=?","status!='deleted'"]
         if role in ("tienda","colaborador_operativo","colaborador_lenceria"):
             scoped=str(actor.get("store") or "")
             where.append("store=?");params.append(scoped)
