@@ -367,6 +367,7 @@ def install(m):
                     "supply_reason": str(row.get("supply_reason") or ""),
                     "activity": str(row.get("activity") or ""),
                     "started_at": str(row.get("started_at") or ""),
+                    "ended_at": str(row.get("ended_at") or ""),
                     "duration_seconds": 0,
                     "pieces_by_area": {a: 0.0 for a in AREAS},
                     "total_pieces": 0.0,
@@ -590,6 +591,8 @@ def install(m):
     const areaCards=(meta.areas||['Colgado','Doblado','Jeans','Lencería']).map(area=>
       '<div class="v222-area-card"><label>'+esc(area)+'</label><input type="number" min="0" step="1" inputmode="numeric" data-v222-area="'+esc(area)+'" value="" placeholder="0" '+(!running?'disabled':'')+'></div>'
     ).join('');
+    const lastFinished=(history.items||[])[0]||null;
+    const shown=active||lastFinished;
     const hist=(history.items||[]).map(r=>{
       const p=r.pieces_by_area||{};
       return '<tr><td><b>'+esc(r.employee_name||'')+'</b></td><td>'+esc(r.operation_type||'Origen')+'</td><td>'+esc(r.supply_reason||'—')+'</td><td>'+esc(r.activity||'')+'</td>'+
@@ -605,7 +608,7 @@ def install(m):
         reasonHtml+
         '<div class="v222-section"><label>Etapa</label><div class="v222-choice">'+activityButtons+'</div></div>'+
         '<div class="v222-section"><label>Captura de piezas por área</label><div class="v222-area-wrap"><div class="v222-area-grid">'+areaCards+'</div><div class="v222-area-total"><span>Total piezas</span><b id="v222AreaTotal">0</b></div></div></div>'+
-        '<div class="or362-time-grid"><div><small>Hora de inicio</small><b>'+clockTime(active?.started_at)+'</b></div><div><small>Hora de fin</small><b>'+clockTime(active?.ended_at)+'</b></div><div><small>Tiempo realizado</small><b id="or362OpElapsed">'+hms(active?.duration_seconds||0)+'</b></div></div>'+
+        '<div class="or362-time-grid"><div><small>Hora de inicio</small><b>'+clockTime(shown?.started_at)+'</b></div><div><small>Hora de fin</small><b>'+clockTime(active?.ended_at||(!active&&lastFinished?.ended_at))+'</b></div><div><small>Tiempo realizado</small><b id="or362OpElapsed">'+hms(shown?.duration_seconds||0)+'</b></div></div>'+
         '<div class="v222-actions"><button type="button" id="v222Start" class="v222-start" '+(running?'disabled':'')+'>▶ Iniciar actividad</button><button type="button" id="v222Finish" class="v222-finish" '+(!running?'disabled':'')+'>■ Finalizar actividad</button><span id="v222Msg" class="v222-msg"></span></div>'+
       '</div>'+
       '<div class="v222-capture-card"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3><div class="v222-history-wrap"><table class="v222-history"><thead><tr><th>Colaborador</th><th>Tipo</th><th>Motivo</th><th>Actividad</th><th>Colgado</th><th>Doblado</th><th>Jeans</th><th>Lencería</th><th>Total</th><th>Inicio</th><th>Fin</th><th>Tiempo realizado</th></tr></thead><tbody>'+(hist||'<tr><td colspan="12">Sin capturas de hoy.</td></tr>')+'</tbody></table></div></div>';
