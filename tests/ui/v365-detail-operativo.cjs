@@ -30,7 +30,7 @@ assert.match(chart,/data-or365-chart="grouped-vertical"/);
 assert.match(chart,/Ingresos/);
 assert.match(chart,/Acondicionado/);
 assert.match(chart,/Ubicado/);
-assert.equal((chart.match(/<rect x=/g)||[]).length,6,'3 barras por cada una de las 2 tiendas');
+assert.equal((chart.match(/<title>[^<]+ · (?:Ingresos|Acondicionado|Ubicado):/g)||[]).length,6,'3 barras por cada una de las 2 tiendas');
 assert.ok(chart.indexOf('Mayor')<chart.indexOf('Menor'),'Ranking coherente con volumen de ingresos');
 assert.deepEqual(input.map(r=>r.store),['Menor','Mayor'],'No muta ni reordena payload original');
 assert.doesNotMatch(chart,/<polyline/);
