@@ -14,7 +14,7 @@
    if(el.style.getPropertyValue(prop))el.style.removeProperty(prop);
   }
  };
- const navProperties=['height','min-height','max-height','flex','flex-basis',
+ const navProperties=['display','height','min-height','max-height','flex','flex-basis',
   'width','min-width','max-width','gap','padding','margin','grid-template-columns',
   'grid-auto-flow','grid-auto-rows','grid-template-rows','overflow','overflow-x',
   'overflow-y','scroll-snap-type','touch-action','position'];
