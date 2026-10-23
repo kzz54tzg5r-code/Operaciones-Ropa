@@ -14,6 +14,8 @@ on:
       - 'v312_final_sales_bonuses_patch.py'
       - 'v313_bonus_visual_and_cut_patch.py'
       - 'tests/ui/compact*'
+      - 'tests/ui/center-lanes*'
+      - 'v221_report_tabs_match_operation_patch.py'
       - '.github/workflows/compact-layout.yml'
   workflow_dispatch:
 concurrency:
