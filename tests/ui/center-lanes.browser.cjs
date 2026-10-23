@@ -12,6 +12,48 @@ const metrics={...report.metrics,dev_pzs:600,muertos:200,cajas:150,probador:50,i
  await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.pathname==='/')return route.fulfill({contentType:'text/html',body:fs.readFileSync(out+'/page.html','utf8')});if(u.pathname.startsWith('/static/')){const file=out+'/web/'+u.pathname.slice(8);if(fs.existsSync(file))return route.fulfill({path:file});}
  if(u.pathname.startsWith('/api/')){requests.push(u.pathname+u.search);if(u.pathname.includes('export')){const pdf=u.searchParams.get('format')==='pdf';return route.fulfill({contentType:pdf?'application/pdf':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers:{'Content-Disposition':'attachment; filename="fixture.'+(pdf?'pdf':'xlsx')+'"'},body:Buffer.from(pdf?'%PDF-1.4 fixture':'xlsx fixture')});}let data=fixture(u.pathname,u.searchParams);if(u.pathname==='/api/operations/meta')data={...report,available_dates:['2026-09-16','2026-10-08'],dates:['2026-09-16','2026-10-08'],stores:['Iztapalapa'],stores_available:['Iztapalapa'],stores_detected:['Iztapalapa']};if(u.pathname==='/api/stores')data={stores:[{id:1,name:'Iztapalapa',active:true,project:true}],editable:true,history:[]};if(/^\/api\/operations(?:\/project-scope-v151|\/year)?$/.test(u.pathname))data={...report,metrics,stores:[{...report.stores[0],...metrics}],recovery_by_store:[{...report.recovery_by_store[0],recovery_pct:52.7,recovered_value:1000}],v153_project_store_count:1};return route.fulfill({json:data});}return route.fulfill({status:204,body:''});});
  await page.goto('https://app.test/');await page.waitForTimeout(1200);await page.evaluate(()=>enter({id:1,username:'QA',role:'admin',store:'',can_preview_roles:false}));await page.evaluate(()=>refreshOperativoMeta());await page.locator('.ocl-lanes').waitFor();await page.waitForTimeout(400);
+
+ // V363: menú lateral sin margen duplicado y navegación compacta en 4 tamaños.
+ async function auditNav(width){
+  await page.setViewportSize({width,height:width<=900?844:950});await page.waitForTimeout(170);
+  const m=await page.evaluate(()=>{
+   const sidebar=document.querySelector('#sidebar').getBoundingClientRect();
+   const main=document.querySelector('#appView .shell>.main').getBoundingClientRect();
+   const nav=document.querySelector('#operativoNav');
+   const items=[...nav.children].filter(b=>b.tagName==='BUTTON'&&!b.hidden&&!b.classList.contains('hidden')&&getComputedStyle(b).display!=='none');
+   return {active:document.body.classList.contains('or363-navigation'),
+    sideX:sidebar.x,sideWidth:sidebar.width,mainX:main.x,
+    navH:nav.getBoundingClientRect().height,navDisplay:getComputedStyle(nav).display,
+    buttons:items.map(b=>({width:b.getBoundingClientRect().width,height:b.getBoundingClientRect().height,
+      icons:b.querySelectorAll(':scope>.rt-tab-icon,:scope>.or-tab-icon,:scope>.v203-tab-icon').length})),
+    overflow:document.documentElement.scrollWidth-innerWidth};
+  });
+  assert.ok(m.active,'V363 class missing');
+  assert.equal(m.navDisplay,'flex',JSON.stringify(m));
+  assert.ok(m.navH<=65&&m.navH>=45,'Nav height: '+JSON.stringify(m));
+  assert.ok(m.buttons.length>=7,'No tabs: '+JSON.stringify(m));
+  assert.ok(m.buttons.every(b=>b.width>=70&&b.width<=115&&b.height>=42&&b.height<=55),'Broken tab dimensions: '+JSON.stringify(m));
+  assert.ok(m.buttons.every(b=>b.icons<=1),'Duplicate icons: '+JSON.stringify(m));
+  if(width>900){
+   assert.ok(m.sideWidth>=70&&m.sideWidth<=75,'Sidebar width: '+JSON.stringify(m));
+   assert.ok(Math.abs(m.mainX-m.sideX-m.sideWidth)<=3,'Duplicated menu offset: '+JSON.stringify(m));
+  }
+  assert.ok(m.overflow<=1,'Horizontal page overflow: '+JSON.stringify(m));
+ }
+ for(const width of [390,768,1366,1920])await auditNav(width);
+ await page.setViewportSize({width:1366,height:950});
+ const menuToggle=page.locator('#sidebarToggle');
+ await menuToggle.click();await page.waitForTimeout(120);
+ assert.equal(await menuToggle.getAttribute('aria-expanded'),'true');
+ assert.ok((await page.locator('#sidebar').boundingBox()).width>=235,'Expanded menu missing');
+ await menuToggle.click();await page.waitForTimeout(120);
+ assert.equal(await menuToggle.getAttribute('aria-expanded'),'false');
+ await page.locator('#operativoNav [data-opview="Conversión"]').evaluate(b=>b.click());
+ await page.waitForTimeout(240);
+ assert.ok(await page.locator('#operativoNav [data-opview="Conversión"]').evaluate(b=>b.classList.contains('active')));
+ await page.locator('#operativoNav [data-opview="Centro Ejecutivo"]').evaluate(b=>b.click());
+ await page.locator('.ocl-lanes').waitFor();
+
  // V361: los resúmenes repetidos deben desaparecer visualmente,
  // pero seguir disponibles internamente para los botones "Ver detalle".
  for(const selector of ['.ocl-original .mct-kpi-grid','.ocl-original .monthly-cross-desktop','.ocl-original .monthly-cross-mobile']){
