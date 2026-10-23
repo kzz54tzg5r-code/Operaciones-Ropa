@@ -899,7 +899,7 @@ function digitalReportHtml(rep){
   const target=rows.reduce((a,r)=>a+num(r.target),0),comp=target?total/target*100:0;
   const cards='<div class="report-kpis">'+
     '<div class="report-kpi" style="--rk:#1769e8"><div class="rk-label">Piezas procesadas</div><div class="rk-value">'+fmt(total)+'</div><div class="rk-sub">Captura digital</div></div>'+
-    '<div class="report-kpi" style="--rk:#F59E0B"><div class="rk-label">Colaboradores</div><div class="rk-value">'+fmt(rows.length)+'</div><div class="rk-sub">Con actividad registrada</div></div>'+
+    '<div class="report-kpi" style="--rk:#F59E0B"><div class="rk-label">Productividad</div><div class="rk-value">'+fmt(daily)+'</div><div class="rk-sub">Piezas / colaborador-día</div></div>'+
     '<div class="report-kpi" style="--rk:#1769e8"><div class="rk-label">Meta del periodo</div><div class="rk-value">'+fmt(target)+'</div><div class="rk-sub">Piezas objetivo del ranking</div></div>'+
     '<div class="report-kpi" style="--rk:#10B981"><div class="rk-label">Cumplimiento</div><div class="rk-value">'+pct(comp)+'</div><div class="rk-sub">Meta configurada</div></div></div>';
   return '<div style="margin-bottom:8px"><span class="v199-digital-badge">Fuente digital desde captura</span></div>'+cards+
