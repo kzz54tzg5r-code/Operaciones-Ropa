@@ -34,7 +34,10 @@
   else delete document.body.dataset.or362View;
   const host=q('#operativoDynamicContent');
   if(key==='operations.goals'&&host)decorateGoals(host);
-  if(key==='operations.productivity'&&host)decorateProductivity(host);
+  // V364 · Productividad opción 1: ranking a todo lo ancho, sin panel lateral de tiendas.
+  // El reporte original y los controles de eliminación auditada siguen intactos.
+  // No envolver la tabla en el layout opción 4.
+
  }
  let scheduled=false;
  function schedule(){
@@ -171,7 +174,7 @@
    name:String(r.name||''),store:String(r.store||''),pieces:numeric(r.pieces)
   })).filter(r=>r.name&&r.store):null;
   const host=q('#operativoDynamicContent');
-  if(host)decorateProductivity(host);
+  // Se mantienen los datos del reporte, sin reestructurar el ranking de la opción 1.
  };
  // Recorridos opción 1: convertir las series devueltas por la API en tablas
  // con sus cifras reales y conservar cuatro tarjetas existentes.
