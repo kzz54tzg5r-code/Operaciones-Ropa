@@ -112,6 +112,11 @@
     badge.innerHTML = '<span class="or-version-dot"></span><span>Versión ' + short + ' · actualización automática</span>';
   };
 
+  const dismissUpdateBanner = () => {
+    document.querySelectorAll('.or-update-banner:not(.or-update-current)').forEach(banner => banner.remove());
+    updateVisible = false;
+  };
+
   const refreshAndReload = async (button, automatic = false) => {
     if (refreshing) return;
     if (!safeToRefresh()) {
@@ -137,6 +142,8 @@
     }
     refreshing = true;
     if (button) { button.disabled = true; button.textContent = 'Actualizando…'; }
+    // Después de aceptar la actualización, el aviso debe desaparecer de inmediato.
+    dismissUpdateBanner();
     try {
       const verified = await fetchVersion();
       if (!verified?.version || verified.version === 'local') throw new Error('Versión no verificable');
@@ -164,16 +171,22 @@
       console.warn('[PWA] no se pudo aplicar actualización:', error);
       refreshing = false;
       userApprovedUnsavedReload = false;
-      if (button) { button.disabled = false; button.textContent = 'Reintentar'; }
+      // Reaparece únicamente si la actualización falló: permite reintentar.
+      dismissUpdateBanner();
+      showUpdateBanner(pendingVersion || loadedBuild);
+      const retryButton = document.querySelector('.or-update-banner:not(.or-update-current) button');
+      if (retryButton) retryButton.textContent = 'Reintentar';
       const message = document.querySelector('.or-update-banner:not(.or-update-current) span');
       if (message) message.textContent = 'No se pudo confirmar la nueva versión. Reintenta cuando haya conexión.';
     }
   };
 
   const showUpdateBanner = newVersion => {
+    if (refreshing) return;
     if (pendingVersion !== newVersion) pendingVersionAt = Date.now();
     pendingVersion = newVersion;
-    if (updateVisible) { const el=document.querySelector('.or-update-banner:not(.or-update-current)'); if(el){const span=el.querySelector('span'); if(span)span.textContent='Versión nueva lista para instalar sin reinstalar la aplicación.';} return; }
+    // No sobreescribir avisos de capturas pendientes ni reabrir durante el cambio.
+    if (updateVisible && document.querySelector('.or-update-banner:not(.or-update-current)')) return;
     updateVisible = true;
     addSystemStyle();
     const banner = document.createElement('div');
@@ -202,6 +215,7 @@
   };
 
   const checkVersion = async ({ initial = false } = {}) => {
+    if (refreshing) return { available: false, updating: true };
     try {
       const info = await fetchVersion();
       const version = String(info?.version || 'local');
@@ -220,6 +234,9 @@
         showUpdateBanner(version);
         return { available: true, version };
       }
+      // La versión ya coincide: no dejar avisos de actualizaciones anteriores.
+      dismissUpdateBanner();
+      pendingVersion = null;
       renderVersion(version);
       return { available: false, version };
     } catch (error) {

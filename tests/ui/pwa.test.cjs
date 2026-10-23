@@ -39,9 +39,14 @@ test('new version displays persistent popup until explicit update, and keeps ori
     await f.idle();await f.idle();
     assert.equal(f.reloads,0);
     f.w.document.querySelector('.or-update-banner button').click();
+    assert.equal(f.w.document.querySelector('.or-update-banner'),null,
+      'El aviso debe desaparecer inmediatamente al aceptar Actualizar');
     await settle();
     assert.equal(f.reloads,1);
     assert.equal(f.w.localStorage.getItem('operaciones-ropa:loaded-version'),'bbbbbbbb');
+    await f.intervals.get(60000)();
+    assert.equal(f.w.document.querySelector('.or-update-banner'),null,
+      'No debe reaparecer el aviso ya atendido');
   }finally{f.dom.window.close();}
 });
 test('stale PWA opens with new-version popup even after server was updated while app was closed',async()=>{
@@ -85,6 +90,8 @@ test('server failure never reloads current working page',async()=>{
     f.w.document.querySelector('.or-update-banner button').click();
     await settle();
     assert.equal(f.reloads,0);
+    assert.ok(f.w.document.querySelector('.or-update-banner'),
+      'Si falla la verificación debe aparecer el botón de reintento');
     assert.equal(f.w.document.querySelector('.or-update-banner button').disabled,false);
   }finally{f.dom.window.close();}
 });
@@ -185,8 +192,14 @@ test('update prompt offers deliberate override for old drafts and then reloads',
     button.click();await settle();
     assert.equal(f.reloads,0);
     assert.match(button.textContent,/de todos modos/);
+    await f.intervals.get(60000)();
+    assert.match(f.w.document.querySelector('.or-update-banner span').textContent,/sin guardar/,
+      'El sondeo no debe borrar la advertencia de datos sin guardar');
     f.w.confirm=()=>true;
-    button.click();await settle();
+    button.click();
+    assert.equal(f.w.document.querySelector('.or-update-banner'),null,
+      'Confirmar Actualizar de todos modos debe cerrar el aviso');
+    await settle();
     assert.equal(f.reloads,1);
   }finally{f.dom.window.close();}
 });
