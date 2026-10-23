@@ -77,6 +77,10 @@ CHECKLIST_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
 _RESOURCE_HEAVY_LOCK = threading.RLock()
 _UPLOAD_JOB_LOCK = threading.RLock()
 _ACTIVE_UPLOAD_JOBS: set[str] = set()
+# Impide que dos solicitudes operativas consuman simultáneamente el disco de Render.
+# El estado del job en SQLite mantiene el bloqueo durante su procesamiento.
+_OPERATIONS_UPLOAD_INTAKE_LOCK = threading.Lock()
+_OPERATIONS_UPLOAD_DISK_RESERVE = 64 * 1024 * 1024
 _UPLOAD_QUEUE = SerialJobQueue(on_error=lambda job_id, exc: _fail_upload_job(job_id, exc))
 
 
@@ -383,14 +387,26 @@ class UploadAdapter(BytesIO):
 
 
 async def _save_upload_stream(upload: UploadFile, target: Path) -> int:
-    """Copia UploadFile a disco sin duplicar todo el archivo en memoria."""
+    """Copia el archivo por streaming; una falla nunca deja un XLSX parcial."""
     target.parent.mkdir(parents=True,exist_ok=True)
     await upload.seek(0)
     def copy_file():
         with target.open("wb") as destination:
             shutil.copyfileobj(upload.file,destination,length=1024*1024)
         return target.stat().st_size
-    return await asyncio.to_thread(copy_file)
+    try:
+        return await asyncio.to_thread(copy_file)
+    except Exception as exc:
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            pass
+        if isinstance(exc, OSError) and exc.errno == 28:
+            raise HTTPException(
+                status_code=507,
+                detail="Almacenamiento lleno en Render. La carga no se guardó y la versión publicada permanece intacta.",
+            ) from exc
+        raise
 
 
 @serialized(_CAPACITY_SOURCE_LOCK)
@@ -6776,14 +6792,52 @@ async def start_operations_job(request: Request,file:UploadFile=File(...)):
     filename=file.filename or "archivo.xlsx"
     if Path(filename).suffix.lower()!=".xlsx":
         raise HTTPException(400,"Carga un archivo Excel .xlsx")
-    stage_path=STAGING_DIR/f"operations_job_{secrets.token_hex(10)}.xlsx"
-    size=await _save_upload_stream(file,stage_path)
-    if not size:
-        stage_path.unlink(missing_ok=True)
-        raise HTTPException(400,"El archivo está vacío")
-    job=_create_upload_job("operations",filename,stage_path,u["username"])
-    _submit_upload_job(job["id"],_run_operations_job,(job["id"],stage_path,filename,u["username"]))
-    return job
+    if not _OPERATIONS_UPLOAD_INTAKE_LOCK.acquire(blocking=False):
+        raise HTTPException(409,"Ya se está recibiendo un Excel operativo. No vuelvas a cargarlo mientras termina.")
+    stage_path=None
+    try:
+        # Render tiene 1 GB persistente: el segundo Excel de ~208 MB enviado
+        # mientras el primero se procesaba causó ENOSPC. No crear otro staging.
+        with db() as con:
+            active=con.execute(
+                "SELECT id,status FROM upload_jobs "
+                "WHERE module='operations' AND status IN ('queued','processing','publishing') "
+                "ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+        if active:
+            raise HTTPException(
+                409,
+                f"Ya existe una carga de Cambios y Muertos en proceso (ID {active['id']}, "
+                f"estado {active['status']}). Consulta el resultado antes de subir otro Excel.",
+            )
+        free_bytes=shutil.disk_usage(STAGING_DIR).free
+        expected_bytes=getattr(file,"size",None)
+        if free_bytes <= _OPERATIONS_UPLOAD_DISK_RESERVE or (
+            isinstance(expected_bytes,int) and expected_bytes > free_bytes - _OPERATIONS_UPLOAD_DISK_RESERVE
+        ):
+            raise HTTPException(
+                507,
+                "No hay espacio suficiente en el disco de Render para recibir este Excel "
+                "y conservar un margen de seguridad. No se modificaron los datos ni los respaldos.",
+            )
+        stage_path=STAGING_DIR/f"operations_job_{secrets.token_hex(10)}.xlsx"
+        size=await _save_upload_stream(file,stage_path)
+        if not size:
+            raise HTTPException(400,"El archivo está vacío")
+        job=_create_upload_job("operations",filename,stage_path,u["username"])
+        if not _submit_upload_job(job["id"],_run_operations_job,(job["id"],stage_path,filename,u["username"])):
+            _fail_upload_job(job["id"],RuntimeError("No se pudo encolar la carga"))
+            raise HTTPException(503,"El procesamiento no pudo comenzar. Intenta de nuevo.")
+        # La ejecución en segundo plano elimina su staging al terminar.
+        stage_path=None
+        return job
+    finally:
+        if stage_path is not None:
+            try:
+                stage_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        _OPERATIONS_UPLOAD_INTAKE_LOCK.release()
 
 @app.get("/api/upload/jobs/{job_id}")
 def upload_job_status(job_id: str,request: Request):
