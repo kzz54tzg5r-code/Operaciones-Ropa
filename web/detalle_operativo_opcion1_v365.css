@@ -1,0 +1,112 @@
+/* V365 · Detalle Operativo: tabla 1 (ranking compacto) y gráfica 1 (barras verticales).
+   Solo estilos: no altera datos, filtros, autenticación, permisos ni exportaciones. */
+html body #operativoDynamicContent .tablewrap:has(> table.ops-zero-table){
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  overflow-x:auto!important;overflow-y:visible!important;
+  margin:5px 0 8px!important;padding:0!important;
+  border:1px solid #dbe6f4!important;border-radius:10px!important;
+  box-shadow:0 1px 3px #102f5812!important;
+  -webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;
+  overscroll-behavior-x:contain!important
+}
+html body #operativoDynamicContent table.ops-zero-table{
+  width:100%!important;min-width:1110px!important;max-width:none!important;
+  margin:0!important;border-collapse:separate!important;border-spacing:0!important;
+  table-layout:auto!important;font-variant-numeric:tabular-nums!important
+}
+html body #operativoDynamicContent table.ops-zero-table :is(th,td){
+  box-sizing:border-box!important;padding:6px 5px!important;
+  line-height:1.18!important;font-size:10.5px!important;
+  vertical-align:middle!important;text-align:center!important;
+  border-right:1px solid #e5edf6!important;
+  border-bottom:1px solid #e7eef6!important;
+  white-space:normal!important;overflow-wrap:normal!important;
+  word-break:normal!important
+}
+html body #operativoDynamicContent table.ops-zero-table thead th{
+  color:#fff!important;background:#15487d!important;
+  font-size:10px!important;font-weight:800!important;
+  min-height:39px!important;padding:7px 5px!important;
+  position:sticky!important;top:0!important;z-index:2!important;
+  box-shadow:inset 0 -1px #113c67!important
+}
+html body #operativoDynamicContent table.ops-zero-table thead th:nth-child(even){
+  background:#38638f!important
+}
+html body #operativoDynamicContent table.ops-zero-table tbody tr:nth-child(odd){
+  background:#fff!important
+}
+html body #operativoDynamicContent table.ops-zero-table tbody tr:nth-child(even){
+  background:#eef4fb!important
+}
+html body #operativoDynamicContent table.ops-zero-table tbody tr.project-row{
+  box-shadow:inset 3px 0 #287cdb!important
+}
+html body #operativoDynamicContent table.ops-zero-table tbody tr:hover{
+  background:#dcecff!important
+}
+html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(1){
+  min-width:54px!important;width:54px!important;text-align:left!important;
+}
+html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(2){
+  min-width:106px!important;text-align:left!important;font-weight:800!important;
+}
+html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(8){
+  font-weight:850!important;color:#143f73!important
+}
+html body #operativoDynamicContent table.ops-zero-table tbody td :is(.zero-alert,.v117-bad){
+  color:#d9272c!important;font-weight:800!important
+}
+html body #operativoDynamicContent table.ops-zero-table tbody td .v117-good{color:#12864b!important}
+html body #operativoDynamicContent table.ops-zero-table tbody td .v117-warn{color:#a77205!important}
+/* The first two columns remain visible when the matrix is swiped horizontally. */
+html body #operativoDynamicContent table.ops-zero-table :is(th,td):first-child{
+  position:sticky!important;left:0!important;z-index:3!important;
+  background:inherit!important
+}
+html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(2){
+  position:sticky!important;left:54px!important;z-index:3!important;
+  background:inherit!important;
+  box-shadow:2px 0 3px #26487015!important
+}
+html body #operativoDynamicContent table.ops-zero-table thead th:nth-child(-n+2){
+  z-index:5!important;background:#15487d!important
+}
+html body #operativoDynamicContent .or365-detail-chart{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  margin:5px 0 9px!important;padding:11px!important;
+  background:#fff!important;border:1px solid #d9e6f2!important;
+  border-radius:10px!important;box-shadow:none!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  -webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;
+}
+html body #operativoDynamicContent .or365-detail-chart .or365-chart-title{
+  margin:0 0 4px!important;color:#153f74!important;
+  font-size:clamp(13px,1.25vw,17px)!important;line-height:1.2!important;
+  font-weight:850!important
+}
+html body #operativoDynamicContent .or365-detail-chart .or365-chart-hint{
+  font-size:10px!important;color:#697b90!important;margin:0 0 4px!important
+}
+html body #operativoDynamicContent svg.or365-vertical-svg{
+  width:100%!important;max-width:none!important;
+  min-width:var(--or365-min-width,640px)!important;
+  height:auto!important;max-height:360px!important;
+  display:block!important;overflow:visible!important
+}
+@media(max-width:900px){
+ html body #operativoDynamicContent table.ops-zero-table :is(th,td){
+  font-size:10px!important;padding:6px 4px!important
+ }
+ html body #operativoDynamicContent .or365-detail-chart{padding:8px!important}
+}
+@media(max-width:520px){
+ html body #operativoDynamicContent table.ops-zero-table{min-width:1060px!important}
+ html body #operativoDynamicContent table.ops-zero-table :is(th,td){font-size:9px!important}
+ html body #operativoDynamicContent svg.or365-vertical-svg{max-height:330px!important}
+}
+@media print{
+ html body #operativoDynamicContent .or365-detail-chart{overflow:visible!important}
+ html body #operativoDynamicContent .or365-detail-chart svg{max-width:100%!important;min-width:0!important}
+ html body #operativoDynamicContent table.ops-zero-table :is(th,td){font-size:8px!important;padding:3px!important}
+}
