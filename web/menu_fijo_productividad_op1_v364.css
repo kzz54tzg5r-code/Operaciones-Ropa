@@ -1,0 +1,117 @@
+/* V364 · Navegación verdaderamente fija + Productividad opción 1 confirmada.
+   Solo presentación. No altera cálculos, permisos, reportes ni API. */
+@media (min-width:901px) {
+ html body.or363-navigation #appView .shell{
+  display:grid!important;
+  grid-template-columns:72px minmax(0,1fr)!important;
+  width:100%!important;
+  min-width:0!important;
+ }
+ html body.or363-navigation #appView .shell > #sidebar {
+  position:fixed!important;
+  top:0!important;bottom:0!important;left:0!important;right:auto!important;
+  height:100dvh!important;
+  width:72px!important;min-width:72px!important;max-width:72px!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  z-index:190!important;
+  overscroll-behavior:contain!important;
+  align-self:auto!important;scrollbar-width:thin!important;
+ }
+ html body.or363-navigation #appView .shell > #sidebar.or363-sidebar-open {
+  width:242px!important;min-width:242px!important;max-width:242px!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
+  box-shadow:8px 0 22px #0b2e5977!important
+ }
+ html body.or363-navigation #appView .shell > .main {
+  grid-column:2 / 3!important;
+  grid-row:1!important;
+  margin:0!important;margin-left:0!important;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  padding:8px 11px 30px!important;
+ }
+ /* Evitar que los iconos salten cuando la barra abre la vista de texto. */
+ html body.or363-navigation #appView #sidebar>.nav .or-icon{
+  flex:0 0 23px!important;max-width:23px!important
+ }
+}
+/* Mantener menú compacto también en ventanas PWA, sin duplicar iconos. */
+html body.or363-navigation #appView #sidebar>.nav {
+ flex-shrink:0!important;transform:none!important
+}
+html body.or363-navigation #appView #sidebar>.nav :is(.rt-tab-icon,.or-icon) svg{
+ transform:none!important
+}
+/* Opción 1 Productividad: los cuatro KPIs en línea, ranking ancho completo. */
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .report-kpis{
+ display:grid!important;
+ grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ gap:7px!important;margin:6px 0 9px!important;
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .report-kpis > .report-kpi{
+ display:flex!important;flex-direction:column!important;
+ min-width:0!important;min-height:88px!important;
+ height:auto!important;
+ padding:10px 12px!important;
+ border:1px solid #d9e7f4!important;
+ border-top:3px solid var(--rk,#1676e6)!important;
+ border-radius:9px!important;
+ background:#fff!important;
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .report-kpis > .report-kpi .rk-label{
+ font-size:11px!important;font-weight:750!important;color:#264c7a!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .report-kpis > .report-kpi .rk-value{
+ font-size:clamp(20px,2vw,30px)!important;
+ font-variant-numeric:tabular-nums!important;
+ line-height:1.12!important;color:var(--rk,#0c4c9e)!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .report-kpis > .report-kpi .rk-sub{
+ font-size:10px!important;color:#657b92!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .title {
+ font-size:15px!important;margin:8px 0 4px!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .tablewrap {
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ margin:3px 0 8px!important;padding:0!important;
+ border:1px solid #d9e6f3!important;border-radius:8px!important;
+ overflow-x:auto!important;overflow-y:visible!important;
+ -webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .tablewrap .table {
+ width:100%!important;min-width:890px!important;
+ border-collapse:collapse!important;margin:0!important;
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .tablewrap .table :is(th,td){
+ padding:7px 6px!important;font-size:11px!important;
+ line-height:1.2!important;white-space:normal!important;
+ text-align:center!important;font-variant-numeric:tabular-nums!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .tablewrap .table :is(th,td):nth-child(2),
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .tablewrap .table :is(th,td):nth-child(3){
+ text-align:left!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .tablewrap .table thead th{
+ position:sticky!important;top:0!important;
+ background:#164e87!important;color:white!important;z-index:1!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent .or362-productivity-layout{
+ /* Compatibilidad con una sesión que todavía conserva DOM de la opción 4. */
+ display:block!important;margin:6px 0!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent .or362-prod-stores {
+ display:none!important
+}
+html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent .or362-prod-collaborators{
+ width:100%!important
+}
+@media (max-width:780px){
+ html body[data-or362-view="operations.productivity"] #page-operativo #operativoDynamicContent > .report-kpis{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important
+ }
+}
+@media print{
+ html body.or363-navigation #appView #sidebar{display:none!important}
+ html body.or363-navigation #appView .shell{display:block!important;grid-template-columns:1fr!important}
+ html body.or363-navigation #appView .shell>.main{display:block!important;width:100%!important;margin:0!important;padding:0!important}
+}
