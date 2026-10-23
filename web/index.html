@@ -3080,9 +3080,14 @@ async function backgroundFileUpload(module,file,onProgress=()=>{}){
   const previousId=localStorage.getItem(storageKey);
   if(previousId){
     onProgress({status:'reconnecting',progress:10,message:'Ya existe una carga registrada. Recuperando el resultado sin volver a enviar el Excel…'});
-    const recovered=await waitForUploadJob(previousId,onProgress);
-    localStorage.removeItem(storageKey);
-    return recovered;
+    try{
+      const recovered=await waitForUploadJob(previousId,onProgress);
+      localStorage.removeItem(storageKey);
+      return recovered;
+    }catch(error){
+      if(error.uploadTerminal)localStorage.removeItem(storageKey);
+      throw error;
+    }
   }
   const fd=new FormData();fd.append('file',file,file.name);
   onProgress({status:'uploading',progress:5,message:`Subiendo ${file.name} al almacenamiento seguro…`});
