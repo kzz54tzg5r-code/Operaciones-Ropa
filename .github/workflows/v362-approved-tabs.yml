@@ -7,8 +7,10 @@ on:
       - "v222_operation_capture_nav_admin_patch.py"
       - "web/operaciones_aprobadas_v362.css"
       - "web/operaciones_aprobadas_v362.js"
+      - "web/menu_fijo_productividad_op1_v364.css"
       - "web/index.html"
       - "tests/ui/v362-contract.cjs"
+      - "tests/ui/v364-navigation-productivity.cjs"
       - ".github/workflows/v362-approved-tabs.yml"
   workflow_dispatch:
 jobs:
@@ -29,3 +31,4 @@ jobs:
         run: |
           node --check web/operaciones_aprobadas_v362.js
           node tests/ui/v362-contract.cjs
+          node tests/ui/v364-navigation-productivity.cjs
