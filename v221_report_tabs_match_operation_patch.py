@@ -345,7 +345,10 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     'operations.center':['Centro Operativo','dashboard'],
     'operations.conversion':['Conversión','repeat'],
     'operations.recovery':['Recuperación $','dollar'],
-    'operations.recovery_store':['Recuperación por Tienda','store'],
+    'operations.recovery_store':['Tasa de recuperación','store'],
+    'operations.recovery_audit':['Tasa recuperación · Revisión','checklist'],
+    'operations.productivity_capture':['Cargar productividad','upload'],
+    'operations.goals':['Metas y tiendas','settings'],
     'operations.productivity':['Productividad','chart'],
     'operations.routes':['Recorridos','route'],
     'operations.score':['Score','target'],
@@ -398,6 +401,7 @@ body[data-v163-module] :is(#operativoNav,#analysisNav)>button>*{
     if(op.includes('convers'))return['Conversión','repeat'];
     if(op.includes('recuperación económica')||op.includes('recuperacion economica'))return['Recuperación $','dollar'];
     if(op.includes('recuperación por tienda')||op.includes('recuperacion por tienda'))return['Recuperación por Tienda','store'];
+    if(op.includes('cargar productividad'))return['Cargar productividad','upload'];
     if(op.includes('productividad'))return['Productividad','chart'];
     if(op.includes('recorridos'))return['Recorridos','route'];
     if(op.includes('índice')||op.includes('indice')||op.includes('score'))return['Score','target'];
