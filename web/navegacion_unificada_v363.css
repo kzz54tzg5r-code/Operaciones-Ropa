@@ -9,8 +9,8 @@ html body.or363-navigation #appView .shell{
   display:grid!important;grid-template-columns:72px minmax(0,1fr)!important;
  }
  html body.or363-navigation #appView .shell > #sidebar{
-  position:sticky!important;top:0!important;left:auto!important;right:auto!important;
-  inset:auto!important;align-self:start!important;width:72px!important;
+  position:sticky!important;inset:auto!important;top:0!important;
+  left:auto!important;right:auto!important;align-self:start!important;width:72px!important;
   min-width:72px!important;max-width:72px!important;height:100dvh!important;
   background:linear-gradient(180deg,#0b3a71,#115799)!important;color:#fff!important;
   border-right:1px solid #2467a5!important;padding:8px 5px!important;
