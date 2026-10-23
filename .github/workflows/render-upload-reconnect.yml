@@ -1,0 +1,33 @@
+name: Render upload reconnection smoke
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/index.html"
+      - "web_app.py"
+      - "tests/ui/upload-reconnect.test.cjs"
+      - "tests/test_operations_upload_disk_guard.py"
+      - ".github/workflows/render-upload-reconnect.yml"
+  workflow_dispatch:
+jobs:
+  upload-reconnect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements_web.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements_web.txt
+      - name: Python syntax and worker recovery
+        run: |
+          python -m py_compile web_app.py server_entry.py
+          python -m pytest -q tests/test_operations_upload_disk_guard.py
+      - name: Node upload reconciliation tests
+        run: node --test tests/ui/upload-reconnect.test.cjs

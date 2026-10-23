@@ -6720,7 +6720,10 @@ def _resume_pending_upload_jobs() -> int:
     bonus_initial_entries=list(manifest.get("bonus_initial_capacity_entries") or [])
     for row in pending:
         job=dict(row); source=Path(str(job.get("source_path") or ""))
-        if int(job.get("resume_count") or 0)>=2:
+        # Los despliegues legítimos de GitHub/Render también reinician trabajos.
+        # Permitir recuperación limitada adicional sin convertirlo en un bucle infinito.
+        max_restarts=4 if job["module"]=="operations" else 2
+        if int(job.get("resume_count") or 0)>=max_restarts:
             _fail_upload_job(
                 job["id"],
                 RuntimeError("La carga se detuvo tras reinicios consecutivos para proteger el servicio. Presiona Procesar Excel para iniciar un intento limpio.")

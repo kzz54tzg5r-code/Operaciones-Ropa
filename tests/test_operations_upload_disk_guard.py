@@ -95,3 +95,42 @@ def test_operations_upload_enqueues_once_and_keeps_stage_until_worker(monkeypatc
     stages=list(tmp_path.glob("operations_job_*.xlsx"))
     assert len(stages)==1
     assert stages[0].read_bytes()==b"un xlsx de prueba"
+
+
+def test_operations_resume_allows_up_to_three_deploy_restarts(monkeypatch,tmp_path):
+    database=tmp_path/"jobs.sqlite3"
+    source=tmp_path/"operations_job_existing.xlsx"
+    source.write_bytes(b"archivo en procesamiento")
+    connection=sqlite3.connect(database)
+    connection.execute(
+        """CREATE TABLE upload_jobs (
+          id TEXT PRIMARY KEY,module TEXT,filename TEXT,status TEXT,progress INTEGER,
+          message TEXT,error TEXT,result_json TEXT,source_path TEXT,created_at TEXT,
+          started_at TEXT,finished_at TEXT,created_by TEXT,resume_count INTEGER
+        )"""
+    )
+    connection.execute(
+        "INSERT INTO upload_jobs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        ("job-vivo","operations","base.xlsx","queued",15,"Reiniciando","","{}",
+         str(source),"2026-10-23T21:00:00","","","admin",3)
+    )
+    connection.commit()
+    connection.close()
+
+    @contextmanager
+    def db():
+        con=sqlite3.connect(database)
+        con.row_factory=sqlite3.Row
+        try:
+            yield con
+            con.commit()
+        finally:
+            con.close()
+    monkeypatch.setattr(web_app,"db",db)
+    monkeypatch.setattr(web_app,"load_manifest",lambda:{"capacities":[]})
+    captured=[]
+    monkeypatch.setattr(web_app,"_submit_upload_job",
+                        lambda jid,fn,args:captured.append((jid,args)) or True)
+    assert web_app._resume_pending_upload_jobs()==1
+    assert captured[0][0]=="job-vivo"
+    assert captured[0][1][1]==source
