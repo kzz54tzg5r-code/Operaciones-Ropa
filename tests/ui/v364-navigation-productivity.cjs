@@ -1,0 +1,25 @@
+// V364: contrato de Productividad opción 1, navegación fija y vistas aprobadas.
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const read=p=>fs.readFileSync(p,'utf8');
+const html=read('web/index.html');
+const product=read('web/operaciones_aprobadas_v362.js');
+const fixed=read('web/menu_fijo_productividad_op1_v364.css');
+const core=read('v199_access_perf_productivity_patch.py');
+assert.match(html,/menu_fijo_productividad_op1_v364\.css\?v=364/);
+assert.match(html,/operaciones_aprobadas_v362\.js\?v=364/);
+assert.match(fixed,/position:fixed!important/);
+assert.match(fixed,/grid-column:2 \/ 3!important/);
+assert.match(fixed,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+assert.match(fixed,/operations\.productivity/);
+assert.doesNotMatch(product, /if\(key==='operations\.productivity'&&host\)decorateProductivity\(host\)/);
+assert.doesNotMatch(product, /if\(host\)decorateProductivity\(host\)/);
+assert.match(core,/rk-label">Productividad<\/div>/);
+assert.match(core,/fmt\(daily\)/);
+assert.match(core,/Piezas \/ colaborador-día/);
+assert.match(core,/OR_CM_MANAGE\(rep\)/);
+assert.match(core,/Hora de inicio/);
+assert.match(core,/Hora de fin/);
+assert.match(core,/Tiempo realizado/);
+console.log('V364 OK: Productivity opción 1, cuatro KPIs, menú fijo, acciones seguras.');
