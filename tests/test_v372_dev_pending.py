@@ -38,7 +38,7 @@ def test_restores_correct_date_and_only_authorized_stores():
     assert m["converted_pieces"] == 7
     assert m["pending_recovery_pieces"] == 3
     assert len(r["recovery_by_store"]) == 2
-    assert [x["store"] for x in r["stores"]] == ["Vallejo", "Puebla Sur"]
+    assert [x["store"] for x in r["stores"]] == ["Puebla Sur", "Vallejo"]
     assert m["total_pzs"] == 2318
     assert m["pendiente_acondicionar"] == 1863
     assert m["pendiente_ubicar"] == 1498
