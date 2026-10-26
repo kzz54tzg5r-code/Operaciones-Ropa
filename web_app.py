@@ -2622,6 +2622,22 @@ def parse_operations_excel(path: Path, persist: bool=True):
                 path,monthly_sheets,stream_book=stream_book
             ) if is_xlsx else ([],[],[],["Las hojas mensuales optimizadas requieren un archivo .xlsx"] if monthly_sheets else [])
             errors.extend(recovery_errors)
+            # Bloqueo de seguridad: nunca publicar un archivo con mes parcial por
+            # fechas o métricas desplazadas. La base anterior queda intacta.
+            header_audit=(stream_book or {}).get("recovery_header_audit",{})
+            broken=[
+                sheet for sheet in monthly_sheets
+                if (sheet not in header_audit
+                    or not header_audit[sheet].get("daily_dates")
+                    or any("Columnas " in issue or "misma fecha" in issue
+                           for issue in header_audit[sheet].get("warnings",[])))
+            ]
+            if broken:
+                raise ValueError(
+                    "No se publicaron datos incompletos. Revisa las fechas de la fila 1 "
+                    "y el orden Ventas Neta Pzs / Dev Pzs / Venta Neta en $ de la fila 2 "
+                    "en: "+", ".join(broken[:12])+". "+"; ".join(recovery_errors[:3])
+                )
     except ValueError:
         raise
     except Exception as exc:
@@ -6575,6 +6591,7 @@ async def upload_operations_preview(request: Request,file:UploadFile=File(...)):
         "period":period,"operational_sheet":payload.get("operational_sheet",""),
         "operational_sheets":payload.get("operational_sheets",[]),
         "monthly_sheets":payload.get("monthly_sheets",[]),
+        "recovery_header_audit":payload.get("recovery_header_audit",{}),
         "duplicate_rows_removed":payload.get("duplicate_rows_removed",0),
         "data_issues":payload.get("data_issues",[])[:100],
         "missing_columns_by_sheet":payload.get("missing_columns_by_sheet",{}),
@@ -6586,6 +6603,7 @@ async def upload_operations_preview(request: Request,file:UploadFile=File(...)):
         "operational_sheet":payload.get("operational_sheet",""),
         "operational_sheets":payload.get("operational_sheets",[]),
         "monthly_sheets":payload.get("monthly_sheets",[]),
+        "recovery_header_audit":payload.get("recovery_header_audit",{}),
         "duplicate_rows_removed":payload.get("duplicate_rows_removed",0),
         "data_issues":payload.get("data_issues",[])[:100],
         "missing_columns_by_sheet":payload.get("missing_columns_by_sheet",{}),
