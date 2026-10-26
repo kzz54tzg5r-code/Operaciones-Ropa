@@ -51,7 +51,7 @@ html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(1){
 html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(2){
   min-width:106px!important;text-align:left!important;font-weight:800!important;
 }
-html body #operativoDynamicContent table.ops-zero-table :is(th,td):nth-child(8){
+html body #operativoDynamicContent table.ops-zero-table tbody td:nth-child(8){
   font-weight:850!important;color:#143f73!important
 }
 html body #operativoDynamicContent table.ops-zero-table tbody td :is(.zero-alert,.v117-bad){
