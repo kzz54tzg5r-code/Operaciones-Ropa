@@ -111,6 +111,12 @@ def install(m):
             warning = ("La base publicada no contiene lotes diarios de devolución "
                        "para calcular Dev Pzs y recuperación. Verifica y reprocesa "
                        "el archivo vigente desde Carga de datos.")
+        elif dev == 0 and out.get("period_value"):
+            warning = (
+                f"El periodo {out.get('period_value')} no registra DEV en los lotes publicados. "
+                "Si el Excel original contiene devoluciones en estas fechas, "
+                "reprocesa DEV para reconstruir el reporte."
+            )
         meta.update({
             "recognized_monthly_sheets": len(sheets),
             "source_ready": source_ready,
