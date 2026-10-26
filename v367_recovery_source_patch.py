@@ -70,7 +70,11 @@ def install(m):
         marker = (id(data), len(daily), id(daily))
         if fallback["key"] == marker:
             return fallback["result"]
-        recovered = m._build_recovery_fifo_rows(daily)
+        try:
+            recovered = m._build_recovery_fifo_rows(daily)
+        except Exception as exc:
+            print(f"[V367] FIFO legado no reconstruido: {type(exc).__name__}: {exc}", flush=True)
+            return rows
         fallback["key"] = marker
         fallback["result"] = recovered
         return recovered
