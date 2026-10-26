@@ -6544,6 +6544,7 @@ def upload_operations_current(request: Request):
         "rejected_records":len(data.get("rejected_rows") or []),
         "duplicate_rows_removed":data.get("duplicate_rows_removed",0),
         "missing_columns_by_sheet":data.get("missing_columns_by_sheet",{}),
+        "recovery_header_audit":data.get("recovery_header_audit",{}),
         "errors":data.get("errors",[]),
     }
 
