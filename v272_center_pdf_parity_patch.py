@@ -408,8 +408,7 @@ def install(m):
 
         def draw_recovery_table():
             nonlocal y
-            if period_type == "day":
-                return
+            # Recuperación por tienda también forma parte del reporte diario.
             rows = sorted(
                 list(recovery or []),
                 key=lambda r: (-_num(r.get("conversion_pct")), -_num(r.get("recovery_pct")), str(r.get("store") or "")),
