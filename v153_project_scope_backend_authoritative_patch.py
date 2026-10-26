@@ -183,6 +183,10 @@ def install(m):
         out = dict(project_data)
         # ÚNICA excepción al alcance Proyecto: comparativo de recuperación.
         out["recovery_by_store"] = list(all_data.get("recovery_by_store") or [])
+        # El estado de la fuente DEV debe corresponder a todas las tiendas,
+        # igual que la tabla de recuperación (no sólo a las tiendas Proyecto).
+        if "recovery_source" in all_data:
+            out["recovery_source"] = dict(all_data.get("recovery_source") or {})
 
         # Mantener catálogos/periodos completos para no perder opciones del filtro.
         for key in (
