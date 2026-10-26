@@ -700,6 +700,10 @@ body.v238-module-operativo #operPeriodMode{
   function centerHtml(data,mode,value){
     const mt=data?.metrics||{},rec=data?.recovery_by_store||[],stores=data?.stores||[];
     let out='';
+    const sourceWarning=data?.recovery_source?.source_warning||'';
+    if(sourceWarning){
+      out+='<div class="infoempty" role="status" style="border:1px solid #f59e0b;background:#fff7e6;color:#874b10;margin:8px 0;padding:10px;border-radius:8px"><b>Devoluciones: fuente sin validar.</b> '+esc(sourceWarning)+'</div>';
+    }
     if(typeof monthlyCrossTable==='function')out+=monthlyCrossTable(mt,mode==='day');
     if(typeof recoveryTable==='function'){
       out+='<div class="title">Recuperación por tienda</div>'+recoveryTable(rec);
