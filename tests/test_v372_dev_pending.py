@@ -6,9 +6,9 @@ def record():
     return {
         "stores": [
             {"store": "Puebla Sur", "dev_pzs": 0, "muertos": 145, "probador": 219, "cajas": 0,
-             "acondicionado": 39, "ubicado": 404},
+             "acondicionado": 39, "ubicado": 404, "total_pzs": 1899, "pendiente_anterior": 1535},
             {"store": "Vallejo", "dev_pzs": 0, "muertos": 0, "probador": 0, "cajas": 363,
-             "acondicionado": 417, "ubicado": 712}
+             "acondicionado": 417, "ubicado": 712, "total_pzs": 409, "pendiente_anterior": 46}
         ],
         "recovery_by_store": [
             {"store": "Puebla Sur", "dev_pzs": 0, "converted_pieces": 0, "return_value": 0, "recovered_value": 0},
@@ -39,20 +39,20 @@ def test_restores_correct_date_and_only_authorized_stores():
     assert m["pending_recovery_pieces"] == 3
     assert len(r["recovery_by_store"]) == 2
     assert [x["store"] for x in r["stores"]] == ["Vallejo", "Puebla Sur"]
-    assert m["total_pzs"] == 737  # 363+7 + 145+219+3
-    assert m["pendiente_acondicionar"] == 328 + 0  # Puebla 367-39; Vallejo 370-417
-    assert m["pendiente_ubicar"] == 0  # Ambas ya tienen más ubicado que total.
+    assert m["total_pzs"] == 2318
+    assert m["pendiente_acondicionar"] == 1863
+    assert m["pendiente_ubicar"] == 1498
     assert r["recovery_source"]["fifo_restored_from_published_data"]
-    assert m["pct_ubicado"] == (1116 / 737 * 100)
+    assert m["pct_ubicado"] == (1116 / 2318 * 100)
 
 
 def test_pendientes_use_total_not_acondicionado():
     r = reconcile_result(record(), (), "day", "2026-10-25")
     row = next(x for x in r["stores"] if x["store"] == "Puebla Sur")
-    assert row["total_pzs"] == 364
-    assert row["pendiente_acondicionar"] == 325
-    assert row["pendiente_ubicar"] == 0  # 404 supera total; no negativos.
-    assert row["pct_ubicado"] > 100
+    assert row["total_pzs"] == 1899
+    assert row["pendiente_acondicionar"] == 1860
+    assert row["pendiente_ubicar"] == 1495
+    assert round(row["pct_ubicado"], 1) == 21.3
 
 
 def test_month_and_week_iso_preserve_original_lots():
