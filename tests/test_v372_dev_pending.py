@@ -60,3 +60,56 @@ def test_month_and_week_iso_preserve_original_lots():
     assert month["metrics"]["dev_pzs"] == 109  # 3+7+99; exclude Arco Norte.
     week = reconcile_result(record(), fifo(), "week", "2026-W43")
     assert week["metrics"]["dev_pzs"] == 10
+
+
+def test_legacy_variadic_wrapper_does_not_turn_day_into_all_history():
+    """Reproduce la firma V367 (*args, **kwargs) que provocó 73 mil DEV diarias."""
+    from types import SimpleNamespace
+    from v372_dev_total_pending_patch import install
+
+    # La función de V367 no preserva inspect.signature del endpoint original.
+    def variadic_operations(*args, **kwargs):
+        return record()
+    module = SimpleNamespace(
+        operations=variadic_operations,
+        load_ops=lambda: {"recovery_fifo": fifo()},
+        _get_recovery_fifo_rows=lambda data: data["recovery_fifo"],
+        _normalize_store_value=lambda store: store,
+    )
+    install(module)
+    day = module.operations(object(), store="Compañía", period_type="day", period_value="2026-10-25")
+    assert day["metrics"]["dev_pzs"] == 10
+    assert day["recovery_source"]["fifo_restored_from_published_data"]
+    assert day["metrics"]["dev_pzs"] != 109
+
+    # Cambio de fecha obliga a filtrar de nuevo, no a conservar el acumulado.
+    next_day = module.operations(object(), store="Compañía", period_type="day", period_value="2026-10-26")
+    assert next_day["metrics"]["dev_pzs"] == 99
+    week = module.operations(object(), period_type="week", period_value="2026-W43")
+    assert week["metrics"]["dev_pzs"] == 10
+    month = module.operations(object(), period_type="month", period_value="2026-10")
+    assert month["metrics"]["dev_pzs"] == 109
+
+
+def test_missing_day_is_never_converted_into_historical_totals():
+    from types import SimpleNamespace
+    from v372_dev_total_pending_patch import install
+
+    def variadic_operations(*args, **kwargs):
+        return record()
+    module = SimpleNamespace(
+        operations=variadic_operations,
+        load_ops=lambda: {"recovery_fifo": fifo()},
+        _get_recovery_fifo_rows=lambda data: data["recovery_fifo"],
+    )
+    install(module)
+    result = module.operations(object(), period_type="day", period_value="")
+    assert result["metrics"]["dev_pzs"] == 0
+    assert not result["recovery_source"]["fifo_restored_from_published_data"]
+
+
+def test_day_range_never_includes_outside_dates():
+    result = reconcile_result(
+        record(), fifo(), "all", "", "2026-10-25", "2026-10-25"
+    )
+    assert result["metrics"]["dev_pzs"] == 10
