@@ -1,0 +1,33 @@
+name: V372 DEV FIFO and recovery UI
+on:
+  push:
+    branches: [main]
+    paths:
+      - "v372_dev_total_pending_patch.py"
+      - "tests/test_v372_dev_pending.py"
+      - "web/center_lanes.js"
+      - "web/recuperacion_visible_v373.js"
+      - "web/recuperacion_visible_v373.css"
+      - "web/index.html"
+      - "server_entry.py"
+      - ".github/workflows/v372-recovery-scope.yml"
+  workflow_dispatch:
+jobs:
+  fifo-scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Validate Python patch
+        run: python -m py_compile v372_dev_total_pending_patch.py
+      - name: Validate FIFO scopes and totals
+        run: python -m unittest discover -s tests -p 'test_v372_dev_pending.py' || python -m pip install pytest && python -m pytest -q tests/test_v372_dev_pending.py
+      - name: Validate JavaScript syntax and approved title
+        run: |
+          node --check web/center_lanes.js
+          node --check web/recuperacion_visible_v373.js
+          grep -q "title:'Ingresado'" web/center_lanes.js
+          grep -q "recovery-by-store" web/recuperacion_visible_v373.js
