@@ -1,0 +1,114 @@
+"""V367 · Rescate compatible de DEV PZS y diagnóstico de cobertura.
+
+Evita reportar ceros sin avisar cuando falta la fuente de las hojas mensuales.
+No lee Excel en una consulta ni recalcula conversiones históricas en cada petición.
+Las reparaciones de reconocimiento sólo se aplican al siguiente procesamiento
+de una base original (se conserva la publicada hasta validar la nueva).
+"""
+from __future__ import annotations
+
+import re
+
+_MONTHS = (
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+)
+
+
+def install(m):
+    if getattr(m, "_V367_RECOVERY_SOURCE", False):
+        return
+
+    old_monthly_name = m._monthly_sheet_name
+
+    def month_sheet(name):
+        if old_monthly_name(name):
+            return True
+        clean = m.normalize_col(name)
+        has_month = any(re.search(r"(?<![a-z])" + month + r"(?![a-z])", clean)
+                        for month in _MONTHS)
+        # Hoja con año distinto de 2026, o simplemente "Octubre".
+        return bool(has_month and (
+            re.search(r"(?<!\d)20\d{2}(?!\d)", clean)
+            or clean.strip() in _MONTHS
+        ))
+
+    m._monthly_sheet_name = month_sheet
+
+    original_xml_rows = m._xlsx_monthly_rows
+
+    def monthly_rows_with_dates_from_second_header(archive, member, shared_value):
+        iterator = iter(original_xml_rows(archive, member, shared_value))
+        first = dict(next(iterator, {}) or {})
+        second = dict(next(iterator, {}) or {})
+        # Algunas plantillas tienen las fechas en la segunda línea de cabecera.
+        # Fusionamos sólo las fechas, manteniendo sin cambios datos y columnas.
+        head = dict(first)
+        upper = max(list(first) + list(second) + [28])
+        for col in range(29, upper + 1, 3):
+            date_first = m._safe_date_iso(first.get(col))[0]
+            if not date_first and m._safe_date_iso(second.get(col))[0]:
+                head[col] = second[col]
+        yield head
+        yield second
+        yield from iterator
+
+    m._xlsx_monthly_rows = monthly_rows_with_dates_from_second_header
+
+    original_fifo = m._get_recovery_fifo_rows
+    fallback = {"key": None, "result": None}
+
+    def fifo_with_legacy_fallback(data):
+        rows = original_fifo(data)
+        if rows:
+            return rows
+        daily = data.get("commercial_daily")
+        # Las bases antiguas pueden guardar movimientos diarios y un FIFO [].
+        # No calculamos sobre listas enormes durante una petición del usuario.
+        if not isinstance(daily, list) or not daily or len(daily) > 50000:
+            return rows
+        marker = (id(data), len(daily), id(daily))
+        if fallback["key"] == marker:
+            return fallback["result"]
+        recovered = m._build_recovery_fifo_rows(daily)
+        fallback["key"] = marker
+        fallback["result"] = recovered
+        return recovered
+
+    m._get_recovery_fifo_rows = fifo_with_legacy_fallback
+
+    previous_operations = m.operations
+
+    def operations_with_recovery_status(*args, **kwargs):
+        result = previous_operations(*args, **kwargs)
+        if not isinstance(result, dict):
+            return result
+        out = dict(result)
+        meta = dict(out.get("recovery_source") or {})
+        sheets = list(out.get("monthly_sheets") or [])
+        errors = list(out.get("parse_errors") or [])
+        dev = sum(float(row.get("dev_pzs") or 0) for row in out.get("recovery_by_store") or [])
+        issue = not sheets or any(
+            "no se detectaron fechas diarias" in str(error).lower()
+            or "hoja no encontrada" in str(error).lower()
+            for error in errors
+        )
+        meta.update({
+            "recognized_monthly_sheets": len(sheets),
+            "period_dev_pzs": dev,
+            "source_warning": (
+                "No se detectaron hojas mensuales para las devoluciones. "
+                "Verifica el archivo base cargado desde Carga de datos."
+                if not sheets else
+                "La lectura de fechas diarias en las hojas mensuales presenta errores. "
+                "Verifica el procesamiento del archivo base."
+                if issue else
+                ""
+            ),
+        })
+        out["recovery_source"] = meta
+        return out
+
+    m.operations = operations_with_recovery_status
+    m._V367_RECOVERY_SOURCE = True
+    print("[V367] Lectura mensual ampliada y diagnóstico DEV instalado", flush=True)
