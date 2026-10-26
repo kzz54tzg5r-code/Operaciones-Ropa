@@ -461,6 +461,11 @@ _install_runtime_performance(web_app)
 from v357_cm_productivity_deletion_patch import install as _install_v357_cm_productivity_deletion_patch
 _install_v357_cm_productivity_deletion_patch(web_app)
 
+# V367: DEV PZS desde hojas mensuales, compatibilidad con bases legadas,
+# y advertencia explícita cuando el Excel no contiene fuente válida.
+from v367_recovery_source_patch import install as _install_v367_recovery_source_patch
+_install_v367_recovery_source_patch(web_app)
+
 # V366: presentación monetaria en miles de pesos para todos los reportes principales.
 from v366_miles_display_patch import install as _install_v366_miles_display_patch
 _install_v366_miles_display_patch(web_app)
