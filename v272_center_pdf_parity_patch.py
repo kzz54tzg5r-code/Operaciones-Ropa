@@ -685,7 +685,7 @@ def install(m):
         pct_rec = _num(mt.get("pct_recorridos")) if mt.get("pct_recorridos") is not None else (recorridos/meta_rec*100 if meta_rec else 0)
 
         card_row([
-            ("Recibido", "Mercancía ingresada en el periodo", "Ingresos",
+            ("Ingresado", "Mercancía ingresada en el periodo", "Ingresos",
              n(total_pzs), None, None, "#00999F"),
             ("En proceso", "Acondicionamiento de mercancía", "Acondicionado",
              n(acond), pc(pct_ac), f"{n(pend_acond)} pzas por acondicionar", PURPLE),
