@@ -26,7 +26,7 @@ def test_october_dates_use_day_first_and_ignore_total_columns():
     assert all(month == "2026-10" for *_, month in groups)
     assert _date_iso("12/10/2026")[0] == "2026-10-12"
     assert _date_iso(date(2026, 10, 1))[0] == "2026-10-01"
-    assert _date_iso(46326)[0] == "2026-10-01"
+    assert _date_iso(46296)[0] == "2026-10-01"
 
 
 def test_misplaced_devolution_header_is_rejected():
