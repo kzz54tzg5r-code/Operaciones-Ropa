@@ -701,7 +701,7 @@ body.v238-module-operativo #operPeriodMode{
     const mt=data?.metrics||{},rec=data?.recovery_by_store||[],stores=data?.stores||[];
     let out='';
     if(typeof monthlyCrossTable==='function')out+=monthlyCrossTable(mt,mode==='day');
-    if(mode!=='day'&&typeof recoveryTable==='function'){
+    if(typeof recoveryTable==='function'){
       out+='<div class="title">Recuperación por tienda</div>'+recoveryTable(rec);
     }
     const ordered=typeof orderByConversion==='function'
