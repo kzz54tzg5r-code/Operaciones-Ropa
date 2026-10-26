@@ -475,4 +475,9 @@ _install_v368_rebuild_dev_patch(web_app)
 from v366_miles_display_patch import install as _install_v366_miles_display_patch
 _install_v366_miles_display_patch(web_app)
 
+# V372: concilia DEV del FIFO publicado con los filtros y unifica pendientes
+# contra Total Pzs en día, semana, mes, tienda y Compañía.
+from v372_dev_total_pending_patch import install as _install_v372_dev_total_pending_patch
+_install_v372_dev_total_pending_patch(web_app)
+
 app = web_app.app
