@@ -76,8 +76,17 @@ def test_monthly_parser_uses_ad_ae_af_and_not_monthly_totals(tmp_path):
     sheet["AO3"] = 300
     path = tmp_path / "base.xlsx"
     book.save(path)
-    rows, weeks, months, errors = web_app._stream_monthly_recovery_fifo(path, ["Octubre 26"])
+    with web_app._xlsx_stream_book(path) as book:
+        rows, weeks, months, errors = web_app._stream_monthly_recovery_fifo(
+            path, ["Octubre 26"], stream_book=book)
+        audit = book["recovery_header_audit"]["Octubre 26"]
     assert not errors
+    assert audit["daily_dates"] == 4
+    assert audit["first_date"] == "2026-10-01"
+    assert audit["last_date"] == "2026-10-04"
+    assert audit["total_monthly_dev"] == 3
+    assert audit["total_daily_dev"] == 3
+    assert audit["difference"] == 0
     assert len(rows) == 2  # Un lote por fecha con DEV.
     assert {row["date"]: row["dev_pzs"] for row in rows} == {
         "2026-10-01": 2.0, "2026-10-02": 1.0}
