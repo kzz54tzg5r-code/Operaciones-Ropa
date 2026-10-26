@@ -31,7 +31,7 @@ function mount(root){
  function close(){panel='';drawer.hidden=true;drawer.replaceChildren();Object.values(buttons).forEach(b=>b.setAttribute('aria-expanded','false'));window.scrollTo({top:originY,behavior:'auto'});}
  function open(id,focus=false){
   if(!panel)originY=window.scrollY;panel=id;drawer.hidden=false;drawer.replaceChildren();
-  const titles={received:'Ingresos · Recibido',conditioned:'Acondicionado · En proceso',located:'Ubicado · En piso',routes:'Recorridos'};
+  const titles={received:'Ingresos · Ingresado',conditioned:'Acondicionado · En proceso',located:'Ubicado · En piso',routes:'Recorridos'};
   const heading=el('div','ocl-drawer-head'),title=el('h3',null,titles[id]),context=el('p','ocl-context',stamp()),back=el('button','ocl-back','← Regresar al resumen');back.type='button';
   back.addEventListener('click',()=>{close();buttons[id]?.focus({preventScroll:true});});heading.append(title,back);drawer.append(heading,context);
   const wanted={received:r=>/^(DEV PZS|MUERTOS|PROBADOR|CAJAS|PENDIENTE ANTERIOR|TOTAL OPERACION|TOTAL GENERAL)/.test(norm(r.label)),conditioned:r=>/ACONDICIONADO|PENDIENTE DE ACONDICIONAR|TOTAL GENERAL/.test(norm(r.label)),located:r=>/UBICADO|PENDIENTE DE UBICAR|TOTAL GENERAL/.test(norm(r.label)),routes:r=>norm(r.label).startsWith('RECORRIDOS')};
@@ -45,7 +45,7 @@ function mount(root){
  }
  function detailButton(id){const b=el('button','ocl-detail-button','Ver detalle');b.type='button';b.setAttribute('aria-expanded','false');b.setAttribute('aria-controls',drawer.id);b.setAttribute('aria-label','Ver detalle de '+({received:'ingresos',conditioned:'acondicionado',located:'ubicado',routes:'recorridos'})[id]);b.addEventListener('click',()=>open(id,true));buttons[id]=b;return b;}
  const specs=[
-  {id:'received',title:'Recibido',caption:'Mercancía ingresada en el periodo',label:'Ingresos',value:amount(received),icon:'box'},
+  {id:'received',title:'Ingresado',caption:'Mercancía ingresada en el periodo',label:'Ingresos',value:amount(received),icon:'box'},
   {id:'conditioned',title:'En proceso',caption:'Acondicionamiento de mercancía',label:'Acondicionado',value:amount(ac),pct:ac?.cells[1]||value(ac),pending:amount(pendingAc),pendingLabel:'por acondicionar',icon:'target'},
   {id:'located',title:'En piso',caption:'Mercancía ubicada en tienda',label:'Ubicado',value:amount(ub),pct:ub?.cells[1]||value(ub),pending:amount(pendingUb),pendingLabel:'por ubicar',icon:'store'}
  ];
