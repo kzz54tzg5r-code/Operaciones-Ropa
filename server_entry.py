@@ -461,4 +461,8 @@ _install_runtime_performance(web_app)
 from v357_cm_productivity_deletion_patch import install as _install_v357_cm_productivity_deletion_patch
 _install_v357_cm_productivity_deletion_patch(web_app)
 
+# V366: presentación monetaria en miles de pesos para todos los reportes principales.
+from v366_miles_display_patch import install as _install_v366_miles_display_patch
+_install_v366_miles_display_patch(web_app)
+
 app = web_app.app
