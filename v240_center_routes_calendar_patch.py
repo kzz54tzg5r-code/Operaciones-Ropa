@@ -702,7 +702,9 @@ body.v238-module-operativo #operPeriodMode{
     let out='';
     const sourceWarning=data?.recovery_source?.source_warning||'';
     if(sourceWarning){
-      out+='<div class="infoempty" role="status" style="border:1px solid #f59e0b;background:#fff7e6;color:#874b10;margin:8px 0;padding:10px;border-radius:8px"><b>Devoluciones: fuente sin validar.</b> '+esc(sourceWarning)+'</div>';
+      out+='<div class="infoempty" role="status" style="border:1px solid #f59e0b;background:#fff7e6;color:#874b10;margin:8px 0;padding:10px;border-radius:8px"><b>Devoluciones: revisar fuente.</b> '+esc(sourceWarning)+
+        ' <button type="button" id="v368RebuildButton" style="margin:6px 8px;border:1px solid #c08016;border-radius:6px;background:#fff;color:#724000;padding:6px 10px;font-weight:bold;cursor:pointer">Reprocesar DEV desde Excel vigente (administrador)</button>'+
+        ' <span id="v368DevStatus" style="font-size:12px"></span></div>';
     }
     if(typeof monthlyCrossTable==='function')out+=monthlyCrossTable(mt,mode==='day');
     if(typeof recoveryTable==='function'){
@@ -896,6 +898,47 @@ body.v238-module-operativo #operPeriodMode{
   }
 
   function captureEvents(){
+    document.addEventListener('click',async e=>{
+      const b=e.target.closest?.('#v368RebuildButton');
+      if(!b)return;
+      e.preventDefault();e.stopImmediatePropagation();
+      const mode=savedMode(),value=q('#operPeriodSelect')?.value||'';
+      const line=q('#v368DevStatus');
+      if(!value){if(line)line.textContent='Selecciona un periodo antes de procesar.';return;}
+      if(!window.confirm('Se volverá a leer el Excel original guardado en Render. Sólo se publicarán las DEV si aumenta la cobertura y la validación pasa; se conservará un respaldo. ¿Continuar?'))return;
+      b.disabled=true;
+      if(line)line.textContent='Iniciando validación del Excel…';
+      try{
+        const res=await fetch('/api/operations/rebuild-dev-v368',{method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},body:JSON.stringify({period_type:mode,period_value:value})});
+        const data=await res.json();
+        if(!res.ok)throw new Error(data.detail||data.message||'No fue posible iniciar');
+        if(line)line.textContent='Procesando Excel original; los reportes previos permanecen disponibles.';
+        if(window.__v368Poll)clearInterval(window.__v368Poll);
+        let attempts=0;
+        window.__v368Poll=setInterval(async()=>{
+          attempts++;
+          try{
+            const resp=await fetch('/api/operations/rebuild-dev-v368',{credentials:'same-origin',cache:'no-store'});
+            const job=await resp.json();
+            if(!resp.ok)throw Error(job.detail||'No fue posible consultar estado');
+            const live=q('#v368DevStatus');
+            if(live)live.textContent=String(job.message||job.status||'');
+            if(['completed','failed','interrupted'].includes(job.status)||attempts>=150){
+              clearInterval(window.__v368Poll);window.__v368Poll=null;
+              if(job.status==='completed')renderCenter(savedMode(),false);
+              const fresh=q('#v368RebuildButton');if(fresh)fresh.disabled=false;
+            }
+          }catch(err){
+            clearInterval(window.__v368Poll);window.__v368Poll=null;
+            const live=q('#v368DevStatus');if(live)live.textContent=String(err.message||err);
+          }
+        },5000);
+      }catch(err){
+        if(line)line.textContent=String(err.message||err);
+        b.disabled=false;
+      }
+    },true);
     document.addEventListener('click',e=>{
       const center=e.target.closest?.('#operativoNav [data-tab-key="operations.center"],#operativoNav [data-opview="Centro Ejecutivo"]');
       if(center){
