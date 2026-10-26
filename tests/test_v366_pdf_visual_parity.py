@@ -56,12 +56,9 @@ def test_pdf_four_cards_and_full_detail(period):
                   "Vallejo", "Ingreso vs Acondicionado vs Ubicado"):
         assert label in text
     assert "TOTAL OPERACIÓN" not in text  # antigua matriz ausente en la web
-    if period == "day":
-        assert "Recuperación por tienda" not in text
-    else:
-        assert "Recuperación por tienda" in text
-        assert "miles de pesos" in text
-        assert "$1.5 mil" in text
+    assert "Recuperación por tienda" in text
+    assert "miles de pesos" in text
+    assert "$1.5 mil" in text
 
 
 def test_pdf_uses_embedded_price_shoes_asset():
