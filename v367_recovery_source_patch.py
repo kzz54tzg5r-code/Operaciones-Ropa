@@ -87,24 +87,31 @@ def install(m):
         meta = dict(out.get("recovery_source") or {})
         sheets = list(out.get("monthly_sheets") or [])
         errors = list(out.get("parse_errors") or [])
+        source = m.load_ops()
+        fifo = m._get_recovery_fifo_rows(source)
+        source_ready = bool(fifo)
         dev = sum(float(row.get("dev_pzs") or 0) for row in out.get("recovery_by_store") or [])
-        issue = not sheets or any(
+        issue = any(
             "no se detectaron fechas diarias" in str(error).lower()
             or "hoja no encontrada" in str(error).lower()
             for error in errors
         )
+        warning = ""
+        if not sheets:
+            warning = ("La base publicada no incluye hojas mensuales reconocidas. "
+                       "Las Dev Pzs y la recuperación no cuentan con fuente diaria.")
+        elif issue:
+            warning = ("La lectura de fechas diarias falló en hojas mensuales. "
+                       "Revisa los errores de procesamiento al cargar la base.")
+        elif not source_ready:
+            warning = ("La base publicada no contiene lotes diarios de devolución "
+                       "para calcular Dev Pzs y recuperación. Verifica y reprocesa "
+                       "el archivo vigente desde Carga de datos.")
         meta.update({
             "recognized_monthly_sheets": len(sheets),
+            "source_ready": source_ready,
             "period_dev_pzs": dev,
-            "source_warning": (
-                "No se detectaron hojas mensuales para las devoluciones. "
-                "Verifica el archivo base cargado desde Carga de datos."
-                if not sheets else
-                "La lectura de fechas diarias en las hojas mensuales presenta errores. "
-                "Verifica el procesamiento del archivo base."
-                if issue else
-                ""
-            ),
+            "source_warning": warning,
         })
         out["recovery_source"] = meta
         return out
