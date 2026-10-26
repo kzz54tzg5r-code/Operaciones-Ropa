@@ -26,6 +26,11 @@ def _apply_money_format(html: str) -> str:
         html = html.replace(_OLD_MONEY, "money=n=>fmtMoney(n),", 1)
     if _OLD_FMT_MONEY in html:
         html = html.replace(_OLD_FMT_MONEY, _NEW_FMT_MONEY, 1)
+    # Auditoría de Tasa de recuperación usa un formateador aislado.
+    old_mxn = "var mxn=function(v){return v==null||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0})};"
+    new_mxn = """var mxn=function(v){if(v==null||!Number.isFinite(Number(v)))return '—';var p=Number(v);var dec=Math.abs(p)<1000?3:1;return p===0?'$0 mil':'$'+(p/1000).toLocaleString('es-MX',{minimumFractionDigits:dec,maximumFractionDigits:dec})+' mil'};"""
+    if old_mxn in html:
+        html = html.replace(old_mxn, new_mxn, 1)
     return html
 
 
