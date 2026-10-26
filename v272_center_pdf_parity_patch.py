@@ -2,11 +2,11 @@
 
 Objetivo:
 - El PDF de Centro Operativo usa exactamente el mismo alcance/periodo que la vista.
-- Replica las cuatro tarjetas (Recibido/En proceso/En piso/Recorridos),
+- Replica las cuatro tarjetas (Ingresado/En proceso/En piso/Recorridos),
   el detalle con 15 columnas, las tablas por periodo y el gráfico.
 - Elimina del PDF el gráfico heredado "Devolución y recuperación", ya retirado
   de la pantalla por V240.
-- Día no imprime la tabla de recuperación, igual que la pantalla.
+- Día, semana y mes incluyen la tabla de recuperación por tienda.
 - No altera cálculos, datos, filtros, roles, permisos ni exportación Excel.
 """
 from __future__ import annotations
