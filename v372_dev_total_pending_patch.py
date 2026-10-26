@@ -7,7 +7,6 @@ por fecha y tienda autorizada. No vuelve a abrir el XLSX ni toca el disco.
 from __future__ import annotations
 from collections import defaultdict
 from functools import wraps
-import inspect
 import math
 import unicodedata
 
@@ -29,8 +28,12 @@ def _belongs(row, kind, period, start="", end=""):
     day = str(row.get("date") or "")[:10]
     if not day or (start and day < start) or (end and day > end):
         return False
-    if not period or kind == "all":
+    # Nunca interpretar un filtro diario/semanal/mensual vacío como "histórico".
+    # Si falta el valor del periodo, no se atribuyen DEV de otros días.
+    if kind == "all":
         return True
+    if not period:
+        return False
     if kind == "day":
         return day == period
     if kind == "month":
@@ -171,26 +174,41 @@ def install(m):
     if getattr(m, "_V372_DEV_CALCULATIONS", False):
         return
     old = m.operations
-    signature = inspect.signature(old)
+
     @wraps(old)
     def operations_fixed(*args, **kwargs):
+        # V367 envuelve operations(*args, **kwargs) SIN __wrapped__. Una firma
+        # inspect.signature(old) da sólo "args"/"kwargs"; bind_partial coloca
+        # period_type dentro de bound.arguments["kwargs"] y V372 lo veía
+        # erróneamente como "all". Así llegaban al DÍA totales históricos.
+        # V153 envía siempre filtros nominales. Se respetan directamente.
+        params = dict(kwargs)
+        if len(args) > 1:
+            positional = (
+                "store", "period_type", "period_value", "area", "activity",
+                "start_date", "end_date", "compact", "project_only"
+            )
+            for field, value in zip(positional, args[1:]):
+                params.setdefault(field, value)
+        kind = str(params.get("period_type") or "all").strip().lower()
+        period = str(params.get("period_value") or "").strip()
+        start = str(params.get("start_date") or "").strip()
+        end = str(params.get("end_date") or "").strip()
         result = old(*args, **kwargs)
         if not isinstance(result, dict):
             return result
-        bound = signature.bind_partial(*args, **kwargs)
-        kind = str(bound.arguments.get("period_type") or "all")
-        period = str(bound.arguments.get("period_value") or "")
-        # No usar recuperación de un periodo distinto.
         reported = result.get("recovery_by_store") or ()
         no_dev = not any(_number(r.get("dev_pzs")) > 0 for r in reported)
         fifo = ()
-        if no_dev and kind in ("day", "week", "month", "year", "all"):
+        # Fail closed: un periodo inválido o incompleto NO puede habilitar
+        # una reconstrucción histórica, aunque sí se conserva el reporte base.
+        supported = kind in ("day", "week", "month", "year", "all")
+        selected = kind == "all" or bool(period)
+        if no_dev and supported and selected:
             source = m.load_ops()
             fifo = m._get_recovery_fifo_rows(source) or ()
         return reconcile_result(
-            result, fifo, kind, period,
-            str(bound.arguments.get("start_date") or ""),
-            str(bound.arguments.get("end_date") or ""),
+            result, fifo, kind, period, start, end,
             getattr(m, "_normalize_store_value", None)
         )
     m.operations = operations_fixed
