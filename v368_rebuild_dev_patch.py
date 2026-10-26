@@ -92,7 +92,8 @@ def install(m):
             before_ops_stamp = m._ops_source_stamp()
             source = m.load_ops()
             before_op_rows = len(source.get("rows") or ())
-            previous_fifo = list(m._get_recovery_fifo_rows(source) or ())
+            # Reutiliza el listado cacheado: duplicarlo agotaría la RAM de Render.
+            previous_fifo = m._get_recovery_fifo_rows(source) or ()
             previous_dev = _period_dev(previous_fifo, mode, period_value)
             metadata = {
                 "source_file": source.get("source_file") or raw_excel.name,
