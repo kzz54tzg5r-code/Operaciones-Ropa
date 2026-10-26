@@ -43,19 +43,24 @@ def install(m):
         response = await call_next(request)
         if (request.method != "GET" or request.url.path != "/"
                 or response.status_code != 200
-                or "text/html" not in response.headers.get("content-type", "")):
+                or "text/html" not in response.headers.get("content-type", "")
+                or response.headers.get("content-encoding")):
+            # Nunca consumir contenido comprimido: debe llegar intacto al navegador.
             return response
+
+        # Consumir una única vez. Si la sustitución de formato falla, NO
+        # devolver el StreamingResponse agotado (respuesta vacía / error 520).
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        headers = dict(response.headers)
+        for key in ("content-length", "transfer-encoding"):
+            headers.pop(key, None)
         try:
-            body = b"".join([chunk async for chunk in response.body_iterator])
             html = body.decode("utf-8")
             updated = _apply_money_format(html)
-            headers = dict(response.headers)
-            headers.pop("content-length", None)
-            headers.pop("content-encoding", None)
             return HTMLResponse(updated, status_code=response.status_code, headers=headers)
         except Exception as exc:
-            print(f"[V366] Formato moneda no disponible: {exc}", flush=True)
-            return response
+            print(f"[V366] Se conserva HTML original: {type(exc).__name__}: {exc}", flush=True)
+            return HTMLResponse(content=body, status_code=response.status_code, headers=headers)
 
     m._V366_MILES_DISPLAY = True
     print("[V366] Moneda web en miles; originales y fórmulas inalterados.", flush=True)
