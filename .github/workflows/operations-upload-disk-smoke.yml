@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - "web_app.py"
+      - "daily_sales_headers.py"
+      - "tests/test_monthly_daily_headers.py"
       - "tests/test_operations_upload_disk_guard.py"
       - ".github/workflows/operations-upload-disk-smoke.yml"
   workflow_dispatch:
@@ -24,4 +26,4 @@ jobs:
       - name: Compile API before deployment
         run: python -m py_compile web_app.py server_entry.py
       - name: Test double uploads, disk reserve and ENOSPC cleanup
-        run: python -m pytest -q tests/test_operations_upload_disk_guard.py
+        run: python -m pytest -q tests/test_operations_upload_disk_guard.py tests/test_monthly_daily_headers.py

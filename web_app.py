@@ -1478,6 +1478,9 @@ def _safe_date_iso(value):
         numeric=None
     if numeric is not None and math.isfinite(numeric) and 20000 <= numeric <= 100000:
         dt=pd.to_datetime(numeric,unit="D",origin="1899-12-30",errors="coerce")
+    elif isinstance(value,str) and re.fullmatch(r"\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*",value):
+        # En Excel mexicano 01/10/2026 significa primero de octubre.
+        dt=pd.to_datetime(value,dayfirst=True,errors="coerce")
     else:
         dt=pd.to_datetime(value,errors="coerce")
     if pd.isna(dt) and value is not None:
@@ -2278,6 +2281,8 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
 
     con=stream_book["con"]
     weeks=set(); months=set(); errors=[]
+    header_audit={}
+    stream_book["recovery_header_audit"]=header_audit
     try:
         con.executescript("""
             DROP TABLE IF EXISTS daily;
@@ -2298,21 +2303,30 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 continue
             try:
                 row_iter=_xlsx_monthly_rows(archive,member,shared_value)
-                first=dict(next(row_iter,{}) or {})
-                next(row_iter,None)  # La segunda fila contiene subtítulos del reporte.
-                date_columns=[]
-                max_column=max(first.keys(),default=28)
-                for index in range(29,max_column+1,3):
-                    date_iso,week_iso,year_iso,month_key=_safe_date_iso(first.get(index))
-                    if date_iso and week_iso and year_iso:
-                        date_columns.append((index,date_iso,int(week_iso),int(year_iso),month_key))
-                        weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
-                        if month_key:months.add(month_key)
-                if not date_columns:
-                    errors.append(f"{sheet}: no se detectaron fechas diarias desde la columna 30")
+                first=dict(next(row_iter,{}) or {})  # Fila 1: fecha repetida o combinada.
+                second=dict(next(row_iter,{}) or {}) # Fila 2: Ventas Neta Pzs | Dev Pzs | Venta Neta en $.
+                from daily_sales_headers import resolve_daily_groups
+                date_columns,header_warnings=resolve_daily_groups(first,second,first_daily_index=29)
+                header_audit[sheet]={
+                    "daily_dates":len(date_columns),
+                    "first_date":min((c[1] for c in date_columns),default=""),
+                    "last_date":max((c[1] for c in date_columns),default=""),
+                    "warnings":list(header_warnings),
+                }
+                if header_warnings:
+                    errors.extend(f"{sheet}: {issue}" for issue in header_warnings)
+                    # No publicar meses con DEV desplazadas a ventas o pesos.
                     continue
+                if not date_columns:
+                    errors.append(f"{sheet}: no se detectaron columnas diarias con encabezados válidos desde AD")
+                    continue
+                for _,date_iso,week_iso,year_iso,month_key in date_columns:
+                    weeks.add(f"{year_iso}-W{week_iso:02d}")
+                    if month_key:months.add(month_key)
 
                 batch=[]
+                monthly_dev_total=0.0
+                daily_dev_total=0.0
                 def cell(values,index,default=None):
                     return values.get(index,default)
                 def number(value):
@@ -2330,9 +2344,11 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                         continue
                     color=_clean_text(cell(values,7,""))
                     price=max(number(cell(values,24,0)),0.0)
+                    monthly_dev_total+=max(number(cell(values,27,0)),0.0)  # AB: total, solo conciliación.
                     for index,date_iso,week_iso,year_iso,_month in date_columns:
                         sales=max(number(cell(values,index,0)),0.0)
                         dev=max(number(cell(values,index+1,0)),0.0)
+                        daily_dev_total+=dev
                         sales_value=max(number(cell(values,index+2,0)),0.0)
                         if sales<=0 and dev<=0 and sales_value<=0:
                             continue
@@ -2343,6 +2359,14 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                             batch.clear()
                 if batch:
                     con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)",batch)
+                audit=header_audit[sheet]
+                audit["total_monthly_dev"]=monthly_dev_total
+                audit["total_daily_dev"]=daily_dev_total
+                audit["difference"]=round(daily_dev_total-monthly_dev_total,4)
+                if monthly_dev_total>0 and abs(daily_dev_total-monthly_dev_total)>max(1.0,monthly_dev_total*0.01):
+                    audit["warnings"].append(
+                        f"DEV diarias ({daily_dev_total:,.0f}) no coinciden con AB total ({monthly_dev_total:,.0f})"
+                    )
                 con.commit()
             except Exception as exc:
                 errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
@@ -2614,7 +2638,10 @@ def parse_operations_excel(path: Path, persist: bool=True):
         "areas":sorted({str(row.get("area") or "").strip() for row in rows if str(row.get("area") or "").strip()}),
         "activities":sorted({str(row.get("activity") or "").strip() for row in rows if str(row.get("activity") or "").strip()}),
     }
+    # Exponer auditoría sin modificar filas ni fórmulas; visible en metadatos de la carga.
+    recovery_header_audit=(stream_book or {}).get("recovery_header_audit",{})
     payload={
+        "recovery_header_audit":recovery_header_audit,
         "parser_version":OPERATIONS_PARSER_VERSION,"rows":rows,"recovery_fifo":recovery_fifo,
         "uploaded_at":datetime.now().isoformat(timespec="seconds"),"source_file":path.name,
         "sheets_all":names,"operational_sheet":operational_sheets[0],"operational_sheets":operational_sheets,
