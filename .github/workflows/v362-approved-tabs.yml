@@ -9,6 +9,8 @@ on:
       - "web/operaciones_aprobadas_v362.js"
       - "web/menu_fijo_productividad_op1_v364.css"
       - "web/index.html"
+      - "web/recuperacion_visible_v373.js"
+      - "web/recuperacion_visible_v373.css"
       - "web/detalle_operativo_opcion1_v365.css"
       - "web/detalle_operativo_opcion1_v365.js"
       - "tests/ui/v365-detail-operativo.cjs"
@@ -37,3 +39,4 @@ jobs:
           node tests/ui/v364-navigation-productivity.cjs
           node --check web/detalle_operativo_opcion1_v365.js
           node tests/ui/v365-detail-operativo.cjs
+          node --check web/recuperacion_visible_v373.js

@@ -1,0 +1,76 @@
+/* V373: contraste accesible y Recuperación visible, solo Centro Operativo. */
+html body #page-operativo .ocl-lane-head h3,
+html body #page-operativo .ocl-label,
+html body #page-operativo .ocl-number,
+html body #page-operativo .ocl-route-number,
+html body #page-operativo .ocl-quantity,
+html body #page-operativo .ocl-route-score{
+ color:#11386a!important;
+ opacity:1!important;
+ text-shadow:none!important
+}
+html body #page-operativo .ocl-caption,
+html body #page-operativo .ocl-scope,
+html body #page-operativo .ocl-context,
+html body #page-operativo .ocl-route-percent span,
+html body #page-operativo .ocl-unit{
+ color:#405a78!important;opacity:1!important
+}
+html body #page-operativo .ocl-percent b,
+html body #page-operativo .ocl-percent span{
+ color:#143e78!important;opacity:1!important
+}
+html body #page-operativo .ocl-pending{background:#fff0d7!important;color:#874002!important}
+html body #page-operativo .ocl-pending b,
+html body #page-operativo .ocl-pending span{
+ color:#874002!important;opacity:1!important
+}
+html body #page-operativo .ocl-detail-button{
+ color:#0756b4!important;background:#e7f2ff!important;font-weight:800!important
+}
+html body #page-operativo .or373-mount{display:block!important;max-width:100%;min-width:0}
+html body #page-operativo .or373-recovery-panel{
+ display:block!important;min-width:0;max-width:100%;width:100%;
+ background:#fff;border:1px solid #dae5f2;border-radius:12px;
+ padding:10px;margin:10px 0 12px;color:#133b6c
+}
+html body #page-operativo .or373-title{font-size:16px!important;font-weight:850!important;color:#123d72!important;margin:0 0 3px!important;line-height:1.25!important}
+html body #page-operativo .or373-sub{font-size:11px!important;color:#425d7e!important;margin:0 0 9px!important}
+html body #page-operativo .or373-status{font-size:12px;color:#22476e;min-height:24px}
+html body #page-operativo .or373-warning{
+ margin:9px 0 0;padding:8px;border:1px solid #db9a23;
+ background:#fff7e9;border-radius:7px;font-size:11px;font-weight:700;color:#784203
+}
+html body #page-operativo .or373-scroll{
+ display:block!important;max-width:100%!important;width:100%;
+ overflow-x:auto!important;overflow-y:visible!important;
+ -webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;
+ border-radius:9px
+}
+html body #page-operativo .or373-table{
+ min-width:860px;width:100%;border-collapse:collapse;
+ table-layout:auto;font-variant-numeric:tabular-nums
+}
+html body #page-operativo .or373-table thead th{
+ background:#174878!important;color:#fff!important;
+ font-size:10px!important;font-weight:800!important;
+ line-height:1.14!important;padding:7px 5px!important;
+ white-space:normal!important;text-align:center!important
+}
+html body #page-operativo .or373-table tbody td{
+ color:#153f6e!important;background:#fff;
+ font-size:10px!important;line-height:1.2!important;
+ padding:6px 5px!important;text-align:right!important;
+ border-bottom:1px solid #e0e9f4!important;white-space:nowrap
+}
+html body #page-operativo .or373-table tbody tr:nth-child(even) td{background:#eef4fa!important}
+html body #page-operativo .or373-table tbody tr.or373-project td:first-child{
+ border-left:3px solid #1773d8
+}
+html body #page-operativo .or373-table tbody td.or373-store{
+ text-align:left!important;font-weight:850!important
+}
+@media(max-width:600px){
+ html body #page-operativo .or373-recovery-panel{padding:7px!important}
+ html body #page-operativo .or373-title{font-size:14px!important}
+}
