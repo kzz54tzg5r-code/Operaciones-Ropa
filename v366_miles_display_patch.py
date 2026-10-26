@@ -31,6 +31,21 @@ def _apply_money_format(html: str) -> str:
     new_mxn = """var mxn=function(v){if(v==null||!Number.isFinite(Number(v)))return '—';var p=Number(v);var dec=Math.abs(p)<1000?3:1;return p===0?'$0 mil':'$'+(p/1000).toLocaleString('es-MX',{minimumFractionDigits:dec,maximumFractionDigits:dec})+' mil'};"""
     if old_mxn in html:
         html = html.replace(old_mxn, new_mxn, 1)
+
+    # V369: la ruta heredada de "Operación Diaria" sigue vigente en ciertos
+    # controladores de navegación posteriores a V240. Esa ruta omitía la tabla
+    # pese a que el backend sí devuelve recovery_by_store. Reponerla en el
+    # HTML fuente servido cubre ambas rutas sin alterar los archivos JS enormes.
+    legacy_daily = "    out=monthlyCrossTable(mt,true);"
+    recovered_daily = """    out=monthlyCrossTable(mt,true);
+    const recoveryWarning=String(d.recovery_source?.source_warning||'');
+    if(recoveryWarning){
+      out+='<div class="infoempty" role="status" style="border:1px solid #f59e0b;background:#fff7e6;color:#874b10;margin:8px 0;padding:10px;border-radius:8px"><b>Devoluciones: revisar fuente.</b> '+recoveryWarning.replace(/[&<>\\"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))+
+      ' <button type="button" id="v368RebuildButton" style="padding:6px 10px;margin:5px;border:1px solid #e3a72b;border-radius:6px;background:white;cursor:pointer">Reprocesar DEV desde Excel vigente (administrador)</button></div>';
+    }
+    out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;"""
+    if legacy_daily in html and "const recoveryWarning=String(d.recovery_source" not in html:
+        html = html.replace(legacy_daily, recovered_daily, 1)
     return html
 
 
