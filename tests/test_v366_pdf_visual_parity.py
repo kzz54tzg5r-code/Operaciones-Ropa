@@ -51,7 +51,7 @@ def test_pdf_four_cards_and_full_detail(period):
     reader=PdfReader(BytesIO(pdf))
     assert reader.pages
     text="\n".join(page.extract_text() or "" for page in reader.pages)
-    for label in ("Recibido","En proceso","En piso","Recorridos",
+    for label in ("Ingresado","En proceso","En piso","Recorridos",
                   "Reporte completo por tienda","Detalle operativo","Puebla Sur",
                   "Vallejo", "Ingreso vs Acondicionado vs Ubicado"):
         assert label in text
