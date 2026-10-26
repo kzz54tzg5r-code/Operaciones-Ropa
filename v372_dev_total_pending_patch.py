@@ -101,10 +101,16 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
     for row in store_rows:
         matching = by_store.get(_key(row.get("store")))
         # No incluir devoluciones que no pertenecen al alcance del usuario.
+        old_dev = max(_number(row.get("dev_pzs")), 0.0)
         dev = max(_number((matching or {}).get("dev_pzs", row.get("dev_pzs"))), 0.0)
+        # El total previo incluye el pendiente anterior. Solo sumar el incremento DEV.
+        prior_total = row.get("total_pzs", row.get("ingresos"))
+        if prior_total is None:
+            prior_total = (old_dev + _number(row.get("pendiente_anterior")) +
+                           sum(max(_number(row.get(field)), 0.0)
+                               for field in ("muertos", "probador", "cajas")))
+        total = max(_number(prior_total) + dev - old_dev, 0.0)
         row["dev_pzs"] = dev
-        total = dev + sum(max(_number(row.get(field)), 0.0)
-                          for field in ("muertos", "probador", "cajas"))
         acondicionado = max(_number(row.get("acondicionado")), 0.0)
         ubicado = max(_number(row.get("ubicado")), 0.0)
         row["total_pzs"] = total
