@@ -2,8 +2,8 @@
 
 Objetivo:
 - El PDF de Centro Operativo usa exactamente el mismo alcance/periodo que la vista.
-- Replica las 6 tarjetas, la matriz operativa Opción 7, las tablas y el gráfico
-  Ingreso vs Acondicionado vs Ubicado.
+- Replica las cuatro tarjetas (Recibido/En proceso/En piso/Recorridos),
+  el detalle con 15 columnas, las tablas por periodo y el gráfico.
 - Elimina del PDF el gráfico heredado "Devolución y recuperación", ya retirado
   de la pantalla por V240.
 - Día no imprime la tabla de recuperación, igual que la pantalla.
@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import io
 import math
+from pathlib import Path
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as pdfcanvas
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
@@ -67,7 +69,11 @@ def install(m):
 
         mt = dict(data.get("metrics") or {})
         project_stores, recovery = m._operations_export_sections(data)
-        period_type = str(data.get("period_type") or "month").lower()
+        report_name = str(report or "").lower()
+        fallback_period = ("week" if "semanal" in report_name else
+                           "day" if "diaria" in report_name or "día" in report_name else
+                           "month" if "mensual" in report_name else "month")
+        period_type = str(data.get("period_type") or fallback_period).lower()
         period_value = str(data.get("period_value") or "")
         mode_label = {
             "day": "Día",
@@ -97,7 +103,8 @@ def install(m):
             return f"{_num(v):.1f}%"
 
         def money(v):
-            return f"${_num(v):,.0f}"
+            amount = _num(v) / 1000.0
+            return f"${amount:,.1f} mil" if amount else "$0 mil"
 
         def safe(v):
             if v is None:
@@ -143,14 +150,35 @@ def install(m):
             c.setFont("Helvetica", 7.6)
             c.drawString(M + 16, H - 71, "Recuperación, conversión, recolección y seguimiento operativo")
 
-            c.setFont("Helvetica-Bold", 8.5)
-            c.drawRightString(W - M - 15, H - 53, "Operaciones Ropa · Price Shoes")
+            # Marca original, existente en assets. Evita usar el icono de Operaciones Ropa.
+            logo = Path(__file__).resolve().parent / "assets" / "price_shoes_logo.png"
+            if not logo.exists():
+                logo = Path(__file__).resolve().parent / "web" / "price_shoes_logo.png"
+            if logo.exists():
+                set_fill("#FFFFFF")
+                c.roundRect(W-M-94, H-83, 80, 48, 7, fill=1, stroke=0)
+                try:
+                    c.drawImage(ImageReader(str(logo)), W-M-92, H-81,
+                                width=76, height=44, preserveAspectRatio=True,
+                                anchor="c", mask="auto")
+                except Exception as exc:
+                    print(f"[PDF] No fue posible pintar Price Shoes: {exc}", flush=True)
+                    c.setFillColor(colors.HexColor(TEXT))
+                    c.setFont("Helvetica-Bold", 7)
+                    c.drawCentredString(W-M-54, H-60, "PRICE SHOES")
+            else:
+                c.setFillColor(colors.white)
+                c.setFont("Helvetica-Bold", 9)
+                c.drawRightString(W-M-15, H-57, "PRICE SHOES")
+
+            c.setFillColor(colors.white)
+            c.setFont("Helvetica-Bold", 8.4)
+            c.drawRightString(W-M-109, H-53, "Operaciones Ropa")
             c.setFont("Helvetica", 6.8)
             title = f"Centro Operativo · {mode_label}"
             if suffix:
                 title += f" · {suffix}"
-            c.drawRightString(W - M - 15, H - 69, title)
-
+            c.drawRightString(W-M-109, H-69, title)
             y = H - 102
 
         def new_page(suffix=""):
@@ -182,30 +210,56 @@ def install(m):
             y -= 11
 
         def card_row(items):
+            """Cuatro tarjetas del mismo contenido y orden que la pantalla web."""
             nonlocal y
-            count = max(1, len(items))
-            gap = 6
-            card_w = (W - 2*M - gap*(count - 1)) / count
-            card_h = 50
-            ensure(card_h + 7)
+            gap = 7
+            card_w = (W - 2*M - 3*gap) / 4
+            card_h = 111
+            ensure(card_h + 10)
             for idx, item in enumerate(items):
-                label, value, sub, bg, tone = item
-                x = M + idx*(card_w + gap)
-                yy = y - card_h
-                set_fill(bg)
+                label, desc, metric, val, percentage, pending, tone = item
+                x = M + idx*(card_w+gap)
+                yy = y-card_h
+                set_fill("#FFFFFF")
                 set_stroke(LINE)
                 c.roundRect(x, yy, card_w, card_h, 7, fill=1, stroke=1)
                 set_fill(tone)
-                c.rect(x, yy, 4, card_h, fill=1, stroke=0)
-
+                c.roundRect(x, yy+card_h-3, card_w, 3, 1.2, fill=1, stroke=0)
+                set_fill(TEXT)
+                c.setFont("Helvetica-Bold", 10.0)
+                c.drawString(x+11, yy+card_h-20, label)
+                set_fill(MUTED)
+                c.setFont("Helvetica", 6.4)
+                c.drawString(x+11, yy+card_h-31, fit(desc, 39))
+                set_fill("#F2F7FE")
+                c.roundRect(x+7, yy+32, card_w-14, 43, 5, fill=1, stroke=0)
+                set_fill(TEXT)
+                c.setFont("Helvetica-Bold", 7.7)
+                c.drawString(x+13, yy+61, metric)
                 set_fill(tone)
-                c.setFont("Helvetica-Bold", 5.8)
-                c.drawString(x + 10, yy + 36, fit(label.upper(), 24))
-                c.setFont("Helvetica-Bold", 13.2)
-                c.drawString(x + 10, yy + 17, fit(value, 17))
-                c.setFont("Helvetica-Bold", 5.5)
-                c.drawString(x + 10, yy + 6, fit(sub, 28))
-            y -= card_h + 8
+                c.setFont("Helvetica-Bold", 16.5)
+                c.drawString(x+13, yy+42, val)
+                if percentage:
+                    set_fill(TEXT)
+                    c.setFont("Helvetica-Bold", 8.0)
+                    c.drawString(x+13, yy+25, percentage)
+                    set_fill(MUTED)
+                    c.setFont("Helvetica", 6.4)
+                    c.drawString(x+45, yy+25, "avance / meta")
+                    set_fill("#E3EAF3")
+                    c.roundRect(x+12, yy+14, card_w-24, 4.5, 2, fill=1, stroke=0)
+                    try:
+                        fraction=max(0.0,min(100.0,float(percentage.replace("%",""))))/100.0
+                    except Exception:
+                        fraction=0.0
+                    if fraction:
+                        set_fill(tone)
+                        c.roundRect(x+12, yy+14, (card_w-24)*fraction, 4.5, 2, fill=1, stroke=0)
+                if pending:
+                    set_fill(ORANGE_DARK)
+                    c.setFont("Helvetica-Bold", 6.5)
+                    c.drawString(x+12, yy+5.5, fit(pending, 40))
+            y -= card_h + 10
 
         def draw_summary_matrix(show_opening=False):
             nonlocal y
@@ -363,7 +417,7 @@ def install(m):
             if not rows:
                 return
 
-            section("Recuperación por tienda")
+            section("Recuperación por tienda · importes en miles de pesos")
             # V272.2: abreviaturas + 2 líneas; el encabezado gana alto y
             # cada columna necesita menos ancho horizontal.
             headers = [
@@ -429,65 +483,82 @@ def install(m):
             rows = list(project_stores or [])
             if not rows:
                 return
-            rec_lookup = {str(r.get("store") or ""): _num(r.get("conversion_pct")) for r in recovery or []}
-            rows.sort(key=lambda r: (-rec_lookup.get(str(r.get("store") or ""), 0), str(r.get("store") or "")))
-
-            label = f"Detalle operativo · {period_label()}" if period_type == "day" else "Detalle operativo · tiendas del proyecto"
-            section(label)
+            # Mismo ranking que la tabla visible: mayor Total pzs primero.
+            rows.sort(key=lambda r: (-_num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")), str(r.get("store") or "")))
+            section(f"Detalle operativo · {period_label()}")
             headers = [
-                "Rank.", "Tienda", "Muertos", "Prob.", "Cajas", "Ingreso\nPzs",
-                "Recorr.\nReal.", "Acond.\nPzs", "Ubic.\nPzs",
-                "Pend.\nAcond.", "Pend.\nUbic."
+                "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
+                "Pend.\nant.", "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
+                "Ubicado", "% Acondi-\ncionado", "%\nUbicado",
+                "Pendiente\nacond.", "Pendiente\nubicar"
             ]
-            fracs = [.04,.15,.075,.07,.06,.09,.08,.095,.09,.115,.135]
+            fracs = [.04,.12,.055,.057,.059,.05,.062,.063,.069,.076,.059,.068,.059,.085,.078]
             total_w = W - 2*M
+            # Normaliza fracciones para ocupar el ancho exacto de la página.
+            norm = sum(fracs)
+            widths = [total_w*x/norm for x in fracs]
             xs = [M]
-            acc = M
-            for frac in fracs[:-1]:
-                acc += total_w*frac
-                xs.append(acc)
-            row_h = 10.2
-            head_h = 22
+            for width in widths[:-1]:
+                xs.append(xs[-1]+width)
+            row_h = 13.4
+            head_h = 25
 
             def head():
                 nonlocal y
                 set_fill(BLUE_DARK)
                 c.roundRect(M, y-head_h+2, total_w, head_h, 4, fill=1, stroke=0)
                 c.setFillColor(colors.white)
-                for i,h in enumerate(headers):
-                    draw_header_cell(
-                        xs[i], total_w*fracs[i], y, head_h, h,
-                        font_size=4.7,
-                        align="left" if i == 1 else "center",
-                    )
+                for i, h in enumerate(headers):
+                    draw_header_cell(xs[i], widths[i], y, head_h, h,
+                                     font_size=4.6,
+                                     align="left" if i == 1 else "center")
                 y -= head_h
 
-            ensure(head_h + min(len(rows),17)*row_h + 8, "Detalle operativo")
+            ensure(head_h + min(len(rows), 18)*row_h + 12, "Detalle operativo")
             head()
-            for idx, r in enumerate(rows, start=1):
-                if y-row_h < 24:
+            for idx,r in enumerate(rows, start=1):
+                if y-row_h < 26:
                     new_page("Detalle operativo")
                     head()
-                set_fill(PROJECT if idx%2 else "#EEF4FB")
+                total = r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")
+                total_num=_num(total)
+                pa = (_num(r.get("pct_acondicionado")) if r.get("pct_acondicionado") is not None
+                      else _num(r.get("acondicionado"))/total_num*100 if total_num else 0)
+                pu = (_num(r.get("pct_ubicado")) if r.get("pct_ubicado") is not None
+                      else _num(r.get("ubicado"))/total_num*100 if total_num else 0)
+                set_fill(PROJECT if r.get("is_project") else ("#FFFFFF" if idx%2 else "#EEF4FB"))
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
-                set_fill(BLUE)
-                c.rect(M, y-row_h+2, 2.5, row_h, fill=1, stroke=0)
-                vals = [
-                    f"#{idx}", r.get("store"), n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
-                    n(r.get("recolectadas")), n(r.get("recorridos")), n(r.get("acondicionado")), n(r.get("ubicado")),
-                    n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar")),
+                if r.get("is_project"):
+                    set_fill(BLUE)
+                    c.rect(M, y-row_h+2, 2.5, row_h, fill=1, stroke=0)
+                values = [
+                    f"#{idx}", r.get("store"), n(r.get("dev_pzs")),
+                    n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
+                    n(r.get("pendiente_anterior")), n(total),
+                    n(r.get("recorridos")), n(r.get("acondicionado")),
+                    n(r.get("ubicado")), pc(pa), pc(pu),
+                    n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar"))
                 ]
-                for i,val in enumerate(vals):
-                    set_fill(TEXT)
-                    c.setFont("Helvetica-Bold" if i in (0,1) else "Helvetica", 4.7)
-                    c.drawString(xs[i]+2, y-7.1, fit(val, 18))
+                for i,val in enumerate(values):
+                    tone = TEXT
+                    if i in (11,12):
+                        tone = GREEN_DARK if _num(val[:-1]) >= 80 else "#DC2626"
+                    elif i in (2,3,4,5,6,7,8,9,10) and _num(val)==0:
+                        tone = "#DC2626"
+                    set_fill(tone)
+                    c.setFont("Helvetica-Bold" if i in (0,1,7,11,12) else "Helvetica", 4.8)
+                    text_value = fit(val, 18 if i==1 else 15)
+                    if i==1:
+                        c.drawString(xs[i]+2.5, y-9, text_value)
+                    else:
+                        c.drawCentredString(xs[i]+widths[i]/2, y-9, text_value)
                 y -= row_h
-            y -= 6
+            y -= 7
 
         def draw_combo_chart():
             nonlocal y
-            rows = list(project_stores or [])
-            rows = [r for r in rows if _num(r.get("recolectadas")) or _num(r.get("acondicionado")) or _num(r.get("ubicado"))]
+            rows = list(data.get("stores") or project_stores or [])
+            rows = [r for r in rows if _num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")) or _num(r.get("acondicionado")) or _num(r.get("ubicado"))]
             if not rows:
                 return
 
@@ -509,7 +580,7 @@ def install(m):
             top = y - 14
             plot_h = max(60, top - base)
             plot_w = x1 - x0
-            maxv = max([_num(r.get(k)) for r in rows for k in ("recolectadas","acondicionado","ubicado")] + [1])
+            maxv = max([_num(r.get(k)) for r in rows for k in ("total_pzs","ingresos","acondicionado","ubicado")] + [1])
             group_w = plot_w/max(1,count)
             bar_w = max(8, min(18, group_w*.24))
 
@@ -534,7 +605,7 @@ def install(m):
                 cx = x0 + group_w*(i+.5)
                 acond = _num(r.get("acondicionado"))
                 ubic = _num(r.get("ubicado"))
-                ingreso = _num(r.get("recolectadas"))
+                ingreso = _num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos"))
                 ah = plot_h*acond/maxv
                 uh = plot_h*ubic/maxv
 
@@ -615,18 +686,20 @@ def install(m):
         pct_rec = _num(mt.get("pct_recorridos")) if mt.get("pct_recorridos") is not None else (recorridos/meta_rec*100 if meta_rec else 0)
 
         card_row([
-            ("Total operación", n(total_operation), "Piezas", "#ECFDF5", GREEN_DARK),
-            ("Total pendientes", n(total_pending), "Acondicionar + ubicar", "#FFF2E8", ORANGE_DARK),
-            ("Total general · Total Pzs", n(total_pzs), "Piezas", "#EAF3FF", NAVY),
-            ("Recorridos realizados", f"{n(recorridos)} / {n(meta_rec)}", f"{pc(pct_rec)} cumplimiento", "#F3EAFF", PURPLE),
-            ("% Acondicionado", pc(pct_ac), f"{n(acond)} piezas", "#F3EAFF", PURPLE),
-            ("% Ubicado", pc(pct_ub), f"{n(ubicado)} piezas", "#F3EAFF", PURPLE),
+            ("Recibido", "Mercancía ingresada en el periodo", "Ingresos",
+             n(total_pzs), None, None, "#00999F"),
+            ("En proceso", "Acondicionamiento de mercancía", "Acondicionado",
+             n(acond), pc(pct_ac), f"{n(pend_acond)} pzas por acondicionar", PURPLE),
+            ("En piso", "Mercancía ubicada en tienda", "Ubicado",
+             n(ubicado), pc(pct_ub), f"{n(pend_ub)} pzas por ubicar", BLUE),
+            ("Recorridos", "Realizados frente a la meta", "Recorridos",
+             f"{n(recorridos)} / {n(meta_rec)}", pc(pct_rec), None, ORANGE),
         ])
 
-        draw_summary_matrix(show_opening=show_opening)
+        # En la pantalla no existe una matriz adicional entre las tarjetas y
+        # el reporte expandido. La impresión respeta esa misma jerarquía.
+        section("Reporte completo por tienda · tablas y gráficos")
 
-        # Igual que V240: en Día no hay recuperación por tienda y nunca se
-        # imprime el gráfico histórico "Devolución y recuperación".
         draw_recovery_table()
         draw_operational_detail()
         draw_combo_chart()
