@@ -123,7 +123,7 @@ def install(m):
 
         def draw_header_cell(x, width, top_y, header_h, text, font_size=5.0, align="center"):
             """Encabezado compacto: usa 1-2 líneas para aprovechar alto, no ancho."""
-            parts = [p.strip() for p in str(text or "").split("\\n") if p.strip()]
+            parts = [p.strip() for p in str(text or "").split("\n") if p.strip()]
             if not parts:
                 parts = [""]
             c.setFont("Helvetica-Bold", font_size)
@@ -422,7 +422,7 @@ def install(m):
             # cada columna necesita menos ancho horizontal.
             headers = [
                 "#", "Tienda", "Dev\nPzs", "Pzas\nrecup.", "Conv.\n%",
-                "Valor\nDev.", "Recup.\n$", "Recup.\n%", "Pend.\nPzs", "Pend.\n$"
+                "Valor\nDev. mil", "Recup.\n$ mil", "Recup.\n%", "Pend.\nPzs", "Pend.\n$ mil"
             ]
             fracs = [.04,.18,.075,.085,.075,.13,.13,.075,.08,.13]
             total_w = W - 2*M
