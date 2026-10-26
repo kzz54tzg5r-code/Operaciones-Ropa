@@ -466,6 +466,11 @@ _install_v357_cm_productivity_deletion_patch(web_app)
 from v367_recovery_source_patch import install as _install_v367_recovery_source_patch
 _install_v367_recovery_source_patch(web_app)
 
+# V368: comando administrativo de reparación DEV desde Excel conservado,
+# con verificación de resultados y respaldo, sin modificar los datos al consultar.
+from v368_rebuild_dev_patch import install as _install_v368_rebuild_dev_patch
+_install_v368_rebuild_dev_patch(web_app)
+
 # V366: presentación monetaria en miles de pesos para todos los reportes principales.
 from v366_miles_display_patch import install as _install_v366_miles_display_patch
 _install_v366_miles_display_patch(web_app)
