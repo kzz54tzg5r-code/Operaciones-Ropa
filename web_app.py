@@ -2680,7 +2680,9 @@ def parse_operations_excel(path: Path, persist: bool=True):
                 if (sheet not in header_audit
                     or not header_audit[sheet].get("daily_dates")
                     or any("Columnas " in issue or "misma fecha" in issue
-                           for issue in header_audit[sheet].get("warnings",[])))
+                           for issue in header_audit[sheet].get("warnings",[]))
+                    or any(str(msg).startswith(sheet+":")
+                           for msg in recovery_errors))
             ]
             if broken:
                 # Mostrar el motivo real, no culpar a las 7 hojas por igual
