@@ -37,8 +37,10 @@ def _apply_money_format(html: str) -> str:
     legacy_daily = "    out=monthlyCrossTable(mt,true);"
     recovered_daily = """    out=monthlyCrossTable(mt,true);
     out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;"""
-    if legacy_daily in html and "out+=`<div class=\"title\">Recuperación por tienda</div>${recoveryTable(rec)}`;" not in html:
-        html = html.replace(legacy_daily, recovered_daily, 1)
+    if legacy_daily in html and "if(name==='Operación Diaria'){" in html:
+        daily = html.split("if(name==='Operación Diaria'){", 1)[1].split("}else if(name==='Reporte Semanal'){", 1)[0]
+        if "recoveryTable(rec)" not in daily:
+            html = html.replace(legacy_daily, recovered_daily, 1)
     # La pantalla Carga de datos vuelve al flujo original Cargar/Reemplazar.
     html = html.replace('<script src="/static/dev_rebuild_controls_v371.js?v=371" defer></script>', '')
     return html
