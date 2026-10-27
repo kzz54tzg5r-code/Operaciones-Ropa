@@ -92,6 +92,53 @@ def _date_iso(value):
     return parsed.isoformat(), int(iso.week), int(iso.year), parsed.strftime("%Y-%m")
 
 
+
+_WEEKDAYS = r"(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo)"
+_DATE_TOKEN = re.compile(
+    r"(?<!\d)(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|"
+    r"\d{1,2}[-/. ]+(?:de\s+)?(?:enero|febrero|marzo|abril|mayo|junio|julio|"
+    r"agosto|septiembre|setiembre|sept|octubre|noviembre|diciembre|"
+    r"ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|\d{1,2})"
+    r"[-/. ]+(?:de\s+)?\d{2,4})(?!\d)"
+)
+
+def _header_date(value):
+    """Lee fechas Excel aun con día de la semana u hora como texto.
+
+    Nunca deduce una fecha a partir del nombre de la hoja ni del número
+    de columna: cada grupo exige un encabezado comprobable.
+    """
+    parsed = _date_iso(value)
+    if parsed:
+        return parsed
+    if isinstance(value, str):
+        raw = _text(value).strip()
+        raw = re.sub(r"^" + _WEEKDAYS + r"[,]?\s+", "", raw)
+        match = _DATE_TOKEN.search(raw)
+        if match:
+            return _date_iso(match.group(0))
+    return None
+
+def _header_description(rows, first_daily_index=29):
+    """Ejemplos cortos para un error accionable, sin datos de artículos."""
+    summaries = []
+    for pos, row in enumerate(rows[:15], 1):
+        candidates = []
+        for col, value in row.items():
+            if not isinstance(col, int) or col < first_daily_index or value in ("", None):
+                continue
+            kind = _metric(value)
+            if kind or _header_date(value):
+                candidates.append(f"{col + 1}:{str(value)[:38]}")
+            if len(candidates) >= 4:
+                break
+        if candidates:
+            summaries.append(f"fila {pos} [{', '.join(candidates)}]")
+        if len(summaries) >= 4:
+            break
+    return "; ".join(summaries) or "sin encabezados diarios reconocibles en las primeras 15 filas"
+
+
 def resolve_daily_groups(dates_row, metrics_row, first_daily_index=29):
     """Lista de (columna, fecha ISO, semana ISO, año ISO, mes); y advertencias.
 
@@ -103,7 +150,7 @@ def resolve_daily_groups(dates_row, metrics_row, first_daily_index=29):
     for start in range(first_daily_index, last + 1, 3):
         fields = [_metric(metrics_row.get(start + offset)) for offset in range(3)]
         values = [dates_row.get(start + offset) for offset in range(3)]
-        dates = [_date_iso(value) for value in values]
+        dates = [_header_date(value) for value in values]
         date_values = [item for item in dates if item is not None]
         if not date_values:
             if any(fields):
@@ -125,18 +172,36 @@ def resolve_daily_groups(dates_row, metrics_row, first_daily_index=29):
     return groups, warnings
 
 def locate_daily_headers(header_rows, first_daily_index=29):
-    """Identifica dos filas consecutivas de fechas + métricas.
+    """Encuentra fechas y métricas incluso con títulos/filas separadoras.
 
-    No da por hecho que sean físicamente filas 1 y 2. Devuelve el índice
-    de la segunda cabecera para no descartar ni duplicar filas de datos.
+    Prioriza una fila de métricas con un bloque repetido de Ventas/DEV/Pesos
+    y verifica que las fechas precedan a la fila de métricas. No se inventan
+    fechas ni se asume que el orden es correcto cuando la cabecera lo contradice.
+    Devuelve índice base 0 de la fila de métricas para devolver las filas de
+    datos al iterador de streaming exactamente una vez.
     """
-    best = ([], ["No se encontraron fechas y encabezados diarios"], 1)
-    for idx in range(max(len(header_rows) - 1, 0)):
-        columns, warnings = resolve_daily_groups(
-            header_rows[idx], header_rows[idx + 1], first_daily_index
+    best_score = (-1, -999, -999)
+    best = ([], [], 1)
+    for metrics_idx in range(1, len(header_rows)):
+        row = header_rows[metrics_idx]
+        signal_count = sum(
+            1 for col, value in row.items()
+            if isinstance(col, int) and col >= first_daily_index and _metric(value)
         )
-        if len(columns) > len(best[0]) or (
-            len(columns) == len(best[0]) and len(warnings) < len(best[1])
-        ):
-            best = (columns, warnings, idx + 1)
-    return best
+        if signal_count < 2:
+            continue
+        for dates_idx in range(max(0, metrics_idx - 7), metrics_idx):
+            groups, warnings = resolve_daily_groups(
+                header_rows[dates_idx], row, first_daily_index
+            )
+            score = (len(groups), -len(warnings), signal_count)
+            if score > best_score:
+                best_score = score
+                best = (groups, warnings, metrics_idx)
+    if best_score[0] > 0:
+        return best
+
+    # No hay grupos seguros: el diagnóstico debe explicar qué se detectó,
+    # en vez de acusar indiscriminadamente a siete hojas del archivo.
+    description = _header_description(header_rows, first_daily_index)
+    return [], [f"No se encontró un bloque verificable de fecha + Ventas/DEV/Pesos: {description}"], 1
