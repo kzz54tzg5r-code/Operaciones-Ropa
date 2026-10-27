@@ -1,9 +1,11 @@
 (() => {
+  // Precio Shoes: mantener el mismo logotipo en acceso, carga y reportes.
+  const brandLogo = '/static/price_shoes_logo.png?v=380';
   const splash = document.createElement('div');
   splash.id = 'orSplash';
   splash.innerHTML = `
     <div class="or-splash-inner">
-      <div class="or-splash-logo-wrap"><img class="or-splash-logo" src="/static/app-logo.svg" alt="Operaciones Ropa"></div>
+      <div class="or-splash-logo-wrap"><img class="or-splash-logo" src="${brandLogo}" alt="Price Shoes"></div>
       <div class="or-splash-name">OPERACIONES <span>ROPA</span></div>
       <div class="or-splash-loading"><i></i></div>
       <div class="or-splash-caption">Cargando tu información...</div>
@@ -22,14 +24,14 @@
   const applyBrand = () => {
     const loginLogo = document.querySelector('.login-logo-v15');
     if (loginLogo) {
-      loginLogo.src = '/static/app-logo.svg';
-      loginLogo.alt = 'Operaciones Ropa';
+      loginLogo.src = brandLogo;
+      loginLogo.alt = 'Price Shoes';
     }
     const loginSub = document.querySelector('.login-sub-v15');
-    if (loginSub) loginSub.textContent = '';
+    if (loginSub) loginSub.textContent = 'Operaciones Ropa';
     document.querySelectorAll('.sidebrand img').forEach(img => {
-      img.src = '/static/app-icon-192.svg';
-      img.alt = 'Operaciones Ropa';
+      img.src = brandLogo;
+      img.alt = 'Price Shoes';
     });
   };
 
