@@ -218,7 +218,8 @@ def infer_dated_groups_without_labels(header_rows, first_daily_index=29):
     """
     last = max((col for row in header_rows for col in row.keys()
                 if isinstance(col, int)), default=first_daily_index-1)
-    best = ([], 0, -1)
+    best = ([], 0)
+    best_score = (-1, -1, -999)
     expected = ("sales", "dev", "value")
     for date_idx, row in enumerate(header_rows[:18]):
         groups = []
@@ -235,8 +236,9 @@ def infer_dated_groups_without_labels(header_rows, first_daily_index=29):
         first_data_idx = next(
             (date_idx + 1 + pos for pos, r in enumerate(following)
              if str(r.get(1) or "").strip() and str(r.get(25) or "").strip()
-             and any(isinstance(k,int) and k>=first_daily_index
-                     for k in r)), None
+             and any(isinstance(k,int) and k>=26
+                     and isinstance(v,(int,float)) and v!=0
+                     for k,v in r.items())), None
         )
         before_data = first_data_idx if first_data_idx is not None else min(len(header_rows),date_idx+6)
         conflicting = False
@@ -258,7 +260,8 @@ def infer_dated_groups_without_labels(header_rows, first_daily_index=29):
         # Dos días consecutivos son una señal fuerte de la matriz mensual.
         # Un solo grupo también se acepta, pero sólo con el cotejo AB/AE.
         score = (len(groups),signals,-date_idx)
-        if score > (best[2],best[1],-best[1]):
-            best = (groups,last_meta_idx,len(groups))
-    groups, idx, _ = best
+        if score > best_score:
+            best_score = score
+            best = (groups,last_meta_idx)
+    groups, idx = best
     return groups, idx
