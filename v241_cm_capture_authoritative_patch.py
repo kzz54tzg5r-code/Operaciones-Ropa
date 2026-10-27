@@ -444,8 +444,8 @@ body.v241-cm-capture .v241-history-empty{
         '<div class="v241-capture-panel v241-history-panel">'+
           '<div class="v241-history-heading"><h3>Capturas de hoy</h3>'+
             '<div class="v241-history-summary"><span>Capturas: <b>'+nf(hist?.items?.length||0)+'</b></span>'+
-              '<span>Piezas: <b>'+nf((hist?.items||[]).filter(r=>r.status!==\'active\').reduce((sum,r)=>sum+rowPieces(r),0))+'</b></span>'+
-              '<span>Tiempo total: <b>'+hms((hist?.items||[]).filter(r=>r.status!==\'active\').reduce((sum,r)=>sum+n(r.duration_seconds),0))+'</b></span>'+
+              '<span>Piezas: <b>'+nf((hist?.items||[]).filter(r=>r.status!=='active').reduce((sum,r)=>sum+rowPieces(r),0))+'</b></span>'+
+              '<span>Tiempo total: <b>'+hms((hist?.items||[]).filter(r=>r.status!=='active').reduce((sum,r)=>sum+n(r.duration_seconds),0))+'</b></span>'+
             '</div></div>'+
           '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle de piezas</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
           ((hist?.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+nf(rowPieces(r))+'</b></td>'+
