@@ -102,7 +102,7 @@ def test_unrecognized_metric_labels_are_only_accepted_with_ab_ae_match(tmp_path)
         )
         audit = book["recovery_header_audit"]["Octubre 26"]
     assert errors == []
-    assert audit["recognition_mode"] == "dates_and_AB_AE_reconciliation"
+    assert audit["recognition_mode"] == "dates_and_monthly_reconciliation"
     assert sum(x["dev_pzs"] for x in rows) == 7
     assert months == ["2026-10"]
 
