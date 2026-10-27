@@ -17,18 +17,44 @@ def _text(value):
 
 
 def _metric(value):
+    """Reconoce encabezados de ventas y DEV con variaciones de la plantilla."""
     text = _text(value)
     words = re.sub(r"[^a-z0-9$]+", " ", text)
-    if ("dev" in words or "devol" in words) and re.search(r"\b(pz|pzs|pza|pzas|pieza|piezas)\b", words):
+    tokens = set(words.split())
+    piece = bool(tokens.intersection({"pz", "pzs", "pza", "pzas", "pieza", "piezas"}))
+    returns = any(x in text for x in ("dev", "devol", "cambio"))
+    sales = any(x in text for x in ("venta", "vta"))
+    currency = "$" in text or any(x in text for x in ("importe", "monto", "peso", "mxn"))
+    if returns and piece:
         return "dev"
-    if ("venta" in words or "vta" in words) and ("$" in words or "importe" in words or "monto" in words or "pesos" in words):
+    if sales and currency and not piece:
         return "value"
-    if ("venta" in words or "vta" in words) and re.search(r"\b(pz|pzs|pza|pzas|pieza|piezas)\b", words):
+    if sales and piece and not currency:
         return "sales"
     return ""
 
 
+_MONTH_NAMES = {
+    "ene": 1, "enero": 1, "feb": 2, "febrero": 2,
+    "mar": 3, "marzo": 3, "abr": 4, "abril": 4,
+    "may": 5, "mayo": 5, "jun": 6, "junio": 6,
+    "jul": 7, "julio": 7, "ago": 8, "agosto": 8,
+    "sep": 9, "sept": 9, "septiembre": 9, "setiembre": 9,
+    "oct": 10, "octubre": 10, "nov": 11, "noviembre": 11,
+    "dic": 12, "diciembre": 12,
+}
+
+
+def _year(value):
+    year = int(value)
+    return 2000 + year if 0 <= year < 100 else year
+
+
 def _date_iso(value):
+    """Fecha visible de Excel: serial, ISO, dd/mm/aa o dd-mes-aa.
+
+    Nunca infiere días ni intercambia ventas con devoluciones.
+    """
     if isinstance(value, datetime):
         parsed = value.date()
     elif isinstance(value, date):
@@ -38,23 +64,30 @@ def _date_iso(value):
             return None
         parsed = (datetime(1899, 12, 30) + timedelta(days=float(value))).date()
     else:
-        text = str(value or "").strip()
+        text = _text(value).strip()
         if not text:
             return None
-        match = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", text)
+        parsed = None
+        # La hoja puede traer '01/04/26', '01-abr-26', '1 de abril de 2026'
+        # o una fecha ISO con hora. Se interpretan únicamente valores explícitos.
+        match = re.fullmatch(r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ t].*)?", text)
         if match:
-            try:
-                parsed = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
-            except ValueError:
-                return None
-        else:
-            match = re.match(r"^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$", text)
-            if not match:
-                return None
             try:
                 parsed = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
             except ValueError:
                 return None
+        else:
+            match = re.fullmatch(r"(\d{1,2})[-/. ]+(?:de[ ]+)?([a-z]+|\d{1,2})[-/. ]+(?:de[ ]+)?(\d{2}|\d{4})(?:[ ]+.*)?", text)
+            if match:
+                try:
+                    raw_month = match.group(2)
+                    month = _MONTH_NAMES.get(raw_month) if raw_month.isalpha() else int(raw_month)
+                    if month is not None:
+                        parsed = date(_year(match.group(3)), int(month), int(match.group(1)))
+                except ValueError:
+                    return None
+        if parsed is None:
+            return None
     iso = parsed.isocalendar()
     return parsed.isoformat(), int(iso.week), int(iso.year), parsed.strftime("%Y-%m")
 
@@ -90,3 +123,20 @@ def resolve_daily_groups(dates_row, metrics_row, first_daily_index=29):
             unique.setdefault(group[1], group)
         groups = list(unique.values())
     return groups, warnings
+
+def locate_daily_headers(header_rows, first_daily_index=29):
+    """Identifica dos filas consecutivas de fechas + métricas.
+
+    No da por hecho que sean físicamente filas 1 y 2. Devuelve el índice
+    de la segunda cabecera para no descartar ni duplicar filas de datos.
+    """
+    best = ([], ["No se encontraron fechas y encabezados diarios"], 1)
+    for idx in range(max(len(header_rows) - 1, 0)):
+        columns, warnings = resolve_daily_groups(
+            header_rows[idx], header_rows[idx + 1], first_daily_index
+        )
+        if len(columns) > len(best[0]) or (
+            len(columns) == len(best[0]) and len(warnings) < len(best[1])
+        ):
+            best = (columns, warnings, idx + 1)
+    return best
