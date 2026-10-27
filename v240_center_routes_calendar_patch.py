@@ -698,7 +698,7 @@ body.v238-module-operativo #operPeriodMode{
     return await api('/api/operations/project-scope-v151?store='+encodeURIComponent(store)+'&period_type='+encodeURIComponent(mode)+'&period_value='+encodeURIComponent(value)+'&area='+encodeURIComponent(area)+'&activity='+encodeURIComponent(activity)+'&compact=true',{timeoutMs:180000});
   }
   function centerHtml(data,mode,value){
-    const mt=data?.metrics||{},rec=data?.recovery_by_store||[],stores=data?.stores||[];
+    const mt=data?.center_card_metrics||data?.metrics||{},rec=data?.recovery_by_store||[],stores=data?.stores||[];
     let out='';
     // La validación DEV continúa en la carga del Excel, sin controles extra en el reporte.
     if(typeof monthlyCrossTable==='function')out+=monthlyCrossTable(mt,mode==='day');
@@ -734,6 +734,13 @@ body.v238-module-operativo #operPeriodMode{
     try{
       const data=await fetchCenter(mode,value);
       if(seq!==centerSeq)return;
+      // La tabla y las tarjetas comparten la misma respuesta y filtros.
+      // V373 puede reutilizarla sin lanzar otra consulta costosa ni cambiar periodo.
+      window.OR375_CENTER_RECOVERY = {
+        period_type:mode, period_value:value,
+        store:q('#operStoreSelect')?.value||'Compañía',
+        recovery_by_store:data?.recovery_by_store||[],
+      };
       if(host)host.innerHTML=centerHtml(data,mode,value);
       markCenter(mode);
       ensureCenterControls(dmeta,mode,false);
