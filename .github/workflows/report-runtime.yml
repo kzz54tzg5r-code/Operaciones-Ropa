@@ -3,9 +3,9 @@ name: Report runtime regression
 on:
   push:
     branches: [main]
-    paths: ["web/**", "v*.py", "daily_sales_headers.py", "tests/test_v376_daily_sales_headers.py", "tests/test_v378_excel_monthly_integration.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**", "tests/test_v331_recovery_audit.py"]
+    paths: ["web/**", "v*.py", "daily_sales_headers.py", "tests/test_v376_daily_sales_headers.py", "tests/test_v378_excel_monthly_integration.py", ".github/workflows/report-runtime.yml", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**", "tests/test_v331_recovery_audit.py"]
   pull_request:
-    paths: ["web/**", "v*.py", "daily_sales_headers.py", "tests/test_v376_daily_sales_headers.py", "tests/test_v378_excel_monthly_integration.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**"]
+    paths: ["web/**", "v*.py", "daily_sales_headers.py", "tests/test_v376_daily_sales_headers.py", "tests/test_v378_excel_monthly_integration.py", ".github/workflows/report-runtime.yml", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**"]
   workflow_dispatch:
 
 jobs:
