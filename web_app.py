@@ -2306,12 +2306,27 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 # hoja completa. El Excel puede tener títulos, fechas con
                 # nombres de días o filas separadoras antes de Ventas/DEV/Pesos.
                 from itertools import chain
-                from daily_sales_headers import locate_daily_headers
+                from daily_sales_headers import (
+                    locate_daily_headers, infer_dated_groups_without_labels
+                )
                 row_iter=_xlsx_monthly_rows(archive,member,shared_value)
                 header_rows=[dict(next(row_iter,{}) or {}) for _ in range(18)]
                 date_columns,header_warnings,last_header_idx=locate_daily_headers(
                     header_rows,first_daily_index=29
                 )
+                positional_fallback=False
+                if not date_columns:
+                    # Recuperación estrictamente condicionada: los grupos
+                    # AD/AE/AF deben tener fecha real y se comprobará que el
+                    # total DEV de AB coincida con AE antes de aceptar la hoja.
+                    inferred, inferred_last=infer_dated_groups_without_labels(
+                        header_rows,first_daily_index=29
+                    )
+                    if inferred:
+                        date_columns=inferred
+                        last_header_idx=inferred_last
+                        header_warnings=[]
+                        positional_fallback=True
                 # Regresar al iterador las filas de producto ya leídas:
                 # no se pierde información por adelantar 6 filas.
                 row_iter=chain(header_rows[last_header_idx+1:],row_iter)
@@ -2321,6 +2336,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                     "last_date":max((c[1] for c in date_columns),default=""),
                     "warnings":list(header_warnings),
                     "date_header_row":last_header_idx,
+                    "recognition_mode":"dates_and_AB_AE_reconciliation" if positional_fallback else "explicit_metrics",
                     "example_dates":repr([
                         header_rows[last_header_idx-1].get(k)
                         for k in (29,32,35)
@@ -2344,6 +2360,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 batch=[]
                 monthly_dev_total=0.0
                 daily_dev_total=0.0
+                matched_items=0
                 def cell(values,index,default=None):
                     return values.get(index,default)
                 def number(value):
@@ -2359,6 +2376,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                     art=_clean_occurrence(cell(values,1,""))
                     if not store or not art:
                         continue
+                    matched_items+=1
                     color=_clean_text(cell(values,7,""))
                     price=max(number(cell(values,24,0)),0.0)
                     monthly_dev_total+=max(number(cell(values,27,0)),0.0)  # AB: total, solo conciliación.
@@ -2380,6 +2398,21 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 audit["total_monthly_dev"]=monthly_dev_total
                 audit["total_daily_dev"]=daily_dev_total
                 audit["difference"]=round(daily_dev_total-monthly_dev_total,4)
+                audit["matched_items"]=matched_items
+                if positional_fallback:
+                    # Sin etiquetas perfectamente legibles, el esquema solo
+                    # es fiable si el total mensual AB concilia con la suma
+                    # DEV diaria de AE (y demás columnas de devolución).
+                    tolerance=max(1.0, monthly_dev_total*0.01)
+                    if matched_items==0 or abs(daily_dev_total-monthly_dev_total)>tolerance:
+                        raise ValueError(
+                            "Las fechas están presentes, pero no fue posible "
+                            "conciliar DEV diarias (AE/AH/AK...) con el total "
+                            f"mensual AB. AB={monthly_dev_total:,.0f}, "
+                            f"DEV diarias={daily_dev_total:,.0f}; "
+                            f"artículos válidos={matched_items}. "
+                            "La base vigente se conserva."
+                        )
                 if monthly_dev_total>0 and abs(daily_dev_total-monthly_dev_total)>max(1.0,monthly_dev_total*0.01):
                     audit["warnings"].append(
                         f"DEV diarias ({daily_dev_total:,.0f}) no coinciden con AB total ({monthly_dev_total:,.0f})"
