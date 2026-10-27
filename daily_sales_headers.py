@@ -190,7 +190,7 @@ def locate_daily_headers(header_rows, first_daily_index=29):
         )
         if signal_count < 2:
             continue
-        for dates_idx in range(max(0, metrics_idx - 7), metrics_idx):
+        for dates_idx in range(0, metrics_idx):
             groups, warnings = resolve_daily_groups(
                 header_rows[dates_idx], row, first_daily_index
             )
@@ -205,3 +205,60 @@ def locate_daily_headers(header_rows, first_daily_index=29):
     # en vez de acusar indiscriminadamente a siete hojas del archivo.
     description = _header_description(header_rows, first_daily_index)
     return [], [f"No se encontró un bloque verificable de fecha + Ventas/DEV/Pesos: {description}"], 1
+
+
+def infer_dated_groups_without_labels(header_rows, first_daily_index=29):
+    """Rescate sólo cuando las fechas existen pero las etiquetas no son legibles.
+
+    Nunca acepta un orden explícito contrario: si AD dice DEV, AE dice
+    Ventas, o AF dice piezas, no se debe inferir que la posición sea correcta.
+    El llamador DEBE además comprobar que la suma de AE coincide con AB
+    antes de publicar el mes. Se utiliza exclusivamente si no hay grupos
+    completos verificables mediante resolve_daily_groups().
+    """
+    last = max((col for row in header_rows for col in row.keys()
+                if isinstance(col, int)), default=first_daily_index-1)
+    best = ([], 0, -1)
+    expected = ("sales", "dev", "value")
+    for date_idx, row in enumerate(header_rows[:18]):
+        groups = []
+        for start in range(first_daily_index, last + 1, 3):
+            values = [_header_date(row.get(start + off)) for off in range(3)]
+            dates = [value for value in values if value is not None]
+            if len({item[0] for item in dates}) == 1 and dates:
+                groups.append((start, *dates[0]))
+        if not groups:
+            continue
+        # La fila de etiquetas puede estar varias líneas debajo de fechas.
+        # Inspeccionar hasta encontrar primer artículo con B/Z ocupadas.
+        following = header_rows[date_idx+1:18]
+        first_data_idx = next(
+            (date_idx + 1 + pos for pos, r in enumerate(following)
+             if str(r.get(1) or "").strip() and str(r.get(25) or "").strip()
+             and any(isinstance(k,int) and k>=first_daily_index
+                     for k in r)), None
+        )
+        before_data = first_data_idx if first_data_idx is not None else min(len(header_rows),date_idx+6)
+        conflicting = False
+        last_meta_idx = date_idx
+        signals = 0
+        for idx in range(date_idx + 1,before_data):
+            candidate = header_rows[idx]
+            for group in groups:
+                start = group[0]
+                fields = [_metric(candidate.get(start+off)) for off in range(3)]
+                signals += sum(bool(v) for v in fields)
+                if any(kind and kind != expected[off] for off,kind in enumerate(fields)):
+                    conflicting = True
+            if any(str(value or "").strip() for col,value in candidate.items()
+                   if isinstance(col,int) and col >= first_daily_index):
+                last_meta_idx = idx
+        if conflicting:
+            continue
+        # Dos días consecutivos son una señal fuerte de la matriz mensual.
+        # Un solo grupo también se acepta, pero sólo con el cotejo AB/AE.
+        score = (len(groups),signals,-date_idx)
+        if score > (best[2],best[1],-best[1]):
+            best = (groups,last_meta_idx,len(groups))
+    groups, idx, _ = best
+    return groups, idx
