@@ -33,7 +33,8 @@ def _missing_store_with_movements(row):
     if not isinstance(row, dict) or not str(row.get(1) or "").strip():
         return False
     store = str(row.get(25) or "").strip().lower()
-    if store not in ("", "nan", "none", "null", "0"):
+    if store not in ("", "nan", "none", "null", "0", "0.0", "n/a",
+                     "sin tienda", "sin asignar", "no asignada"):
         return False
     return any(
         _positive_number(value)
