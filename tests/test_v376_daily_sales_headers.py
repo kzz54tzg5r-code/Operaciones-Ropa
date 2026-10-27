@@ -1,5 +1,5 @@
 """Los meses de ventas reales admiten fechas numéricas, abreviadas y filas introductorias."""
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from itertools import chain
 
 import pytest
@@ -47,7 +47,8 @@ def test_recognizes_only_concrete_labels(raw, kind):
 
 def month_rows(date_string, prefix=0):
     title = {0: "Reporte mensual"}  # Encabezado previo opcional.
-    date_header = {29: date_string, 32: date_string}
+    next_day = date.fromisoformat(_date_iso(date_string)[0]) + timedelta(days=1)
+    date_header = {29: date_string, 32: next_day.isoformat()}
     metric_header = {
         29: "Ventas Neta Pzs", 30: "Dev Pzs", 31: "Venta Neta en $",
         32: "Ventas Neta Pzs", 33: "Dev Pzs", 34: "Venta Neta en $",
