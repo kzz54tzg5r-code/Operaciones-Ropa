@@ -78,10 +78,26 @@
   if(loading===key)return;
   loading=key;
   try{
-   const url='/api/operations/project-scope-v151?'+new URLSearchParams(filter);
-   const response=await fetch(url,{credentials:'same-origin'});
-   const result=await response.json();
-   if(!response.ok)throw Error(String(result.detail||'No se pudo consultar recuperación'));
+   // Fuente única: no pedir una segunda respuesta para la tabla si
+   // Centro Operativo acaba de consultar ese mismo periodo y tienda.
+   const current=window.OR375_CENTER_RECOVERY;
+   const same=current &&
+     current.period_type===filter.period_type &&
+     current.period_value===filter.period_value &&
+     current.store===filter.store;
+   let result;
+   if(same){
+     result={recovery_by_store:current.recovery_by_store};
+   }else if(current){
+     // Filtros en transición: no mezclar una tabla vieja con nuevas tarjetas.
+     return;
+   }else{
+     // Compatibilidad con la navegación original que no monta V240.
+     const url='/api/operations/project-scope-v151?'+new URLSearchParams(filter);
+     const response=await fetch(url,{credentials:'same-origin'});
+     result=await response.json();
+     if(!response.ok)throw Error(String(result.detail||'No se pudo consultar recuperación'));
+   }
    if(!valid()||JSON.stringify(params())!==key||!panel.isConnected)return;
    const status=q('.or373-status',panel);
    if(status)status.remove();
