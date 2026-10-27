@@ -265,3 +265,60 @@ def infer_dated_groups_without_labels(header_rows, first_daily_index=29):
             best = (groups,last_meta_idx)
     groups, idx = best
     return groups, idx
+
+def detect_monthly_layout(header_rows):
+    """Return verified indices for both retail monthly workbook layouts.
+
+    Legacy:  Z store, AB monthly DEV, AD:AF first daily triplet.
+    Current: AA store, AC monthly DEV, AE:AG first daily triplet.
+
+    All indices are zero-based. Never infer a shifted store/DEV column
+    solely from the data, since that can interpret prices as quantities.
+    """
+    candidates = []
+    for row in header_rows[:18]:
+        for store_col in (25, 26):
+            daily_col = store_col + 4
+            dev_col = store_col + 2
+            if _text(row.get(store_col)) not in ("tienda", "sucursal"):
+                continue
+            if _metric(row.get(dev_col)) != "dev":
+                continue
+            values = tuple(_metric(row.get(daily_col + offset)) for offset in range(3))
+            if values != ("sales", "dev", "value"):
+                # Explicit store + monthly DEV prevents silent guessed offsets.
+                continue
+            candidates.append({
+                "store_col": store_col,
+                "monthly_dev_col": dev_col,
+                "first_daily_col": daily_col,
+            })
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        unique = {(x["store_col"], x["first_daily_col"]) for x in candidates}
+        if len(unique) == 1:
+            return candidates[0]
+        raise ValueError("Encabezados ambiguos: existen dos posiciones de Tienda y DEV distintas.")
+
+    # Synthetic/older worksheets may lack the title of the store column,
+    # but the daily labels still expose an unambiguous triple.
+    patterns = []
+    for row in header_rows[:18]:
+        for daily_col in (29, 30):
+            if tuple(_metric(row.get(daily_col + offset)) for offset in range(3)) == (
+                "sales", "dev", "value"
+            ):
+                patterns.append(daily_col)
+    starts = set(patterns)
+    if len(starts) == 1:
+        daily_col = starts.pop()
+        return {
+            "store_col": daily_col - 4,
+            "monthly_dev_col": daily_col - 2,
+            "first_daily_col": daily_col,
+        }
+    raise ValueError(
+        "No fue posible identificar Tienda, Total DEV y el primer bloque diario. "
+        "Se esperan los layouts Z/AB/AD o AA/AC/AE."
+    )
