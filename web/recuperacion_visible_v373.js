@@ -79,20 +79,13 @@
   loading=key;
   try{
    const url='/api/operations/project-scope-v151?'+new URLSearchParams(filter);
-   const response=await fetch(url,{cache:'no-store',credentials:'same-origin'});
+   const response=await fetch(url,{credentials:'same-origin'});
    const result=await response.json();
    if(!response.ok)throw Error(String(result.detail||'No se pudo consultar recuperación'));
    if(!valid()||JSON.stringify(params())!==key||!panel.isConnected)return;
    const status=q('.or373-status',panel);
    if(status)status.remove();
    panel.append(table(Array.isArray(result.recovery_by_store)?result.recovery_by_store:[]));
-   const zero=!(result.recovery_by_store||[]).some(r=>number(r.dev_pzs)>0);
-   if(zero){
-    const alert=el('p','or373-warning',
-      result.recovery_source?.source_warning ||
-      'Este periodo muestra DEV en cero. Verifica la conciliación con el archivo mensual publicado.');
-    panel.append(alert);
-   }
    panel.dataset.period=key;
   }catch(error){
    const status=q('.or373-status',panel);
@@ -109,11 +102,15 @@
   if(!target)return;
   let section=q('.or373-recovery-panel',original);
   if(section&&section.dataset.period===key)return;
+  // Reutilizar el contenedor en vez de acumular nodos vacíos cada consulta.
+  let location=q('.or373-mount',original);
+  if(!location){
+    location=document.createElement('div');
+    location.className='or373-mount';
+    if(detail)detail.before(location);
+    else target.before(location);
+  }
   if(section)section.remove();
-  const location=document.createElement('div');
-  location.className='or373-mount';
-  if(detail)detail.before(location);
-  else target.before(location);
   // Si el backend ya incluyó una tabla, se reutiliza sin crear una copia.
   if(relocateExisting(original,location)){q('.or373-recovery-panel',location).dataset.period=key;current=key;return;}
   section=makeBox(location);
