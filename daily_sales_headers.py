@@ -311,6 +311,19 @@ def detect_monthly_layout(header_rows):
             ):
                 patterns.append(daily_col)
     starts = set(patterns)
+    if len(starts) != 1:
+        # Existen archivos con encabezados de métricas alternativos:
+        # escoger el primer bloque sólo cuando la FECHA explícita inicia
+        # en AD (legado) o AE (actual). La aceptación de sus DEV exige
+        # todavía la conciliación mensual al terminar el streaming.
+        dated_starts = {
+            candidate
+            for row in header_rows[:18]
+            for candidate in (29, 30)
+            if _header_date(row.get(candidate))
+        }
+        if len(dated_starts) == 1:
+            starts = dated_starts
     if len(starts) == 1:
         daily_col = starts.pop()
         return {
@@ -320,5 +333,5 @@ def detect_monthly_layout(header_rows):
         }
     raise ValueError(
         "No fue posible identificar Tienda, Total DEV y el primer bloque diario. "
-        "Se esperan los layouts Z/AB/AD o AA/AC/AE."
+        "Se esperan los layouts Z/AB/AD o AA/AC/AE con fechas explícitas."
     )
