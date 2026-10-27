@@ -1,4 +1,4 @@
-"""Los meses de ventas reales admiten fechas numéricas, abreviadas y filas introductorias."""
+"""Regresión del lector de ventas mensuales: fechas y encabezados seguros."""
 from datetime import date, datetime, timedelta
 from itertools import chain
 
