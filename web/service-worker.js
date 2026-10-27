@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v373';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v374';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/app-icon-192.svg',
@@ -20,7 +20,6 @@ const STATIC_ASSETS = [
   '/static/navegacion_unificada_v363.js?v=3635',
   '/static/detalle_operativo_opcion1_v365.css?v=365',
   '/static/detalle_operativo_opcion1_v365.js?v=365',
-  '/static/dev_rebuild_controls_v371.js?v=371',
   '/static/recuperacion_visible_v373.css?v=373',
   '/static/recuperacion_visible_v373.js?v=373',
   '/static/center_lanes.js?v=373'
@@ -112,7 +111,12 @@ self.addEventListener('fetch', event => {
 
   // Datos, sesiones, descargas y reportes nunca se almacenan en caché.
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(request, { cache: 'no-store' }));
+    // Nunca guardar respuestas API en la caché de la PWA.
+    // Los reportes autenticados usan caché de servidor acotada a 20 s,
+    // con clave por usuario/rol/tienda y revisión de datos; no forzar
+    // "no-store" en la PETICIÓN porque desactiva esa optimización.
+    const reportPath = /^\/api\/operations\/(?:project-scope-v151|meta|year)$/.test(url.pathname);
+    event.respondWith(reportPath ? fetch(request) : fetch(request, { cache: 'no-store' }));
     return;
   }
 
