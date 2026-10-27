@@ -38,20 +38,10 @@ def install(m):
     original_xml_rows = m._xlsx_monthly_rows
 
     def monthly_rows_with_dates_from_second_header(archive, member, shared_value):
-        iterator = iter(original_xml_rows(archive, member, shared_value))
-        first = dict(next(iterator, {}) or {})
-        second = dict(next(iterator, {}) or {})
-        # Algunas plantillas tienen las fechas en la segunda línea de cabecera.
-        # Fusionamos sólo las fechas, manteniendo sin cambios datos y columnas.
-        head = dict(first)
-        upper = max(list(first) + list(second) + [28])
-        for col in range(29, upper + 1, 3):
-            date_first = m._safe_date_iso(first.get(col))[0]
-            if not date_first and m._safe_date_iso(second.get(col))[0]:
-                head[col] = second[col]
-        yield head
-        yield second
-        yield from iterator
+        # El detector V376+ busca las fechas en las filas reales, aunque no
+        # estén en la primera línea. No fusionar la segunda fila con la primera:
+        # hacerlo destruye la evidencia necesaria para validar el encabezado.
+        yield from original_xml_rows(archive, member, shared_value)
 
     m._xlsx_monthly_rows = monthly_rows_with_dates_from_second_header
 
