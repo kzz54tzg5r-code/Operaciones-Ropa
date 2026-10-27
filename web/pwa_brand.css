@@ -110,3 +110,37 @@ html.pwa-standalone .mobile{padding-bottom:calc(5px + env(safe-area-inset-bottom
   .login-v15-card{padding:18px 22px 24px!important}
   .login-logo-v15{width:min(205px,62vw)!important}
 }
+
+/* V380: identidad Price Shoes visible en acceso, splash y dentro del reporte. */
+.or-splash-logo-wrap{
+  width:min(250px,70vw)!important;
+  background:#fff!important;
+  padding:12px 17px!important;
+  border-radius:14px!important;
+  box-shadow:0 9px 28px #001f4050;
+}
+.or-splash-logo{width:100%!important;height:auto!important;max-height:90px!important;object-fit:contain!important}
+.login-logo-v15{display:block!important;max-height:142px!important;object-fit:contain!important}
+html body.or363-navigation #appView #sidebar .sidebrand img,
+html body #appView #sidebar .sidebrand img{
+  display:block!important;object-fit:contain!important;
+  background:#fff!important;border-radius:7px!important;
+  padding:3px!important;box-shadow:0 1px 5px #001f4033!important;
+  width:52px!important;min-width:0!important;max-width:100%!important;
+  height:46px!important;max-height:46px!important;
+}
+html body #appView .main>.hero .or-report-brand{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 auto!important;width:106px!important;height:30px!important;
+  margin-left:auto!important;padding:3px 7px!important;
+  background:#fff!important;border:1px solid #cddfee!important;
+  border-radius:7px!important;overflow:hidden!important;
+}
+html body #appView .main>.hero .or-report-brand img{
+  display:block!important;width:100%!important;height:100%!important;
+  max-height:26px!important;object-fit:contain!important;
+}
+@media(max-width:620px){
+  html body #appView .main>.hero .or-report-brand{width:86px!important;height:28px!important;padding:3px 5px!important}
+  html body #appView .main>.hero .or-report-brand img{max-height:23px!important}
+}
