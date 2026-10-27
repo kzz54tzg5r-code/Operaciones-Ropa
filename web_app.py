@@ -2302,16 +2302,33 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
                 continue
             try:
+                # Inspeccionar sólo las primeras 6 filas sin leer toda la hoja.
+                # Algunas bases tienen título / celdas combinadas antes de las
+                # fechas y variantes '01/abr/26' o '01/04/26'.
+                from itertools import chain
+                from daily_sales_headers import locate_daily_headers
                 row_iter=_xlsx_monthly_rows(archive,member,shared_value)
-                first=dict(next(row_iter,{}) or {})  # Fila 1: fecha repetida o combinada.
-                second=dict(next(row_iter,{}) or {}) # Fila 2: Ventas Neta Pzs | Dev Pzs | Venta Neta en $.
-                from daily_sales_headers import resolve_daily_groups
-                date_columns,header_warnings=resolve_daily_groups(first,second,first_daily_index=29)
+                header_rows=[dict(next(row_iter,{}) or {}) for _ in range(6)]
+                date_columns,header_warnings,last_header_idx=locate_daily_headers(
+                    header_rows,first_daily_index=29
+                )
+                # Regresar al iterador las filas de producto ya leídas:
+                # no se pierde información por adelantar 6 filas.
+                row_iter=chain(header_rows[last_header_idx+1:],row_iter)
                 header_audit[sheet]={
                     "daily_dates":len(date_columns),
                     "first_date":min((c[1] for c in date_columns),default=""),
                     "last_date":max((c[1] for c in date_columns),default=""),
                     "warnings":list(header_warnings),
+                    "date_header_row":last_header_idx,
+                    "example_dates":repr([
+                        header_rows[last_header_idx-1].get(k)
+                        for k in (29,32,35)
+                    ])[:120],
+                    "example_metrics":repr([
+                        header_rows[last_header_idx].get(k)
+                        for k in (29,30,31)
+                    ])[:120],
                 }
                 if header_warnings:
                     errors.extend(f"{sheet}: {issue}" for issue in header_warnings)
@@ -2633,10 +2650,23 @@ def parse_operations_excel(path: Path, persist: bool=True):
                            for issue in header_audit[sheet].get("warnings",[])))
             ]
             if broken:
+                # Mostrar el motivo real, no culpar a las 7 hojas por igual
+                # sin saber si falla fecha, cabecera, orden o columna Z.
+                details=[]
+                for sheet in broken[:7]:
+                    audit=header_audit.get(sheet) or {}
+                    issue=(audit.get("warnings") or [])[:1]
+                    if issue:
+                        detail=issue[0]
+                    else:
+                        detail=next((msg for msg in recovery_errors if msg.startswith(sheet+":")), "")
+                    if not detail:
+                        detail="encabezado de fechas o métricas no reconocido"
+                    details.append(f"{sheet}: {detail}")
                 raise ValueError(
-                    "No se publicaron datos incompletos. Revisa las fechas de la fila 1 "
-                    "y el orden Ventas Neta Pzs / Dev Pzs / Venta Neta en $ de la fila 2 "
-                    "en: "+", ".join(broken[:12])+". "+"; ".join(recovery_errors[:3])
+                    "No se publicaron datos incompletos. "
+                    "Revisa las fechas y las etiquetas de venta/DEV en las hojas: "
+                    +" | ".join(details)
                 )
     except ValueError:
         raise
