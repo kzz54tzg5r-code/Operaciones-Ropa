@@ -74,3 +74,30 @@ html body #page-operativo .or373-table tbody td.or373-store{
  html body #page-operativo .or373-recovery-panel{padding:7px!important}
  html body #page-operativo .or373-title{font-size:14px!important}
 }
+
+/* V374 · El encabezado NO puede heredar azul oscuro sobre fondo azul.
+   Esta regla anula la excepción de Centro que pintaba #heroTitle oscuro. */
+html body.or356-module-active #appView .main>.hero,
+html body.or356-center-active #appView .main>.hero,
+html body.or363-navigation #appView .main>.hero{
+ background:#124b87!important;
+ color:#ffffff!important;
+ border:0!important;
+ opacity:1!important;
+}
+html body #appView .main>.hero #heroTitle,
+html body.or356-center-active #appView .main>.hero #heroTitle,
+html body.or356-module-active #appView .main>.hero h1{
+ color:#ffffff!important;
+ -webkit-text-fill-color:#ffffff!important;
+ opacity:1!important;
+ text-shadow:none!important;
+ font-weight:900!important;
+}
+html body #appView .main>.hero #heroSub,
+html body #appView .main>.hero .hero-greeting,
+html body #appView .main>.hero #heroDate{
+ color:#e8f2ff!important;
+ -webkit-text-fill-color:#e8f2ff!important;
+ opacity:1!important;
+}
