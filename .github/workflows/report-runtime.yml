@@ -3,9 +3,9 @@ name: Report runtime regression
 on:
   push:
     branches: [main]
-    paths: ["web/**", "v*.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**", "tests/test_v331_recovery_audit.py"]
+    paths: ["web/**", "v*.py", "daily_sales_headers.py", "tests/test_v376_daily_sales_headers.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**", "tests/test_v331_recovery_audit.py"]
   pull_request:
-    paths: ["web/**", "v*.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**"]
+    paths: ["web/**", "v*.py", "daily_sales_headers.py", "tests/test_v376_daily_sales_headers.py", "!v313_bonus_visual_and_cut_patch.py", "!v321_bonus_initial_upload_responsive_patch.py", "server_entry.py", "web_app.py", "!web_app.py", "tests/ui/**"]
   workflow_dispatch:
 
 jobs:
@@ -34,5 +34,7 @@ jobs:
         run: python -m pytest -q tests/test_v366_pdf_visual_parity.py tests/test_v367_recovery_source.py tests/test_v368_rebuild_dev.py tests/test_v369_daily_recovery_ui.py tests/test_v370_monthly_store_guard.py
       - name: Validate FIFO DEV scopes and pending calculations
         run: python -m pytest -q tests/test_v372_dev_pending.py tests/test_v375_center_cards_recovery.py
+      - name: Validate monthly Excel headers, all seven periods
+        run: python -m pytest -q tests/test_v376_daily_sales_headers.py
       - name: Validate the served page, navigation, reports and filters
         run: timeout 120s npm --prefix tests/ui test
