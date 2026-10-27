@@ -247,7 +247,7 @@ body.v241-cm-capture .v241-history-empty{
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const n=v=>{const x=Number(v||0);return Number.isFinite(x)?x:0};
   const nf=v=>Math.round(n(v)).toLocaleString('es-MX');
-  let active=null,timer=0,seq=0;
+  let active=null,timer=0,seq=0,lastDuration=0;
 
   function isCm(){
     let main='';try{main=String(window.MAIN||'').toLowerCase()}catch(_){}
@@ -276,9 +276,10 @@ body.v241-cm-capture .v241-history-empty{
     if(!r.ok)throw Error(d.detail||d.message||('HTTP '+r.status));
     return d;
   }
+  // V377: último tiempo finalizado sigue visible después de pulsar Fin.
   function updateClock(){
     const el=q('#v241Timer');if(!el)return;
-    if(!active?.started_at){el.textContent='00:00:00';return}
+    if(!active?.started_at){el.textContent=hms(lastDuration);return}
     const start=new Date(active.started_at).getTime();
     el.textContent=hms((Date.now()-start)/1000);
   }
@@ -418,6 +419,7 @@ body.v241-cm-capture .v241-history-empty{
       if(mine!==seq)return;
 
       const lastFinished=(hist?.items||[]).find(r=>r.status==='finished')||null;
+      lastDuration=active?0:n(lastFinished?.duration_seconds);
       const activity=active?.activity||ALLOWED[0];
       const options=(active&&!ALLOWED.includes(activity)?[activity,...ALLOWED]:ALLOWED)
         .map(x=>'<option value="'+esc(x)+'" '+(x===activity?'selected':'')+'>'+esc(x)+'</option>').join('');
