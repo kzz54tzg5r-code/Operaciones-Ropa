@@ -83,6 +83,155 @@ body.v241-cm-capture #v166MissingProductivity{
 @media(max-width:380px){
   .v241-area-grid,.v241-collection-grid{grid-template-columns:1fr}
 }
+
+/* V377 · Cargar productividad compacto, sin cambios a la lógica de inicio/fin. */
+body.v241-cm-capture #operativoDynamicContent{min-width:0}
+body.v241-cm-capture #v241CmCapture{
+  display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+  column-gap:10px;row-gap:8px;padding:12px 14px;margin:6px 0;
+}
+body.v241-cm-capture #v241CmCapture .v241-capture-head{grid-column:1/-1;align-items:center}
+body.v241-cm-capture #v241CmCapture .v241-capture-head h3,
+body.v241-cm-capture .v241-history-heading h3{
+  color:#123f73!important;font-size:clamp(16px,1.35vw,20px)!important;
+  margin:0!important;line-height:1.18!important
+}
+body.v241-cm-capture #v241CmCapture .v241-capture-note{
+  color:#536e8d!important;font-size:11px!important;margin:3px 0 0
+}
+body.v241-cm-capture #v241CmCapture .v241-capture-meta{
+  grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;margin:0;align-items:stretch
+}
+body.v241-cm-capture #v241CmCapture .v241-capture-meta>span{
+  display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;
+  border:1px solid #d6e6f7;background:#f3f8ff;border-radius:9px;
+  padding:7px 11px;color:#103e72
+}
+body.v241-cm-capture #v241CmCapture .v241-capture-meta small{
+  color:#51718e;font-size:10px;line-height:1.1;font-weight:850
+}
+body.v241-cm-capture #v241CmCapture .v241-capture-meta b{
+  color:#103e72;font-size:clamp(12px,1vw,15px);line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+body.v241-cm-capture #v241CmCapture>.v241-field{
+  grid-column:span 3;margin:0;padding:10px;background:#f4f8fe;
+  border:1px solid #d8e7f7;border-radius:11px;min-width:0
+}
+body.v241-cm-capture #v241CmCapture .v241-field label{
+  color:#174776!important;font-size:11px!important;margin:0 0 7px
+}
+body.v241-cm-capture #v241CmCapture #v241Activity{
+  min-height:44px!important;color:#123f73;font-size:14px;
+  background:#fff!important;border-color:#c9dcf2!important
+}
+body.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
+  grid-column:span 9;min-width:0;display:flex
+}
+body.v241-cm-capture #v241CmCapture .v241-area-capture{
+  margin:0;width:100%;min-width:0;padding:10px;border-radius:11px;
+  background:#f9fcff;border-color:#d4e6f7
+}
+body.v241-cm-capture #v241CmCapture .v241-area-title{
+  margin:0 0 7px;min-height:20px;align-items:center
+}
+body.v241-cm-capture #v241CmCapture .v241-area-title b{
+  font-size:12px!important;color:#123f73!important
+}
+body.v241-cm-capture #v241CmCapture .v241-area-title span{
+  font-size:10px!important;color:#557390!important
+}
+body.v241-cm-capture #v241CmCapture .v241-area-grid{gap:7px}
+body.v241-cm-capture #v241CmCapture .v241-area-box label{
+  color:#174776!important;font-size:10px!important;
+  text-overflow:ellipsis;white-space:nowrap;overflow:hidden
+}
+body.v241-cm-capture #v241CmCapture .v241-area-box input{
+  min-height:41px!important;font-size:14px!important;padding:7px 9px!important
+}
+body.v241-cm-capture #v241CmCapture .v241-actions{
+  grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;
+  gap:8px;margin:0;padding-top:2px
+}
+body.v241-cm-capture #v241CmCapture .v241-actions>button{
+  min-height:43px!important;min-width:145px!important;padding:9px 18px;
+  border-radius:9px;font-size:14px!important;color:#fff!important
+}
+body.v241-cm-capture #v241CmCapture .v241-start{background:#08a44c!important}
+body.v241-cm-capture #v241CmCapture .v241-finish{background:#c23b49!important}
+body.v241-cm-capture #v241CmCapture .v241-actions>button:disabled{opacity:.45!important}
+body.v241-cm-capture #v241CmCapture .v241-clockbox{
+  margin-left:auto;display:flex;align-items:center;gap:14px;
+  border:1px solid #d9e8f8;border-radius:10px;background:#edf5ff;
+  padding:6px 11px;max-width:100%
+}
+body.v241-cm-capture #v241CmCapture .v241-clock-times{
+  display:flex;gap:11px;align-items:center
+}
+body.v241-cm-capture #v241CmCapture .v241-clock-times span,
+body.v241-cm-capture #v241CmCapture .v241-clock-current{
+  display:flex;flex-direction:column;gap:1px
+}
+body.v241-cm-capture #v241CmCapture .v241-clockbox small{
+  color:#51708e!important;font-size:10px!important;font-weight:800
+}
+body.v241-cm-capture #v241CmCapture .v241-clockbox b{
+  color:#123f73!important;font-size:12px!important;font-variant-numeric:tabular-nums
+}
+body.v241-cm-capture #v241CmCapture #v241Timer{
+  background:none;min-width:0;padding:0;font-size:23px!important;
+  border-radius:0;color:#123f73!important;text-align:left
+}
+body.v241-cm-capture #v241CmCapture .v241-msg{
+  font-size:11px!important;color:#194873!important;flex:1 1 100%
+}
+body.v241-cm-capture .v241-history-panel{
+  padding:11px 14px!important;margin:7px 0!important;border-radius:14px
+}
+body.v241-cm-capture .v241-history-heading{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:8px;flex-wrap:wrap;margin-bottom:9px
+}
+body.v241-cm-capture .v241-history-summary{
+  display:flex;gap:6px;flex-wrap:wrap
+}
+body.v241-cm-capture .v241-history-summary span{
+  background:#f1f6fc;border-radius:8px;color:#4b6684;
+  font-size:11px;padding:6px 9px
+}
+body.v241-cm-capture .v241-history-summary b{color:#123f73}
+body.v241-cm-capture .v241-history th{
+  font-size:11px!important;padding:9px!important;line-height:1.18;
+  background:#174b80!important;color:#fff!important
+}
+body.v241-cm-capture .v241-history td{
+  font-size:11px!important;padding:8px 9px!important;line-height:1.2;color:#24486f
+}
+body.v241-cm-capture .v241-history-empty{
+  text-align:center;color:#617b98!important;padding:24px 9px!important
+}
+@media(max-width:1020px){
+ body.v241-cm-capture #v241CmCapture .v241-capture-meta{
+   grid-template-columns:repeat(2,minmax(0,1fr))
+ }
+ body.v241-cm-capture #v241CmCapture>.v241-field,
+ body.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{grid-column:1/-1}
+ body.v241-cm-capture #v241CmCapture .v241-area-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ body.v241-cm-capture #v241CmCapture{padding:9px;row-gap:7px}
+ body.v241-cm-capture #v241CmCapture .v241-capture-meta{gap:5px}
+ body.v241-cm-capture #v241CmCapture .v241-capture-meta>span{padding:7px}
+ body.v241-cm-capture #v241CmCapture .v241-area-grid,
+ body.v241-cm-capture #v241CmCapture .v241-collection-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.v241-cm-capture #v241CmCapture .v241-actions>button{
+   flex:1 1 34%;min-width:0!important
+ }
+ body.v241-cm-capture #v241CmCapture .v241-clockbox{margin-left:0;width:100%;justify-content:space-between}
+ body.v241-cm-capture .v241-history-panel{padding:9px!important}
+}
+
 </style>'''
 
     js = r'''<script id="v241-cm-capture-js">
@@ -108,6 +257,12 @@ body.v241-cm-capture #v166MissingProductivity{
     sec=Math.max(0,Math.floor(Number(sec)||0));
     const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
     return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');
+  }
+  function clockTime(value){
+    if(!value)return '—';
+    const date=new Date(value);
+    if(!Number.isFinite(date.getTime()))return '—';
+    return new Intl.DateTimeFormat('es-MX',{timeZone:'America/Mexico_City',hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
   }
   function mxToday(){
     return new Intl.DateTimeFormat('en-CA',{
@@ -262,6 +417,7 @@ body.v241-cm-capture #v166MissingProductivity{
       const hist=await A('/api/cm-productivity/history?date='+encodeURIComponent(mxToday())+'&store='+encodeURIComponent(store));
       if(mine!==seq)return;
 
+      const lastFinished=(hist?.items||[]).find(r=>r.status==='finished')||null;
       const activity=active?.activity||ALLOWED[0];
       const options=(active&&!ALLOWED.includes(activity)?[activity,...ALLOWED]:ALLOWED)
         .map(x=>'<option value="'+esc(x)+'" '+(x===activity?'selected':'')+'>'+esc(x)+'</option>').join('');
@@ -269,20 +425,32 @@ body.v241-cm-capture #v166MissingProductivity{
       host.innerHTML=
         '<div id="v241CmCapture" class="v241-capture-panel">'+
           '<div class="v241-capture-head"><div><h3>Registro de productividad</h3>'+
-            '<div class="v241-capture-note">Fecha, tienda, nombre y nómina se asignan automáticamente desde tu sesión.</div></div>'+
-            '<div id="v241Timer" class="v241-timer">00:00:00</div></div>'+
-          '<div class="v241-capture-meta"><span>'+esc(mxToday())+'</span><span>'+esc(store||'Sin tienda')+'</span>'+
-            '<span>'+esc(meta?.user?.full_name||meta?.user?.username||'')+'</span><span>Nómina '+esc(meta?.user?.employee_no||'—')+'</span></div>'+
+            '<div class="v241-capture-note">Fecha, tienda, nombre y nómina se asignan desde tu sesión.</div></div></div>'+
+          '<div class="v241-capture-meta" aria-label="Datos de tu captura">'+
+            '<span><small>Fecha</small><b>'+esc(mxToday())+'</b></span>'+
+            '<span><small>Tienda</small><b>'+esc(store||'Sin tienda')+'</b></span>'+
+            '<span><small>Colaborador</small><b>'+esc(meta?.user?.full_name||meta?.user?.username||'')+'</b></span>'+
+            '<span><small>Nómina</small><b>'+esc(meta?.user?.employee_no||'—')+'</b></span></div>'+
           '<div class="v241-field"><label>Actividad realizada</label><select id="v241Activity" '+(active?'disabled':'')+'>'+options+'</select></div>'+
           '<div id="v241PieceCaptureHost">'+captureInputs(activity,active)+'</div>'+
           '<div class="v241-actions"><button id="v241Start" class="v241-start" '+(active?'disabled':'')+'>▶ Inicio</button>'+
-            '<button id="v241Finish" class="v241-finish" '+(!active?'disabled':'')+'>■ Fin</button><span id="v241Msg" class="v241-msg"></span></div>'+
+            '<button id="v241Finish" class="v241-finish" '+(!active?'disabled':'')+'>■ Fin</button>'+
+            '<div class="v241-clockbox"><div class="v241-clock-times">'+
+              '<span><small>Hora de inicio</small><b>'+esc(clockTime(active?.started_at||lastFinished?.started_at))+'</b></span>'+
+              '<span><small>Hora de fin</small><b>'+esc(clockTime(active?.ended_at||(!active&&lastFinished?.ended_at)))+'</b></span>'+
+            '</div><div class="v241-clock-current"><small>Tiempo de sesión</small><b id="v241Timer" class="v241-timer">00:00:00</b></div></div>'+
+            '<span id="v241Msg" role="status" class="v241-msg"></span></div>'+
         '</div>'+
-        '<div class="v241-capture-panel"><h3 style="margin:0 0 9px;color:#123f73">Capturas de hoy</h3>'+
+        '<div class="v241-capture-panel v241-history-panel">'+
+          '<div class="v241-history-heading"><h3>Capturas de hoy</h3>'+
+            '<div class="v241-history-summary"><span>Capturas: <b>'+nf(hist?.items?.length||0)+'</b></span>'+
+              '<span>Piezas: <b>'+nf((hist?.items||[]).filter(r=>r.status!==\'active\').reduce((sum,r)=>sum+rowPieces(r),0))+'</b></span>'+
+              '<span>Tiempo total: <b>'+hms((hist?.items||[]).filter(r=>r.status!==\'active\').reduce((sum,r)=>sum+n(r.duration_seconds),0))+'</b></span>'+
+            '</div></div>'+
           '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle de piezas</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
           ((hist?.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+nf(rowPieces(r))+'</b></td>'+
             '<td>'+esc(historyDetail(r))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||
-            '<tr><td colspan="6">Sin capturas de hoy.</td></tr>')+
+            '<tr><td colspan="6" class="v241-history-empty">Sin capturas de hoy. Se mostrarán aquí cuando finalices una actividad.</td></tr>')+
           '</tbody></table></div></div>';
 
       if(active)startClock();else{clearInterval(timer);updateClock()}
