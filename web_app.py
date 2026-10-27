@@ -2674,16 +2674,54 @@ def parse_operations_excel(path: Path, persist: bool=True):
             errors.extend(recovery_errors)
             # Bloqueo de seguridad: nunca publicar un archivo con mes parcial por
             # fechas o métricas desplazadas. La base anterior queda intacta.
-            header_audit=(stream_book or {}).get("recovery_header_audit",{})
+            header_audit=dict((stream_book or {}).get("recovery_header_audit") or {})
+            # V381: el control de publicación no debe rechazar las siete hojas
+            # únicamente porque un wrapper haya omitido el diccionario de
+            # auditoría. Se cotejan las cabeceras DIRECTAMENTE con el XLSX
+            # original para confirmar fechas y el orden de Ventas/DEV/$.
+            # No se aceptan meses con errores de lectura ni importes inventados.
+            if is_xlsx and monthly_sheets:
+                from daily_sales_headers import locate_daily_headers
+                archive=stream_book["archive"]
+                paths=stream_book["sheet_paths"]
+                read_shared=stream_book["shared_value"]
+                for sheet in monthly_sheets:
+                    if (header_audit.get(sheet) or {}).get("daily_dates"):
+                        continue
+                    member=paths.get(sheet,"")
+                    if not member or member not in archive.namelist():
+                        recovery_errors.append(f"{sheet}: hoja mensual no localizada en XLSX")
+                        continue
+                    peek=_xlsx_monthly_rows(archive,member,read_shared)
+                    peek_rows=[dict(next(peek,{}) or {}) for _ in range(18)]
+                    peek.close()
+                    groups,issues,index=locate_daily_headers(peek_rows,first_daily_index=29)
+                    header_audit[sheet]={
+                        "daily_dates":len(groups),
+                        "first_date":min((g[1] for g in groups),default=""),
+                        "last_date":max((g[1] for g in groups),default=""),
+                        "date_header_row":index,
+                        "warnings":issues,
+                        "recognition_mode":"source_xlsx_verified",
+                    }
+                stream_book["recovery_header_audit"]=header_audit
             broken=[
                 sheet for sheet in monthly_sheets
                 if (sheet not in header_audit
                     or not header_audit[sheet].get("daily_dates")
-                    or any("Columnas " in issue or "misma fecha" in issue
-                           for issue in header_audit[sheet].get("warnings",[]))
+                    or bool(header_audit[sheet].get("warnings"))
                     or any(str(msg).startswith(sheet+":")
                            for msg in recovery_errors))
             ]
+            # Incluso con cabeceras válidas, una carga que perdió TODAS las
+            # devoluciones no se puede publicar como recuperación en cero.
+            if monthly_sheets and not recovery_fifo and not broken:
+                raise ValueError(
+                    "Se reconocieron las fechas y las tres columnas diarias "
+                    "del Excel, pero no se generaron movimientos de recuperación. "
+                    "La base vigente se conservó: revisa los totales DEV de AB "
+                    "y las columnas AE/AH/AK."
+                )
             if broken:
                 # Mostrar el motivo real, no culpar a las 7 hojas por igual
                 # sin saber si falla fecha, cabecera, orden o columna Z.
