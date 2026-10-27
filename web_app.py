@@ -2302,13 +2302,13 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
                 continue
             try:
-                # Inspeccionar sólo las primeras 6 filas sin leer toda la hoja.
-                # Algunas bases tienen título / celdas combinadas antes de las
-                # fechas y variantes '01/abr/26' o '01/04/26'.
+                # Inspeccionar 18 filas de encabezados, sin materializar la
+                # hoja completa. El Excel puede tener títulos, fechas con
+                # nombres de días o filas separadoras antes de Ventas/DEV/Pesos.
                 from itertools import chain
                 from daily_sales_headers import locate_daily_headers
                 row_iter=_xlsx_monthly_rows(archive,member,shared_value)
-                header_rows=[dict(next(row_iter,{}) or {}) for _ in range(6)]
+                header_rows=[dict(next(row_iter,{}) or {}) for _ in range(18)]
                 date_columns,header_warnings,last_header_idx=locate_daily_headers(
                     header_rows,first_daily_index=29
                 )
@@ -2661,7 +2661,10 @@ def parse_operations_excel(path: Path, persist: bool=True):
                     else:
                         detail=next((msg for msg in recovery_errors if msg.startswith(sheet+":")), "")
                     if not detail:
-                        detail="encabezado de fechas o métricas no reconocido"
+                        detail=(
+                            "No se identificaron fechas y métricas válidas; "
+                            "revisa el resumen de encabezados detectados en la auditoría de la hoja."
+                        )
                     details.append(f"{sheet}: {detail}")
                 raise ValueError(
                     "No se publicaron datos incompletos. "
