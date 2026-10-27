@@ -43,15 +43,15 @@ def _fake_module(rows=None, daily=None, monthly_sheets=None, errors=None):
     return module, data, observed
 
 
-def test_recognizes_other_month_year_and_second_header_dates():
+def test_preserves_monthly_headers_without_merging_or_shift():
     m, data, _ = _fake_module()
     assert m._monthly_sheet_name("Septiembre 2025")
     assert m._monthly_sheet_name("Octubre 2026")
     assert m._monthly_sheet_name("Enero")
     assert not m._monthly_sheet_name("Resumen productividad")
     first, second, third = list(m._xlsx_monthly_rows(None,None,None))
-    assert first[29] == "2026-10-25"
-    assert first[32] == "2026-10-26"
+    assert first[29] == ""
+    assert first[32] == ""
     assert second[29] == "2026-10-25"
     assert third[30] == 4
 
