@@ -67,7 +67,12 @@ def install(m):
         M = 24
         y = H - M
 
-        mt = dict(data.get("metrics") or {})
+        # La impresión refleja el mismo tope de 100% por tienda de las
+        # tarjetas web; las filas del detalle conservan captura real.
+        from v375_center_card_metrics import center_card_metrics
+        mt = dict(data.get("center_card_metrics") or (
+            center_card_metrics(data) if data.get("stores") else data.get("metrics") or {}
+        ))
         project_stores, recovery = m._operations_export_sections(data)
         report_name = str(report or "").lower()
         fallback_period = ("week" if "semanal" in report_name else
