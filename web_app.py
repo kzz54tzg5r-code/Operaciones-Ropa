@@ -2307,12 +2307,17 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                 # nombres de días o filas separadoras antes de Ventas/DEV/Pesos.
                 from itertools import chain
                 from daily_sales_headers import (
-                    locate_daily_headers, infer_dated_groups_without_labels
+                    locate_daily_headers, infer_dated_groups_without_labels,
+                    detect_monthly_layout
                 )
                 row_iter=_xlsx_monthly_rows(archive,member,shared_value)
                 header_rows=[dict(next(row_iter,{}) or {}) for _ in range(18)]
+                layout=detect_monthly_layout(header_rows)
+                store_col=layout["store_col"]
+                monthly_dev_col=layout["monthly_dev_col"]
+                first_daily_col=layout["first_daily_col"]
                 date_columns,header_warnings,last_header_idx=locate_daily_headers(
-                    header_rows,first_daily_index=29
+                    header_rows,first_daily_index=first_daily_col
                 )
                 positional_fallback=False
                 if not date_columns:
@@ -2320,7 +2325,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                     # AD/AE/AF deben tener fecha real y se comprobará que el
                     # total DEV de AB coincida con AE antes de aceptar la hoja.
                     inferred, inferred_last=infer_dated_groups_without_labels(
-                        header_rows,first_daily_index=29
+                        header_rows,first_daily_index=first_daily_col
                     )
                     if inferred:
                         date_columns=inferred
@@ -2336,14 +2341,17 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                     "last_date":max((c[1] for c in date_columns),default=""),
                     "warnings":list(header_warnings),
                     "date_header_row":last_header_idx,
-                    "recognition_mode":"dates_and_AB_AE_reconciliation" if positional_fallback else "explicit_metrics",
+                    "recognition_mode":"dates_and_monthly_reconciliation" if positional_fallback else "explicit_metrics",
+                    "store_col":store_col,
+                    "monthly_dev_col":monthly_dev_col,
+                    "first_daily_col":first_daily_col,
                     "example_dates":repr([
                         header_rows[last_header_idx-1].get(k)
-                        for k in (29,32,35)
+                        for k in (first_daily_col,first_daily_col+3,first_daily_col+6)
                     ])[:120],
                     "example_metrics":repr([
                         header_rows[last_header_idx].get(k)
-                        for k in (29,30,31)
+                        for k in (first_daily_col,first_daily_col+1,first_daily_col+2)
                     ])[:120],
                 }
                 if header_warnings:
@@ -2351,7 +2359,7 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                     # No publicar meses con DEV desplazadas a ventas o pesos.
                     continue
                 if not date_columns:
-                    errors.append(f"{sheet}: no se detectaron columnas diarias con encabezados válidos desde AD")
+                    errors.append(f"{sheet}: no se detectaron columnas diarias válidas desde índice {first_daily_col}")
                     continue
                 for _,date_iso,week_iso,year_iso,month_key in date_columns:
                     weeks.add(f"{year_iso}-W{week_iso:02d}")
@@ -2372,14 +2380,14 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
 
                 for values in row_iter:
                     values=dict(values or {})
-                    store=_normalize_store_value(cell(values,25,""))
+                    store=_normalize_store_value(cell(values,store_col,""))
                     art=_clean_occurrence(cell(values,1,""))
                     if not store or not art:
                         continue
                     matched_items+=1
                     color=_clean_text(cell(values,7,""))
                     price=max(number(cell(values,24,0)),0.0)
-                    monthly_dev_total+=max(number(cell(values,27,0)),0.0)  # AB: total, solo conciliación.
+                    monthly_dev_total+=max(number(cell(values,monthly_dev_col,0)),0.0)  # Total DEV mensual.
                     for index,date_iso,week_iso,year_iso,_month in date_columns:
                         sales=max(number(cell(values,index,0)),0.0)
                         dev=max(number(cell(values,index+1,0)),0.0)
@@ -2407,15 +2415,15 @@ def _stream_monthly_recovery_fifo(path: Path, sheets: list[str], stream_book: di
                     if matched_items==0 or abs(daily_dev_total-monthly_dev_total)>tolerance:
                         raise ValueError(
                             "Las fechas están presentes, pero no fue posible "
-                            "conciliar DEV diarias (AE/AH/AK...) con el total "
-                            f"mensual AB. AB={monthly_dev_total:,.0f}, "
+                            "conciliar DEV diarias con el total mensual. "
+                            f"Total DEV={monthly_dev_total:,.0f}, "
                             f"DEV diarias={daily_dev_total:,.0f}; "
                             f"artículos válidos={matched_items}. "
                             "La base vigente se conserva."
                         )
                 if monthly_dev_total>0 and abs(daily_dev_total-monthly_dev_total)>max(1.0,monthly_dev_total*0.01):
                     audit["warnings"].append(
-                        f"DEV diarias ({daily_dev_total:,.0f}) no coinciden con AB total ({monthly_dev_total:,.0f})"
+                        f"DEV diarias ({daily_dev_total:,.0f}) no coinciden con total mensual ({monthly_dev_total:,.0f})"
                     )
                 con.commit()
             except Exception as exc:
@@ -2681,7 +2689,7 @@ def parse_operations_excel(path: Path, persist: bool=True):
             # original para confirmar fechas y el orden de Ventas/DEV/$.
             # No se aceptan meses con errores de lectura ni importes inventados.
             if is_xlsx and monthly_sheets:
-                from daily_sales_headers import locate_daily_headers
+                from daily_sales_headers import locate_daily_headers, detect_monthly_layout
                 archive=stream_book["archive"]
                 paths=stream_book["sheet_paths"]
                 read_shared=stream_book["shared_value"]
@@ -2695,9 +2703,13 @@ def parse_operations_excel(path: Path, persist: bool=True):
                     peek=_xlsx_monthly_rows(archive,member,read_shared)
                     peek_rows=[dict(next(peek,{}) or {}) for _ in range(18)]
                     peek.close()
-                    groups,issues,index=locate_daily_headers(peek_rows,first_daily_index=29)
+                    layout=detect_monthly_layout(peek_rows)
+                    groups,issues,index=locate_daily_headers(
+                        peek_rows,first_daily_index=layout["first_daily_col"]
+                    )
                     header_audit[sheet]={
                         "daily_dates":len(groups),
+                        **layout,
                         "first_date":min((g[1] for g in groups),default=""),
                         "last_date":max((g[1] for g in groups),default=""),
                         "date_header_row":index,
