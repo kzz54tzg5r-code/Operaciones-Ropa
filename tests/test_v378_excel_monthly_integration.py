@@ -67,3 +67,59 @@ def test_real_xml_streaming_across_april_october(tmp_path):
     assert len(fifo) == 7
     assert sum(item.get("dev_pzs") or 0 for item in fifo) == 35
     assert all(item["store"] == "Vallejo" for item in fifo)
+
+
+
+def test_unrecognized_metric_labels_are_only_accepted_with_ab_ae_match(tmp_path):
+    from web_app import _xlsx_stream_book, _stream_monthly_recovery_fifo
+
+    def make_xlsx(filename, monthly_dev, daily_dev):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Octubre 26"
+        ws["AD6"] = "DOMINGO, 25 de Octubre de 2026"
+        # Encabezados de ventas de un formato alternativo, sin los nombres
+        # exactos esperados por el validador rígido anterior.
+        ws["AD8"] = "Piezas movidas"
+        ws["AE8"] = "Devoluciones"
+        ws["AF8"] = "Importe Neto"
+        ws["B9"] = "SKU-FECHA-TEST"
+        ws["H9"] = "AZUL"
+        ws["Y9"] = 110
+        ws["Z9"] = "Puebla Sur"
+        ws["AB9"] = monthly_dev
+        ws["AD9"] = 2
+        ws["AE9"] = daily_dev
+        ws["AF9"] = 220
+        output = tmp_path / filename
+        wb.save(output)
+        return output
+
+    correct = make_xlsx("correct.xlsx", 7, 7)
+    with _xlsx_stream_book(correct) as book:
+        rows, weeks, months, errors = _stream_monthly_recovery_fifo(
+            correct, ["Octubre 26"], book
+        )
+        audit = book["recovery_header_audit"]["Octubre 26"]
+    assert errors == []
+    assert audit["recognition_mode"] == "dates_and_AB_AE_reconciliation"
+    assert sum(x["dev_pzs"] for x in rows) == 7
+    assert months == ["2026-10"]
+
+    wrong = make_xlsx("wrong.xlsx", 9, 7)
+    with _xlsx_stream_book(wrong) as book:
+        rows, weeks, months, errors = _stream_monthly_recovery_fifo(
+            wrong, ["Octubre 26"], book
+        )
+    assert any("conciliar DEV" in msg for msg in errors), errors
+
+
+def test_reversed_labels_never_use_positional_fallback():
+    from daily_sales_headers import infer_dated_groups_without_labels
+    rows = [
+        {29:"2026-10-25"},
+        {29:"Dev Pzs", 30:"Ventas Neta Pzs", 31:"Venta Neta en $"},
+        {1:"SKU",25:"Puebla Sur",27:5,29:5,30:2,31:100},
+    ]
+    detected, idx = infer_dated_groups_without_labels(rows)
+    assert detected == []
