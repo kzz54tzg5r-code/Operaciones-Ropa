@@ -143,6 +143,9 @@ def install(m):
                 out["v153_project_stores"] = sorted(project_names)
                 out["period_type"] = original_type
                 out["period_value"] = original_value
+                # V375: indicadores visuales independientes; la tabla mantiene valores reales.
+                from v375_center_card_metrics import center_card_metrics
+                out["center_card_metrics"] = center_card_metrics(out)
                 if original_type == "year":
                     out["start_date"], out["end_date"] = qstart, qend
                 return out
@@ -197,6 +200,10 @@ def install(m):
             if key in all_data:
                 out[key] = all_data[key]
 
+        # V375: limitar cada tienda a su ingreso antes de consolidar tarjetas,
+        # sin modificar las métricas ni las filas del detalle real.
+        from v375_center_card_metrics import center_card_metrics
+        out["center_card_metrics"] = center_card_metrics(out)
         out["v153_project_scope"] = True
         out["v153_project_store_count"] = len(project_names)
         out["v153_project_stores"] = sorted(project_names)
