@@ -1,9 +1,9 @@
 """V370 · Evita la pérdida silenciosa de DEV por tiendas ausentes.
 
-La hoja Octubre utiliza el mismo formato de ventas que las demás:
-Z=tienda, AA/AB/AC=totales, AD/AE/AF y siguientes=ventas/dev/importe
-por día. El parser anterior omitía filas cuyo Z estaba vacío; ahora la
-carga falla explícitamente antes de publicar si hay movimientos sin tienda.
+Ambos esquemas mensuales son válidos:
+Z=tienda, AB=DEV mensual, AD/AE/AF=ventas/dev/importe;
+AA=tienda, AC=DEV mensual, AE/AF/AG=ventas/dev/importe.
+La validación lee la columna Tienda del encabezado de cada hoja.
 No rellena nombres, no cambia ventas ni fórmulas y no toca datos publicados.
 """
 from __future__ import annotations
@@ -24,22 +24,22 @@ def _positive_number(value):
         return False
 
 
-def _missing_store_with_movements(row):
+def _missing_store_with_movements(row, store_col=25):
     """Señala exclusivamente artículos con movimiento que carecen de tienda.
 
     No confunde encabezados, separadores vacíos o filas sin SKU con artículos.
-    Se comprueban totales AA:AC y todos los tríos diarios desde AD.
+    Se comprueban totales y tríos diarios sin confundir precios con tiendas.
     """
     if not isinstance(row, dict) or not str(row.get(1) or "").strip():
         return False
-    store = str(row.get(25) or "").strip().lower()
+    store = str(row.get(store_col) or "").strip().lower()
     if store not in ("", "nan", "none", "null", "0", "0.0", "n/a",
                      "sin tienda", "sin asignar", "no asignada"):
         return False
     return any(
         _positive_number(value)
         for col, value in row.items()
-        if isinstance(col, int) and col >= 26
+        if isinstance(col, int) and col >= store_col + 1
     )
 
 
@@ -51,12 +51,18 @@ def install(m):
     previous_stream = m._stream_monthly_recovery_fifo
 
     def verified_rows(archive, member, shared_value):
+        store_col=25
         for pos, row in enumerate(previous_rows(archive, member, shared_value), start=1):
-            # Fila 1 = fechas, fila 2 = rótulos; las filas 3+ son productos.
-            if pos >= 3 and _missing_store_with_movements(row):
+            # Detecta Z o AA según la cabecera concreta de esta hoja.
+            if str(row.get(26) or "").strip().lower() in ("tienda", "sucursal"):
+                store_col=26
+            elif str(row.get(25) or "").strip().lower() in ("tienda", "sucursal"):
+                store_col=25
+            if pos >= 3 and _missing_store_with_movements(row,store_col):
                 sku = str(row.get(1) or "")[:60]
+                col_name="AA" if store_col==26 else "Z"
                 raise MonthlyStoreMissingError(
-                    f"Tienda faltante (columna Z), fila {pos}, artículo {sku!r}. "
+                    f"Tienda faltante (columna {col_name}), fila {pos}, artículo {sku!r}. "
                     "Completa las tiendas como en las demás hojas de ventas "
                     "y vuelve a procesar el Excel."
                 )
@@ -70,7 +76,7 @@ def install(m):
         if len(result) < 4:
             return result
         errors = result[3] or []
-        broken = [str(e) for e in errors if "Tienda faltante (columna Z)" in str(e)]
+        broken = [str(e) for e in errors if "Tienda faltante (columna " in str(e)]
         if broken:
             raise ValueError(
                 "Carga detenida: existen ventas o devoluciones sin tienda. "
