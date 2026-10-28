@@ -104,15 +104,16 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
     for row in store_rows:
         matching = by_store.get(_key(row.get("store")))
         # No incluir devoluciones que no pertenecen al alcance del usuario.
-        old_dev = max(_number(row.get("dev_pzs")), 0.0)
         dev = max(_number((matching or {}).get("dev_pzs", row.get("dev_pzs"))), 0.0)
-        # El total previo incluye el pendiente anterior. Solo sumar el incremento DEV.
-        prior_total = row.get("total_pzs", row.get("ingresos"))
-        if prior_total is None:
-            prior_total = (old_dev + _number(row.get("pendiente_anterior")) +
-                           sum(max(_number(row.get(field)), 0.0)
-                               for field in ("muertos", "probador", "cajas")))
-        total = max(_number(prior_total) + dev - old_dev, 0.0)
+        # Los ingresos operativos provienen EXCLUSIVAMENTE de la recolección
+        # capturada para esta tienda y período. La DEV del Excel de ventas es
+        # un indicador comercial separado, NO un ingreso operativo adicional.
+        # Evitar sumar DEV al total y evitar inflar los KPI con actualizaciones
+        # reiteradas sobre objetos de respuesta almacenados en caché.
+        operational_input = row.get("recolectadas")
+        if operational_input is None:
+            operational_input = row.get("ingresos", row.get("total_pzs", 0))
+        total = max(_number(operational_input), 0.0)
         row["dev_pzs"] = dev
         acondicionado = max(_number(row.get("acondicionado")), 0.0)
         ubicado = max(_number(row.get("ubicado")), 0.0)
