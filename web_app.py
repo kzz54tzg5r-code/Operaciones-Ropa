@@ -734,6 +734,29 @@ def _get_upload_job(job_id: str) -> dict:
     if not row:
         raise HTTPException(404,"Carga no encontrada")
     result=dict(row)
+    # Si Render interrumpió el worker DESPUÉS del commit atómico, el historial
+    # publicado demuestra que sí terminó. Reconciliar sin volver a procesar
+    # 200 MB ni bloquear al usuario con un job huérfano.
+    if result["module"]=="operations" and result["status"]!="complete":
+        with db() as con:
+            published=con.execute(
+                "SELECT filename,valid_records,rejected_records,period_detected "
+                "FROM upload_history WHERE module='Cambios y Muertos' "
+                "AND published=1 AND job_id=? ORDER BY id DESC LIMIT 1",
+                (job_id,)
+            ).fetchone()
+        if published:
+            recovered={
+                "ok":True,"message":"Archivo publicado y confirmado en historial",
+                "file":published["filename"],
+                "rows":int(published["valid_records"] or 0),
+                "rejected_records":int(published["rejected_records"] or 0),
+                "period_detected":published["period_detected"] or "",
+                "recovered":True,
+            }
+            _finish_upload_job(job_id,recovered)
+            result.update(status="complete",progress=100,message=recovered["message"],
+                          error="",result_json=json.dumps(recovered,ensure_ascii=False))
     try:result["result"]=json.loads(result.pop("result_json") or "{}")
     except Exception:result["result"]={};result.pop("result_json",None)
     return result
@@ -7005,6 +7028,29 @@ async def start_operations_job(request: Request,file:UploadFile=File(...)):
             except OSError:
                 pass
         _OPERATIONS_UPLOAD_INTAKE_LOCK.release()
+
+@app.get("/api/upload/jobs/operations/latest")
+def latest_operations_upload(request: Request, filename: str=""):
+    """Recupera la carga ya recibida cuando la respuesta POST se perdió (520).
+
+    Sólo el propietario autenticado; no permite exponer trabajos de otro usuario
+    ni tomar una carga antigua como si fuera recién enviada.
+    """
+    user=require_user(request,("superadmin","admin"))
+    cutoff=(datetime.now()-timedelta(minutes=15)).isoformat(timespec="seconds")
+    with db() as con:
+        sql=("SELECT id FROM upload_jobs WHERE module='operations' AND "
+             "created_by=? AND created_at>=?")
+        params=[user["username"],cutoff]
+        if filename:
+            sql+=" AND filename=?"
+            params.append(filename)
+        sql+=" ORDER BY created_at DESC LIMIT 1"
+        row=con.execute(sql,params).fetchone()
+    if not row:
+        raise HTTPException(404,"No existe una carga reciente con ese archivo")
+    return _get_upload_job(str(row["id"]))
+
 
 @app.get("/api/upload/jobs/{job_id}")
 def upload_job_status(job_id: str,request: Request):
