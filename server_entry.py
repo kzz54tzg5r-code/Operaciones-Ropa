@@ -485,16 +485,7 @@ _install_v366_miles_display_patch(web_app)
 from v372_dev_total_pending_patch import install as _install_v372_dev_total_pending_patch
 _install_v372_dev_total_pending_patch(web_app)
 
-# V386: diagnóstico temporal de solo lectura para DEV del 25 de octubre.
-from v386_dev_presence_probe import install as _install_v386_dev_presence_probe
-_install_v386_dev_presence_probe(web_app)
-
-# V387: reparación automática única, validada y respaldada para DEV 25/oct.
-from v387_one_time_dev_repair import install as _install_v387_one_time_dev_repair
-_install_v387_one_time_dev_repair(web_app)
-
-# V388: auditoría de solo lectura del XLSX real y los lotes FIFO.
-from v388_october25_source_audit import install as _install_v388_october25_source_audit
-_install_v388_october25_source_audit(web_app)
+# Diagnósticos V386-V388 y reparación automática V387 desactivados tras
+# publicar octubre: conservar sólo el lector V389 y reparación manual V368.
 
 app = web_app.app
