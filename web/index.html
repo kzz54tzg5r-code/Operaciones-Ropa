@@ -7,15 +7,15 @@
 <meta name="apple-mobile-web-app-title" content="Operaciones Ropa">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
-<link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/static/app-icon-192.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/static/app-icon-512.svg">
-<link rel="stylesheet" href="/static/pwa_brand.css?v=380">
+<link rel="manifest" href="/manifest.webmanifest?v=395">
+<link rel="icon" href="/static/app-icon-192.svg?v=395" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/app-icon-512.svg?v=395">
+<link rel="stylesheet" href="/static/pwa_brand.css?v=395">
 <meta name="application-name" content="Operaciones Ropa">
 <meta name="msapplication-TileColor" content="#082F5C">
 <script>window.OR363_NAV_SIMPLE=true;</script>
 <script defer src="/static/ios_native.js"></script>
-<script defer src="/static/pwa_brand.js?v=380"></script>
+<script defer src="/static/pwa_brand.js?v=395"></script>
 <script defer src="/static/design_system.js?v=20261001-v223-navfix"></script>
 <script defer src="/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8"></script>
 <script defer src="/static/pwa_install.js?v=safe-update-v3"></script>
@@ -323,7 +323,7 @@ body{max-width:100%;overflow-x:hidden}
   <div class="login-v15-bg"></div>
   <div class="login-v15-shade"></div>
   <div class="login-v15-card">
-    <img src="/static/price_shoes_logo.png?v=380" class="login-logo-v15" alt="Price Shoes">
+    <img src="/static/price_shoes_logo.png?v=395" class="login-logo-v15" alt="Price Shoes" width="211" height="121" fetchpriority="high">
     <div class="login-brand-v15">Portal Web</div>
     <div class="login-sub-v15">Operaciones Ropa</div>
 
@@ -373,13 +373,13 @@ body{max-width:100%;overflow-x:hidden}
   </div>
 </div>
 
-<div id="appView" class="hidden"><div class="shell"><aside class="side" id="sidebar"><button id="sidebarToggle" class="sidebar-toggle" title="Contraer / expandir menú">☰</button><div class="sidebrand"><img src="/static/price_shoes_logo.png?v=380" alt="Price Shoes" style="width:88px;height:auto;object-fit:contain"><div class="sidebrand-text"><b>Operaciones Ropa</b><small>Producto Ropa</small></div></div><div class="group">Menú principal</div>
+<div id="appView" class="hidden"><div class="shell"><aside class="side" id="sidebar"><button id="sidebarToggle" class="sidebar-toggle" title="Contraer / expandir menú">☰</button><div class="sidebrand"><img src="/static/price_shoes_logo.png?v=395" alt="Price Shoes" width="211" height="121" style="width:88px;height:auto;object-fit:contain"><div class="sidebrand-text"><b>Operaciones Ropa</b><small>Producto Ropa</small></div></div><div class="group">Menú principal</div>
 <button class="nav active" data-main="operativo">Cambios y Muertos<small>Recuperación, recolección y conversión</small></button>
 <button class="nav" data-main="analysis">Análisis Comercial<small>Venta, sugerido y utilidad</small></button>
 <button class="nav adminOnly" data-main="users">Usuarios<small>Administración de accesos</small></button>
 <button class="nav adminOnly" data-main="share">Compartir sistema<small>Liga para móvil y usuarios</small></button>
 <div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><div id="viewRoleBox" class="hidden" style="margin-top:6px"><small>Ver sistema como</small><select id="viewRoleSelect" style="width:100%;font-size:9px;padding:5px"><option value="superadmin">Super Administrador</option><option value="admin">Administrador</option><option value="director">Director</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Demo · Colaborador de Lencería</option><option value="colaborador_operativo">Demo · Colaborador Operativo · Productividad</option></select><div id="viewRoleStoreWrap" class="hidden" style="margin-top:5px"><small>Tienda demo</small><select id="viewRoleStore" style="width:100%;font-size:9px;padding:5px"></select></div></div><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
-<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div><div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_logo.png?v=380" alt="Price Shoes"></div></div><div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
+<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div><div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_logo.png?v=395" alt="Price Shoes" width="211" height="121"></div></div><div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
   <button class="switch active" data-opview="Centro Ejecutivo" data-tab-key="operations.center">Centro Operativo</button>
   <button class="switch hidden" hidden aria-hidden="true" data-opview="Operación Diaria" data-tab-key="operations.day">Día</button>
   <button class="switch hidden" hidden aria-hidden="true" data-opview="Reporte Semanal" data-tab-key="operations.week">Semanal</button>
@@ -794,7 +794,15 @@ async function start(){
   $('#appView').classList.add('hidden');
   $('#serverMsg').textContent='Validando servidor…';
   try{
-    const b=await api('/api/bootstrap');
+    let b;
+    for(let attempt=0;attempt<3;attempt++){
+      try{b=await api('/api/bootstrap',{timeoutMs:20000});break}
+      catch(error){
+        if(attempt===2 || /401|403|sin permiso|no autorizado/i.test(String(error.message||''))) throw error;
+        $('#serverMsg').textContent='Reconectando con el servidor…';
+        await new Promise(resolve=>setTimeout(resolve,700*(attempt+1)));
+      }
+    }
     TAB_VISIBILITY=b.tabs||{};
     $('#serverMsg').textContent='Sistema conectado';
     if(b.needs_owner){
