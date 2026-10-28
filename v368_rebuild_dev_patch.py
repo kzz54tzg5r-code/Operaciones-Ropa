@@ -199,5 +199,25 @@ def install(m):
         m.require_user(request, ("superadmin", "admin"))
         return read_status()
 
+    def start_internal_rebuild(mode="day", period_value="2026-10-25"):
+        # Misma reparación protegida que el botón administrativo: guardia de
+        # ejecución, validación, respaldo y sustitución atómica. Sólo se invoca
+        # desde el instalador V387 cuando el archivo persistente contiene el
+        # corte y la base normalizada carece de DEV del día.
+        if not raw_excel.is_file():
+            return {"status":"skipped","reason":"original_not_present"}
+        with _GUARD:
+            prior = _RUNNING["thread"]
+            if prior is not None and prior.is_alive():
+                return {"status":"busy","reason":"rebuild_running"}
+            job_id = uuid.uuid4().hex[:16]
+            write_status(job_id,"queued","Reparación DEV respaldada preparada")
+            worker = Thread(target=work, args=(job_id,mode,period_value),
+                            daemon=True, name="rebuild-dev-v387-once")
+            _RUNNING.update(job=job_id,thread=worker)
+            worker.start()
+            return {"status":"queued","job_id":job_id}
+
+    m._V368_start_internal_rebuild = start_internal_rebuild
     m._V368_REBUILD_DEV_INSTALLED = True
     print("[V368] Reparación segura DEV con validación antes de publicar.", flush=True)
