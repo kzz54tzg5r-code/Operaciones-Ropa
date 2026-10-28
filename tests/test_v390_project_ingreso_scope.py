@@ -1,7 +1,7 @@
-"""V390: Ingresado sólo desde operación de tiendas Proyecto.
+"""V391: Ingresado = DEV + motivos de recoleccion + Pend. Ant. por Proyecto.
 
-El comparativo comercial de recuperación conserva el alcance de todas las
-tiendas; ni sus DEV ni sus cantidades de venta se suman a Ingresado.
+El comparativo de recuperación conserva todas las tiendas, pero Total pzs
+se consolida sólo con las tiendas marcadas Proyecto, sin doble conteo.
 """
 import asyncio
 from types import SimpleNamespace
@@ -13,12 +13,14 @@ from v153_project_scope_backend_authoritative_patch import install
 from v375_center_card_metrics import center_card_metrics
 
 
-def test_commercial_dev_never_increases_ingreso_operativo_and_is_idempotent():
+def test_period_dev_is_added_once_to_project_operational_components():
     out={
         "stores":[
             {"store":"Puebla Sur","is_project":True,"recolectadas":100,"ingresos":100,
+             "muertos":80,"probador":20,"cajas":0,"pendiente_anterior":20,
              "total_pzs":100,"dev_pzs":0,"acondicionado":125,"ubicado":100},
             {"store":"Vallejo","is_project":True,"recolectadas":50,"ingresos":50,
+             "muertos":0,"probador":0,"cajas":50,"pendiente_anterior":10,
              "total_pzs":50,"dev_pzs":0,"acondicionado":35,"ubicado":70},
         ],
         "recovery_by_store":[{"store":"Puebla Sur","dev_pzs":0},
@@ -33,16 +35,16 @@ def test_commercial_dev_never_increases_ingreso_operativo_and_is_idempotent():
     ]
     for _ in range(3):
         out=reconcile_result(out,fifo,"day","2026-10-25")
-        assert out["metrics"]["ingresos"] == 150
-        assert out["metrics"]["total_pzs"] == 150
+        assert out["metrics"]["ingresos"] == 265
+        assert out["metrics"]["total_pzs"] == 265
         assert out["metrics"]["dev_pzs"] == 85
-        assert [r["total_pzs"] for r in out["stores"]] == [100,50]
+        assert [r["total_pzs"] for r in out["stores"]] == [180,85]
     card=center_card_metrics(out)
-    assert card["ingresos"] == 150
-    assert card["acondicionado"] == 135  # min(125,100) + min(35,50)
-    assert card["ubicado"] == 150         # min(100,100) + min(70,50)
-    assert card["pct_acondicionado"] == 90.0
-    assert card["pct_ubicado"] == 100.0
+    assert card["ingresos"] == 265
+    assert card["acondicionado"] == 160  # min(125,180) + min(35,85)
+    assert card["ubicado"] == 170         # min(100,180) + min(70,85)
+    assert card["pct_acondicionado"] == 160 / 265 * 100
+    assert card["pct_ubicado"] == 170 / 265 * 100
     assert sum(x["dev_pzs"] for x in out["recovery_by_store"]) == 85
 
 
