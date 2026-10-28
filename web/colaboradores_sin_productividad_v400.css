@@ -1,0 +1,95 @@
+/* V400 · mismo patrón desplegable del reporte completo, color Price Shoes. */
+#or400WithoutProductivity{
+  margin:10px 0 14px!important;
+  width:100%;min-width:0;
+  background:#fff;
+  border:1px solid #d6e4f4;
+  border-radius:10px;
+  overflow:hidden;
+}
+#or400WithoutProductivity>summary{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px;gap:12px;cursor:pointer;
+  background:#edf5ff;color:#173b73;
+  font-size:13px;font-weight:850;
+  list-style:revert;
+}
+#or400WithoutProductivity .or400-title{font-weight:850;min-width:0;}
+#or400WithoutProductivity .or400-counters{
+  margin-left:auto;display:flex;align-items:center;gap:8px;
+  flex-wrap:wrap;justify-content:flex-end;flex-shrink:0;
+}
+#or400WithoutProductivity .or400-count,
+#or400WithoutProductivity .or400-stores{
+  padding:5px 9px;border-radius:7px;
+  font-size:11px;font-weight:850;background:#ffe7f1;color:#a90059;
+  white-space:nowrap;
+}
+#or400WithoutProductivity .or400-stores{background:#e1edff;color:#174d91;}
+#or400WithoutProductivity .or400-panel{padding:13px;}
+#or400WithoutProductivity .or400-head{
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:12px;
+  padding:1px 1px 11px;
+}
+#or400WithoutProductivity .or400-head h3{
+  color:#173b73;font-size:17px;line-height:1.24;
+  margin:0 0 4px;font-weight:900;
+}
+#or400WithoutProductivity .or400-head p{
+  margin:0;color:#667a95;font-size:11px;line-height:1.5;
+}
+#or400WithoutProductivity .or400-export{
+  background:#fff;border:1px solid #98b6e4;
+  color:#1354a0;padding:9px 13px;border-radius:8px;
+  font-size:11px;font-weight:850;cursor:pointer;
+}
+#or400WithoutProductivity .or400-export:disabled{opacity:.5;cursor:wait}
+#or400WithoutProductivity .or400-table-scroll{
+  max-width:100%;overflow:auto;
+  border:1px solid #dce6f2;border-radius:8px;
+  max-height:580px;
+}
+#or400WithoutProductivity .or400-table{
+  width:100%;min-width:780px;
+  border-collapse:separate;border-spacing:0;
+  font-size:11px;line-height:1.35;
+}
+#or400WithoutProductivity .or400-table th{
+  position:sticky;top:0;z-index:1;
+  background:#1d4978;color:white;
+  font-size:10px;font-weight:850;
+  padding:9px 10px;white-space:normal;
+}
+#or400WithoutProductivity .or400-table td{
+  padding:9px 10px;border-bottom:1px solid #e6ecf4;
+  color:#214978;text-align:center;
+}
+#or400WithoutProductivity .or400-table td:nth-child(2),
+#or400WithoutProductivity .or400-table td:nth-child(3),
+#or400WithoutProductivity .or400-table td:nth-child(4){
+  text-align:left;
+}
+#or400WithoutProductivity .or400-table tbody tr:nth-child(even){background:#edf3fa;}
+#or400WithoutProductivity .or400-table .or400-person{font-weight:850;color:#133d74}
+#or400WithoutProductivity .or400-status{
+  color:#ac2354!important;font-weight:800;white-space:nowrap;
+}
+#or400WithoutProductivity .or400-dot{
+  display:inline-block;width:7px;height:7px;margin-right:6px;
+  border-radius:50%;background:#e11e5d;vertical-align:middle;
+}
+#or400WithoutProductivity .or400-note{
+  margin:0 0 10px;font-size:10px;color:#71829b;
+}
+#or400WithoutProductivity .or400-empty{
+  color:#657a92;padding:18px 12px;
+  background:#f7faff;border-radius:7px;
+  font-size:11px;
+}
+@media(max-width:660px){
+  #or400WithoutProductivity>summary{align-items:flex-start;flex-wrap:wrap;padding:10px 11px;font-size:12px}
+  #or400WithoutProductivity .or400-counters{width:100%;margin-left:0;justify-content:flex-start}
+  #or400WithoutProductivity .or400-head h3{font-size:14px}
+  #or400WithoutProductivity .or400-panel{padding:9px}
+}
