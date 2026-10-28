@@ -93,3 +93,52 @@ def test_card_does_not_exceed_100_even_if_table_does():
     assert cards["ubicado"] == 100
     assert cards["pct_acondicionado"] == 50
     assert cards["pct_ubicado"] == 50
+
+
+
+def test_monday_resets_previous_sunday_balance_without_losing_new_activity():
+    report = _daily_detail()
+    report = reconcile_result(report, (), "day", "2026-10-26")  # lunes ISO W44
+    assert report["metrics"]["pendiente_anterior"] == 0
+    assert report["metrics"]["total_pzs"] == 2739  # DEV + Muertos + Probador + Cajas
+    assert all(r["pendiente_anterior"] == 0 for r in report["stores"])
+    assert report["metrics"]["pendiente_acondicionar"] == 2739 - 1056
+    assert report["metrics"]["pendiente_ubicar"] == 2739 - 2266
+
+    # Reconciliar sobre la misma respuesta cacheada NO reintroduce el domingo.
+    again = reconcile_result(report, (), "day", "2026-10-26")
+    assert again["metrics"]["total_pzs"] == 2739
+    assert again["metrics"]["pendiente_anterior"] == 0
+
+
+def test_tuesday_to_sunday_retains_same_week_opening_pending():
+    tuesday = reconcile_result(_daily_detail(), (), "day", "2026-10-27")
+    sunday = reconcile_result(_daily_detail(), (), "day", "2026-10-25")
+    assert tuesday["metrics"]["pendiente_anterior"] == 14563
+    assert tuesday["metrics"]["total_pzs"] == 17302
+    assert sunday["metrics"]["pendiente_anterior"] == 14563
+    assert sunday["metrics"]["total_pzs"] == 17302
+
+
+def test_iso_week_and_month_do_not_readd_daily_carryover():
+    # Semana del 26/oct al 1/nov: cierra domingo aunque cruce de mes.
+    week = reconcile_result(_daily_detail(), (), "week", "2026-W44")
+    month = reconcile_result(_daily_detail(), (), "month", "2026-10")
+    year = reconcile_result(_daily_detail(), (), "year", "2026")
+    for report in (week, month, year):
+        assert report["metrics"]["pendiente_anterior"] == 0
+        assert report["metrics"]["total_pzs"] == 2739
+        assert all(r["pendiente_anterior"] == 0 for r in report["stores"])
+    assert reconcile_result(_daily_detail(), (), "all", "", "2026-10-26", "2026-10-26")["metrics"]["pendiente_anterior"] == 0
+    assert reconcile_result(_daily_detail(), (), "all", "", "2026-10-27", "2026-10-27")["metrics"]["pendiente_anterior"] == 14563
+    assert reconcile_result(_daily_detail(), (), "all", "", "2026-10-26", "2026-11-01")["metrics"]["pendiente_anterior"] == 0
+
+
+def test_missing_component_breakdown_retains_legacy_fallback():
+    report = {"stores": [{"store": "Una tienda", "recolectadas": 49,
+                          "ingresos": 49, "total_pzs": 49}],
+              "recovery_by_store": [{"store": "Una tienda", "dev_pzs": 0}],
+              "metrics": {}}
+    monday = reconcile_result(report, (), "day", "2026-10-26")
+    assert monday["metrics"]["total_pzs"] == 49
+    assert "pendiente_anterior" not in monday["stores"][0]
