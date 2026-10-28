@@ -485,4 +485,8 @@ _install_v366_miles_display_patch(web_app)
 from v372_dev_total_pending_patch import install as _install_v372_dev_total_pending_patch
 _install_v372_dev_total_pending_patch(web_app)
 
+# V386: diagnóstico temporal de solo lectura para DEV del 25 de octubre.
+from v386_dev_presence_probe import install as _install_v386_dev_presence_probe
+_install_v386_dev_presence_probe(web_app)
+
 app = web_app.app
