@@ -73,23 +73,46 @@ def install(module) -> None:
                     errors.append(f"{sheet}: hoja no encontrada durante lectura optimizada")
                     continue
                 try:
+                    # V389: NO usar la antigua matriz Z/AD fija. El archivo
+                    # reciente usa AA/AE; leer AD como ventas desplaza todos
+                    # los tríos y convierte las ventas del día siguiente en DEV.
+                    from itertools import chain
+                    from daily_sales_headers import detect_monthly_layout, locate_daily_headers
                     row_iter = module._xlsx_monthly_rows(archive, member, shared_value)
-                    first = dict(next(row_iter, {}) or {})
-                    next(row_iter, None)
-                    date_columns = []
-                    max_column = max(first.keys(), default=28)
-                    for index in range(29, max_column + 1, 3):
-                        date_iso, week_iso, year_iso, month_key = module._safe_date_iso(first.get(index))
-                        if date_iso and week_iso and year_iso:
-                            date_columns.append((index, date_iso, int(week_iso), int(year_iso), month_key))
-                            weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
-                            if month_key:
-                                months.add(month_key)
-                    if not date_columns:
-                        errors.append(f"{sheet}: no se detectaron fechas diarias desde la columna 30")
+                    header_rows = [dict(next(row_iter, {}) or {}) for _ in range(18)]
+                    layout = detect_monthly_layout(header_rows)
+                    store_col = layout["store_col"]
+                    monthly_dev_col = layout["monthly_dev_col"]
+                    date_columns, header_warnings, last_header_idx = locate_daily_headers(
+                        header_rows, first_daily_index=layout["first_daily_col"]
+                    )
+                    stream_book.setdefault("recovery_header_audit", {})[sheet] = {
+                        "daily_dates": len(date_columns),
+                        "first_date": min((entry[1] for entry in date_columns), default=""),
+                        "last_date": max((entry[1] for entry in date_columns), default=""),
+                        "warnings": list(header_warnings),
+                        "store_col": store_col,
+                        "monthly_dev_col": monthly_dev_col,
+                        "first_daily_col": layout["first_daily_col"],
+                        "date_header_row": last_header_idx,
+                        "recognition_mode": "verified_store_and_daily_triplets",
+                    }
+                    if header_warnings or not date_columns:
+                        errors.append(
+                            f"{sheet}: encabezados diarios no verificables: "
+                            + "; ".join(header_warnings[:3])
+                        )
                         continue
+                    row_iter = chain(header_rows[last_header_idx + 1:], row_iter)
+                    for _index, _date, week_iso, year_iso, month_key in date_columns:
+                        weeks.add(f"{int(year_iso)}-W{int(week_iso):02d}")
+                        if month_key:
+                            months.add(month_key)
 
                     batch = []
+                    monthly_dev_total = 0.0
+                    daily_dev_total = 0.0
+                    matched_items = 0
 
                     def cell(values, index, default=None):
                         return values.get(index, default)
@@ -103,15 +126,18 @@ def install(module) -> None:
 
                     for values in row_iter:
                         values = dict(values or {})
-                        store = module._normalize_store_value(cell(values, 25, ""))
+                        store = module._normalize_store_value(cell(values, store_col, ""))
                         art = module._clean_occurrence(cell(values, 1, ""))
                         if not store or not art:
                             continue
+                        matched_items += 1
+                        monthly_dev_total += max(number(cell(values, monthly_dev_col, 0)), 0.0)
                         color = module._clean_text(cell(values, 7, ""))
                         price = max(number(cell(values, 24, 0)), 0.0)
                         for index, date_iso, week_iso, year_iso, _month in date_columns:
                             sales = max(number(cell(values, index, 0)), 0.0)
                             dev = max(number(cell(values, index + 1, 0)), 0.0)
+                            daily_dev_total += dev
                             sales_value = max(number(cell(values, index + 2, 0)), 0.0)
                             if sales <= 0 and dev <= 0 and sales_value <= 0:
                                 continue
@@ -122,10 +148,28 @@ def install(module) -> None:
                                 batch.clear()
                     if batch:
                         con.executemany("INSERT INTO daily VALUES(?,?,?,?,?,?,?,?,?,?)", batch)
+                    audit = stream_book["recovery_header_audit"][sheet]
+                    audit.update(total_monthly_dev=monthly_dev_total,
+                                 total_daily_dev=daily_dev_total,
+                                 matched_items=matched_items,
+                                 difference=round(daily_dev_total-monthly_dev_total, 4))
+                    if matched_items == 0 or (
+                        monthly_dev_total > 0 and
+                        abs(daily_dev_total-monthly_dev_total) > max(1.0, monthly_dev_total*0.01)
+                    ):
+                        raise ValueError(
+                            f"Conciliación mensual inválida: DEV total={monthly_dev_total:.0f}, "
+                            f"DEV diarios={daily_dev_total:.0f}, artículos={matched_items}"
+                        )
+                    print(f"[V389-MONTHLY] {sheet}: fechas={len(date_columns)} "
+                          f"última={audit['last_date']} DEV={daily_dev_total:.0f} "
+                          f"tienda_col={store_col+1} primer_día_col={layout['first_daily_col']+1}",
+                          flush=True)
                     con.commit()
                 except Exception as exc:
                     errors.append(f"{sheet}: {type(exc).__name__}: {exc}")
-
+                    # La carga completa será rechazada al conservarse el error
+                    # de esta hoja; no publicar DEV parciales.
             con.execute("CREATE INDEX IF NOT EXISTS idx_daily_fifo ON daily(store,year_iso,week_iso,id_art,color,date)")
             con.commit()
 
