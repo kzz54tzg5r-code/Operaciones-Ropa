@@ -102,7 +102,13 @@ def install(m):
             }
             # External parser explicitly frees the old large in-memory cache.
             del source, previous_fifo
-            updated = m._parse_operations_external(raw_excel, job_id)
+            # V390: el fallo comprobado está exclusivamente en la hoja Octubre.
+            # Releer sólo ese mes evita reprocesar 7 meses y no altera productividad.
+            if mode == "day" and str(period_value).startswith("2026-10-"):
+                from v390_rebuild_october_fifo import rebuild_month
+                updated = rebuild_month(m, raw_excel, period_value)
+            else:
+                updated = m._parse_operations_external(raw_excel, job_id)
             after_raw = (raw_excel.stat().st_size, raw_excel.stat().st_mtime_ns)
             if before_raw != after_raw or m._ops_source_stamp() != before_ops_stamp:
                 raise RuntimeError("Cambió el archivo publicado durante la revisión. Reintenta con el corte vigente.")
