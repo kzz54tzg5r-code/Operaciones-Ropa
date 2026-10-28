@@ -3046,15 +3046,20 @@ async function safeRefreshDash(){
   catch(e){console.warn('Carga terminada; refresco de dashboard no disponible:',e);return false}
 }
 async function postFile(url,file,extra={}){let fd=new FormData();fd.append('file',file);Object.entries(extra).forEach(([k,v])=>fd.append(k,v));return await api(url,{method:'POST',body:fd,timeoutMs:900000})}
-// Un despliegue de Render puede devolver 502/503 mientras el Excel ya está
-// recibido y su ID sigue en SQLite. No interpretar ese corte como carga fallida.
+// V401: HTTP 520-530 son fallos de conexión de la capa intermedia, no fallos
+// definitivos del Excel. El identificador persiste en SQLite / localStorage.
+function transientUploadError(error){
+  const status=Number(error?.status)||0;
+  return !status || [408,425,429,500,502,503,504,520,521,522,523,524,525,526,527,529,530].includes(status);
+}
 async function waitForUploadJob(jobId,onProgress=()=>{}){
-  let offlineSince=0, lastProgress=10;
+  let offlineSince=0,lastProgress=10,consecutiveErrors=0;
   const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   for(;;){
     try{
-      const job=await api('/api/upload/jobs/'+encodeURIComponent(jobId),{timeoutMs:45000});
-      offlineSince=0;
+      const job=await api('/api/upload/jobs/'+encodeURIComponent(jobId),{timeoutMs:20000});
+      if(!job?.status)throw new Error('El servidor no devolvió el estado de la carga.');
+      offlineSince=0;consecutiveErrors=0;
       lastProgress=Number.isFinite(Number(job.progress))?Number(job.progress):lastProgress;
       onProgress(job);
       if(job.status==='complete')return job.result||{};
@@ -3064,23 +3069,23 @@ async function waitForUploadJob(jobId,onProgress=()=>{}){
       }
     }catch(error){
       if(error.uploadTerminal)throw error;
-      // Errores HTTP definitivos (sesión vencida, permisos, ID inexistente) no
-      // se deben esconder detrás de reintentos interminables.
-      if(error.status && ![408,429,500,502,503,504].includes(Number(error.status)))throw error;
+      if(!transientUploadError(error))throw error;
       if(!offlineSince)offlineSince=Date.now();
+      consecutiveErrors++;
       onProgress({
         status:'reconnecting',progress:lastProgress,
-        message:'Render está reconectando después de una actualización. El Excel recibido sigue en proceso; no lo subas otra vez.'
+        message:'Reconectando con Render (HTTP '+(error.status||'red')+'). Tu archivo sigue registrado. No vuelvas a cargarlo.'
       });
-      if(Date.now()-offlineSince>10*60*1000){
-        const pending=new Error('No fue posible consultar el estado durante 10 minutos. El trabajo permanece registrado: vuelve a abrir esta pestaña para recuperar su progreso, sin subir otro archivo.');
+      if(Date.now()-offlineSince>15*60*1000){
+        const pending=new Error('Render no respondió durante 15 minutos. Se conservó el identificador de carga; vuelve a abrir esta pestaña para consultar el resultado sin reenviar el Excel.');
         pending.uploadRecoverable=true;
         throw pending;
       }
-      await pause(5000);
+      await pause(Math.min(15000,3000+consecutiveErrors*2000));
       continue;
     }
-    await pause(3000);
+    // Evita saturar el servicio Starter cuando está analizando el Excel.
+    await pause(document.hidden?12000:5500);
   }
 }
 async function backgroundFileUpload(module,file,onProgress=()=>{}){
@@ -3099,7 +3104,28 @@ async function backgroundFileUpload(module,file,onProgress=()=>{}){
   }
   const fd=new FormData();fd.append('file',file,file.name);
   onProgress({status:'uploading',progress:5,message:`Subiendo ${file.name} al almacenamiento seguro…`});
-  const job=await api('/api/upload/jobs/'+module,{method:'POST',body:fd,timeoutMs:0});
+  let job;
+  try{
+    job=await api('/api/upload/jobs/'+module,{method:'POST',body:fd,timeoutMs:0});
+  }catch(error){
+    if(module!=='operations'||(!transientUploadError(error)&&Number(error.status)!==409))throw error;
+    // La pasarela puede devolver 520 DESPUÉS de que Render guardó el Excel.
+    // Consultar el job reciente del usuario antes de considerar un reenvío.
+    const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    onProgress({status:'reconnecting',progress:12,message:'Confirmando si Render recibió el Excel. No vuelvas a subirlo.'});
+    for(let attempt=0;attempt<5;attempt++){
+      await pause(1000+attempt*1200);
+      try{
+        job=await api('/api/upload/jobs/operations/latest?filename='+encodeURIComponent(file.name),
+                      {timeoutMs:15000});
+        if(job?.id)break;
+      }catch(lookupError){
+        if(Number(lookupError?.status)===404||transientUploadError(lookupError))continue;
+        throw lookupError;
+      }
+    }
+    if(!job?.id)throw error;
+  }
   if(!job?.id)throw new Error('Render no confirmó un identificador para la carga.');
   localStorage.setItem(storageKey,job.id);
   try{
@@ -3124,7 +3150,13 @@ async function resumePendingUploadJob(module,onProgress=()=>{},onComplete=async(
     localStorage.removeItem(storageKey);await onComplete(result);return true;
   }catch(error){
     if(error.uploadTerminal)localStorage.removeItem(storageKey);
-    onProgress({status:'error',progress:0,message:`No fue posible recuperar la carga: ${error.message}`});
+    onProgress({
+      status:error.uploadRecoverable?'reconnecting':'error',
+      progress:error.uploadRecoverable?15:0,
+      message:error.uploadRecoverable
+        ?'La carga sigue guardada y se recuperará al abrir nuevamente esta pestaña. No envíes otra copia.'
+        :`No fue posible recuperar la carga: ${error.message}`
+    });
     return false;
   }finally{ACTIVE_UPLOAD_WATCHES.delete(module)}
 }
