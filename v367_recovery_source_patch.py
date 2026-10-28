@@ -85,6 +85,20 @@ def install(m):
         fifo = m._get_recovery_fifo_rows(source)
         source_ready = bool(fifo)
         dev = sum(float(row.get("dev_pzs") or 0) for row in out.get("recovery_by_store") or [])
+        # Un período operativo puede existir sin que el Excel mensual publicado
+        # alcance esa fecha. No presentar tal desfase como "DEV reales = cero".
+        audit = source.get("recovery_header_audit") or {}
+        source_dates = [
+            str(v.get("last_date") or "")[:10]
+            for v in audit.values() if isinstance(v, dict) and v.get("last_date")
+        ] if isinstance(audit, dict) else []
+        latest_monthly_day = max(source_dates, default="")
+        requested_day = str(out.get("period_value") or "")
+        requested_type = str(out.get("period_type") or "").lower()
+        missing_day_coverage = (
+            requested_type == "day" and len(requested_day) == 10
+            and latest_monthly_day and requested_day > latest_monthly_day
+        )
         issue = any(
             "no se detectaron fechas diarias" in str(error).lower()
             or "hoja no encontrada" in str(error).lower()
@@ -101,16 +115,24 @@ def install(m):
             warning = ("La base publicada no contiene lotes diarios de devolución "
                        "para calcular Dev Pzs y recuperación. Verifica y reprocesa "
                        "el archivo vigente desde Carga de datos.")
+        elif missing_day_coverage:
+            warning = (
+                f"El Excel mensual publicado llega hasta {latest_monthly_day}; "
+                f"no contiene aún las DEV del día {requested_day}. "
+                "Publica el archivo actualizado que incluya ese día."
+            )
         elif dev == 0 and out.get("period_value"):
             warning = (
-                f"El periodo {out.get('period_value')} no registra DEV en los lotes publicados. "
-                "Si el Excel original contiene devoluciones en estas fechas, "
-                "reprocesa DEV para reconstruir el reporte."
+                f"Las DEV del periodo {out.get('period_value')} no figuran "
+                "en los lotes publicados. Si existen en el Excel original, "
+                "es necesario publicar la versión actualizada."
             )
         meta.update({
             "recognized_monthly_sheets": len(sheets),
             "source_ready": source_ready,
             "period_dev_pzs": dev,
+            "latest_monthly_day": latest_monthly_day,
+            "coverage_missing_for_day": bool(missing_day_coverage),
             "source_warning": warning,
         })
         out["recovery_source"] = meta
