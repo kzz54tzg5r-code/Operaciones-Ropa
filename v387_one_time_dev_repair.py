@@ -19,7 +19,7 @@ import time
 
 TARGET_DAY="2026-10-25"
 MARKER_NAME="v387_once_repair_20261025.json"
-REPAIR_REVISION="v389_corrected_monthly_header_columns"
+REPAIR_REVISION="v390_october_only_safe_fifo_rebuild"
 
 
 def _date_covered_in_original(m, raw):
