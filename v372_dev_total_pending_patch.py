@@ -207,6 +207,21 @@ def install(m):
         if no_dev and supported and selected:
             source = m.load_ops()
             fifo = m._get_recovery_fifo_rows(source) or ()
+            if kind == "day" and period == "2026-10-25":
+                # Diagnóstico de solo lectura (sin IDs de producto ni datos de usuarios).
+                matched_items=[r for r in fifo if _belongs(r,kind,period,start,end)]
+                allowed_keys={_key(r.get("store")) for r in reported if r.get("store")}
+                source_keys=sorted({_key(getattr(m,"_normalize_store_value",lambda x:x)(r.get("store"))) for r in matched_items})
+                print(
+                    "[V386-DIAG] day=2026-10-25"
+                    f" fifo_total={len(fifo)} matched_day={len(matched_items)}"
+                    f" day_dev={sum(_number(r.get('dev_pzs')) for r in matched_items):.0f}"
+                    f" matched_allowed_dev={sum(_number(r.get('dev_pzs')) for r in matched_items if _key(getattr(m,'_normalize_store_value',lambda x:x)(r.get('store'))) in allowed_keys):.0f}"
+                    f" report_stores={len(allowed_keys)} source_stores={len(source_keys)}"
+                    f" recognized_stores={', '.join(sorted(allowed_keys.intersection(source_keys)))}"
+                    f" sample_source_dates={','.join(sorted({str(r.get('date')) for r in fifo})[-3:])}",
+                    flush=True,
+                )
         return reconcile_result(
             result, fifo, kind, period, start, end,
             getattr(m, "_normalize_store_value", None)
