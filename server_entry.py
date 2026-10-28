@@ -489,4 +489,8 @@ _install_v372_dev_total_pending_patch(web_app)
 from v386_dev_presence_probe import install as _install_v386_dev_presence_probe
 _install_v386_dev_presence_probe(web_app)
 
+# V387: reparación automática única, validada y respaldada para DEV 25/oct.
+from v387_one_time_dev_repair import install as _install_v387_one_time_dev_repair
+_install_v387_one_time_dev_repair(web_app)
+
 app = web_app.app
