@@ -1,4 +1,4 @@
-"""V372: conciliación segura DEV FIFO ↔ reporte, y pendientes desde Total Pzs.
+"""V391: Total Pzs = DEV + Muertos + Probador + Cajas + Pend. Ant. (V372 FIFO).
 
 La lectura FIFO ya existe en el Excel publicado. Solo cuando el endpoint
 devuelve cero pese a tener lotes, vuelve a agregar los lotes precalculados
@@ -105,15 +105,21 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
         matching = by_store.get(_key(row.get("store")))
         # No incluir devoluciones que no pertenecen al alcance del usuario.
         dev = max(_number((matching or {}).get("dev_pzs", row.get("dev_pzs"))), 0.0)
-        # Los ingresos operativos provienen EXCLUSIVAMENTE de la recolección
-        # capturada para esta tienda y período. La DEV del Excel de ventas es
-        # un indicador comercial separado, NO un ingreso operativo adicional.
-        # Evitar sumar DEV al total y evitar inflar los KPI con actualizaciones
-        # reiteradas sobre objetos de respuesta almacenados en caché.
-        operational_input = row.get("recolectadas")
-        if operational_input is None:
-            operational_input = row.get("ingresos", row.get("total_pzs", 0))
-        total = max(_number(operational_input), 0.0)
+        # Total pzs (Detalle Operativo) = DEV del periodo + Muertos + Probador
+        # + Cajas + Pendiente anterior, por tienda y periodo ya filtrados.
+        # No sumar "recolectadas" otra vez: es el subtotal de los motivos.
+        # Nunca usar "total_pzs"/"ingresos" como insumo de esta suma:
+        # reconcile_result puede ejecutarse repetidamente sobre datos cacheados.
+        components = ("muertos", "probador", "cajas", "pendiente_anterior")
+        if any(key in row for key in components):
+            total = dev + sum(max(_number(row.get(key)), 0.0) for key in components)
+        else:
+            # Compatibilidad con cargas antiguas sin desglose de motivos.
+            # No inferir un desglose que la fuente no proporciona.
+            legacy = row.get("recolectadas")
+            if legacy is None:
+                legacy = row.get("ingresos", row.get("total_pzs", 0))
+            total = max(_number(legacy), 0.0)
         row["dev_pzs"] = dev
         acondicionado = max(_number(row.get("acondicionado")), 0.0)
         ubicado = max(_number(row.get("ubicado")), 0.0)
@@ -129,8 +135,9 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
     metrics = result.setdefault("metrics", {})
     def total(field):
         return sum(_number(r.get(field)) for r in store_rows)
-    for field in ("total_pzs", "dev_pzs", "ingresos", "pendiente_acondicionar",
-                  "pendiente_ubicar", "muertos", "cajas", "probador", "acondicionado", "ubicado"):
+    for field in ("total_pzs", "dev_pzs", "ingresos", "pendiente_anterior",
+                  "pendiente_acondicionar", "pendiente_ubicar", "muertos",
+                  "cajas", "probador", "acondicionado", "ubicado"):
         metrics[field] = total(field)
     metrics["cambios"] = metrics["dev_pzs"]
     base = metrics["total_pzs"]
