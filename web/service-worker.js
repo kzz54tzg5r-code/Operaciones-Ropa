@@ -1,14 +1,14 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v380';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v395';
 const STATIC_ASSETS = [
   '/static/offline.html',
-  '/static/price_shoes_logo.png',
-  '/static/app-icon-192.svg',
-  '/static/app-icon-512.svg',
-  '/static/app-icon-maskable.svg',
+  '/static/price_shoes_logo.png?v=395',
+  '/static/app-icon-192.svg?v=395',
+  '/static/app-icon-512.svg?v=395',
+  '/static/app-icon-maskable.svg?v=395',
   '/static/app-logo.svg',
   '/static/app-logo-white.svg',
-  '/static/pwa_brand.css',
-  '/static/pwa_brand.js',
+  '/static/pwa_brand.css?v=395',
+  '/static/pwa_brand.js?v=395',
   '/static/design_system.css',
   '/static/design_system.js',
   '/static/report_tab_mundial_v7.js',
@@ -33,7 +33,9 @@ const putInCache = async (request, response) => {
 };
 
 const cachedFallback = async (request, fallbackUrl = null) => {
-  const cached = await caches.match(request, { ignoreSearch: true });
+  // Un logo/versionado nuevo no debe recuperar una versión vieja por ignoreSearch.
+  const isBrand = /\\/(?:price_shoes_logo\\.png|app-icon-(?:192|512|maskable)\\.svg|pwa_brand\\.(?:css|js))$/.test(new URL(request.url).pathname);
+  const cached = await caches.match(request, { ignoreSearch: !isBrand });
   if (cached) return cached;
   if (fallbackUrl) {
     const fallback = await caches.match(fallbackUrl, { ignoreSearch: true });
