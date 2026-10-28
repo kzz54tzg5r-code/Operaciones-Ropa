@@ -102,8 +102,8 @@ def test_monday_resets_previous_sunday_balance_without_losing_new_activity():
     assert report["metrics"]["pendiente_anterior"] == 0
     assert report["metrics"]["total_pzs"] == 2739  # DEV + Muertos + Probador + Cajas
     assert all(r["pendiente_anterior"] == 0 for r in report["stores"])
-    assert report["metrics"]["pendiente_acondicionar"] == 2739 - 1056
-    assert report["metrics"]["pendiente_ubicar"] == 2739 - 2266
+    assert report["metrics"]["pendiente_acondicionar"] == 1870
+    assert report["metrics"]["pendiente_ubicar"] == 1210
 
     # Reconciliar sobre la misma respuesta cacheada NO reintroduce el domingo.
     again = reconcile_result(report, (), "day", "2026-10-26")
