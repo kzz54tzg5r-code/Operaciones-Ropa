@@ -39,11 +39,11 @@ def test_restores_correct_date_and_only_authorized_stores():
     assert m["pending_recovery_pieces"] == 3
     assert len(r["recovery_by_store"]) == 2
     assert [x["store"] for x in r["stores"]] == ["Puebla Sur", "Vallejo"]
-    assert m["total_pzs"] == 2308  # ingreso operativo sin sumar DEV comercial
-    assert m["pendiente_acondicionar"] == 1860
-    assert m["pendiente_ubicar"] == 1495
+    assert m["total_pzs"] == 2318  # DEV 10 + Muertos 145 + Probador 219 + Cajas 363 + Pend. Ant. 1581
+    assert m["pendiente_acondicionar"] == 1863
+    assert m["pendiente_ubicar"] == 1498
     assert r["recovery_source"]["fifo_restored_from_published_data"]
-    assert m["pct_ubicado"] == (1116 / 2308 * 100)
+    assert m["pct_ubicado"] == (1116 / 2318 * 100)
 
 
 def test_pendientes_use_total_not_acondicionado():
