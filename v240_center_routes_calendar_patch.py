@@ -700,7 +700,15 @@ body.v238-module-operativo #operPeriodMode{
   function centerHtml(data,mode,value){
     const mt=data?.center_card_metrics||data?.metrics||{},rec=data?.recovery_by_store||[],stores=data?.stores||[];
     let out='';
-    // La validación DEV continúa en la carga del Excel, sin controles extra en el reporte.
+    // No ocultar falta de cobertura bajo ceros: la fecha de ingreso
+    // operativo puede ser posterior al último día en el Excel de ventas.
+    // Sólo un aviso de texto, sin el antiguo panel de reprocesamiento.
+    const devWarning=String(data?.recovery_source?.source_warning||'').trim();
+    const noDev=!(rec||[]).some(r=>Number(r?.dev_pzs||0)>0);
+    if(noDev&&devWarning){
+      out+='<div class="v240-source-note" role="status" style="margin:0 0 9px;padding:8px 11px;border-radius:7px;background:#fff6e7;color:#764200;border:1px solid #efd8a9;font-size:12px;line-height:1.4">'+
+          esc(devWarning)+'</div>';
+    }
     if(typeof monthlyCrossTable==='function')out+=monthlyCrossTable(mt,mode==='day');
     if(typeof recoveryTable==='function'){
       out+='<div class="title">Recuperación por tienda</div>'+recoveryTable(rec);
