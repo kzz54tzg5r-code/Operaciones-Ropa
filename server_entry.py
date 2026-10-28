@@ -485,6 +485,11 @@ _install_v366_miles_display_patch(web_app)
 from v372_dev_total_pending_patch import install as _install_v372_dev_total_pending_patch
 _install_v372_dev_total_pending_patch(web_app)
 
+# V400: Padrón activo y PDF con página(s) finales de colaboradores sin captura.
+# Instalado después de todos los generadores PDF y filtros Proyecto.
+from v400_missing_productivity_center_pdf import install as _install_v400_missing_productivity
+_install_v400_missing_productivity(web_app)
+
 # Diagnósticos V386-V388 y reparación automática V387 desactivados tras
 # publicar octubre: conservar sólo el lector V389 y reparación manual V368.
 
