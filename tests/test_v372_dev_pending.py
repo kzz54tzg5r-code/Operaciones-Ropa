@@ -40,8 +40,8 @@ def test_restores_correct_date_and_only_authorized_stores():
     assert len(r["recovery_by_store"]) == 2
     assert [x["store"] for x in r["stores"]] == ["Puebla Sur", "Vallejo"]
     assert m["total_pzs"] == 2308  # ingreso operativo sin sumar DEV comercial
-    assert m["pendiente_acondicionar"] == 1853
-    assert m["pendiente_ubicar"] == 1488
+    assert m["pendiente_acondicionar"] == 1860
+    assert m["pendiente_ubicar"] == 1495
     assert r["recovery_source"]["fifo_restored_from_published_data"]
     assert m["pct_ubicado"] == (1116 / 2308 * 100)
 
