@@ -139,10 +139,11 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
         # reconcile_result puede ejecutarse repetidamente sobre datos cacheados.
         # El lunes comienza semana nueva: no arrastrar el saldo del domingo.
         # Semana/Mes/Año suman entradas del periodo sin repetir saldos diarios.
-        row["pendiente_anterior"] = _pending_opening_for_period(
-            row, kind, period, start, end
-        )
         components = ("muertos", "probador", "cajas", "pendiente_anterior")
+        if any(key in row for key in components):
+            row["pendiente_anterior"] = _pending_opening_for_period(
+                row, kind, period, start, end
+            )
         if any(key in row for key in components):
             total = dev + sum(max(_number(row.get(key)), 0.0) for key in components)
         else:
