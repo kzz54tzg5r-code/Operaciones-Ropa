@@ -1,4 +1,4 @@
-"""V391: Total Pzs = DEV + Muertos + Probador + Cajas + Pend. Ant. (V372 FIFO).
+"""V392: Semanas ISO reinician Pend. Ant. en lunes, sin doble conteo.
 
 La lectura FIFO ya existe en el Excel publicado. Solo cuando el endpoint
 devuelve cero pese a tener lotes, vuelve a agregar los lotes precalculados
@@ -48,6 +48,33 @@ def _belongs(row, kind, period, start="", end=""):
         except (ValueError, TypeError):
             return False
     return False
+
+
+def _pending_opening_for_period(row, kind, period, start="", end=""):
+    """Saldo de apertura de una sola semana ISO (lunes-domingo).
+
+    Lunes = 0; martes a domingo conservan el pendiente anterior publicado.
+    Un reporte semanal/mensual/anual agrega movimientos y no puede sumar
+    el mismo saldo diario varias veces. El saldo del domingo queda visible
+    como cierre, pero NUNCA se traslada como apertura del siguiente lunes.
+    No edita archivos cargados ni saldos de otras pestañas.
+    """
+    opening = max(_number(row.get("pendiente_anterior")), 0.0)
+    selected = str(period or "")[:10] if kind == "day" else ""
+    # Compatibilidad con búsquedas por rango de fecha de un solo día.
+    if kind == "all" and start and start == end:
+        selected = str(start)[:10]
+    if selected:
+        try:
+            from datetime import date
+            return 0.0 if date.fromisoformat(selected).weekday() == 0 else opening
+        except (ValueError, TypeError):
+            return 0.0
+    # Semanas ISO y periodos de varios días consolidan cada entrada
+    # exactamente una vez; el arrastre no forma parte del volumen nuevo.
+    if kind in ("week", "month", "year", "all"):
+        return 0.0
+    return opening
 
 
 def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", canon=None):
@@ -110,6 +137,11 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
         # No sumar "recolectadas" otra vez: es el subtotal de los motivos.
         # Nunca usar "total_pzs"/"ingresos" como insumo de esta suma:
         # reconcile_result puede ejecutarse repetidamente sobre datos cacheados.
+        # El lunes comienza semana nueva: no arrastrar el saldo del domingo.
+        # Semana/Mes/Año suman entradas del periodo sin repetir saldos diarios.
+        row["pendiente_anterior"] = _pending_opening_for_period(
+            row, kind, period, start, end
+        )
         components = ("muertos", "probador", "cajas", "pendiente_anterior")
         if any(key in row for key in components):
             total = dev + sum(max(_number(row.get(key)), 0.0) for key in components)
