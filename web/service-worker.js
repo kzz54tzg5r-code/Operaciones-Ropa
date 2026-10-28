@@ -34,7 +34,9 @@ const putInCache = async (request, response) => {
 
 const cachedFallback = async (request, fallbackUrl = null) => {
   // Un logo/versionado nuevo no debe recuperar una versión vieja por ignoreSearch.
-  const isBrand = /\\/(?:price_shoes_logo\\.png|app-icon-(?:192|512|maskable)\\.svg|pwa_brand\\.(?:css|js))$/.test(new URL(request.url).pathname);
+  const brandPaths = ['/price_shoes_logo.png', '/app-icon-192.svg',
+    '/app-icon-512.svg', '/app-icon-maskable.svg', '/pwa_brand.css', '/pwa_brand.js'];
+  const isBrand = brandPaths.some(path => new URL(request.url).pathname.endsWith(path));
   const cached = await caches.match(request, { ignoreSearch: !isBrand });
   if (cached) return cached;
   if (fallbackUrl) {
