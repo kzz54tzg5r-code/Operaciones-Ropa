@@ -25,7 +25,7 @@ def test_brand_script_does_not_override_with_operaciones_ropa_icon():
     assert "img.src = brandLogo" in code
     assert 'src="${brandLogo}" alt="Price Shoes"' in code
     assert "app-logo.svg" not in code
-    assert "app-icon-192.svg" not in code
+    assert "const iconFallback = '/static/app-icon-192.svg?v=395'" in code
     result = subprocess.run(["node", "--check", "--input-type=commonjs"],
                             input=code, text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
