@@ -493,4 +493,8 @@ _install_v386_dev_presence_probe(web_app)
 from v387_one_time_dev_repair import install as _install_v387_one_time_dev_repair
 _install_v387_one_time_dev_repair(web_app)
 
+# V388: auditoría de solo lectura del XLSX real y los lotes FIFO.
+from v388_october25_source_audit import install as _install_v388_october25_source_audit
+_install_v388_october25_source_audit(web_app)
+
 app = web_app.app
