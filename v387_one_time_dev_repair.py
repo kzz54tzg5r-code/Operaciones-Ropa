@@ -19,6 +19,7 @@ import time
 
 TARGET_DAY="2026-10-25"
 MARKER_NAME="v387_once_repair_20261025.json"
+REPAIR_REVISION="v389_corrected_monthly_header_columns"
 
 
 def _date_covered_in_original(m, raw):
@@ -68,8 +69,10 @@ def install(m):
                 previous=json.loads(marker.read_text(encoding="utf-8"))
             except (FileNotFoundError,ValueError,TypeError):
                 previous={}
-            if previous.get("fingerprint")==fingerprint and previous.get("status")=="queued":
-                print("[V387] Esta huella de Excel ya tiene un intento de reparación; no repetir.",flush=True)
+            if (previous.get("fingerprint")==fingerprint
+                    and previous.get("status")=="queued"
+                    and previous.get("repair_revision")==REPAIR_REVISION):
+                print("[V387] El intento de esta versión de lectura ya se inició; no duplicar.",flush=True)
                 return
             source=m.load_ops()
             fifo=m._get_recovery_fifo_rows(source) or ()
@@ -91,6 +94,7 @@ def install(m):
                 return
             marker_data={
                 "fingerprint":fingerprint,"status":"queued",
+                "repair_revision":REPAIR_REVISION,
                 "target_day":TARGET_DAY,"job_id":request["job_id"],
                 "created_at":datetime.now(timezone.utc).isoformat(),
             }
