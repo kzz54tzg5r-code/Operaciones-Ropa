@@ -184,6 +184,13 @@ def install(m):
             all_data = {}
 
         out = dict(project_data)
+        # Aplicar el límite Proyecto también al origen de las tarjetas; nunca
+        # confiar sólo en el filtro del navegador ni en la cifra general.
+        # El detalle operativo y los KPIs comparten esta lista autorizada.
+        out["stores"] = [
+            dict(row) for row in (project_data.get("stores") or [])
+            if isinstance(row, dict) and row.get("store") in project_names
+        ]
         # ÚNICA excepción al alcance Proyecto: comparativo de recuperación.
         out["recovery_by_store"] = list(all_data.get("recovery_by_store") or [])
         # El estado de la fuente DEV debe corresponder a todas las tiendas,
