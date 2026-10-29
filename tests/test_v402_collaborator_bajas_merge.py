@@ -88,8 +88,7 @@ def test_can_select_inactive_and_audit_without_deleting_captures(app):
     assert data["count_active"]==2
     assert data["count_inactive"]==2
     result=build_missing(app,["Vallejo"],"day","2026-10-25")
-    assert result["count"]==1  # Ana L. con registro, Carlos y Ana López de baja
-    assert result["rows"][0]["name"]=="Ana L." if result["rows"] else True
+    assert result["count"]==0  # Ana L. capturó; Carlos y Ana López están de baja
     # El reporte sólo trae el padrón activo; no se borran piezas ni las capturas.
     assert app.ops==old_ops
     with app.db() as con:
