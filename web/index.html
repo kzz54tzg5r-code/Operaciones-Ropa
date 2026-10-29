@@ -2879,10 +2879,12 @@ async function renderGoalsConfig(){
       <div class="title">Tiendas y selección de proyecto</div><div class="subtitle">Activa = tienda disponible en el sistema. Proyecto = resalta la tienda en comparativos y la incluye en los detalles operativos del proyecto.</div>
       ${s.editable?'<div class="panel"><div class="filters-inline"><div class="field"><label>Nueva tienda</label><input id="newProjectStore" placeholder="Nombre de tienda"></div><button class="primary" id="addProjectStore">Agregar tienda</button><button class="primary" id="saveStoreSelection">Guardar selección</button></div><div class="msg" id="storeMsg"></div></div>':''}
       <div class="tablewrap"><table class="table"><thead><tr><th>Tienda</th><th>Activa</th><th>Proyecto</th><th>Actualizada</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>${storeRows}</tbody></table></div>
+      ${g.editable?'<div id="v402RosterManagement"></div>':''}
       <div class="title">Historial de metas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Meta</th><th>Anterior</th><th>Nueva</th></tr></thead><tbody>${goalHistory||'<tr><td colspan="5">Sin cambios</td></tr>'}</tbody></table></div>
       <div class="title">Historial de tiendas</div><div class="tablewrap"><table class="table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Nombre anterior</th><th>Nombre nuevo</th><th>Estatus anterior</th><th>Estatus nuevo</th><th>Proyecto anterior</th><th>Proyecto nuevo</th></tr></thead><tbody>${storeHistory||'<tr><td colspan="9">Sin cambios</td></tr>'}</tbody></table></div>`;
 
     if(g.editable){
+      window.V402_ROSTER?.mount();
       $('#saveGoals').onclick=async()=>{
         const values={};$$('.goalInput').forEach(i=>values[i.dataset.goal]=Number(i.value));
         try{const r=await api('/api/goals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({values})});$('#goalMsg').style.color='var(--green)';$('#goalMsg').textContent=`Guardado exitoso · ${r.changed?.length||0} cambios`;setTimeout(renderGoalsConfig,500)}
@@ -3607,4 +3609,6 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
 <script src="/static/recuperacion_visible_v373.js?v=373" defer></script>
 <link rel="stylesheet" href="/static/colaboradores_sin_productividad_v400.css?v=400">
 <script src="/static/colaboradores_sin_productividad_v400.js?v=400" defer></script>
+<link rel="stylesheet" href="/static/colaborador_bajas_unificacion_v402.css?v=402">
+<script src="/static/colaborador_bajas_unificacion_v402.js?v=402" defer></script>
 </body></html>
