@@ -75,7 +75,19 @@ def build_missing(m, allowed_stores, period_type, period_value):
     if not allowed:
         return empty
     roster = {}
+    aliases = {}
     with m.db() as con:
+        alias_table=con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='operation_collaborator_aliases'"
+        ).fetchone()
+        if alias_table:
+            q=",".join("?" for _ in allowed)
+            for a in con.execute(
+                f"SELECT store,alias_key,canonical_key FROM operation_collaborator_aliases "
+                f"WHERE store IN ({q})",tuple(sorted(allowed))
+            ).fetchall():
+                aliases[(a["store"],norm(a["alias_key"]))] = (
+                    a["store"],norm(a["canonical_key"]))
         exists = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='operation_collaborators'").fetchone()
         if not exists:
             return empty
@@ -97,6 +109,9 @@ def build_missing(m, allowed_stores, period_type, period_value):
     latest = {}
     def add(store, name, day):
         key = (str(store or ""), norm(name))
+        # Alias del padrón: la captura histórica mantiene su nombre original
+        # pero cuenta para la persona principal si fue unificado por admin.
+        key = aliases.get(key,key)
         if key not in roster:
             return
         ds = str(day or "")[:10]
