@@ -1,0 +1,63 @@
+/* V402 · Operaciones Ropa · Metas y tiendas: padrón compacto administrable */
+#v402RosterManagement{
+  background:#fff;border:1px solid #d5e2f4;border-radius:12px;
+  padding:14px;margin:13px 0;min-width:0;
+}
+#v402RosterManagement .v402-head{display:flex;align-items:center;
+  justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+#v402RosterManagement .v402-head .title{margin:0 0 3px!important;
+  font-weight:900;color:#123f76;font-size:17px}
+#v402RosterManagement .v402-head p{margin:0;line-height:1.4;
+  color:#61748b;font-size:11px;max-width:850px}
+#v402Total{background:#eef3ff;padding:8px 11px;color:#184777;
+  border-radius:9px;font-size:11px;font-weight:800}
+#v402RosterManagement .v402-filters{display:grid;
+  grid-template-columns:minmax(130px,1fr) minmax(120px,.8fr) minmax(200px,1.8fr) auto;
+  gap:9px;align-items:end}
+#v402RosterManagement label{font-weight:800;color:#184b83;font-size:11px;
+  display:flex;flex-direction:column;gap:5px;min-width:0}
+#v402RosterManagement select,#v402RosterManagement input[type=text],
+#v402RosterManagement .v402-search input{
+  width:100%;max-width:100%;min-width:0;border:1px solid #cbd9ed;
+  border-radius:7px;background:#fff;color:#113963;
+  padding:9px;font-size:12px;min-height:38px;
+}
+#v402RosterManagement button{cursor:pointer;border:1px solid #aec9e8;
+  background:#e9f3ff;color:#155399;border-radius:8px;
+  min-height:38px;padding:7px 11px;font-size:11px;font-weight:850}
+#v402RosterManagement button:disabled{opacity:.5;cursor:not-allowed}
+#v402RosterManagement button#v402Deactivate{background:#fff1f2;
+  color:#b4233c;border-color:#efb8c4}
+#v402RosterManagement button#v402Merge{background:#105bc4;color:#fff;
+  border-color:#105bc4}
+#v402RosterManagement .v402-actions{display:flex;flex-wrap:wrap;
+  align-items:center;gap:9px;margin:12px 0 10px}
+#v402RosterManagement .v402-actions b{margin-right:5px;font-size:12px;
+  color:#13416e}
+#v402RosterManagement .v402-table-scroll{max-height:540px;overflow:auto;
+  border:1px solid #d6e4f3;border-radius:8px}
+#v402RosterManagement table{border-collapse:separate;border-spacing:0;
+  width:100%;min-width:780px;font-size:11px;color:#244e7d}
+#v402RosterManagement th{position:sticky;top:0;z-index:2;
+  background:#174774;color:white;padding:9px 7px;text-align:left}
+#v402RosterManagement td{border-bottom:1px solid #e5ecf6;padding:8px 7px}
+#v402RosterManagement tbody tr:nth-child(even){background:#f0f6fd}
+#v402RosterManagement .v402-name{font-weight:850;color:#173b70}
+#v402RosterManagement .v402-active{color:#067249;font-weight:850}
+#v402RosterManagement .v402-inactive{color:#bf2550;font-weight:850}
+#v402RosterManagement .v402-empty{text-align:center;padding:18px}
+#v402RosterManagement input[type=checkbox]{width:15px;height:15px;
+  accent-color:#145fc2;cursor:pointer}
+#v402RosterManagement .v402-merge{
+  background:#f3f7fe;border-radius:9px;padding:10px;margin-top:11px;
+  display:flex;align-items:flex-end;flex-wrap:wrap;gap:10px}
+#v402RosterManagement .v402-merge label{flex:1 1 230px}
+#v402RosterManagement .v402-merge small{font-size:10px;color:#687c94}
+#v402RosterManagement #v402Message{min-height:17px;font-size:11px;
+  font-weight:750;margin:11px 0 0}
+@media(max-width:800px){
+  #v402RosterManagement{padding:10px}
+  #v402RosterManagement .v402-filters{grid-template-columns:1fr 1fr}
+  #v402RosterManagement .v402-search{grid-column:1/-1}
+  #v402RosterManagement .v402-filters button{grid-column:1/-1}
+}
