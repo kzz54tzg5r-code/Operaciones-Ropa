@@ -490,6 +490,10 @@ _install_v372_dev_total_pending_patch(web_app)
 from v400_missing_productivity_center_pdf import install as _install_v400_missing_productivity
 _install_v400_missing_productivity(web_app)
 
+# V402: administra bajas múltiples y alias sin modificar capturas ni usuarios.
+from v402_collaborator_roster_merge import install as _install_v402_roster
+_install_v402_roster(web_app)
+
 # Diagnósticos V386-V388 y reparación automática V387 desactivados tras
 # publicar octubre: conservar sólo el lector V389 y reparación manual V368.
 
