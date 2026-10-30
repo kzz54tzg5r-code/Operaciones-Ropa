@@ -66,10 +66,10 @@ def test_pwa_icon_is_real_price_shoes_logo_and_old_caches_are_busted():
         assert "OPERACIONES</text>" not in data
         assert ET.fromstring(data).tag.endswith("svg")
     manifest = (WEB / "manifest.webmanifest").read_text(encoding="utf-8")
-    assert "/static/app-icon-192.svg?v=395" in manifest
-    assert "/static/app-icon-maskable.svg?v=395" in manifest
+    assert "/static/app-icon-192.svg?v=403" in manifest
+    assert "/static/app-icon-maskable.svg?v=403" in manifest
     markup = (WEB / "index.html").read_text(encoding="utf-8")
-    assert 'href="/static/app-icon-192.svg?v=395"' in markup
+    assert 'href="/static/app-icon-192.svg?v=403"' in markup
     assert "fetchpriority=\"high\"" in markup
 
 
