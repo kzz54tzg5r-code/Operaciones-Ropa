@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v402';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v403';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/price_shoes_logo.png?v=395',
@@ -27,6 +27,9 @@ const STATIC_ASSETS = [
   '/static/colaboradores_sin_productividad_v400.js?v=400',
   '/static/colaborador_bajas_unificacion_v402.css?v=402',
   '/static/colaborador_bajas_unificacion_v402.js?v=402',
+  '/static/reporte_visual_v403.css?v=403',
+  '/static/centro_periodos_v403.js?v=403',
+  '/static/price_shoes_white.svg?v=403',
   '/static/center_lanes.js?v=373'
 ];
 
