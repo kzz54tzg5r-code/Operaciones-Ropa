@@ -14,7 +14,7 @@ def test_logo_is_present_in_login_sidebar_and_report_header():
     assert '<div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_white.svg?v=403"' in markup
     assert (WEB / "price_shoes_logo.png").is_file()
     assert markup.count('alt="Price Shoes"') >= 3
-    assert 'pwa_brand.js?v=395' in markup
+    assert 'pwa_brand.js?v=403' in markup
     assert 'pwa_brand.css?v=395' in markup
 
 
