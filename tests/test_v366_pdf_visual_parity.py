@@ -93,3 +93,40 @@ def test_pdf_visual_hierarchy_has_readable_typography_and_transparent_brand():
     assert raw.getpixel((0,0))[3] < 50
     assert any(raw.getpixel((x,y))[3]>70
                for x in range(20,191,12) for y in range(10,111,12))
+
+
+
+def test_full_company_pdf_keeps_operational_table_and_chart_on_same_page():
+    """17 tiendas comerciales + 6 tiendas Proyecto no dejan página semivacía."""
+    store_names=["Vallejo","Ecatepec","Arco Norte","Ixtapaluca","Miravalle","Puebla Sur"]
+    stores=[
+        dict(store=name,is_project=True,dev_pzs=i*23,muertos=i*2,
+             probador=i,cajas=i,pendiente_anterior=600+i*130,
+             total_pzs=680+i*150,ingresos=680+i*150,
+             recorridos=i,acondicionado=i*42,ubicado=i*59,
+             pendiente_acondicionar=638+i*108,pendiente_ubicar=621+i*91)
+        for i,name in enumerate(store_names,1)
+    ]
+    recovery=[
+        dict(store=("Tienda Comercial "+str(i)) if i>6 else store_names[i-1],
+             is_project=i<=6,dev_pzs=40+i*12,converted_pieces=20+i*4,
+             conversion_pct=65-i,return_value=1300+i*130,
+             recovered_value=600+i*50,recovery_pct=50-i/3,
+             pending_pieces=20+i*8,pending_value=700+i*80)
+        for i in range(1,18)
+    ]
+    data={"stores":stores,"recovery_by_store":recovery,"period_type":"day",
+          "period_value":"2026-10-28","metrics":{
+              "total_pzs":5852,"acondicionado":680,"ubicado":596,
+              "recorridos":0,"meta_recorridos":30}}
+    mock=SimpleNamespace(
+        _build_operations_pdf=lambda *a,**k:b"legacy",
+        _operations_export_sections=lambda data:(stores,recovery))
+    install(mock)
+    pdf=mock._build_operations_pdf(data,"Centro Operativo","Compañía")
+    pages=[p.extract_text() or "" for p in PdfReader(BytesIO(pdf)).pages]
+    assert len(pages)==2, "El reporte debe caber en dos páginas con 17+6 tiendas"
+    assert "Recuperación por tienda" in pages[0]
+    assert "Detalle operativo" in pages[1]
+    assert "Ingreso vs Acondicionado vs Ubicado" in pages[1]
+    assert all(len(p.strip())>200 for p in pages)
