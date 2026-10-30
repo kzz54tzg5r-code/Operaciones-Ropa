@@ -2,8 +2,8 @@
   'use strict';
   // V395: imagen original de Price Shoes; no usar el icono viejo de Operaciones.
   // Una sola fuente, con cache busting, para pantalla de acceso y reportes.
-  const brandLogo = '/static/price_shoes_logo.png?v=395';
-  const iconFallback = '/static/app-icon-192.svg?v=395';
+  const brandLogo = '/static/price_shoes_white.svg?v=403';
+  const iconFallback = '/static/price_shoes_white.svg?v=403';
   const selector = '.login-logo-v15, #sidebar .sidebrand img, .main>.hero .or-report-brand img';
   const applyBrand = () => {
     document.querySelectorAll(selector).forEach(img => {
