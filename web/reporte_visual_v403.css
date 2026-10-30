@@ -1,0 +1,91 @@
+/* V403 · Logo blanco transparente y cuatro vistas aprobadas en Centro Operativo */
+html body #appView #sidebar .sidebrand,
+html body #appView #sidebar .sidebrand img {
+  background:transparent!important;border:none!important;
+  box-shadow:none!important;
+}
+html body #appView #sidebar .sidebrand img{
+  display:block!important;width:59px!important;height:53px!important;
+  max-width:100%!important;max-height:none!important;
+  padding:1px!important;object-fit:contain!important;
+}
+html body #appView .main>.hero .or-report-brand{
+  background:transparent!important;border:0!important;
+  border-radius:0!important;box-shadow:none!important;
+  padding:0!important;width:132px!important;height:43px!important;
+}
+html body #appView .main>.hero .or-report-brand img{
+  max-height:43px!important;width:100%!important;height:100%!important;
+  filter:none!important;object-fit:contain!important;
+}
+html body .or-splash-logo-wrap{
+  background:transparent!important;border:0!important;
+  box-shadow:none!important;padding:0!important;
+}
+html body .or-splash-logo{filter:none!important;max-height:108px!important}
+html body #loginView .login-logo-v15{filter:none!important}
+html body.v403-center-mode #operativoPeriodBar #operPeriodModeWrap,
+html body.v403-center-mode #operativoPeriodBar .v266-period-view,
+html body.v403-center-mode #operativoPeriodBar .v259-period-view{
+  display:none!important;
+}
+html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid{
+  display:grid!important;
+  grid-template-columns:minmax(360px,1.8fr) minmax(190px,1fr) minmax(180px,1.1fr) 50px!important;
+  gap:9px!important;
+  align-items:end!important;
+  width:100%!important;
+}
+html body.v403-center-mode #operativoPeriodBar #v403CenterModes{
+  grid-column:1!important;grid-row:1!important;order:-20!important;
+  display:flex!important;flex-direction:column!important;min-width:0!important;
+  visibility:visible!important;
+}
+html body.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap{
+  grid-column:2!important;grid-row:1!important;width:100%!important;
+}
+html body.v403-center-mode #operativoPeriodBar #operStoreWrap{
+  grid-column:3!important;grid-row:1!important;width:100%!important;
+}
+html body.v403-center-mode #operativoPeriodBar #centerLaneRefresh{
+  grid-column:4!important;grid-row:1!important;align-self:end!important;
+}
+#v403CenterModes .v403-mode-label{
+  font-size:10px!important;font-weight:900!important;color:#254c78!important;
+  margin-bottom:6px!important;min-height:14px!important;
+}
+#v403CenterModes .v403-mode-buttons{
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  border:1px solid #cadaef!important;border-radius:9px!important;
+  background:#fff!important;overflow:hidden!important;
+  height:41px!important;min-height:41px!important;
+}
+#v403CenterModes .v403-mode-buttons button{
+  border:0!important;border-right:1px solid #d6e5f3!important;
+  border-radius:0!important;cursor:pointer!important;min-width:0!important;
+  font-size:12px!important;font-weight:850!important;color:#1d487d!important;
+  background:#fff!important;box-shadow:none!important;padding:0 6px!important;
+}
+#v403CenterModes .v403-mode-buttons button:last-child{border-right:0!important}
+#v403CenterModes .v403-mode-buttons button.active{
+  background:#0869d7!important;color:#fff!important;
+}
+#v403CenterModes .v403-mode-buttons button:hover:not(.active){background:#edf5ff!important}
+#or400WithoutProductivity .or400-table{min-width:650px!important;font-size:12px!important}
+#or400WithoutProductivity .or400-table th{font-size:11px!important}
+#or400WithoutProductivity .or400-table td{font-size:12px!important}
+@media(max-width:900px){
+  html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid{
+    grid-template-columns:minmax(260px,1fr) minmax(170px,1fr)!important;
+  }
+  html body.v403-center-mode #operativoPeriodBar #v403CenterModes{grid-column:1/-1!important;grid-row:auto!important}
+  html body.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap{grid-column:1!important;grid-row:auto!important}
+  html body.v403-center-mode #operativoPeriodBar #operStoreWrap{grid-column:2!important;grid-row:auto!important}
+  html body.v403-center-mode #operativoPeriodBar #centerLaneRefresh{grid-column:auto!important;grid-row:auto!important}
+}
+@media(max-width:550px){
+  html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid{grid-template-columns:minmax(0,1fr)!important}
+  html body.v403-center-mode #operativoPeriodBar :is(#v403CenterModes,#operPeriodSelectWrap,#operStoreWrap,#centerLaneRefresh){grid-column:1!important;grid-row:auto!important}
+  #v403CenterModes .v403-mode-buttons button{font-size:11px!important}
+  html body #appView .main>.hero .or-report-brand{width:102px!important}
+}
