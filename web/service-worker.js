@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
   '/static/app-logo.svg',
   '/static/app-logo-white.svg',
   '/static/pwa_brand.css?v=395',
-  '/static/pwa_brand.js?v=395',
+  '/static/pwa_brand.js?v=403',
   '/static/design_system.css',
   '/static/design_system.js',
   '/static/report_tab_mundial_v7.js',
