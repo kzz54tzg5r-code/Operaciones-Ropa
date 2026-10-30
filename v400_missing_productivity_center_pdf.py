@@ -194,10 +194,12 @@ def appendix(original_pdf, result):
     c=canvas.Canvas(buf,pagesize=(W,H),pageCompression=1)
     page_number=0
     y=0
-    # Con pocos registros, ampliar filas moderadamente para utilizar la hoja.
-    # Caben hasta 18 colaboradores en una hoja, sin filas huérfanas.
-    # El cuerpo útil termina en y=47; encabezados/contadores consumen 251 pt.
-    row_h=min(28.4,max(17.4,(H-298)/max(1,min(len(rows),18))))
+    # Paginación equilibrada: nunca dejar una sola fila en una hoja nueva.
+    # Para 11 registros usar una única hoja casi completa; para más de 18,
+    # repartirlos de manera pareja entre páginas.
+    page_count=max(1, (len(rows)+17)//18)
+    per_page=max(1,(len(rows)+page_count-1)//page_count)
+    row_h=min(28.4,max(17.4,(H-298)/per_page))
     head_h=31
 
     def fitting(raw,width,font="Helvetica",start=10.0):
@@ -284,7 +286,7 @@ def appendix(original_pdf, result):
         c.setFont("Helvetica",11)
         c.drawString(M+12,y-31,"No se encontraron colaboradores activos sin registro para este periodo.")
     for idx,item in enumerate(rows,1):
-        if y-row_h<41:
+        if idx>1 and (idx-1)%per_page==0:
             c.showPage()
             begin_page()
         c.setFillColor(colors.white if idx%2 else stripe)
