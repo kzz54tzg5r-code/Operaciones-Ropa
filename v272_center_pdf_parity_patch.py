@@ -435,7 +435,8 @@ def install(m):
             for frac in fracs[:-1]:
                 acc += total_w*frac
                 xs.append(acc)
-            row_h = 16.2
+            # 17 filas comerciales deben caber con cuatro KPI en primera hoja.
+            row_h = 15.2
             head_h = 29
 
             def head():
