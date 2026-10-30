@@ -581,7 +581,7 @@ def install(m):
             chart_h = 258 if count <= 5 else (286 if count <= 9 else 306)
             ensure(chart_h + 27, "Gráfico operativo")
             # Aprovechar el alto útil, sin generar páginas casi vacías.
-            chart_h = min(max(225, y - 54), 345)
+            chart_h = min(max(225, y - 54), 456)
             section(f"Ingreso vs Acondicionado vs Ubicado · {scope} · {period_label()}")
 
             available_w = W - 2*M - 52
