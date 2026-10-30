@@ -2,9 +2,9 @@ const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v403';
 const STATIC_ASSETS = [
   '/static/offline.html',
   '/static/price_shoes_logo.png?v=395',
-  '/static/app-icon-192.svg?v=395',
-  '/static/app-icon-512.svg?v=395',
-  '/static/app-icon-maskable.svg?v=395',
+  '/static/app-icon-192.svg?v=403',
+  '/static/app-icon-512.svg?v=403',
+  '/static/app-icon-maskable.svg?v=403',
   '/static/app-logo.svg',
   '/static/app-logo-white.svg',
   '/static/pwa_brand.css?v=395',
