@@ -9,9 +9,9 @@ WEB = ROOT / "web"
 
 def test_logo_is_present_in_login_sidebar_and_report_header():
     markup = (WEB / "index.html").read_text(encoding="utf-8")
-    assert 'src="/static/price_shoes_logo.png?v=395" class="login-logo-v15"' in markup
-    assert '<div class="sidebrand"><img src="/static/price_shoes_logo.png?v=395"' in markup
-    assert '<div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_logo.png?v=395"' in markup
+    assert 'src="/static/price_shoes_white.svg?v=403" class="login-logo-v15"' in markup
+    assert '<div class="sidebrand"><img src="/static/price_shoes_white.svg?v=403"' in markup
+    assert '<div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_white.svg?v=403"' in markup
     assert (WEB / "price_shoes_logo.png").is_file()
     assert markup.count('alt="Price Shoes"') >= 3
     assert 'pwa_brand.js?v=395' in markup
@@ -20,12 +20,12 @@ def test_logo_is_present_in_login_sidebar_and_report_header():
 
 def test_brand_script_does_not_override_with_operaciones_ropa_icon():
     code = (WEB / "pwa_brand.js").read_text(encoding="utf-8")
-    assert "const brandLogo = '/static/price_shoes_logo.png?v=395'" in code
+    assert "const brandLogo = '/static/price_shoes_white.svg?v=403'" in code
     assert "img.getAttribute('src') !== brandLogo" in code
     assert "img.src = brandLogo" in code
     assert 'src="${brandLogo}" alt="Price Shoes"' in code
     assert "app-logo.svg" not in code
-    assert "const iconFallback = '/static/app-icon-192.svg?v=395'" in code
+    assert "const iconFallback = '/static/price_shoes_white.svg?v=403'" in code
     result = subprocess.run(["node", "--check", "--input-type=commonjs"],
                             input=code, text=True, capture_output=True)
     assert result.returncode == 0, result.stderr
@@ -34,7 +34,10 @@ def test_brand_script_does_not_override_with_operaciones_ropa_icon():
 def test_report_logo_is_visible_even_with_compact_navigation():
     css = (WEB / "pwa_brand.css").read_text(encoding="utf-8")
     assert ".or-report-brand" in css
-    assert "background:#fff!important" in css
+    assert "background:#fff!important" in css  # legacy overridden by V403
+    override = (WEB / "reporte_visual_v403.css").read_text(encoding="utf-8")
+    assert "background:transparent!important" in override
+    assert ".v403-mode-buttons" in override
     assert "object-fit:contain!important" in css
     assert "html body #appView #sidebar .sidebrand img" in css
     assert ".login-logo-v15{display:block!important" in css
@@ -42,14 +45,16 @@ def test_report_logo_is_visible_even_with_compact_navigation():
 
 def test_pwa_invalidates_old_logo_cache():
     worker = (WEB / "service-worker.js").read_text(encoding="utf-8")
-    assert "operaciones-ropa-runtime-safe-update-v402" in worker
-    assert "'/static/price_shoes_logo.png?v=395'" in worker
+    assert "operaciones-ropa-runtime-safe-update-v403" in worker
+    assert "'/static/price_shoes_white.svg?v=403'" in worker
 
 
 def test_pdf_already_uses_price_shoes_artwork():
     source = (ROOT / "v272_center_pdf_parity_patch.py").read_text(encoding="utf-8")
-    assert 'assets" / "price_shoes_logo.png"' in source
-    assert 'c.drawImage(ImageReader(str(logo))' in source
+    assert "from v403_white_price_logo_pdf import draw_price_white" in source
+    white = (ROOT / "v403_white_price_logo_pdf.py").read_text(encoding="utf-8")
+    assert "price_shoes_logo.png" in white
+    assert "opacity" in white
 
 
 def test_pwa_icon_is_real_price_shoes_logo_and_old_caches_are_busted():
@@ -84,3 +89,22 @@ def test_stable_login_and_brand_guards_are_present():
         code = (WEB / filename).read_text(encoding="utf-8")
         result = subprocess.run(["node", "--check"], input=code, text=True, capture_output=True)
         assert result.returncode == 0, f"{filename}: {result.stderr}"
+
+
+def test_white_logo_is_transparent_and_view_buttons_remain_four():
+    import xml.etree.ElementTree as ET
+    logo = (WEB / "price_shoes_white.svg").read_text(encoding="utf-8")
+    assert "white-ink" in logo
+    assert "feColorMatrix" in logo
+    assert "base64," in logo
+    assert "<rect" not in logo
+    ET.fromstring(logo)
+    script = (WEB / "centro_periodos_v403.js").read_text(encoding="utf-8")
+    assert "['day','Día']" in script
+    assert "['week','Semana']" in script
+    assert "['month','Mensual']" in script
+    assert "['year','Anual']" in script
+    assert '.v266-period-btn[data-mode=' in script
+    test = subprocess.run(["node", "--check"],input=script,
+                          text=True,capture_output=True)
+    assert test.returncode == 0,test.stderr
