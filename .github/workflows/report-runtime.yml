@@ -64,5 +64,11 @@ jobs:
           python -m pytest -q tests/test_v402_collaborator_bajas_merge.py tests/test_v400_missing_productivity_center_pdf.py
           python -m py_compile v402_collaborator_roster_merge.py
           node --check web/colaborador_bajas_unificacion_v402.js
+      - name: Validate V403 PDF layout, original segmented view and white logo
+        run: |
+          python -m pytest -q tests/test_v366_pdf_visual_parity.py tests/test_v380_price_shoes_branding.py tests/test_v400_missing_productivity_center_pdf.py
+          python -m py_compile v403_white_price_logo_pdf.py v272_center_pdf_parity_patch.py
+          node --check web/centro_periodos_v403.js
+          node --check web/colaboradores_sin_productividad_v400.js
       - name: Validate the served page, navigation, reports and filters
         run: timeout 120s npm --prefix tests/ui test
