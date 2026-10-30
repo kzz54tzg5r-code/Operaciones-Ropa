@@ -146,7 +146,6 @@ def build_missing(m, allowed_stores, period_type, period_value):
                 print(f"[V400] Consulta digital {table}: {type(ex).__name__}: {ex}", flush=True)
 
     rows = []
-    total_days = (through - first).days + 1
     for key, r in roster.items():
         # Solo quienes no tienen ningún registro productivo en todo el periodo.
         if seen[key]:
@@ -157,7 +156,6 @@ def build_missing(m, allowed_stores, period_type, period_value):
             "name": r["name"], "store": r["store"],
             "profile": r.get("last_activity") or "Operativo",
             "last_date": last_record,
-            "days_without_record": total_days,
             "status": "Sin captura de productividad",
         })
     rows.sort(key=lambda r: (r["store"].casefold(), r["name"].casefold()))
@@ -166,86 +164,158 @@ def build_missing(m, allowed_stores, period_type, period_value):
 
 
 def appendix(original_pdf, result):
-    """Agregar páginas nuevas; conservar intactas TODAS las páginas ya generadas."""
-    from reportlab.lib.utils import ImageReader
+    """Anexo con identidad visual de Centro Operativo, en el extremo final del PDF.
+
+    Tablas legibles, filas densas, salto paginado real y marca blanca sin fondo.
+    El PDF principal se preserva íntegro para que coincidan datos y gráficas.
+    """
+    from v403_white_price_logo_pdf import draw_price_white
     W, H = landscape(letter)
-    buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=(W, H))
-    m = 28
-    y = 0
-    navy = colors.HexColor("#173B73")
-    pink = colors.HexColor("#EC007C")
-    pale = colors.HexColor("#F2F6FC")
-    row_h = 19
-    heads = ["#", "Colaborador", "Tienda", "Perfil / actividad",
-             "Último registro", "Días sin captura", "Estatus"]
-    ratios = [.045,.22,.16,.19,.12,.11,.155]
-    widths = [r*(W-2*m) for r in ratios]
-    xs = [m]
+    M=27
+    usable=W-2*M
+    navy=colors.HexColor("#173B73")
+    blue=colors.HexColor("#265B98")
+    pink=colors.HexColor("#EC007C")
+    textcolor=colors.HexColor("#173B73")
+    muted=colors.HexColor("#667085")
+    pale=colors.HexColor("#F3F6FA")
+    stripe=colors.HexColor("#EEF4FB")
+    border=colors.HexColor("#D8E0EB")
+    ink=colors.white
+    rows=result.get("rows") or []
+    # Dimensionar el ancho por contenido, no dividirlo en siete columnas minúsculas.
+    cols=["#","Colaborador","Tienda","Perfil / actividad","Último registro","Estatus"]
+    fractions=[.048,.275,.155,.187,.139,.196]
+    widths=[usable*x for x in fractions]
+    xs=[M]
     for w in widths[:-1]:
         xs.append(xs[-1]+w)
+    buf=BytesIO()
+    c=canvas.Canvas(buf,pagesize=(W,H),pageCompression=1)
+    page_number=0
+    y=0
+    # Con pocos registros, ampliar filas moderadamente para utilizar la hoja.
+    row_h=min(30,max(22,(H-237)/max(1,len(rows))))
+    head_h=31
 
-    def fit(text, width, font="Helvetica", size=7):
-        value = str(text if text not in (None,"") else "—")
-        if c.stringWidth(value,font,size) <= width-8:
-            return value
-        while value and c.stringWidth(value+"…",font,size)>width-8:
+    def fitting(raw,width,font="Helvetica",start=10.0):
+        value=str(raw if raw not in (None,"") else "—")
+        size=start
+        while size>=8.0 and c.stringWidth(value,font,size)>width-12:
+            size-=.25
+        if c.stringWidth(value,font,size)<=width-12:
+            return value,size
+        while value and c.stringWidth(value+"…",font,8.0)>width-12:
             value=value[:-1]
-        return value+"…"
-    def page():
+        return value+"…",8.0
+
+    def table_header():
         nonlocal y
-        c.setFillColor(pale); c.rect(0,0,W,H,fill=1,stroke=0)
-        c.setFillColor(navy); c.roundRect(m,H-90,W-2*m,63,10,fill=1,stroke=0)
-        c.setFillColor(colors.white);c.setFont("Helvetica-Bold",16)
-        c.drawString(m+16,H-55,"Colaboradores sin productividad")
-        c.setFont("Helvetica",8)
-        c.drawString(m+16,H-75, "Operaciones Ropa · Price Shoes")
-        # Imprimir marca existente sin alterar su tamaño.
-        from pathlib import Path
-        logo=Path(__file__).resolve().parent / "assets" / "price_shoes_logo.png"
-        if logo.exists():
-            c.setFillColor(colors.white);c.roundRect(W-m-103,H-81,86,44,6,fill=1,stroke=0)
-            c.drawImage(ImageReader(str(logo)),W-m-100,H-79,width=80,height=40,
-                        preserveAspectRatio=True,anchor="c",mask="auto")
-        c.setFillColor(navy);c.setFont("Helvetica-Bold",10)
-        c.drawString(m,H-111,f"Periodo: {result['period_value']} · {result['start_date']} a {result['end_date']}")
-        c.setFont("Helvetica",8)
-        c.drawString(m,H-128,f"{result['count']} colaboradores  ·  {result['store_count']} tiendas con casos")
-        c.setFont("Helvetica",7)
-        c.drawString(m,H-142,"Sin registro no significa ausencia; validar jornada y asistencia en tienda.")
-        y=H-165
-        header()
-    def header():
-        nonlocal y
-        c.setFillColor(navy);c.roundRect(m,y-22,W-2*m,22,4,fill=1,stroke=0)
-        c.setFillColor(colors.white);c.setFont("Helvetica-Bold",7)
-        for x,w,t in zip(xs,widths,heads):
-            c.drawString(x+5,y-14,fit(t,w,"Helvetica-Bold",7))
-        y-=22
-    page()
-    rows=result.get("rows") or []
+        c.setFillColor(navy)
+        c.roundRect(M,y-head_h,usable,head_h,6,stroke=0,fill=1)
+        c.setFillColor(ink)
+        for col,(x,w,label) in enumerate(zip(xs,widths,cols)):
+            font="Helvetica-Bold"
+            value,size=fitting(label,w,font,9.0)
+            c.setFont(font,size)
+            if col==0:
+                c.drawCentredString(x+w/2,y-20,value)
+            else:
+                c.drawString(x+7,y-20,value)
+        y-=head_h
+
+    def begin_page():
+        nonlocal y,page_number
+        page_number+=1
+        c.setFillColor(pale)
+        c.rect(0,0,W,H,stroke=0,fill=1)
+        # Mismo encabezado oscuro del PDF de Centro Operativo.
+        c.setFillColor(blue)
+        c.roundRect(M,H-91,usable,61,11,stroke=0,fill=1)
+        c.setFillColor(ink)
+        c.setFont("Helvetica-Bold",18)
+        c.drawString(M+17,H-56,"Cambios y Muertos")
+        c.setFont("Helvetica",9.4)
+        c.drawString(M+17,H-75,"Recuperación, conversión, recolección y seguimiento operativo")
+        try:
+            draw_price_white(c,W-M-108,H-85,99,53)
+        except Exception as error:
+            print(f"[V403 PDF] Marca blanca: {error}",flush=True)
+            c.setFillColor(ink)
+            c.setFont("Helvetica-Bold",10)
+            c.drawRightString(W-M-12,H-56,"PRICE SHOES")
+        y=H-118
+        c.setFillColor(textcolor)
+        c.setFont("Helvetica-Bold",15.5)
+        c.drawString(M,y,"Colaboradores sin productividad")
+        y-=21
+        c.setFillColor(muted)
+        c.setFont("Helvetica",9.8)
+        c.drawString(M,y,f"Periodo: {result.get('period_value') or 'Consulta'}   ·   "
+                         f"{result.get('start_date') or ''} a {result.get('end_date') or ''}")
+        y-=25
+        # Tarjetas resumen compactas, mismas gamas cromáticas que la pantalla.
+        c.setFillColor(colors.HexColor("#FCE7F3"))
+        c.roundRect(M,y-29,191,29,7,stroke=0,fill=1)
+        c.setFillColor(pink)
+        c.setFont("Helvetica-Bold",13)
+        c.drawString(M+12,y-20,str(result.get("count",len(rows))))
+        c.setFont("Helvetica-Bold",9.0)
+        c.drawString(M+42,y-20,"colaboradores sin captura")
+        c.setFillColor(colors.HexColor("#DCEBFF"))
+        c.roundRect(M+199,y-29,186,29,7,stroke=0,fill=1)
+        c.setFillColor(navy)
+        c.setFont("Helvetica-Bold",13)
+        c.drawString(M+210,y-20,str(result.get("store_count",0)))
+        c.setFont("Helvetica-Bold",9.0)
+        c.drawString(M+241,y-20,"tiendas con casos")
+        y-=41
+        c.setFillColor(muted)
+        c.setFont("Helvetica",9.0)
+        c.drawString(M,y,"Sin captura no significa inasistencia; validar jornada con la tienda.")
+        y-=15
+        table_header()
+
+    begin_page()
     if not rows:
-        c.setFillColor(navy);c.setFont("Helvetica",9)
-        c.drawString(m+10,y-28,"No se encontraron colaboradores activos sin captura en el periodo.")
-    for idx,r in enumerate(rows,1):
-        if y-row_h < 36:
-            c.showPage();page()
-        c.setFillColor(colors.white if idx%2 else colors.HexColor("#E8EFF8"))
-        c.rect(m,y-row_h,W-2*m,row_h,fill=1,stroke=0)
-        values = [str(idx),r.get("name"),r.get("store"),r.get("profile"),
-                  r.get("last_date") or "Sin registro",str(r.get("days_without_record",0)),
-                  "Sin productividad"]
-        for col,(x,w,val) in enumerate(zip(xs,widths,values)):
-            c.setFillColor(pink if col==6 else navy)
-            c.setFont("Helvetica-Bold" if col in (1,6) else "Helvetica",6.7)
-            c.drawString(x+5,y-12,fit(val,w,"Helvetica-Bold" if col in (1,6) else "Helvetica",6.7))
+        c.setFillColor(textcolor)
+        c.setFont("Helvetica",11)
+        c.drawString(M+12,y-31,"No se encontraron colaboradores activos sin registro para este periodo.")
+    for idx,item in enumerate(rows,1):
+        if y-row_h<41:
+            c.showPage()
+            begin_page()
+        c.setFillColor(colors.white if idx%2 else stripe)
+        c.rect(M,y-row_h,usable,row_h,stroke=0,fill=1)
+        values=[
+            str(idx),item.get("name") or "—",item.get("store") or "—",
+            item.get("profile") or "Operativo",item.get("last_date") or "Sin registro",
+            "Sin productividad",
+        ]
+        for col,(x,w,value) in enumerate(zip(xs,widths,values)):
+            font="Helvetica-Bold" if col in (0,1,5) else "Helvetica"
+            value,size=fitting(value,w,font,9.6 if col!=1 else 10.0)
+            c.setFont(font,size)
+            c.setFillColor(pink if col==5 else textcolor)
+            if col==0:
+                c.drawCentredString(x+w/2,y-row_h/2-3,value)
+            else:
+                c.drawString(x+7,y-row_h/2-3,value)
+        c.setStrokeColor(border)
+        c.setLineWidth(.3)
+        c.line(M,y-row_h,M+usable,y-row_h)
         y-=row_h
+    # Nota de pie y folio. Nunca generar páginas vacías.
+    c.setFillColor(muted)
+    c.setFont("Helvetica",8.8)
+    c.drawString(M,25,"Operaciones Ropa · Price Shoes")
+    c.drawRightString(W-M,25,f"Anexo · pág. {page_number}")
     c.save()
-    writer = PdfWriter()
-    for page_item in PdfReader(BytesIO(original_pdf)).pages:
-        writer.add_page(page_item)
-    for page_item in PdfReader(BytesIO(buf.getvalue())).pages:
-        writer.add_page(page_item)
+    writer=PdfWriter()
+    for p in PdfReader(BytesIO(original_pdf)).pages:
+        writer.add_page(p)
+    for p in PdfReader(BytesIO(buf.getvalue())).pages:
+        writer.add_page(p)
     output=BytesIO()
     writer.write(output)
     return output.getvalue()
@@ -276,11 +346,10 @@ def install(m):
         with BytesIO() as output:
             with m.pd.ExcelWriter(output,engine="openpyxl") as writer:
                 m.pd.DataFrame(result["rows"],columns=[
-                    "name","store","profile","last_date","days_without_record","status"
+                    "name","store","profile","last_date","status"
                 ]).rename(columns={
                     "name":"Colaborador","store":"Tienda","profile":"Perfil / Actividad",
-                    "last_date":"Último registro","days_without_record":"Días sin captura",
-                    "status":"Estatus"
+                    "last_date":"Último registro","status":"Estatus"
                 }).to_excel(writer,sheet_name="Sin productividad",index=False)
             body=output.getvalue()
         safe=re.sub(r"[^0-9A-Za-z_-]+","_",period_value) or "consulta"
