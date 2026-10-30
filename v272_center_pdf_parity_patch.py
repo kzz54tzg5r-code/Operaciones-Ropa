@@ -120,6 +120,17 @@ def install(m):
             s = safe(text)
             return s if len(s) <= max_chars else s[:max(1, max_chars - 1)] + "…"
 
+        def fitted_cell(value, width, base=8, font="Helvetica"):
+            s=safe(value)
+            size=base
+            while size>=6.0 and c.stringWidth(s,font,size)>width-5:
+                size-=.35
+            if c.stringWidth(s,font,size)<=width-5:
+                return s,size
+            while s and c.stringWidth(s+"…",font,6.0)>width-5:
+                s=s[:-1]
+            return s+"…",6.0
+
         def set_fill(hex_color):
             c.setFillColor(colors.HexColor(hex_color))
 
@@ -155,23 +166,12 @@ def install(m):
             c.setFont("Helvetica", 7.6)
             c.drawString(M + 16, H - 71, "Recuperación, conversión, recolección y seguimiento operativo")
 
-            # Marca original, existente en assets. Evita usar el icono de Operaciones Ropa.
-            logo = Path(__file__).resolve().parent / "assets" / "price_shoes_logo.png"
-            if not logo.exists():
-                logo = Path(__file__).resolve().parent / "web" / "price_shoes_logo.png"
-            if logo.exists():
-                set_fill("#FFFFFF")
-                c.roundRect(W-M-94, H-83, 80, 48, 7, fill=1, stroke=0)
-                try:
-                    c.drawImage(ImageReader(str(logo)), W-M-92, H-81,
-                                width=76, height=44, preserveAspectRatio=True,
-                                anchor="c", mask="auto")
-                except Exception as exc:
-                    print(f"[PDF] No fue posible pintar Price Shoes: {exc}", flush=True)
-                    c.setFillColor(colors.HexColor(TEXT))
-                    c.setFont("Helvetica-Bold", 7)
-                    c.drawCentredString(W-M-54, H-60, "PRICE SHOES")
-            else:
+            # V403: letras de Price Shoes en blanco sobre azul sin recuadro.
+            try:
+                from v403_white_price_logo_pdf import draw_price_white
+                draw_price_white(c, W-M-100, H-84, 92, 51)
+            except Exception as exc:
+                print(f"[PDF] Error logo blanco: {exc}", flush=True)
                 c.setFillColor(colors.white)
                 c.setFont("Helvetica-Bold", 9)
                 c.drawRightString(W-M-15, H-57, "PRICE SHOES")
@@ -195,31 +195,31 @@ def install(m):
             if y - height_needed < 24:
                 new_page(suffix)
 
-        def section(title, size=10.5):
+        def section(title, size=12.0):
             nonlocal y
             ensure(18)
             set_fill(TEXT)
             c.setFont("Helvetica-Bold", size)
             c.drawString(M, y, title)
-            y -= 15
+            y -= 18
 
         def meta_line():
             nonlocal y
             set_fill(MUTED)
-            c.setFont("Helvetica", 6.8)
+            c.setFont("Helvetica", 9.0)
             project_count = int(data.get("v151_project_store_count") or len(project_stores) or 0)
             left = f"Periodo: {period_label()}   ·   Tienda: {scope}"
             if project_count:
                 left += f"   ·   Alcance KPI: {project_count} tiendas Proyecto"
             c.drawString(M, y, left)
-            y -= 11
+            y -= 15
 
         def card_row(items):
             """Cuatro tarjetas del mismo contenido y orden que la pantalla web."""
             nonlocal y
             gap = 7
             card_w = (W - 2*M - 3*gap) / 4
-            card_h = 111
+            card_h = 115
             ensure(card_h + 10)
             for idx, item in enumerate(items):
                 label, desc, metric, val, percentage, pending, tone = item
@@ -231,26 +231,26 @@ def install(m):
                 set_fill(tone)
                 c.roundRect(x, yy+card_h-3, card_w, 3, 1.2, fill=1, stroke=0)
                 set_fill(TEXT)
-                c.setFont("Helvetica-Bold", 10.0)
+                c.setFont("Helvetica-Bold", 11.4)
                 c.drawString(x+11, yy+card_h-20, label)
                 set_fill(MUTED)
-                c.setFont("Helvetica", 6.4)
-                c.drawString(x+11, yy+card_h-31, fit(desc, 39))
+                c.setFont("Helvetica", 8.0)
+                c.drawString(x+11, yy+card_h-33, fit(desc, 33))
                 set_fill("#F2F7FE")
                 c.roundRect(x+7, yy+32, card_w-14, 43, 5, fill=1, stroke=0)
                 set_fill(TEXT)
-                c.setFont("Helvetica-Bold", 7.7)
+                c.setFont("Helvetica-Bold", 9.0)
                 c.drawString(x+13, yy+61, metric)
                 set_fill(tone)
-                c.setFont("Helvetica-Bold", 16.5)
+                c.setFont("Helvetica-Bold", 20.0)
                 c.drawString(x+13, yy+42, val)
                 if percentage:
                     set_fill(TEXT)
-                    c.setFont("Helvetica-Bold", 8.0)
+                    c.setFont("Helvetica-Bold", 9.0)
                     c.drawString(x+13, yy+25, percentage)
                     set_fill(MUTED)
-                    c.setFont("Helvetica", 6.4)
-                    c.drawString(x+45, yy+25, "avance / meta")
+                    c.setFont("Helvetica", 7.0)
+                    c.drawString(x+48, yy+25, "avance / meta")
                     set_fill("#E3EAF3")
                     c.roundRect(x+12, yy+14, card_w-24, 4.5, 2, fill=1, stroke=0)
                     try:
@@ -262,8 +262,8 @@ def install(m):
                         c.roundRect(x+12, yy+14, (card_w-24)*fraction, 4.5, 2, fill=1, stroke=0)
                 if pending:
                     set_fill(ORANGE_DARK)
-                    c.setFont("Helvetica-Bold", 6.5)
-                    c.drawString(x+12, yy+5.5, fit(pending, 40))
+                    c.setFont("Helvetica-Bold", 7.7)
+                    c.drawString(x+12, yy+5.5, fit(pending, 35))
             y -= card_h + 10
 
         def draw_summary_matrix(show_opening=False):
@@ -435,8 +435,8 @@ def install(m):
             for frac in fracs[:-1]:
                 acc += total_w*frac
                 xs.append(acc)
-            row_h = 10.4
-            head_h = 22
+            row_h = 16.2
+            head_h = 29
 
             def head():
                 nonlocal y
@@ -446,7 +446,7 @@ def install(m):
                 for i, h in enumerate(headers):
                     draw_header_cell(
                         xs[i], total_w*fracs[i], y, head_h, h,
-                        font_size=4.8,
+                        font_size=6.6,
                         align="left" if i == 1 else "center",
                     )
                 y -= head_h
@@ -477,8 +477,13 @@ def install(m):
                 ]
                 for i, val in enumerate(values):
                     set_fill(TEXT)
-                    c.setFont("Helvetica-Bold" if i in (0,1) else "Helvetica", 4.7)
-                    c.drawString(xs[i]+2, y-7.1, fit(val, 22 if i==1 else 16))
+                    font="Helvetica-Bold" if i in (0,1) else "Helvetica"
+                    label,size=fitted_cell(val,total_w*fracs[i],8.1,font)
+                    c.setFont(font,size)
+                    if i==1:
+                        c.drawString(xs[i]+3,y-11.6,label)
+                    else:
+                        c.drawCentredString(xs[i]+total_w*fracs[i]/2,y-11.6,label)
                 y -= row_h
             y -= 6
 
@@ -504,8 +509,8 @@ def install(m):
             xs = [M]
             for width in widths[:-1]:
                 xs.append(xs[-1]+width)
-            row_h = 13.4
-            head_h = 25
+            row_h = 19.4
+            head_h = 33
 
             def head():
                 nonlocal y
@@ -514,7 +519,7 @@ def install(m):
                 c.setFillColor(colors.white)
                 for i, h in enumerate(headers):
                     draw_header_cell(xs[i], widths[i], y, head_h, h,
-                                     font_size=4.6,
+                                     font_size=6.3,
                                      align="left" if i == 1 else "center")
                 y -= head_h
 
@@ -550,12 +555,13 @@ def install(m):
                     elif i in (2,3,4,5,6,7,8,9,10) and _num(val)==0:
                         tone = "#DC2626"
                     set_fill(tone)
-                    c.setFont("Helvetica-Bold" if i in (0,1,7,11,12) else "Helvetica", 4.8)
-                    text_value = fit(val, 18 if i==1 else 15)
+                    font="Helvetica-Bold" if i in (0,1,7,11,12) else "Helvetica"
+                    text_value,size=fitted_cell(val,widths[i],7.6,font)
+                    c.setFont(font,size)
                     if i==1:
-                        c.drawString(xs[i]+2.5, y-9, text_value)
+                        c.drawString(xs[i]+2.5, y-13.3, text_value)
                     else:
-                        c.drawCentredString(xs[i]+widths[i]/2, y-9, text_value)
+                        c.drawCentredString(xs[i]+widths[i]/2, y-13.3, text_value)
                 y -= row_h
             y -= 7
 
@@ -572,8 +578,10 @@ def install(m):
             # V272.1: el gráfico se dimensiona según las tiendas con información.
             # Con 1-5 tiendas no se estira de lado a lado ni deja barras aisladas.
             count = len(rows)
-            chart_h = 124 if count <= 5 else (138 if count <= 9 else 154)
-            ensure(chart_h + 25, "Gráfico operativo")
+            chart_h = 258 if count <= 5 else (286 if count <= 9 else 306)
+            ensure(chart_h + 27, "Gráfico operativo")
+            # Aprovechar el alto útil, sin generar páginas casi vacías.
+            chart_h = min(max(225, y - 54), 345)
             section(f"Ingreso vs Acondicionado vs Ubicado · {scope} · {period_label()}")
 
             available_w = W - 2*M - 52
@@ -601,7 +609,7 @@ def install(m):
                 gy = base + plot_h*q/4
                 c.line(x0, gy, x1, gy)
                 set_fill(MUTED)
-                c.setFont("Helvetica", 5.1)
+                c.setFont("Helvetica", 7.3)
                 c.drawRightString(x0-6, gy-1.5, n(maxv*q/4))
 
             points = []
@@ -619,8 +627,8 @@ def install(m):
                 set_fill(PINK)
                 c.roundRect(cx+2, base, bar_w, max(1,uh), 1.5, fill=1, stroke=0)
 
-                label_fs = 5.0 if count <= 6 else 4.4
-                value_fs = 4.7 if count <= 6 else 4.1
+                label_fs = 8.2 if count <= 6 else 7.0
+                value_fs = 7.7 if count <= 6 else 6.9
 
                 if acond > 0:
                     set_fill(NAVY)
@@ -655,11 +663,11 @@ def install(m):
             ly = top + 8
             legend_x = x0
             set_fill(NAVY); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
-            set_fill(TEXT); c.setFont("Helvetica",5.3); c.drawString(legend_x+10,ly-1,"Acondicionado")
-            legend_x += 86
+            set_fill(TEXT); c.setFont("Helvetica",8.0); c.drawString(legend_x+10,ly-1,"Acondicionado")
+            legend_x += 103
             set_fill(PINK); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
             set_fill(TEXT); c.drawString(legend_x+10,ly-1,"Ubicado")
-            legend_x += 58
+            legend_x += 75
             set_stroke(BLUE); c.line(legend_x,ly+2,legend_x+15,ly+2)
             set_fill(BLUE); c.circle(legend_x+7.5,ly+2,2,fill=1,stroke=0)
             set_fill(TEXT); c.drawString(legend_x+20,ly-1,"Ingresos")
