@@ -100,6 +100,6 @@ def test_frontend_keeps_job_identifier_when_proxy_returns_520():
 
 def test_pwa_rolls_to_version_401():
     worker=(web_app.WEB/"service-worker.js").read_text(encoding="utf-8")
-    assert "operaciones-ropa-runtime-safe-update-v402" in worker
+    assert "operaciones-ropa-runtime-safe-update-v403" in worker
     result=subprocess.run(["node","--check"],input=worker,text=True,capture_output=True)
     assert result.returncode==0,result.stderr
