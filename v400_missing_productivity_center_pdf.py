@@ -195,7 +195,9 @@ def appendix(original_pdf, result):
     page_number=0
     y=0
     # Con pocos registros, ampliar filas moderadamente para utilizar la hoja.
-    row_h=min(30,max(22,(H-237)/max(1,len(rows))))
+    # Caben hasta 18 colaboradores en una hoja, sin filas huérfanas.
+    # El cuerpo útil termina en y=47; encabezados/contadores consumen 251 pt.
+    row_h=min(28.4,max(17.4,(H-298)/max(1,min(len(rows),18))))
     head_h=31
 
     def fitting(raw,width,font="Helvetica",start=10.0):
