@@ -57,7 +57,7 @@ def test_only_active_project_roster_without_positive_capture():
     assert result["store_count"]==1
     assert [r["name"] for r in result["rows"]]==["Ana López"]
     assert result["rows"][0]["last_date"]=="2026-10-24"
-    assert result["rows"][0]["days_without_record"]==1
+    assert "days_without_record" not in result["rows"][0]
     assert result["rows"][0]["status"]=="Sin captura de productividad"
 
 
@@ -93,6 +93,7 @@ def test_pdf_appends_last_table_and_preserves_prior_pages():
     assert "Colaboradores sin productividad" in doc.pages[-1].extract_text()
     assert "Ana" in doc.pages[-1].extract_text()
     assert "Puebla Sur" in doc.pages[-1].extract_text()
+    assert "Días sin captura" not in doc.pages[-1].extract_text()
 
 
 def test_pdf_many_employees_paginated_without_omitting_names():
@@ -102,7 +103,7 @@ def test_pdf_many_employees_paginated_without_omitting_names():
           "end_date":"2026-10-31","count":78,"store_count":2,
           "rows":[{"name":f"Colaborador {i:03d}","store":"Vallejo",
                    "last_date":"","profile":"Operativo",
-                   "days_without_record":28,"status":"Sin captura"}
+                   "status":"Sin captura"}
                   for i in range(78)]}
     out=PdfReader(BytesIO(appendix(base.getvalue(),data)))
     assert len(out.pages)>=4
