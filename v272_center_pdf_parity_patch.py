@@ -578,10 +578,12 @@ def install(m):
             # V272.1: el gráfico se dimensiona según las tiendas con información.
             # Con 1-5 tiendas no se estira de lado a lado ni deja barras aisladas.
             count = len(rows)
-            chart_h = 258 if count <= 5 else (286 if count <= 9 else 306)
-            ensure(chart_h + 27, "Gráfico operativo")
-            # Aprovechar el alto útil, sin generar páginas casi vacías.
-            chart_h = min(max(225, y - 54), 456)
+            # Primero evaluar el alto disponible de la página ACTUAL.
+            # El gráfico usa el espacio restante tras Detalle Operativo;
+            # no saltar a una nueva hoja basándose en una altura fija.
+            if y < 246:
+                new_page("Gráfico operativo")
+            chart_h = max(184, min(456, y - 62))
             section(f"Ingreso vs Acondicionado vs Ubicado · {scope} · {period_label()}")
 
             available_w = W - 2*M - 52
