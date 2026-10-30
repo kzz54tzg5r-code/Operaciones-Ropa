@@ -69,3 +69,27 @@ def test_pdf_uses_embedded_price_shoes_asset():
     assert images is not None
     entries=images.get_object()
     assert any(obj.get_object().get("/Subtype")=="/Image" for obj in entries.values())
+
+
+
+def test_pdf_visual_hierarchy_has_readable_typography_and_transparent_brand():
+    """Guarda la composición del reporte: 4 tarjetas, dos tablas y gráfico."""
+    import pdfplumber
+    from v403_white_price_logo_pdf import price_white_reader
+
+    pdf=_sample("day")
+    with pdfplumber.open(BytesIO(pdf)) as document:
+        assert len(document.pages) <= 3
+        assert all(int(page.width)==792 and int(page.height)==612 for page in document.pages)
+        words=[word for page in document.pages
+               for word in page.extract_words(extra_attrs=["size"])]
+        assert any("Ingresado" in word["text"] and word["size"]>=10 for word in words)
+        assert any("Vallejo" in word["text"] and word["size"]>=7.2 for word in words)
+        assert any("Recuperación" in word["text"] and word["size"]>=11 for word in words)
+    img=price_white_reader()
+    assert img.getSize()==(211,121)
+    raw=img._image.convert("RGBA")
+    # El fondo del gráfico original no debe pintarse de blanco.
+    assert raw.getpixel((0,0))[3] < 50
+    assert any(raw.getpixel((x,y))[3]>70
+               for x in range(20,191,12) for y in range(10,111,12))
