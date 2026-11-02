@@ -169,7 +169,7 @@ def install(m):
             # V403: letras de Price Shoes en blanco sobre azul sin recuadro.
             try:
                 from v403_white_price_logo_pdf import draw_price_white
-                draw_price_white(c, W-M-100, H-84, 92, 51)
+                draw_price_white(c, W-M-75, H-73, 62, 35)
             except Exception as exc:
                 print(f"[PDF] Error logo blanco: {exc}", flush=True)
                 c.setFillColor(colors.white)
@@ -178,12 +178,12 @@ def install(m):
 
             c.setFillColor(colors.white)
             c.setFont("Helvetica-Bold", 8.4)
-            c.drawRightString(W-M-109, H-53, "Operaciones Ropa")
+            c.drawRightString(W-M-83, H-53, "Operaciones Ropa")
             c.setFont("Helvetica", 6.8)
             title = f"Centro Operativo · {mode_label}"
             if suffix:
                 title += f" · {suffix}"
-            c.drawRightString(W-M-109, H-69, title)
+            c.drawRightString(W-M-83, H-69, title)
             y = H - 102
 
         def new_page(suffix=""):
@@ -215,56 +215,68 @@ def install(m):
             y -= 15
 
         def card_row(items):
-            """Cuatro tarjetas del mismo contenido y orden que la pantalla web."""
+            """V406: misma jerarquía visual del Centro en web; posiciones sin choques."""
             nonlocal y
-            gap = 7
+            gap = 8
             card_w = (W - 2*M - 3*gap) / 4
-            card_h = 115
-            ensure(card_h + 10)
-            for idx, item in enumerate(items):
-                label, desc, metric, val, percentage, pending, tone = item
-                x = M + idx*(card_w+gap)
-                yy = y-card_h
+            card_h = 128
+            ensure(card_h + 12)
+            for idx, (label, desc, metric, val, percentage, pending, tone) in enumerate(items):
+                x = M + idx*(card_w + gap)
+                yy = y - card_h
+
+                # Marco, acento, títulos. Descripciones ajustadas a ancho real.
                 set_fill("#FFFFFF")
                 set_stroke(LINE)
-                c.roundRect(x, yy, card_w, card_h, 7, fill=1, stroke=1)
+                c.roundRect(x, yy, card_w, card_h, 8, fill=1, stroke=1)
                 set_fill(tone)
-                c.roundRect(x, yy+card_h-3, card_w, 3, 1.2, fill=1, stroke=0)
+                c.roundRect(x, yy + card_h - 3.5, card_w, 3.5, 1.5, fill=1, stroke=0)
                 set_fill(TEXT)
-                c.setFont("Helvetica-Bold", 11.4)
-                c.drawString(x+11, yy+card_h-20, label)
+                c.setFont("Helvetica-Bold", 11.5)
+                c.drawString(x + 11, yy + 109, label)
                 set_fill(MUTED)
-                c.setFont("Helvetica", 8.0)
-                c.drawString(x+11, yy+card_h-33, fit(desc, 33))
+                desc_text,desc_size=fitted_cell(desc,card_w-22,7.8,"Helvetica")
+                c.setFont("Helvetica",desc_size)
+                c.drawString(x + 11, yy + 95, desc_text)
+
+                # Misma área clara para el KPI que utiliza la aplicación.
                 set_fill("#F2F7FE")
-                c.roundRect(x+7, yy+32, card_w-14, 43, 5, fill=1, stroke=0)
+                c.roundRect(x + 8, yy + 49, card_w - 16, 44, 6, fill=1, stroke=0)
                 set_fill(TEXT)
-                c.setFont("Helvetica-Bold", 9.0)
-                c.drawString(x+13, yy+61, metric)
-                set_fill(tone)
-                c.setFont("Helvetica-Bold", 20.0)
-                c.drawString(x+13, yy+42, val)
+                c.setFont("Helvetica-Bold", 8.4)
+                c.drawString(x + 15, yy + 78, metric)
+                number,number_size=fitted_cell(val,card_w-31,19.8,"Helvetica-Bold")
+                set_fill(TEXT if idx == 3 else tone)
+                c.setFont("Helvetica-Bold",number_size)
+                c.drawString(x + 15, yy + 56, number)
+
+                # Porcentaje y barra, nunca dentro del KPI claro.
                 if percentage:
                     set_fill(TEXT)
-                    c.setFont("Helvetica-Bold", 9.0)
-                    c.drawString(x+13, yy+25, percentage)
+                    c.setFont("Helvetica-Bold", 9.6)
+                    c.drawString(x + 13, yy + 35, percentage)
+                    perc_width=c.stringWidth(percentage,"Helvetica-Bold",9.6)
                     set_fill(MUTED)
-                    c.setFont("Helvetica", 7.0)
-                    c.drawString(x+48, yy+25, "avance / meta")
+                    c.setFont("Helvetica", 7.2)
+                    c.drawString(x + 18 + perc_width, yy + 35, "avance / meta")
                     set_fill("#E3EAF3")
-                    c.roundRect(x+12, yy+14, card_w-24, 4.5, 2, fill=1, stroke=0)
+                    c.roundRect(x + 12, yy + 25, card_w - 24, 5, 2, fill=1, stroke=0)
                     try:
-                        fraction=max(0.0,min(100.0,float(percentage.replace("%",""))))/100.0
-                    except Exception:
-                        fraction=0.0
+                        fraction = max(0.0,min(100.0,float(percentage.replace("%",""))))/100.0
+                    except (ValueError,TypeError):
+                        fraction = 0.0
                     if fraction:
                         set_fill(tone)
-                        c.roundRect(x+12, yy+14, (card_w-24)*fraction, 4.5, 2, fill=1, stroke=0)
+                        c.roundRect(x + 12, yy + 25, (card_w - 24)*fraction, 5, 2, fill=1, stroke=0)
                 if pending:
+                    # Franja amarilla independiente, igual que la vista.
+                    set_fill("#FFF0D7")
+                    c.roundRect(x + 9, yy + 5, card_w - 18, 16, 4, fill=1, stroke=0)
                     set_fill(ORANGE_DARK)
-                    c.setFont("Helvetica-Bold", 7.7)
-                    c.drawString(x+12, yy+5.5, fit(pending, 35))
-            y -= card_h + 10
+                    text,size=fitted_cell(pending,card_w-27,8.1,"Helvetica-Bold")
+                    c.setFont("Helvetica-Bold",size)
+                    c.drawString(x + 14, yy + 10, text)
+            y -= card_h + 11
 
         def draw_summary_matrix(show_opening=False):
             nonlocal y
@@ -536,7 +548,8 @@ def install(m):
                       else _num(r.get("acondicionado"))/total_num*100 if total_num else 0)
                 pu = (_num(r.get("pct_ubicado")) if r.get("pct_ubicado") is not None
                       else _num(r.get("ubicado"))/total_num*100 if total_num else 0)
-                set_fill(PROJECT if r.get("is_project") else ("#FFFFFF" if idx%2 else "#EEF4FB"))
+                # V406: bandas claras y azul suave por renglón, también para Proyecto.
+                set_fill("#FFFFFF" if idx%2 else "#E4EFFD")
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
                 if r.get("is_project"):
                     set_fill(BLUE)
