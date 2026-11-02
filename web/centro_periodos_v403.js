@@ -40,13 +40,13 @@ function mount(){
  let host=q('#v403CenterModes');
  if(!host){
   host=document.createElement('div');host.id='v403CenterModes';host.className='v403-center-view';
-  const cap=document.createElement('div');cap.className='v403-mode-label';cap.textContent='◉ VISTA';
+  // No duplicar el encabezado VISTA que ya aporta la barra operativa.
   const buttons=document.createElement('div');buttons.className='v403-mode-buttons';
   for(const [key,label] of entries){
    const b=document.createElement('button');b.type='button';b.dataset.mode=key;b.textContent=label;
    b.addEventListener('click',()=>choose(key));buttons.append(b);
   }
-  host.append(cap,buttons);grid.prepend(host);
+  host.append(buttons);grid.prepend(host);
  }
  paint();
 }
