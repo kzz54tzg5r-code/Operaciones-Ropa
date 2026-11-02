@@ -48,7 +48,8 @@ def install(module) -> None:
         MUT = "#6B778C"; LINE = "#D7E0EA"; BG = "#F3F6FA"; ALT = "#EEF4FB"
 
         mt = data.get("metrics") or {}
-        period = str(data.get("period_value") or "Histórico")
+        from v407_week_display import format_week_label
+        period = format_week_label(data.get("period_value") or "Histórico")
         stores = list(data.get("stores") or [])
         recovery = list(data.get("recovery_by_store") or [])
         project_names = {str(x) for x in (data.get("project_stores") or [])}
