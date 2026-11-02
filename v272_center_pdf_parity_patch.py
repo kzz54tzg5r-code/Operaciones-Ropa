@@ -99,7 +99,8 @@ def install(m):
                     return f"{MONTHS[int(month)-1]} {year}"
                 except Exception:
                     return period_value or "Histórico"
-            return period_value or "Histórico"
+            from v407_week_display import format_week_label
+            return format_week_label(period_value) or "Histórico"
 
         def n(v):
             return f"{_num(v):,.0f}"
