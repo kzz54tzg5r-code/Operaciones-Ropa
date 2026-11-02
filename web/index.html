@@ -2520,7 +2520,11 @@ async function refreshOperativoMeta(){
 
 function scoreStatus(v){v=Number(v||0);return v>=85?'Sobresaliente':v>=70?'En meta':v>=55?'En riesgo':'Crítico'}
 function reportDownloadBar(name){
-  return `<div class="report-actions"><button onclick="downloadCurrentReport('pdf','${name.replaceAll("'","\\'")}',this)">Descargar PDF</button><button onclick="downloadCurrentReport('xlsx','${name.replaceAll("'","\\'")}',this)">Descargar Excel</button></div>`;
+  const safeName=name.replaceAll("'","\\'");
+  // V407: en el detalle de Centro Operativo se ofrece únicamente Excel.
+  // Se conservan PDF/Excel de otras secciones y los endpoints existentes.
+  const pdfButton=name==='Centro Ejecutivo'?'':`<button onclick="downloadCurrentReport('pdf','${safeName}',this)">Descargar PDF</button>`;
+  return `<div class="report-actions">${pdfButton}<button onclick="downloadCurrentReport('xlsx','${safeName}',this)">Descargar Excel</button></div>`;
 }
 async function downloadCurrentReport(format,name,button){
   const type=currentPeriodTypeForView(name);
