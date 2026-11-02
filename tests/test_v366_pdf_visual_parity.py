@@ -131,3 +131,27 @@ def test_full_company_pdf_keeps_operational_table_and_chart_on_same_page():
     assert "Detalle operativo" in pages[1]
     assert "Ingreso vs Acondicionado vs Ubicado" in pages[1]
     assert all(len(p.strip())>200 for p in pages)
+
+
+def test_card_text_never_overlaps_and_brand_is_compact():
+    """V406: verificar geométricamente cajas de texto del PDF generado."""
+    import pdfplumber
+    from pathlib import Path
+    code=(Path(__file__).resolve().parents[1]/"v272_center_pdf_parity_patch.py").read_text("utf-8")
+    assert "draw_price_white(c, W-M-75, H-73, 62, 35)" in code
+    assert 'set_fill("#FFFFFF" if idx%2 else "#E4EFFD")' in code
+    assert "occupied = []" in code and "overlaps=any(" in code
+    assert 'roundRect(x + 9, yy + 5, card_w - 18, 16' in code
+    with pdfplumber.open(BytesIO(_sample("week"))) as document:
+        page=document.pages[0]
+        words=[w for w in page.extract_words()
+               if 124 <= w["top"] <= 245 and w["x0"]>=25 and w["x1"]<=767]
+        assert len(words)>18
+        for ix,left in enumerate(words):
+            for right in words[ix+1:]:
+                horiz=min(left["x1"],right["x1"])-max(left["x0"],right["x0"])
+                vert=min(left["bottom"],right["bottom"])-max(left["top"],right["top"])
+                assert horiz < 1.6 or vert < 1.6, (
+                    "Las tarjetas contienen textos encimados: "+
+                    repr((left["text"],right["text"],round(horiz,1),round(vert,1)))
+                )
