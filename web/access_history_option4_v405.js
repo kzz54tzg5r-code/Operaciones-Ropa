@@ -67,8 +67,9 @@
     fillSelect('#v405User',data.filters.users,'Todos los usuarios',chosen.username);
     fillSelect('#v405Role',data.filters.roles,'Todos los roles',chosen.role);
     fillSelect('#v405Store',data.filters.stores,'Todas las tiendas',chosen.store);
-    drawTable('#v405RecentRows',data.recent,4,'Aún no hay ingresos registrados.',(tr,r)=>{
-      [r.username,label[r.role]||r.role||'—',r.store||'Sin tienda',dateTime(r.latest)].forEach(v=>tr.append(node('td',null,v)));
+    drawTable('#v405RecentRows',data.recent,5,'Aún no hay ingresos registrados.',(tr,r)=>{
+      [r.username,label[r.role]||r.role||'—',r.store||'Sin tienda',
+       fmt(r.accesses),dateTime(r.latest)].forEach(v=>tr.append(node('td',null,v)));
     });
     drawTable('#v405AlertRows',data.alerts,3,'Sin alertas en el periodo.',(tr,r)=>{
       tr.append(node('td',null,dateTime(r.occurred_at)));
@@ -143,7 +144,7 @@
       <div class="v405-meta" id="v405Meta"></div>
       <div class="v405-top">
         <section class="v405-panel v405-recent"><header>Usuarios registrados recientemente</header>
-          <div class="v405-scroll"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Último acceso</th></tr></thead><tbody id="v405RecentRows"></tbody></table></div>
+          <div class="v405-scroll"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Ingresos</th><th>Último acceso</th></tr></thead><tbody id="v405RecentRows"></tbody></table></div>
         </section>
         <div class="v405-side">
           <section class="v405-panel"><header>Resumen de accesos</header>
