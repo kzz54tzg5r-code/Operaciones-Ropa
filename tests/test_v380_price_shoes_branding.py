@@ -45,7 +45,7 @@ def test_report_logo_is_visible_even_with_compact_navigation():
 
 def test_pwa_invalidates_old_logo_cache():
     worker = (WEB / "service-worker.js").read_text(encoding="utf-8")
-    assert "operaciones-ropa-runtime-safe-update-v403" in worker
+    assert "operaciones-ropa-runtime-safe-update-v405" in worker
     assert "'/static/price_shoes_white.svg?v=403'" in worker
 
 
