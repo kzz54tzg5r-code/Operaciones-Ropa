@@ -629,6 +629,7 @@ def install(m):
                 c.drawRightString(x0-6, gy-1.5, n(maxv*q/4))
 
             points = []
+            numeric_labels = []  # (x, baseline, texto, color, prioridad)
             for i, r in enumerate(rows):
                 cx = x0 + group_w*(i+.5)
                 acond = _num(r.get("acondicionado"))
@@ -647,22 +648,16 @@ def install(m):
                 value_fs = 7.7 if count <= 6 else 6.9
 
                 if acond > 0:
-                    set_fill(NAVY)
-                    c.setFont("Helvetica-Bold", value_fs)
-                    c.drawCentredString(cx-bar_w/2-2, min(top-1, base+ah+3), n(acond))
+                    numeric_labels.append((cx-bar_w/2-2, base+ah+8, n(acond), NAVY, 1))
                 if ubic > 0:
-                    set_fill(PINK)
-                    c.setFont("Helvetica-Bold", value_fs)
-                    c.drawCentredString(cx+bar_w/2+2, min(top-1, base+uh+3), n(ubic))
+                    numeric_labels.append((cx+bar_w/2+2, base+uh+8, n(ubic), PINK, 2))
 
                 py = base + plot_h*ingreso/maxv
                 points.append((cx, py, ingreso))
                 set_fill(BLUE)
                 c.circle(cx, py, 2.5, fill=1, stroke=0)
                 if ingreso > 0:
-                    set_fill(BLUE)
-                    c.setFont("Helvetica-Bold", value_fs)
-                    c.drawCentredString(cx, min(top-1, py+4), n(ingreso))
+                    numeric_labels.append((cx, py+9, n(ingreso), BLUE, 0))
 
                 # Tienda horizontal, centrada; evita texto inclinado/ilegible.
                 set_fill(TEXT)
@@ -674,6 +669,48 @@ def install(m):
                 c.setLineWidth(1.35)
                 for a,b in zip(points, points[1:]):
                     c.line(a[0],a[1],b[0],b[1])
+
+            # V406: ubicar etiquetas de línea y barras SIN colisiones entre ellas.
+            # Dibujar la línea antes y los números al final permite reservar un
+            # área limpia alrededor de cada importe, incluso si las series se cruzan.
+            occupied = []
+            numeric_labels.sort(key=lambda item: (item[4],-item[1]))
+            for desired_x,desired_y,number,tone,priority in numeric_labels:
+                fs = 7.3 if count<=6 else 6.5
+                width = c.stringWidth(number,"Helvetica-Bold",fs)
+                baseline_min = base+7
+                baseline_max = top-3
+                placement = None
+                for vy in (0,12,-12,23,-23,34,-34,45,-45):
+                    for hx in (0,-13,13,-25,25,-36,36):
+                        xx=max(x0+width/2,min(x1-width/2,desired_x+hx))
+                        yy=max(baseline_min,min(baseline_max,desired_y+vy))
+                        bounds=(xx-width/2-3,yy-3,xx+width/2+3,yy+fs+3)
+                        overlaps=any(
+                            bounds[0]<b[2]+2 and bounds[2]>b[0]-2 and
+                            bounds[1]<b[3]+2 and bounds[3]>b[1]-2
+                            for b in occupied
+                        )
+                        if not overlaps:
+                            placement=(xx,yy,bounds)
+                            break
+                    if placement:break
+                if placement is None:
+                    # Si todo el gráfico está lleno, priorizar el número de
+                    # Ingresos; no escribir texto encima de otro valor.
+                    if priority:
+                        continue
+                    xx=max(x0+width/2,min(x1-width/2,desired_x))
+                    yy=max(baseline_min,min(baseline_max,desired_y))
+                    placement=(xx,yy,(xx-width/2-3,yy-3,xx+width/2+3,yy+fs+3))
+                xx,yy,bounds=placement
+                occupied.append(bounds)
+                set_fill("#FFFFFF")
+                c.roundRect(bounds[0],bounds[1],bounds[2]-bounds[0],
+                            bounds[3]-bounds[1],2,fill=1,stroke=0)
+                set_fill(tone)
+                c.setFont("Helvetica-Bold",fs)
+                c.drawCentredString(xx,yy,number)
 
             # Leyenda compacta sobre el gráfico.
             ly = top + 8
