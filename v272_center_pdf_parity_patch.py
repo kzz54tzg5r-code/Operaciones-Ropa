@@ -448,7 +448,7 @@ def install(m):
                 acc += total_w*frac
                 xs.append(acc)
             # 17 filas comerciales deben caber con cuatro KPI en primera hoja.
-            row_h = 15.2
+            row_h = 14.95
             head_h = 29
 
             def head():
@@ -577,7 +577,7 @@ def install(m):
                     else:
                         c.drawCentredString(xs[i]+widths[i]/2, y-13.3, text_value)
                 y -= row_h
-            y -= 7
+            y -= 17  # Dejar aire entre última fila y título/gráfico.
 
         def draw_combo_chart():
             nonlocal y
@@ -764,6 +764,7 @@ def install(m):
         # En la pantalla no existe una matriz adicional entre las tarjetas y
         # el reporte expandido. La impresión respeta esa misma jerarquía.
         section("Reporte completo por tienda · tablas y gráficos")
+        y -= 4  # Separar títulos sin desbordar las 17 tiendas de la hoja.
 
         draw_recovery_table()
         draw_operational_detail()
