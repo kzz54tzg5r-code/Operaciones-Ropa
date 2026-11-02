@@ -2910,6 +2910,13 @@ async def login(request: Request):
     password=str(body.get("password") or "")
     row=find_login_user(username)
     if not row or not verify_password(password,row["password_hash"]):
+        # V405: registrar intento sin contraseña; no revelar existencia de cuenta.
+        try:
+            from v405_user_access_history import record_event
+            record_event(sys.modules[__name__],request,"login_failed",username=username,
+                         user=dict(row) if row else None)
+        except Exception:
+            pass
         raise HTTPException(401,"Usuario o contraseña incorrectos")
     state=system_status().get("status","active")
     if state in ("suspended","deleted") and row["role"]!="superadmin":
@@ -2919,6 +2926,11 @@ async def login(request: Request):
     request.session["sv"]=sv
     request.session.pop("view_role",None)
     must=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
+    try:
+        from v405_user_access_history import record_event
+        record_event(sys.modules[__name__],request,"login_success",user=dict(row))
+    except Exception:
+        pass
     return {
         "ok":True,
         "must_change_password":must,
@@ -2927,7 +2939,16 @@ async def login(request: Request):
     }
 
 @app.post("/api/logout")
-def logout(request: Request): request.session.clear(); return {"ok":True}
+def logout(request: Request):
+    row=_session_user_row(request)
+    if row:
+        try:
+            from v405_user_access_history import record_event
+            record_event(sys.modules[__name__],request,"logout",user=dict(row))
+        except Exception:
+            pass
+    request.session.clear()
+    return {"ok":True}
 
 @app.post("/api/me/view-role")
 async def set_view_role(request: Request):
