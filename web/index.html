@@ -2548,7 +2548,8 @@ async function downloadCurrentReport(format,name,button){
     if(format==='pdf' && blob.type && !blob.type.includes('pdf'))throw new Error('El servidor no devolvió un PDF válido.');
     const cd=res.headers.get('content-disposition')||'';
     const match=cd.match(/filename="?([^"]+)"?/i);
-    const filename=match?.[1]||`${String(name).replace(/[^a-z0-9]+/gi,'_').toLowerCase()}.${format}`;
+    const filename=(match?.[1]||`${String(name).replace(/[^a-z0-9]+/gi,'_').toLowerCase()}.${format}`)
+      .replace(/\b((?:19|20)\d{2})-W([0-5]\d)\b/g,'$1-S$2');
     const obj=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=obj;a.download=filename;document.body.appendChild(a);a.click();a.remove();
