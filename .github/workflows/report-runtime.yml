@@ -75,5 +75,10 @@ jobs:
           python -m pytest -q tests/test_v405_access_history.py
           python -m py_compile v405_user_access_history.py
           node --check web/access_history_option4_v405.js
+      - name: Validate V407 responsive tabs, Price Shoes and Semana S exports
+        run: |
+          python -m pytest -q tests/test_v407_visual_week_export.py tests/test_v400_missing_productivity_center_pdf.py
+          python -m py_compile v407_week_display.py v400_missing_productivity_center_pdf.py
+          node --check web/reporte_adaptable_v407.js
       - name: Validate the served page, navigation, reports and filters
         run: timeout 120s npm --prefix tests/ui test
