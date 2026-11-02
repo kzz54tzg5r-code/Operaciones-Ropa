@@ -56,7 +56,8 @@ def test_css_wins_old_fixed_tabs_and_old_white_logo_background():
     assert "--v407-tab-width" in js
     assert "replace(week,'$1-S$2')" in js
     assert "new MutationObserver" in js
-    assert "option.value" not in js
+    assert "option.value=" not in js
+    assert ".value=format(" not in js
     test=subprocess.run(["node","--check"],text=True,input=js,capture_output=True)
     assert test.returncode==0,test.stderr
 
