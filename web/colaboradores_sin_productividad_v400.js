@@ -35,17 +35,17 @@
     const scroll=el('div','or400-table-scroll');
     const grid=el('table','or400-table');
     const head=el('thead'),hrow=el('tr');
-    ['#','Colaborador','Tienda','Perfil / actividad','Último registro','Estatus']
+    ['#','Colaborador','Tienda','Último registro','Estatus']
       .forEach(label=>hrow.append(el('th',null,label)));
     head.append(hrow);grid.append(head);
     const body=el('tbody');
     rows.forEach((row,i)=>{
       const line=el('tr');
-      const values=[i+1,row.name||'—',row.store||'—',row.profile||'—',
+      const values=[i+1,row.name||'—',row.store||'—',
           row.last_date||'Sin registro',row.status||'Sin captura'];
       values.forEach((v,j)=>{
-        const cell=el('td',j===1?'or400-person':j===5?'or400-status':'',v);
-        if(j===5){const dot=el('span','or400-dot');cell.prepend(dot);}
+        const cell=el('td',j===1?'or400-person':j===4?'or400-status':'',v);
+        if(j===4){const dot=el('span','or400-dot');cell.prepend(dot);}
         line.append(cell);
       });
       body.append(line);
