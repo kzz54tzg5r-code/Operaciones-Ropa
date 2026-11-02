@@ -87,7 +87,8 @@ def test_pdf_visual_hierarchy_has_readable_typography_and_transparent_brand():
         assert any("Vallejo" in word["text"] and word["size"]>=7.2 for word in words)
         assert any("Recuperación" in word["text"] and word["size"]>=11 for word in words)
     img=price_white_reader()
-    assert img.getSize()==(211,121)
+    # Usar las dimensiones reales del arte cargado (210 x 121), no la caja HTML.
+    assert img.getSize()==(210,121)
     raw=img._image.convert("RGBA")
     # El fondo del gráfico original no debe pintarse de blanco.
     assert raw.getpixel((0,0))[3] < 50
