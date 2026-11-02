@@ -170,6 +170,7 @@ def appendix(original_pdf, result):
     El PDF principal se preserva íntegro para que coincidan datos y gráficas.
     """
     from v403_white_price_logo_pdf import draw_price_white
+    from v407_week_display import format_week_label
     W, H = landscape(letter)
     M=27
     usable=W-2*M
@@ -184,8 +185,8 @@ def appendix(original_pdf, result):
     ink=colors.white
     rows=result.get("rows") or []
     # Dimensionar el ancho por contenido, no dividirlo en siete columnas minúsculas.
-    cols=["#","Colaborador","Tienda","Perfil / actividad","Último registro","Estatus"]
-    fractions=[.048,.275,.155,.187,.139,.196]
+    cols=["#","Colaborador","Tienda","Último registro","Estatus"]
+    fractions=[.065,.370,.175,.180,.210]
     widths=[usable*x for x in fractions]
     xs=[M]
     for w in widths[:-1]:
@@ -242,7 +243,7 @@ def appendix(original_pdf, result):
         c.setFont("Helvetica",9.4)
         c.drawString(M+17,H-75,"Recuperación, conversión, recolección y seguimiento operativo")
         try:
-            draw_price_white(c,W-M-108,H-85,99,53)
+            draw_price_white(c,W-M-82,H-77,65,39)
         except Exception as error:
             print(f"[V403 PDF] Marca blanca: {error}",flush=True)
             c.setFillColor(ink)
@@ -255,7 +256,7 @@ def appendix(original_pdf, result):
         y-=21
         c.setFillColor(muted)
         c.setFont("Helvetica",9.8)
-        c.drawString(M,y,f"Periodo: {result.get('period_value') or 'Consulta'}   ·   "
+        c.drawString(M,y,f"Periodo: {format_week_label(result.get('period_value') or 'Consulta')}   ·   "
                          f"{result.get('start_date') or ''} a {result.get('end_date') or ''}")
         y-=25
         # Tarjetas resumen compactas, mismas gamas cromáticas que la pantalla.
@@ -293,14 +294,13 @@ def appendix(original_pdf, result):
         c.rect(M,y-row_h,usable,row_h,stroke=0,fill=1)
         values=[
             str(idx),item.get("name") or "—",item.get("store") or "—",
-            item.get("profile") or "Operativo",item.get("last_date") or "Sin registro",
-            "Sin productividad",
+            item.get("last_date") or "Sin registro","Sin productividad",
         ]
         for col,(x,w,value) in enumerate(zip(xs,widths,values)):
-            font="Helvetica-Bold" if col in (0,1,5) else "Helvetica"
+            font="Helvetica-Bold" if col in (0,1,4) else "Helvetica"
             value,size=fitting(value,w,font,9.6 if col!=1 else 10.0)
             c.setFont(font,size)
-            c.setFillColor(pink if col==5 else textcolor)
+            c.setFillColor(pink if col==4 else textcolor)
             if col==0:
                 c.drawCentredString(x+w/2,y-row_h/2-3,value)
             else:
@@ -350,9 +350,9 @@ def install(m):
         with BytesIO() as output:
             with m.pd.ExcelWriter(output,engine="openpyxl") as writer:
                 m.pd.DataFrame(result["rows"],columns=[
-                    "name","store","profile","last_date","status"
+                    "name","store","last_date","status"
                 ]).rename(columns={
-                    "name":"Colaborador","store":"Tienda","profile":"Perfil / Actividad",
+                    "name":"Colaborador","store":"Tienda",
                     "last_date":"Último registro","status":"Estatus"
                 }).to_excel(writer,sheet_name="Sin productividad",index=False)
             body=output.getvalue()
