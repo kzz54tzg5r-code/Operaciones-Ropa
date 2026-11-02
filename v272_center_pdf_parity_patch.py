@@ -246,7 +246,7 @@ def install(m):
                 c.setFont("Helvetica-Bold", 8.4)
                 c.drawString(x + 15, yy + 78, metric)
                 number,number_size=fitted_cell(val,card_w-31,19.8,"Helvetica-Bold")
-                set_fill(TEXT if idx == 3 else tone)
+                set_fill(TEXT if idx == 0 else tone)
                 c.setFont("Helvetica-Bold",number_size)
                 c.drawString(x + 15, yy + 56, number)
 
