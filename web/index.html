@@ -694,6 +694,7 @@ body{max-width:100%;overflow-x:hidden}
   </div>
   <div class="title">Usuarios registrados</div>
   <div class="tablewrap"><table class="table"><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody id="userTable"></tbody></table></div>
+  <div id="v405AccessHistory" class="superOnly hidden"></div>
   <div class="panel superOnly" id="systemControl">
     <div class="title" style="margin-top:0">Control del sistema · Propietario</div>
     <div class="subtitle">Suspender o eliminar la plataforma requiere tu contraseña.</div>
@@ -3252,6 +3253,7 @@ async function loadUsers(){
       tr.querySelector('.userEditStore').value=u.store||'';
     });
     bindUserActions();
+    window.V405_ACCESS?.mount(USER?.role);
   }catch(e){if($('#userMsg'))$('#userMsg').textContent='Error: '+e.message}
 }
 function bindUserActions(){
@@ -3613,4 +3615,6 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
 <script src="/static/colaborador_bajas_unificacion_v402.js?v=402" defer></script>
 <link rel="stylesheet" href="/static/reporte_visual_v403.css?v=403">
 <script src="/static/centro_periodos_v403.js?v=403" defer></script>
+<link rel="stylesheet" href="/static/access_history_option4_v405.css?v=405">
+<script src="/static/access_history_option4_v405.js?v=405" defer></script>
 </body></html>
