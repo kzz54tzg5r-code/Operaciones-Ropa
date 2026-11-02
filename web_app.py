@@ -3104,6 +3104,12 @@ async def reset_user_password(user_id: int, request: Request):
             "UPDATE users SET password_hash=?,must_change_password=1,session_version=COALESCE(session_version,1)+1,updated_at=? WHERE id=?",
             (hash_password(password),now,user_id)
         )
+    # Registrar reset sin incluir contraseña temporal en la bitácora.
+    try:
+        from v405_user_access_history import record_event
+        record_event(sys.modules[__name__],request,"password_reset",user=dict(target))
+    except Exception:
+        pass
     return {
         "ok":True,
         "message":"Contraseña temporal generada. El usuario deberá cambiarla en el siguiente inicio.",
@@ -3134,6 +3140,11 @@ async def change_my_password(request: Request):
         )
         row2=con.execute("SELECT session_version FROM users WHERE id=?",(actor["id"],)).fetchone()
     request.session["sv"]=int(row2["session_version"])
+    try:
+        from v405_user_access_history import record_event
+        record_event(sys.modules[__name__],request,"password_reset",user=dict(row))
+    except Exception:
+        pass
     return {"ok":True,"message":"Contraseña actualizada correctamente"}
 
 @app.post("/api/me/complete-temporary-password")
