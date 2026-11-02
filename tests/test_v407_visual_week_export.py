@@ -62,7 +62,12 @@ def test_css_wins_old_fixed_tabs_and_old_white_logo_background():
 
 
 def test_week_labels_are_s_in_real_center_pdf():
-    from tests.test_v366_pdf_visual_parity import _sample
+    import importlib.util
+    source=ROOT/"tests"/"test_v366_pdf_visual_parity.py"
+    spec=importlib.util.spec_from_file_location("v366_sample_pdf",source)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    _sample=module._sample
     data=_sample("week")
     pages=PdfReader(BytesIO(data)).pages
     txt=" ".join((p.extract_text() or "") for p in pages)
