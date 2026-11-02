@@ -113,7 +113,8 @@
         const blob=await response.blob();
         const objectUrl=URL.createObjectURL(blob);
         const link=el('a');link.href=objectUrl;
-        link.download='colaboradores_sin_productividad_'+(selection().period_value||'consulta')+'.xlsx';
+        link.download='colaboradores_sin_productividad_'+
+          (selection().period_value||'consulta').replace(/\b((?:19|20)\d{2})-W([0-5]\d)\b/g,'$1-S$2')+'.xlsx';
         document.body.append(link);link.click();link.remove();
         setTimeout(()=>URL.revokeObjectURL(objectUrl),3000);
       }catch(e){alert('No fue posible exportar: '+(e.message||e));}
