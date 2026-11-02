@@ -1,0 +1,95 @@
+/* V407 · barra de pestañas dimensionada por su texto, sin recorte.
+   Los datos de --v407-tab-width se calculan desde el rótulo real.
+   Gana prioridad a V356 (alto fijo) y V363 (ancho 108px). */
+html body #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs),
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs),
+html body.or356-module-active #appView #operativoNav{
+  display:flex!important;
+  flex-flow:row nowrap!important;
+  align-items:stretch!important;
+  height:auto!important;
+  min-height:78px!important;
+  max-height:none!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  gap:6px!important;
+  scroll-snap-type:x proximity!important;
+  padding:6px!important;
+}
+html body #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:not([hidden]),
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:not([hidden]),
+html body.or356-module-active #appView #operativoNav>button:not([hidden]){
+  box-sizing:border-box!important;
+  flex:0 0 var(--v407-tab-width, 136px)!important;
+  width:var(--v407-tab-width,136px)!important;
+  min-width:var(--v407-tab-width,136px)!important;
+  max-width:var(--v407-tab-width,136px)!important;
+  height:auto!important;
+  min-height:64px!important;
+  max-height:none!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:3px!important;
+  padding:6px 7px!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  line-height:1.2!important;
+  text-overflow:clip!important;
+  flex-shrink:0!important;
+}
+html body #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button :is(.rt-tab-label,.v203-tab-label),
+html body.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button :is(.rt-tab-label,.v203-tab-label),
+html body.or356-module-active #appView #operativoNav>button .rt-tab-label{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  min-height:0!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  -webkit-line-clamp:unset!important;
+  white-space:normal!important;
+  overflow-wrap:break-word!important;
+  word-break:normal!important;
+  line-height:1.23!important;
+  font-size:11px!important;
+  text-align:center!important;
+  padding:0!important;
+}
+html body #appView #sidebar .sidebrand,
+html body.or363-navigation #appView #sidebar .sidebrand,
+html body.or356-module-active #appView #sidebar .sidebrand{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+html body #appView #sidebar .sidebrand img,
+html body.or363-navigation #appView #sidebar .sidebrand img,
+html body.or356-module-active #appView #sidebar .sidebrand img{
+  display:block!important;
+  background:transparent!important;
+  background-color:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  padding:0!important;
+  width:58px!important;
+  min-width:58px!important;
+  max-width:58px!important;
+  height:54px!important;
+  max-height:54px!important;
+  opacity:1!important;
+  object-fit:contain!important;
+}
+#or400WithoutProductivity .or400-table{min-width:480px!important;}
+@media(max-width:640px){
+  html body #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs),
+  html body.or356-module-active #appView #operativoNav{min-height:76px!important}
+  html body #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:not([hidden]),
+  html body.or356-module-active #appView #operativoNav>button:not([hidden]){min-height:62px!important}
+}
