@@ -79,7 +79,8 @@ def install(m):
             period_value = str(data.get("period_value") or "")
             start_date = str(data.get("start_date") or "")
             end_date = str(data.get("end_date") or "")
-            period = period_value or (f"{start_date} a {end_date}" if start_date or end_date else "Histórico")
+            from v407_week_display import format_week_label
+            period = format_week_label(period_value or (f"{start_date} a {end_date}" if start_date or end_date else "Histórico"))
             mode_label = {
                 "day": "Diario", "week": "Semanal", "month": "Mensual", "year": "Anual", "all": "Histórico"
             }.get(period_type, "Semanal" if report == "Reporte Semanal" else ("Mensual" if report == "Reporte Mensual" else "Operativo"))
