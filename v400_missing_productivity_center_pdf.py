@@ -154,7 +154,6 @@ def build_missing(m, allowed_stores, period_type, period_value):
         # Evitar atribuir registros futuros a una fecha histórica seleccionada.
         rows.append({
             "name": r["name"], "store": r["store"],
-            "profile": r.get("last_activity") or "Operativo",
             "last_date": last_record,
             "status": "Sin captura de productividad",
         })
@@ -356,7 +355,8 @@ def install(m):
                     "last_date":"Último registro","status":"Estatus"
                 }).to_excel(writer,sheet_name="Sin productividad",index=False)
             body=output.getvalue()
-        safe=re.sub(r"[^0-9A-Za-z_-]+","_",period_value) or "consulta"
+        from v407_week_display import format_week_label
+        safe=re.sub(r"[^0-9A-Za-z_-]+","_",format_week_label(period_value)) or "consulta"
         return Response(body,media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         headers={"Content-Disposition":f'attachment; filename="sin_productividad_{safe}.xlsx"',"Cache-Control":"no-store"})
 
