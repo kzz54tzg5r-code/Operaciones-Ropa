@@ -40,7 +40,8 @@ def install(m):
         W,H=landscape(letter);M=26
         BLUE='#173B73';BLUE2='#246FE5';PINK='#EC007C';PURPLE='#7C3AED';GREEN='#10B981';ORANGE='#F59E0B';RED='#EF4444';TXT='#102A56';MUT='#6B778C';LINE='#D7E0EA';BG='#F3F6FA';ROWALT='#EEF4FB'
         mt=d.get('metrics') or {};stores=list(d.get('stores') or []);rec=list(d.get('recovery_by_store') or [])
-        period=str(d.get('period_value') or 'Histórico')
+        from v407_week_display import format_week_label
+        period=format_week_label(d.get('period_value') or 'Histórico')
         project=[r for r in stores if r.get('is_project')]
         rec_by_store={str(r.get('store') or ''):r for r in rec}
         project.sort(key=lambda r:(-_num((rec_by_store.get(str(r.get('store') or '')) or {}).get('conversion_pct')),str(r.get('store') or '')))
