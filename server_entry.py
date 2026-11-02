@@ -494,6 +494,10 @@ _install_v400_missing_productivity(web_app)
 from v402_collaborator_roster_merge import install as _install_v402_roster
 _install_v402_roster(web_app)
 
+# V405: Historial de accesos Opción 4, consultas/exportaciones privadas.
+from v405_user_access_history import install as _install_v405_access
+_install_v405_access(web_app)
+
 # Diagnósticos V386-V388 y reparación automática V387 desactivados tras
 # publicar octubre: conservar sólo el lector V389 y reparación manual V368.
 
