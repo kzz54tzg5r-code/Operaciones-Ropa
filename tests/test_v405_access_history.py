@@ -82,7 +82,10 @@ def test_owner_only_and_exact_counters(m):
     assert result["closed"]==1
     assert result["resets"]==1
     assert result["recent"][0]["username"] in ("Diana Loa","Gustavo Camargo")
-    assert {r["username"] for r in result["recent"]}=={"Diana Loa","Gustavo Camargo"}
+    # La lista añade usuarios activos sin registros: 0 no significa un login.
+    assert {"Diana Loa","Gustavo Camargo","Propietario"} <= {
+        r["username"] for r in result["recent"]
+    }
     assert all(r["ip_mask"]=="192.168.5.×" for r in result["rows"])
     assert all("password" not in r for r in result["rows"])
     e=endpoint(m,"/api/admin/access-history-v405")
