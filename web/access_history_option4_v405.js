@@ -91,7 +91,8 @@
     set('#v405Pagination',`Página ${data.page} de ${data.pages} · ${fmt(data.total)} eventos`);
     q('#v405Back',root()).disabled=data.page<=1;
     q('#v405Next',root()).disabled=data.page>=data.pages;
-    set('#v405Note',data.tracking_since);
+    set('#v405Note',data.tracking_since+
+      (data.total===0?' Los usuarios sin acceso registrado muestran 0 ingresos y fecha sin registro.':''));
   }
   async function load(){
     const host=root();if(!host||host.closest('.hidden'))return;
@@ -152,7 +153,7 @@
       </div>
       <div class="v405-meta" id="v405Meta"></div>
       <div class="v405-top">
-        <section class="v405-panel v405-recent"><header>Usuarios registrados recientemente</header>
+        <section class="v405-panel v405-recent"><header>Usuarios registrados y últimos accesos</header>
           <div class="v405-scroll"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Ingresos</th><th>Sesiones detectadas</th><th>Última actividad</th></tr></thead><tbody id="v405RecentRows"></tbody></table></div>
         </section>
         <div class="v405-side">
