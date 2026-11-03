@@ -533,6 +533,8 @@ body.v238-module-operativo #operPeriodMode{
   };
   const COLLECTION_TYPES=[['','Todos'],['Muertos','Muertos'],['Cambios','Cambios'],['Probador','Probador']];
   let centerSeq=0;
+  // Controla la recuperación por filtro para no producir bucles ni consultas duplicadas.
+  const centerRecoveryAttempts=new Map();
   let centerMode='';
   const periodByMode={};
   const routeCache=new Map();
@@ -750,13 +752,42 @@ body.v238-module-operativo #operPeriodMode{
         recovery_by_store:data?.recovery_by_store||[],
       };
       if(host)host.innerHTML=centerHtml(data,mode,value);
+      centerRecoveryAttempts.delete([mode,value,q('#operStoreSelect')?.value||'Compañía'].join('|'));
       markCenter(mode);
       ensureCenterControls(dmeta,mode,false);
       removeRecoveryGraph();
     }catch(err){
       if(seq!==centerSeq)return;
-      if(host)host.innerHTML='<div class="infoempty">No fue posible cargar la vista '+MODE_LABEL[mode]+': '+esc(err?.message||err)+'</div>';
+      const store=q('#operStoreSelect')?.value||'Compañía';
+      const sig=[mode,value,store].join('|');
+      const status=Number(err?.status||0);
+      const temporary=[502,503,504,520,521,522,523,524,529,530].includes(status) ||
+        /fetch|network|reconectando|se reinició|servicio está iniciando/i.test(String(err?.message||''));
+      if(host){
+        const title=temporary?'Render se está reconectando':'No fue posible consultar el reporte';
+        host.innerHTML='<div class="infoempty" role="status" style="padding:16px;border:1px solid #f5c9c9;border-radius:10px;">'+
+          '<b>'+title+'</b><div style="margin:7px 0">Vista '+esc(MODE_LABEL[mode])+
+          ' · '+esc(value)+' · '+esc(store)+'</div>'+
+          '<p>'+esc(err?.message||err)+'</p>'+
+          '<button id="v410RetryCenter" type="button" class="primary">Volver a consultar</button>'+
+          (temporary?'<small style="display:block;margin-top:9px">Se reintentará automáticamente sin cambiar el periodo ni la tienda.</small>':'')+
+          '</div>';
+        q('#v410RetryCenter')?.addEventListener('click',()=>{
+          centerRecoveryAttempts.delete(sig);
+          if(seq===centerSeq)renderCenter(mode,false);
+        });
+      }
       markCenter(mode);ensureCenterControls(dmeta,mode,false);
+      const count=centerRecoveryAttempts.get(sig)||0;
+      if(temporary&&count<2&&!document.hidden){
+        centerRecoveryAttempts.set(sig,count+1);
+        setTimeout(()=>{
+          if(seq!==centerSeq||!isCenterActive()||document.hidden)return;
+          if((q('#operPeriodSelect')?.value||'')!==value)return;
+          if((q('#operStoreSelect')?.value||'Compañía')!==store)return;
+          renderCenter(mode,false);
+        },7000+count*7000);
+      }
     }
   }
   window.V240_renderCenter=renderCenter;

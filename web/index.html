@@ -756,15 +756,35 @@ async function apiRequest(url,opt={}){
   try{
     const cfg={...opt,signal:controller.signal};
     delete cfg.timeoutMs;
-    const r=await fetch(url,cfg);
-    const raw=await r.text();let j={};try{j=raw?JSON.parse(raw):{}}catch(e){}
-    if(!r.ok){
-      const temporary={502:'El servicio se reinició durante el proceso. Espera unos segundos e inténtalo nuevamente.',503:'El servicio está iniciando. Espera unos segundos e inténtalo nuevamente.',504:'El proceso excedió el tiempo de respuesta del servidor.'};
-      const cleanText=/<\s*!doctype|<\s*html/i.test(raw)?'':raw.trim().slice(0,800);
-      const error=new Error(j.detail||j.message||temporary[r.status]||cleanText||('Error HTTP '+r.status));
-      error.status=r.status;throw error;
+    // V410: sólo reintentar GET operativos (nunca cargas, pagos, sesiones ni cambios).
+    // Los relevos de Render producen 502/503 breves sin que se hayan perdido datos.
+    const canRetry=String(opt.method||'GET').toUpperCase()==='GET' &&
+      /^\/api\/operations(?:[/?]|$)/.test(String(url));
+    const retryDelays=[1200,2600,5100];
+    for(let attempt=0;attempt<=retryDelays.length;attempt++){
+      try{
+        const r=await fetch(url,cfg);
+        const raw=await r.text();
+        let j={};try{j=raw?JSON.parse(raw):{}}catch(_){}
+        if(!r.ok){
+          const temporary={502:'Render está reconectando el servicio.',503:'El servicio está iniciando.',504:'La consulta excedió el tiempo de respuesta.'};
+          const cleanText=/<\s*!doctype|<\s*html/i.test(raw)?'':raw.trim().slice(0,800);
+          const error=new Error(j.detail||j.message||temporary[r.status]||cleanText||('Error HTTP '+r.status));
+          error.status=r.status;
+          throw error;
+        }
+        return j;
+      }catch(error){
+        if(callerSignal?.aborted||controller.signal.aborted)throw error;
+        const code=Number(error?.status||0);
+        const transient=[502,503,504,520,521,522,523,524,529,530].includes(code) ||
+          (error?.name==='TypeError'&&/fetch|network|connection/i.test(String(error?.message||'')));
+        if(!canRetry||!transient||attempt>=retryDelays.length)throw error;
+        console.warn('[V410] Reconectando consulta operativa:',attempt+1,'de',retryDelays.length);
+        await new Promise(resolve=>setTimeout(resolve,retryDelays[attempt]));
+        if(controller.signal.aborted)throw new Error('El servidor tardó demasiado en responder.');
+      }
     }
-    return j;
   }catch(e){
     if(callerSignal?.aborted)throw e;
     if(e?.name==='AbortError')throw new Error('El servidor tardó demasiado en responder.');
