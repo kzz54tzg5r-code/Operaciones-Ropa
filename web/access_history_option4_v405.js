@@ -8,7 +8,8 @@
   const label={superadmin:'Super Administrador',admin:'Administrador',director:'Director / Consulta',
     tienda:'Tienda',colaborador_lenceria:'Lencería',colaborador_operativo:'Operativo'};
   const events={login_success:'Inicio de sesión',login_failed:'Intento fallido',
-    logout:'Cierre de sesión',password_reset:'Contraseña restablecida'};
+    logout:'Cierre de sesión',password_reset:'Contraseña restablecida',
+    session_observed:'Sesión vigente detectada'};
   const dateTime=raw=>{
     if(!raw)return '—';
     const d=new Date(raw);if(isNaN(d))return String(raw);
@@ -61,15 +62,16 @@
     set('#v405Unique',fmt(data.unique_users));
     set('#v405Failed',fmt(data.failed));
     set('#v405Closed',fmt(data.closed));
+    set('#v405Observed',fmt(data.observed));
     set('#v405Total',fmt(data.total));
     set('#v405Meta',data.from+' a '+data.to);
     const chosen=filters();
     fillSelect('#v405User',data.filters.users,'Todos los usuarios',chosen.username);
     fillSelect('#v405Role',data.filters.roles,'Todos los roles',chosen.role);
     fillSelect('#v405Store',data.filters.stores,'Todas las tiendas',chosen.store);
-    drawTable('#v405RecentRows',data.recent,5,'Aún no hay ingresos registrados.',(tr,r)=>{
+    drawTable('#v405RecentRows',data.recent,6,'Sin accesos ni sesiones detectadas durante este periodo.',(tr,r)=>{
       [r.username,label[r.role]||r.role||'—',r.store||'Sin tienda',
-       fmt(r.accesses),dateTime(r.latest)].forEach(v=>tr.append(node('td',null,v)));
+       fmt(r.accesses),fmt(r.observed),dateTime(r.latest)].forEach(v=>tr.append(node('td',null,v)));
     });
     drawTable('#v405AlertRows',data.alerts,3,'Sin alertas en el periodo.',(tr,r)=>{
       tr.append(node('td',null,dateTime(r.occurred_at)));
@@ -96,6 +98,10 @@
     const id=++querySeq;
     const status=q('#v405Status',host);status.textContent='Consultando accesos…';
     try{
+      // Registrar antes la sesión actual, si existía desde antes de V405.
+      // La operación es idempotente por sesión; nunca se cuenta como login.
+      await fetch('/api/access/session-observed-v408',
+        {method:'POST',cache:'no-store',credentials:'same-origin'}).catch(()=>{});
       const data=await fetchJson('/api/admin/access-history-v405?'+qs({...filters(),page,page_size:20}));
       if(id!==querySeq||!host.isConnected)return;
       render(data);status.textContent='Datos actualizados.';
@@ -144,7 +150,7 @@
       <div class="v405-meta" id="v405Meta"></div>
       <div class="v405-top">
         <section class="v405-panel v405-recent"><header>Usuarios registrados recientemente</header>
-          <div class="v405-scroll"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Ingresos</th><th>Último acceso</th></tr></thead><tbody id="v405RecentRows"></tbody></table></div>
+          <div class="v405-scroll"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Tienda</th><th>Ingresos</th><th>Sesiones detectadas</th><th>Última actividad</th></tr></thead><tbody id="v405RecentRows"></tbody></table></div>
         </section>
         <div class="v405-side">
           <section class="v405-panel"><header>Resumen de accesos</header>
@@ -153,6 +159,7 @@
               <article><b id="v405Unique">—</b><span>Usuarios únicos</span></article>
               <article><b id="v405Failed">—</b><span>Intentos fallidos</span></article>
               <article><b id="v405Closed">—</b><span>Sesiones cerradas manualmente</span></article>
+              <article><b id="v405Observed">—</b><span>Sesiones vigentes detectadas</span></article>
             </div>
           </section>
           <section class="v405-panel"><header>Alertas de seguridad</header>
