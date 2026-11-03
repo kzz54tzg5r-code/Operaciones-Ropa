@@ -225,6 +225,13 @@ def install(m):
     def history(request:Request,period:str="day",reference:str="",
                 username:str="",role:str="",store:str="",page:int=1,page_size:int=20):
         owner(request)
+        # V409: auditar en la propia consulta la primera sesión real ya abierta.
+        # No depender de que un POST opcional de la interfaz haya concluido.
+        # La marca sólo se fija al persistir; nunca crear ingresos ficticios.
+        row=m._session_user_row(request)
+        if row is not None and not request.session.get("v408_audit_seen"):
+            if record_event(m,request,"session_observed",user=dict(row)):
+                request.session["v408_audit_seen"]=True
         return query(m,period,reference,username,role,store,page,page_size)
 
     @m.app.get("/api/admin/access-history-v405/export")
