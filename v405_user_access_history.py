@@ -149,6 +149,22 @@ def query(m, period="day", reference="", username="", role="", store="", page=1,
             "FROM user_access_events WHERE "+where+" "
             "AND event IN ('login_success','session_observed') "
             "GROUP BY username,role,store ORDER BY latest DESC LIMIT 12",values).fetchall()]
+        # Si todavía no hay eventos (por ejemplo, usuarios que ya tenían
+        # sesión abierta al instalar V405), mostrar el padrón real sin
+        # fabricar entradas ni sumar accesos en las tarjetas.
+        if not recent:
+            clauses=["active=1"]
+            args=[]
+            for key,value in (("username",username),("role",role),("store",store)):
+                if value and value!="all":
+                    clauses.append(key+"=?")
+                    args.append(value)
+            known=[dict(x) for x in con.execute(
+                "SELECT username,role,store FROM users WHERE "+
+                " AND ".join(clauses)+" ORDER BY username COLLATE NOCASE LIMIT 12",
+                args).fetchall()]
+            recent=[{**u,"latest":None,"accesses":0,"observed":0,
+                     "unrecorded":True} for u in known]
         top=[dict(x) for x in con.execute(
             "SELECT username,COUNT(*) accesses FROM user_access_events WHERE "+where+
             " AND event='login_success' GROUP BY username ORDER BY accesses DESC,username LIMIT 8",
