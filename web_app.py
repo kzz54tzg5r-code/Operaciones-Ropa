@@ -2928,7 +2928,9 @@ async def login(request: Request):
     must=bool(row["must_change_password"]) if "must_change_password" in row.keys() else False
     try:
         from v405_user_access_history import record_event
-        record_event(sys.modules[__name__],request,"login_success",user=dict(row))
+        # El ingreso es real; las recargas posteriores no se cuentan dos veces.
+        if record_event(sys.modules[__name__],request,"login_success",user=dict(row)):
+            request.session["v408_audit_seen"]=True
     except Exception:
         pass
     return {
