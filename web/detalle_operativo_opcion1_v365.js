@@ -1,4 +1,4 @@
-/* V365: Detalle Operativo — gráfica 1 con barras verticales agrupadas.
+/* V408: Detalle Operativo — gráfica mixta (2 barras y línea de Ubicado).
    La tabla original y sus 15 campos se respetan (V117); solo se estiliza mediante CSS.
    Se consumen exclusivamente los datos y filtros ya entregados al reporte. */
 (function(){
@@ -36,7 +36,7 @@
     const fmtTick=n=>escapeText(numberLabel(n));
     const y=value=>baseline-(numeric(value)/maximum*plotHeight);
     const parts=['<svg class="combo-svg or365-vertical-svg" role="img" '+
-      'aria-label="Comparativo de ingresos, acondicionado y ubicado por tienda en barras verticales" '+
+      'aria-label="Gráfico mixto: ingresos y acondicionado en barras, ubicado como línea rosa" '+
       'style="--or365-min-width:'+width+'px" viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMinYMin meet">'];
     parts.push('<title>Ingresos, acondicionado y ubicado por tienda</title>');
     for(let i=0;i<=4;i++){
@@ -47,33 +47,65 @@
     }
     paint.forEach((series,i)=>{
       const x=left+i*163;
-      parts.push('<rect x="'+x+'" y="12" width="11" height="11" rx="2" fill="'+series.color+'"/>');
-      parts.push('<text x="'+(x+16)+'" y="21" fill="#3c526f" font-size="11">'+series.label+'</text>');
+      if(series.key==='ubicado'){
+        parts.push('<line x1="'+x+'" y1="17.5" x2="'+(x+13)+'" y2="17.5" stroke="'+series.color+'" stroke-width="3"/>');
+        parts.push('<circle cx="'+(x+7)+'" cy="17.5" r="3" fill="'+series.color+'" stroke="#fff"/>');
+      }else{
+        parts.push('<rect x="'+x+'" y="12" width="11" height="11" rx="2" fill="'+series.color+'"/>');
+      }
+      parts.push('<text x="'+(x+17)+'" y="21" fill="#3c526f" font-size="11">'+series.label+'</text>');
     });
+    const ubicPoints=[];
+    const labels=[];
     data.forEach((row,i)=>{
       const center=left+(i+.5)*groupWidth;
-      paint.forEach((series,j)=>{
+      const bars=paint.slice(0,2);
+      const barCoordinates=[];
+      bars.forEach((series,j)=>{
         const value=numeric(row[series.key]);
         const barHeight=value/maximum*plotHeight;
-        const x=center+(j-1)*(barWidth+gap)-barWidth/2;
+        const x=center+(j===0?-1:1)*(barWidth/2+gap/2)-barWidth/2;
         const barTop=baseline-barHeight;
         const barTitle=escapeText(row.store)+' · '+series.label+': '+fmtTick(value);
         parts.push('<rect x="'+x.toFixed(2)+'" y="'+barTop.toFixed(2)+'" width="'+barWidth+
           '" height="'+barHeight.toFixed(2)+'" rx="2" fill="'+series.color+'"><title>'+barTitle+'</title></rect>');
-        const labelY=Math.max(top+10,barTop-6);
-        parts.push('<text x="'+(x+barWidth/2).toFixed(2)+'" y="'+labelY.toFixed(2)+
-          '" text-anchor="middle" font-size="9" font-weight="750" fill="'+series.color+
-          '" paint-order="stroke" stroke="#fff" stroke-width="3">'+fmtTick(value)+'</text>');
+        barCoordinates.push({x:x+barWidth/2,y:barTop,value:value,color:series.color});
       });
+      const ubic=numeric(row.ubicado);
+      const pointY=y(ubic);
+      ubicPoints.push({x:center,y:pointY,value:ubic,store:String(row.store||'')});
+      // Etiquetas dibujadas al final, encima de la línea y con halo blanco.
+      for(let j=0;j<barCoordinates.length;j++){
+        const bar=barCoordinates[j],other=barCoordinates[1-j];
+        let labelY=Math.max(top+10,bar.y-7);
+        if(Math.abs(bar.y-other.y)<14)labelY+=j===0?-9:10;
+        labels.push('<text x="'+bar.x.toFixed(2)+'" y="'+Math.max(top+11,labelY).toFixed(2)+
+          '" text-anchor="middle" font-size="9" font-weight="750" fill="'+bar.color+
+          '" paint-order="stroke" stroke="#fff" stroke-width="3">'+fmtTick(bar.value)+'</text>');
+      }
+      let ubicLabelY=Math.max(top+11,pointY-13);
+      if(barCoordinates.some(p=>Math.abs(p.y-pointY)<18))ubicLabelY=Math.max(top+11,ubicLabelY-18);
+      labels.push('<text x="'+center.toFixed(2)+'" y="'+ubicLabelY.toFixed(2)+
+        '" text-anchor="middle" font-size="9" font-weight="800" fill="#e50076" '+
+        'paint-order="stroke" stroke="#fff" stroke-width="3">'+fmtTick(ubic)+'</text>');
       parts.push('<text x="'+center.toFixed(2)+'" y="'+(baseline+22)+
         '" font-size="10" text-anchor="middle" fill="#29496c">'+escapeText(row.store)+'</text>');
       parts.push('<text x="'+center.toFixed(2)+'" y="'+(baseline+36)+
         '" font-size="9" text-anchor="middle" fill="#708197">#'+(i+1)+'</text>');
     });
+    // Ubicado: línea continua con marcas visibles (incluye ceros reales).
+    const points=ubicPoints.map(p=>p.x.toFixed(2)+','+p.y.toFixed(2)).join(' ');
+    parts.push('<polyline points="'+points+'" fill="none" stroke="#e50076" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>');
+    ubicPoints.forEach(p=>{
+      parts.push('<circle cx="'+p.x.toFixed(2)+'" cy="'+p.y.toFixed(2)+
+        '" r="4.4" fill="#e50076" stroke="#fff" stroke-width="1.5"><title>'+
+        escapeText(p.store)+' · Ubicado: '+fmtTick(p.value)+'</title></circle>');
+    });
+    parts.push(...labels);
     parts.push('</svg>');
     const textPeriod=escapeText(period||'Histórico');
     const textScope=escapeText(scope||'Todas las tiendas');
-    return '<div class="chart-box chart-scroll or365-detail-chart" data-or365-chart="grouped-vertical">'+
+    return '<div class="chart-box chart-scroll or365-detail-chart" data-or365-chart="mixed-bars-line">'+
       '<h3 class="or365-chart-title">Ingresos vs Acondicionado vs Ubicado · '+textScope+' · '+textPeriod+'</h3>'+
       '<div class="or365-chart-hint">Comparativo por tienda · desliza horizontalmente para ver todas las tiendas</div>'+
       parts.join('')+'</div>';
