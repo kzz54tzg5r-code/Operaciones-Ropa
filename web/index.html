@@ -2255,6 +2255,7 @@ function opsComboSvg(rows,period,scope,rec=[]){
   let svg=`<svg class="combo-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMinYMin meet"><text x="22" y="30" font-size="18" font-weight="800" fill="#173B73">Ingreso vs Acondicionado vs Ubicado · ${scope} · ${period||'Histórico'}</text>`;
   for(let t=0;t<=4;t++){const val=max*t/4,yy=y(val);svg+=`<line x1="${left}" x2="${w-right}" y1="${yy}" y2="${yy}" stroke="#e3eaf3"/><text x="${left-10}" y="${yy+4}" text-anchor="end" font-size="9" fill="#718096">${fmt(val)}</text>`}
   const pts=[];
+  let valueLabels='';
   data.forEach((r,i)=>{
     const cx=left+step*i+step/2,ac=Number(r.acondicionado||0),ub=Number(r.ubicado||0),ing=Number(r.ingresos||0);
     const ih=plotH*ing/max,ah=plotH*ac/max;
@@ -2264,14 +2265,16 @@ function opsComboSvg(rows,period,scope,rec=[]){
     let iy=y(ing)-9,ay=y(ac)-9,uy=y(ub)-17;
     if(Math.abs(iy-ay)<16){iy-=12;ay+=12;}
     if(Math.abs(uy-iy)<18 || Math.abs(uy-ay)<18)uy-=20;
-    svg+=`<text x="${cx-barW/2-3}" y="${Math.max(top+12,iy)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#1769e8" style="${halo}">${fmt(ing)}</text>`;
-    svg+=`<text x="${cx+barW/2+3}" y="${Math.max(top+12,ay)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#173B73" style="${halo}">${fmt(ac)}</text>`;
-    svg+=`<text x="${cx}" y="${Math.max(top+12,uy)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#EC007C" style="${halo}">${fmt(ub)}</text>`;
+    valueLabels+=`<text x="${cx-barW/2-3}" y="${Math.max(top+12,iy)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#1769e8" style="${halo}">${fmt(ing)}</text>`;
+    valueLabels+=`<text x="${cx+barW/2+3}" y="${Math.max(top+12,ay)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#173B73" style="${halo}">${fmt(ac)}</text>`;
+    valueLabels+=`<text x="${cx}" y="${Math.max(top+12,uy)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#EC007C" style="${halo}">${fmt(ub)}</text>`;
     pts.push(`${cx},${y(ub)}`);
     svg+=`<text transform="translate(${cx},${h-bottom+24}) rotate(-35)" text-anchor="end" font-size="9" fill="#5c6d82">#${i+1} · ${r.store}</text>`;
   });
   svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#EC007C" stroke-width="3"></polyline>`;
   pts.forEach(p=>{const [x,yv]=p.split(',');svg+=`<circle cx="${x}" cy="${yv}" r="4.5" fill="#EC007C" stroke="#fff" stroke-width="1.5"></circle>`});
+  // Valores por encima de la línea para evitar que el trazo tape números.
+  svg+=valueLabels;
   svg+=`<rect x="${left}" y="44" width="11" height="11" fill="#1769e8"></rect><text x="${left+16}" y="53" font-size="9">Ingresos</text><rect x="${left+98}" y="44" width="11" height="11" fill="#173B73"></rect><text x="${left+114}" y="53" font-size="9">Acondicionado</text><line x1="${left+230}" x2="${left+260}" y1="49" y2="49" stroke="#EC007C" stroke-width="3"></line><circle cx="${left+245}" cy="49" r="4" fill="#EC007C"></circle><text x="${left+266}" y="53" font-size="9">Ubicado</text></svg>`;
   return `<div class="chart-box chart-scroll">${svg}</div>`;
 }
