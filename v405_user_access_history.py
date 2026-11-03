@@ -15,10 +15,11 @@ from fastapi import HTTPException, Request
 from fastapi.responses import Response
 
 MX = ZoneInfo("America/Mexico_City")
-EVENTS = {"login_success", "login_failed", "logout", "password_reset"}
+EVENTS = {"login_success", "login_failed", "logout", "password_reset", "session_observed"}
 LABELS = {
     "login_success":"Ingreso exitoso", "login_failed":"Intento fallido",
     "logout":"Cierre de sesión", "password_reset":"Contraseña restablecida",
+    "session_observed":"Sesión vigente detectada",
 }
 
 
@@ -79,8 +80,11 @@ def record_event(m, request, event, username="", user=None):
                  str(row["role"] if row else ""),str(row["store"] if row else ""),
                  event,_device(request),_mask_ip(request))
             )
+        return True
     except Exception as exc:
-        print("[V405] Auditoría no disponible: "+type(exc).__name__,flush=True)
+        # No registrar usuarios, contraseñas ni IP en errores; informar clase.
+        print("[V408] Auditoría no disponible: "+type(exc).__name__,flush=True)
+        return False
 
 
 def _window(period, reference):
@@ -130,7 +134,8 @@ def query(m, period="day", reference="", username="", role="", store="", page=1,
             "SUM(CASE WHEN event='login_failed' THEN 1 ELSE 0 END) failed, "
             "SUM(CASE WHEN event='logout' THEN 1 ELSE 0 END) closed, "
             "SUM(CASE WHEN event='password_reset' THEN 1 ELSE 0 END) resets, "
-            "COUNT(DISTINCT CASE WHEN event='login_success' THEN user_id END) unique_users "
+            "COUNT(DISTINCT CASE WHEN event IN ('login_success','session_observed') THEN user_id END) unique_users, "
+            "SUM(CASE WHEN event='session_observed' THEN 1 ELSE 0 END) observed "
             "FROM user_access_events WHERE "+where,values).fetchone()
         total=int(counts["total"] or 0)
         rows=[dict(x) for x in con.execute(
@@ -138,8 +143,11 @@ def query(m, period="day", reference="", username="", role="", store="", page=1,
             "FROM user_access_events WHERE "+where+" ORDER BY occurred_at DESC,id DESC LIMIT ? OFFSET ?",
             [*values,page_size,(page-1)*page_size]).fetchall()]
         recent=[dict(x) for x in con.execute(
-            "SELECT username,role,store,MAX(occurred_at) latest,COUNT(*) accesses "
-            "FROM user_access_events WHERE "+where+" AND event='login_success' "
+            "SELECT username,role,store,MAX(occurred_at) latest,"
+            "SUM(CASE WHEN event='login_success' THEN 1 ELSE 0 END) accesses,"
+            "SUM(CASE WHEN event='session_observed' THEN 1 ELSE 0 END) observed "
+            "FROM user_access_events WHERE "+where+" "
+            "AND event IN ('login_success','session_observed') "
             "GROUP BY username,role,store ORDER BY latest DESC LIMIT 12",values).fetchall()]
         top=[dict(x) for x in con.execute(
             "SELECT username,COUNT(*) accesses FROM user_access_events WHERE "+where+
@@ -158,12 +166,17 @@ def query(m, period="day", reference="", username="", role="", store="", page=1,
         "failed":int(counts["failed"] or 0),
         "closed":int(counts["closed"] or 0),
         "resets":int(counts["resets"] or 0),
+        "observed":int(counts["observed"] or 0),
         "unique_users":int(counts["unique_users"] or 0),
         "recent":recent,"top":top,"alerts":alerts,
         "rows":rows,"page":page,"page_size":page_size,"pages":max(1,(total+page_size-1)//page_size),
         "filters":{"users":users,"roles":sorted({r["role"] for r in active if r["role"]}),
                    "stores":sorted({r["store"] for r in active if r["store"]})},
-        "tracking_since":"Los accesos anteriores a esta actualización no están disponibles.",
+        "tracking_since":(
+            "Los inicios de sesión anteriores a la activación de la bitácora no se pueden recuperar. "
+            "Una sesión ya abierta se registra como 'Sesión vigente detectada', "
+            "sin contarse como nuevo ingreso."
+        ),
     }
 
 
@@ -176,6 +189,21 @@ def install(m):
         u=m.current_user(request)
         if not u or u.get("role")!="superadmin":
             raise HTTPException(403,"Abre la vista Super Administrador para consultar los accesos")
+
+    @m.app.post("/api/access/session-observed-v408")
+    def observe_authenticated_session(request: Request):
+        """Anotar una sesión preexistente una sola vez, sin falsificar login."""
+        row=m._session_user_row(request)
+        if row is None:
+            raise HTTPException(401,"Sesión requerida")
+        if request.session.get("v408_audit_seen"):
+            return {"ok":True,"recorded":False}
+        saved=record_event(m,request,"session_observed",user=dict(row))
+        if saved:
+            # SessionMiddleware firma esta marca en la cookie del usuario.
+            # Evita registros duplicados entre pestañas y recargas.
+            request.session["v408_audit_seen"]=True
+        return {"ok":bool(saved),"recorded":bool(saved)}
 
     @m.app.get("/api/admin/access-history-v405")
     def history(request:Request,period:str="day",reference:str="",
