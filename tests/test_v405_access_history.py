@@ -202,3 +202,30 @@ def test_empty_period_shows_registered_users_but_no_invented_accesses(m):
     result=query(m,role="admin")
     assert [r["username"] for r in result["recent"]]==["Diana Loa"]
     assert result["total"]==0
+
+
+
+def test_owner_query_recovers_preexisting_session_and_lists_other_users(m):
+    """La consulta del propietario observa la sesión real; otras cuentas no desaparecen."""
+    req=FakeRequest()
+    req.session={}
+    m._session_user_row=lambda _req:{
+        "id":3,"username":"Propietario","role":"superadmin","store":""
+    }
+    history=endpoint(m,"/api/admin/access-history-v405")
+    first=history(req)
+    second=history(req)
+    assert first["successful"]==0
+    assert first["observed"]==1
+    assert second["observed"]==1  # sin duplicar
+    assert req.session["v408_audit_seen"] is True
+    users={row["username"]:row for row in second["recent"]}
+    assert {"Propietario","Diana Loa","Gustavo Camargo"} <= set(users)
+    assert users["Propietario"]["observed"]==1
+    assert users["Propietario"]["accesses"]==0
+    assert users["Diana Loa"]["accesses"]==0
+    assert users["Diana Loa"]["latest"] is None
+    m.role="admin"
+    with pytest.raises(HTTPException) as exc:
+        history(req)
+    assert exc.value.status_code==403
