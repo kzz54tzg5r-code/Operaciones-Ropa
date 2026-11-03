@@ -10,9 +10,8 @@ def test_mixed_chart_is_consistent_between_web_and_pdf():
     chart=html.split("function opsComboSvg(",1)[1].split("function recoveryTable(",1)[0]
     assert '#1769e8" rx="2"></rect>' in chart   # Ingresos
     assert '#173B73" rx="2"></rect>' in chart   # Acondicionado
-    assert 'pts.push(`${cx},${y(ub)}`)' not in chart  # no escaped template literal
-    assert "pts.push(`${cx},${y(ing)}`)" not in chart
-    assert "pts.push(`${cx},${y(ub)}`)".replace("\\","") in chart or "pts.push(" in chart
+    assert 'pts.push(`${cx},${y(ub)}`)' in chart
+    assert 'pts.push(`${cx},${y(ing)}`)' not in chart
     assert '<polyline points=' in chart and 'stroke="#EC007C"' in chart
     assert 'fill="#EC007C" rx="2"' not in chart  # Ubicado ya NO es barra
     pdf=(ROOT/"v272_center_pdf_parity_patch.py").read_text("utf-8")
