@@ -73,7 +73,7 @@ if(!html.includes('data-or365-chart="mixed-bars-line"'))throw Error('No es mixto
 if(!html.includes('<polyline points=')||!html.includes('stroke="#e50076"'))throw Error('No hay línea rosa');
 if(html.includes('rx="2" fill="#e50076"'))throw Error('Ubicado sigue como barra');
 for(const shade of ['#1769e8','#173b73']){
- const count=(html.match(new RegExp('rx="2" fill="'+shade+'"','g'))||[]).length;
+ const count=(html.match(new RegExp('rx="2" fill="'+shade+'"><title>','g'))||[]).length;
  if(count!==3)throw Error('Las barras '+shade+' no coinciden con 3 tiendas: '+count);
 }
 if((html.match(/<circle cx=/g)||[]).length < 3)throw Error('Faltan puntos de Ubicado');
