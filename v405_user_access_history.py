@@ -149,22 +149,29 @@ def query(m, period="day", reference="", username="", role="", store="", page=1,
             "FROM user_access_events WHERE "+where+" "
             "AND event IN ('login_success','session_observed') "
             "GROUP BY username,role,store ORDER BY latest DESC LIMIT 12",values).fetchall()]
-        # Si todavía no hay eventos (por ejemplo, usuarios que ya tenían
-        # sesión abierta al instalar V405), mostrar el padrón real sin
-        # fabricar entradas ni sumar accesos en las tarjetas.
-        if not recent:
-            clauses=["active=1"]
-            args=[]
-            for key,value in (("username",username),("role",role),("store",store)):
-                if value and value!="all":
-                    clauses.append(key+"=?")
-                    args.append(value)
-            known=[dict(x) for x in con.execute(
-                "SELECT username,role,store FROM users WHERE "+
-                " AND ".join(clauses)+" ORDER BY username COLLATE NOCASE LIMIT 12",
-                args).fetchall()]
-            recent=[{**u,"latest":None,"accesses":0,"observed":0,
-                     "unrecorded":True} for u in known]
+        # V409: mostrar el padrón REAL incluso si sólo el propietario
+        # inició sesión. Mezclar conteos verdaderos con cero explícito para
+        # las cuentas que aún no han generado eventos auditados.
+        clauses=["active=1"]
+        args=[]
+        for key,value in (("username",username),("role",role),("store",store)):
+            if value and value!="all":
+                clauses.append(key+"=?")
+                args.append(value)
+        known=[dict(x) for x in con.execute(
+            "SELECT username,role,store FROM users WHERE "+
+            " AND ".join(clauses)+" ORDER BY username COLLATE NOCASE LIMIT 100",
+            args).fetchall()]
+        tracked={str(row["username"]).casefold():row for row in recent}
+        for u in known:
+            key=str(u["username"]).casefold()
+            if key not in tracked:
+                tracked[key]={**u,"latest":None,"accesses":0,"observed":0,
+                              "unrecorded":True}
+        recent=sorted(tracked.values(),key=lambda row:(
+            row.get("latest") is None, -(int(row.get("accesses") or 0)),
+            str(row.get("username") or "").casefold()
+        ))[:100]
         top=[dict(x) for x in con.execute(
             "SELECT username,COUNT(*) accesses FROM user_access_events WHERE "+where+
             " AND event='login_success' GROUP BY username ORDER BY accesses DESC,username LIMIT 8",
@@ -228,7 +235,7 @@ def install(m):
         # V409: auditar en la propia consulta la primera sesión real ya abierta.
         # No depender de que un POST opcional de la interfaz haya concluido.
         # La marca sólo se fija al persistir; nunca crear ingresos ficticios.
-        row=m._session_user_row(request)
+        row=getattr(m,"_session_user_row",lambda _request:None)(request)
         if row is not None and not request.session.get("v408_audit_seen"):
             if record_event(m,request,"session_observed",user=dict(row)):
                 request.session["v408_audit_seen"]=True
