@@ -636,29 +636,24 @@ def install(m):
                 acond = _num(r.get("acondicionado"))
                 ubic = _num(r.get("ubicado"))
                 ingreso = _num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos"))
+                ih = plot_h*ingreso/maxv
                 ah = plot_h*acond/maxv
-                uh = plot_h*ubic/maxv
-
-                # Barras compactas y etiquetas visibles.
+                # PDF V408: el gráfico mixto comparte escalas con la app.
+                # Azul=Ingresos barra; Marino=Acondicionado barra; Rosa=Ubicado línea.
+                set_fill(BLUE)
+                c.roundRect(cx-bar_w-2, base, bar_w, max(0.01,ih), 1.5, fill=1, stroke=0)
                 set_fill(NAVY)
-                c.roundRect(cx-bar_w-2, base, bar_w, max(1,ah), 1.5, fill=1, stroke=0)
-                set_fill(PINK)
-                c.roundRect(cx+2, base, bar_w, max(1,uh), 1.5, fill=1, stroke=0)
-
+                c.roundRect(cx+2, base, bar_w, max(0.01,ah), 1.5, fill=1, stroke=0)
                 label_fs = 8.2 if count <= 6 else 7.0
                 value_fs = 7.7 if count <= 6 else 6.9
-
-                if acond > 0:
-                    numeric_labels.append((cx-bar_w/2-2, base+ah+8, n(acond), NAVY, 1))
-                if ubic > 0:
-                    numeric_labels.append((cx+bar_w/2+2, base+uh+8, n(ubic), PINK, 2))
-
-                py = base + plot_h*ingreso/maxv
-                points.append((cx, py, ingreso))
-                set_fill(BLUE)
-                c.circle(cx, py, 2.5, fill=1, stroke=0)
                 if ingreso > 0:
-                    numeric_labels.append((cx, py+9, n(ingreso), BLUE, 0))
+                    numeric_labels.append((cx-bar_w/2-2, base+ih+9, n(ingreso), BLUE, 1))
+                if acond > 0:
+                    numeric_labels.append((cx+bar_w/2+2, base+ah+9, n(acond), NAVY, 2))
+                py = base + plot_h*ubic/maxv
+                points.append((cx, py, ubic))
+                if ubic > 0:
+                    numeric_labels.append((cx, py+15, n(ubic), PINK, 0))
 
                 # Tienda horizontal, centrada; evita texto inclinado/ilegible.
                 set_fill(TEXT)
@@ -666,10 +661,16 @@ def install(m):
                 c.drawCentredString(cx, base-11, fit(r.get("store"), 14))
 
             if len(points) > 1:
-                set_stroke(BLUE)
-                c.setLineWidth(1.35)
+                set_stroke(PINK)
+                c.setLineWidth(2.2)
                 for a,b in zip(points, points[1:]):
                     c.line(a[0],a[1],b[0],b[1])
+            for px,py,_ in points:
+                set_fill(PINK)
+                c.circle(px,py,3.1,fill=1,stroke=0)
+                set_stroke("#FFFFFF")
+                c.setLineWidth(.65)
+                c.circle(px,py,3.1,fill=0,stroke=1)
 
             # V406: ubicar etiquetas de línea y barras SIN colisiones entre ellas.
             # Dibujar la línea antes y los números al final permite reservar un
@@ -698,7 +699,7 @@ def install(m):
                     if placement:break
                 if placement is None:
                     # Si todo el gráfico está lleno, priorizar el número de
-                    # Ingresos; no escribir texto encima de otro valor.
+                    # Ubicado (línea); no escribir texto encima de otro valor.
                     if priority:
                         continue
                     xx=max(x0+width/2,min(x1-width/2,desired_x))
@@ -716,15 +717,15 @@ def install(m):
             # Leyenda compacta sobre el gráfico.
             ly = top + 8
             legend_x = x0
+            set_fill(BLUE); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
+            set_fill(TEXT); c.setFont("Helvetica",8.0); c.drawString(legend_x+10,ly-1,"Ingresos")
+            legend_x += 78
             set_fill(NAVY); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
-            set_fill(TEXT); c.setFont("Helvetica",8.0); c.drawString(legend_x+10,ly-1,"Acondicionado")
-            legend_x += 103
-            set_fill(PINK); c.rect(legend_x,ly,7,5,fill=1,stroke=0)
-            set_fill(TEXT); c.drawString(legend_x+10,ly-1,"Ubicado")
-            legend_x += 75
-            set_stroke(BLUE); c.line(legend_x,ly+2,legend_x+15,ly+2)
-            set_fill(BLUE); c.circle(legend_x+7.5,ly+2,2,fill=1,stroke=0)
-            set_fill(TEXT); c.drawString(legend_x+20,ly-1,"Ingresos")
+            set_fill(TEXT); c.drawString(legend_x+10,ly-1,"Acondicionado")
+            legend_x += 110
+            set_stroke(PINK); c.line(legend_x,ly+2,legend_x+15,ly+2)
+            set_fill(PINK); c.circle(legend_x+7.5,ly+2,2.4,fill=1,stroke=0)
+            set_fill(TEXT); c.drawString(legend_x+20,ly-1,"Ubicado")
 
             y -= chart_h + 7
 
