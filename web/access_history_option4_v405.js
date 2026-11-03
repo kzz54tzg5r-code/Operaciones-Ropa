@@ -100,8 +100,11 @@
     try{
       // Registrar antes la sesión actual, si existía desde antes de V405.
       // La operación es idempotente por sesión; nunca se cuenta como login.
-      await fetch('/api/access/session-observed-v408',
-        {method:'POST',cache:'no-store',credentials:'same-origin'}).catch(()=>{});
+      if(!window.__v408ObservePromise){
+        window.__v408ObservePromise=fetch('/api/access/session-observed-v408',
+          {method:'POST',cache:'no-store',credentials:'same-origin'}).catch(()=>null);
+      }
+      await window.__v408ObservePromise;
       const data=await fetchJson('/api/admin/access-history-v405?'+qs({...filters(),page,page_size:20}));
       if(id!==querySeq||!host.isConnected)return;
       render(data);status.textContent='Datos actualizados.';
