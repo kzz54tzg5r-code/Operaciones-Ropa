@@ -946,6 +946,10 @@ setInterval(refreshHeaderClock,60000);
 
 async function enter(u){
   USER=u;
+  // V408: sesiones que ya existían antes de instalar la bitácora deben ser
+  // visibles como "sesión vigente", NO como inicios de sesión inventados.
+  fetch('/api/access/session-observed-v408',{method:'POST',credentials:'same-origin',cache:'no-store'})
+    .catch(()=>{ /* La auditoría nunca bloquea el ingreso a Operaciones Ropa. */ });
   $('#loginView').classList.add('hidden');
   $('#appView').classList.remove('hidden');
   $('#profileName').textContent=u.username;
