@@ -2243,7 +2243,7 @@ function opsComboSvg(rows,period,scope,rec=[]){
   const data=(rows||[]).filter(r=>Number(r.ingresos||0)>0||Number(r.acondicionado||0)>0||Number(r.ubicado||0)>0)
     .sort((a,b)=>(cm[String(b.store)]||0)-(cm[String(a.store)]||0));
   if(!data.length)return '<div class="infoempty">Información no disponible para Ingreso vs Acondicionado vs Ubicado.</div>';
-  const w=Math.max(1120,data.length*112+150),h=500,left=72,right=38,top=72,bottom=108,plotH=h-top-bottom,plotW=w-left-right;
+  const w=Math.max(1120,data.length*112+150),h=500,left=72,right=38,top=80,bottom=108,plotH=h-top-bottom,plotW=w-left-right;
   const max=Math.max(1,...data.flatMap(r=>[Number(r.ingresos||0),Number(r.acondicionado||0),Number(r.ubicado||0)]));
   const step=plotW/data.length,barW=Math.min(27,step*.25);
   const y=v=>top+plotH-(Number(v||0)/max*plotH);
@@ -2253,21 +2253,22 @@ function opsComboSvg(rows,period,scope,rec=[]){
   const pts=[];
   data.forEach((r,i)=>{
     const cx=left+step*i+step/2,ac=Number(r.acondicionado||0),ub=Number(r.ubicado||0),ing=Number(r.ingresos||0);
-    const ah=plotH*ac/max,uh=plotH*ub/max;
-    svg+=`<rect x="${cx-barW-3}" y="${top+plotH-ah}" width="${barW}" height="${ah}" fill="#173B73" rx="2"></rect>`;
-    svg+=`<rect x="${cx+3}" y="${top+plotH-uh}" width="${barW}" height="${uh}" fill="#EC007C" rx="2"></rect>`;
-    let ay=y(ac)-7,uy=y(ub)-7;
-    if(Math.abs(ay-uy)<15){ay-=9;uy+=9;}
-    svg+=`<text x="${cx-barW/2-3}" y="${Math.max(top+10,ay)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#173B73" style="${halo}">${fmt(ac)}</text>`;
-    svg+=`<text x="${cx+barW/2+3}" y="${Math.max(top+10,uy)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#EC007C" style="${halo}">${fmt(ub)}</text>`;
-    pts.push(`${cx},${y(ing)}`);
+    const ih=plotH*ing/max,ah=plotH*ac/max;
+    // Gráfico mixto: Ingresos y Acondicionado como barras, Ubicado como línea.
+    svg+=`<rect x="${cx-barW-3}" y="${y(ing)}" width="${barW}" height="${ih}" fill="#1769e8" rx="2"></rect>`;
+    svg+=`<rect x="${cx+3}" y="${y(ac)}" width="${barW}" height="${ah}" fill="#173B73" rx="2"></rect>`;
+    let iy=y(ing)-9,ay=y(ac)-9,uy=y(ub)-17;
+    if(Math.abs(iy-ay)<16){iy-=12;ay+=12;}
+    if(Math.abs(uy-iy)<18 || Math.abs(uy-ay)<18)uy-=20;
+    svg+=`<text x="${cx-barW/2-3}" y="${Math.max(top+12,iy)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#1769e8" style="${halo}">${fmt(ing)}</text>`;
+    svg+=`<text x="${cx+barW/2+3}" y="${Math.max(top+12,ay)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#173B73" style="${halo}">${fmt(ac)}</text>`;
+    svg+=`<text x="${cx}" y="${Math.max(top+12,uy)}" text-anchor="middle" font-size="8.8" font-weight="700" fill="#EC007C" style="${halo}">${fmt(ub)}</text>`;
+    pts.push(`${cx},${y(ub)}`);
     svg+=`<text transform="translate(${cx},${h-bottom+24}) rotate(-35)" text-anchor="end" font-size="9" fill="#5c6d82">#${i+1} · ${r.store}</text>`;
-    let iy=y(ing)-14;if(Math.abs(iy-ay)<14||Math.abs(iy-uy)<14)iy-=12;
-    svg+=`<text x="${cx}" y="${Math.max(top+8,iy)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#1769e8" style="${halo}">Ing. ${fmt(ing)}</text>`;
   });
-  svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#1769e8" stroke-width="3"></polyline>`;
-  pts.forEach(p=>{const [x,yv]=p.split(',');svg+=`<circle cx="${x}" cy="${yv}" r="4.5" fill="#1769e8" stroke="#fff" stroke-width="1.5"></circle>`});
-  svg+=`<rect x="${left}" y="44" width="11" height="11" fill="#173B73"></rect><text x="${left+16}" y="53" font-size="9">Acondicionado</text><rect x="${left+106}" y="44" width="11" height="11" fill="#EC007C"></rect><text x="${left+122}" y="53" font-size="9">Ubicado</text><line x1="${left+188}" x2="${left+218}" y1="49" y2="49" stroke="#1769e8" stroke-width="3"></line><circle cx="${left+203}" cy="49" r="4" fill="#1769e8"></circle><text x="${left+224}" y="53" font-size="9">Ingresos</text></svg>`;
+  svg+=`<polyline points="${pts.join(' ')}" fill="none" stroke="#EC007C" stroke-width="3"></polyline>`;
+  pts.forEach(p=>{const [x,yv]=p.split(',');svg+=`<circle cx="${x}" cy="${yv}" r="4.5" fill="#EC007C" stroke="#fff" stroke-width="1.5"></circle>`});
+  svg+=`<rect x="${left}" y="44" width="11" height="11" fill="#1769e8"></rect><text x="${left+16}" y="53" font-size="9">Ingresos</text><rect x="${left+98}" y="44" width="11" height="11" fill="#173B73"></rect><text x="${left+114}" y="53" font-size="9">Acondicionado</text><line x1="${left+230}" x2="${left+260}" y1="49" y2="49" stroke="#EC007C" stroke-width="3"></line><circle cx="${left+245}" cy="49" r="4" fill="#EC007C"></circle><text x="${left+266}" y="53" font-size="9">Ubicado</text></svg>`;
   return `<div class="chart-box chart-scroll">${svg}</div>`;
 }
 
