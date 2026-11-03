@@ -144,7 +144,7 @@ def test_ui_is_real_and_not_accessible_through_client_only_gate():
     assert "window.V405_ACCESS?.mount(USER?.role)" in page
     assert "login_success" in server and "login_failed" in server
     assert "record_event" in server and "password_reset" in server
-    for title in ("Usuarios registrados recientemente","Resumen de accesos","Alertas de seguridad","Bitácora completa de accesos"):
+    for title in ("Usuarios registrados y últimos accesos","Resumen de accesos","Alertas de seguridad","Bitácora completa de accesos"):
         assert title in js
     assert "100" in (root/"v405_user_access_history.py").read_text("utf-8")
     import subprocess
@@ -185,3 +185,20 @@ def test_preexisting_authenticated_session_is_real_activity_not_fake_login(m):
     with pytest.raises(HTTPException) as exc:
         observe(req)
     assert exc.value.status_code==401
+
+
+def test_empty_period_shows_registered_users_but_no_invented_accesses(m):
+    result=query(m)
+    assert result["total"]==0
+    assert result["successful"]==0
+    assert result["observed"]==0
+    assert result["unique_users"]==0
+    assert len(result["recent"])==3
+    assert {r["username"] for r in result["recent"]}=={
+        "Diana Loa","Gustavo Camargo","Propietario"}
+    assert all(r["accesses"]==0 and r["observed"]==0
+               and r["latest"] is None and r["unrecorded"]
+               for r in result["recent"])
+    result=query(m,role="admin")
+    assert [r["username"] for r in result["recent"]]==["Diana Loa"]
+    assert result["total"]==0
