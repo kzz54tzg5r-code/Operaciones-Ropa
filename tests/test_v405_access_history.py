@@ -150,3 +150,38 @@ def test_ui_is_real_and_not_accessible_through_client_only_gate():
     import subprocess
     result=subprocess.run(["node","--check"],input=js,text=True,capture_output=True)
     assert result.returncode==0,result.stderr
+
+
+def test_preexisting_authenticated_session_is_real_activity_not_fake_login(m):
+    """La sesión vigente se registra una sola vez y no aumenta ingresos."""
+    req=FakeRequest()
+    req.session={}
+    m._session_user_row=lambda request:{
+        "id":1,"username":"Diana Loa","role":"admin","store":"Vallejo"
+    }
+    observe=endpoint(m,"/api/access/session-observed-v408")
+    first=observe(req)
+    again=observe(req)
+    assert first=={"ok":True,"recorded":True}
+    assert again=={"ok":True,"recorded":False}
+    stats=query(m)
+    assert stats["observed"]==1
+    assert stats["successful"]==0
+    assert stats["unique_users"]==1
+    assert stats["recent"][0]["username"]=="Diana Loa"
+    assert stats["recent"][0]["accesses"]==0
+    assert stats["recent"][0]["observed"]==1
+    assert stats["rows"][0]["event"]=="session_observed"
+    assert stats["rows"][0]["ip_mask"]=="192.168.5.×"
+    # El endpoint de observación acepta a cualquier usuario autenticado,
+    # pero la bitácora de administración sigue siendo solo Super Administrador.
+    m.role="admin"
+    assert observe(req)["recorded"] is False
+    with pytest.raises(HTTPException) as exc:
+        endpoint(m,"/api/admin/access-history-v405")(req)
+    assert exc.value.status_code==403
+    req.session={}
+    m._session_user_row=lambda request:None
+    with pytest.raises(HTTPException) as exc:
+        observe(req)
+    assert exc.value.status_code==401
