@@ -54,3 +54,30 @@ def test_updated_web_ui_script_and_pdf_compile():
     import ast
     ast.parse((ROOT/"v405_user_access_history.py").read_text("utf-8"))
     ast.parse((ROOT/"v272_center_pdf_parity_patch.py").read_text("utf-8"))
+
+
+def test_live_v365_override_renders_two_bar_series_and_ubicado_line():
+    """La capa V365 sobrescribe opsComboSvg; verificar el SVG QUE VE EL USUARIO."""
+    source=ROOT/"web"/"detalle_operativo_opcion1_v365.js"
+    js=r"""
+const fs=require('fs'),vm=require('vm');
+const context={window:{},fmt:n=>Math.round(n).toLocaleString('es-MX')};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(process.argv[1],'utf8'),context);
+const html=context.window.opsComboSvg([
+  {store:'Vallejo',ingresos:1915,acondicionado:1189,ubicado:1546},
+  {store:'Arco Norte',ingresos:668,acondicionado:1000,ubicado:1750},
+  {store:'Puebla Sur',ingresos:255,acondicionado:54,ubicado:289},
+],'2026-S44','Todas las tiendas');
+if(!html.includes('data-or365-chart="mixed-bars-line"'))throw Error('No es mixto');
+if(!html.includes('<polyline points=')||!html.includes('stroke="#e50076"'))throw Error('No hay línea rosa');
+if(html.includes('rx="2" fill="#e50076"'))throw Error('Ubicado sigue como barra');
+for(const shade of ['#1769e8','#173b73']){
+ const count=(html.match(new RegExp('rx="2" fill="'+shade+'"','g'))||[]).length;
+ if(count!==3)throw Error('Las barras '+shade+' no coinciden con 3 tiendas: '+count);
+}
+if((html.match(/<circle cx=/g)||[]).length < 3)throw Error('Faltan puntos de Ubicado');
+if(!html.includes('Vallejo')||!html.includes('Puebla Sur'))throw Error('No hay tiendas');
+"""
+    run=subprocess.run(["node","-e",js,str(source)],text=True,capture_output=True)
+    assert run.returncode==0,run.stderr
