@@ -83,6 +83,11 @@ def test_tab_scroll_text_and_original_actions_preserved():
         assert original_id in capture
     # No llamadas al backend ni nueva lógica transaccional en los parches de estilo.
     assert "daily_goal_pieces" in (ROOT/"v199_access_perf_productivity_patch.py").read_text(encoding="utf-8")
+    back=(ROOT/"v199_access_perf_productivity_patch.py").read_text(encoding="utf-8")
+    assert "\"my_summary\"" in back
+    assert "FROM cm_productivity_capture WHERE" in back
+    assert "own_where=[*where" in back
+    assert "my_summary?.pieces" in capture and "my_summary?.seconds" in capture
     assert "Piezas del día" in capture and "Meta diaria" in capture
     assert "Cumplimiento" in capture and "Tiempo efectivo" in capture
     assert "<th>Inicio</th><th>Fin</th>" in capture
