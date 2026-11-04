@@ -420,8 +420,10 @@ body.v241-cm-capture .v241-history-empty{
 
       const myRows=(hist?.items||[]).filter(r=>String(r.created_by||'')===String(meta?.user?.username||''));
       const completedMine=myRows.filter(r=>r.status==='finished');
-      const piecesToday=completedMine.reduce((sum,r)=>sum+rowPieces(r),0);
-      const durationToday=completedMine.reduce((sum,r)=>sum+n(r.duration_seconds),0);
+      const piecesToday=hist?.my_summary?.pieces!=null
+        ?n(hist.my_summary.pieces):completedMine.reduce((sum,r)=>sum+rowPieces(r),0);
+      const durationToday=hist?.my_summary?.seconds!=null
+        ?n(hist.my_summary.seconds):completedMine.reduce((sum,r)=>sum+n(r.duration_seconds),0);
       const dailyGoal=n(meta?.daily_goal_pieces);
       const complianceToday=dailyGoal>0
         ?(piecesToday/dailyGoal*100).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'
