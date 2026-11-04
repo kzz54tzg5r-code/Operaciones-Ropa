@@ -74,8 +74,8 @@ html body.or410-ui:is([data-or410-tab="operations.conversion"],[data-or410-tab="
 /* 04 Tasa de recuperación: opción 2, lectura comparativa limpia. */
 html body.or410-ui[data-or410-tab="operations.recovery_store"] #operativoDynamicContent :is(.report-kpi,.rr243-kpi){border-top:3px solid #3366cc!important}
 /* 05 Revisión: opción 2, priorizar calidad de datos y alertas. */
-html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent .v331-root{
- display:flex!important;flex-direction:column!important;gap:8px!important
+html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent .v331-kpis{
+ gap:8px!important;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))!important
 }
 html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent :is(.v331-warning,.v331-alert,.v331-notice,[class*="warning"]){
  order:-1!important;border-left:4px solid #e49e20!important
@@ -89,11 +89,11 @@ html body.or410-ui[data-or410-tab="operations.productivity"] #operativoDynamicCo
  border:1px solid var(--or410-border)!important;border-radius:10px!important;background:#fff!important
 }
 /* 07 Captura de productividad: opción 2, indicadores horarios sin retirar Inicio/Fin. */
-html body.or410-ui #operativoDynamicContent .or362-time-grid{
- display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-times{
+ display:flex!important;gap:10px!important;align-items:center!important
 }
-html body.or410-ui #operativoDynamicContent :is(.v199-start,.v199-finish,.v222-start,.v222-finish){
- min-height:38px!important;border-radius:8px!important;white-space:normal!important
+html body.or410-ui.v241-cm-capture #v241CmCapture :is(#v241Start,#v241Finish){
+ min-height:43px!important;border-radius:8px!important;white-space:normal!important
 }
 /* 08 Recorridos: opción 2, destacar avance real contra meta. */
 html body.or410-ui[data-or410-tab="operations.routes"] #operativoDynamicContent .or362-routes-detail{
@@ -134,22 +134,22 @@ html body.or410-ui #page-sections #rubroSectionSwitch{display:flex!important;fle
 /* 15 Ubicación/Área: opción 2, lectura integral. */
 html body.or410-ui #page-areas :is(#areaCards,.cards){gap:7px!important}
 /* 16 Pareto 80/20: opción 2, bloques compactos con scroll propio. */
-html body.or410-ui #page-macro :is(#v198ChampSummary,#v198ChampDetails,#v144-8020-card){
+html body.or410-ui #page-macro :is(#paretoGroupSwitch,#paretoSummaryNote){
  border-radius:9px!important
 }
-html body.or410-ui #page-macro :is(#champTable,.v144-8020-table){font-variant-numeric:tabular-nums!important}
+html body.or410-ui #page-macro :is(#paretoSummaryTable,#champTable){font-variant-numeric:tabular-nums!important}
 /* 17 Modelos lentos: opción 2, conservar regla >30 días y checklists. */
-html body.or410-ui #page-macro :is(#v198SlowSummary,#v198SlowDetails){border-radius:9px!important}
+html body.or410-ui #page-macro :is(#slowTotals,#slowTable){font-variant-numeric:tabular-nums!important}
 html body.or410-ui #page-macro #slowTable td{white-space:nowrap}
 /* 18 Sugerido 0-1: opción 2, conservar última entrada <=30 días. */
-html body.or410-ui #page-macro :is(#v198ZeroSummary,#v198ZeroDetails){border-radius:9px!important}
+html body.or410-ui #page-macro :is(#zeroTotals,#zeroTable){font-variant-numeric:tabular-nums!important}
 html body.or410-ui #page-macro #zeroTable td{white-space:nowrap}
 /* 19 Ventas mensuales: opción 3, comparativo anual existente en tablas. */
-html body.or410-ui #page-macro :is(#salesExecKpis,.sales-exec-controls){gap:7px!important}
-html body.or410-ui #page-macro :is(#salesExecRows,#salesExecStoresRows){font-variant-numeric:tabular-nums!important}
+html body.or410-ui #page-macro :is(.v176-month-store-bar,.v176-store-sales-head,.sales-month-table){gap:7px!important}
+html body.or410-ui #page-macro :is(.sales-month-table,#v176MonthStoreSelect){font-variant-numeric:tabular-nums!important}
 /* 20 Sell-through: opción 2, lectura integral. */
-html body.or410-ui #page-sell :is(.st-kpis,.kpis){gap:7px!important}
-html body.or410-ui #page-sell .st-table th:first-child{background:#0b57ad!important}
+html body.or410-ui #page-sellthrough-clean :is(.v193-st-kpis,.v193-st-kpi){gap:7px!important}
+html body.or410-ui #page-sellthrough-clean #v193StTable th:first-child{background:#0b57ad!important}
 /* 21 Acordeón: opción 4, lectura jerárquica. */
 html body.or410-ui #page-accordion .acc{
  border:1px solid var(--or410-border)!important;margin-bottom:5px!important
@@ -281,4 +281,154 @@ html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#
 @media print{
  html body.or410-ui .ocl-full{overflow:visible!important}
  html body.or410-ui :is(.tablewrap,.subcat-matrix-wrap){overflow:visible!important;max-height:none!important}
+}
+
+
+/* Revisión de paridad V412: estas reglas tienen destino REAL en la plantilla
+   o en los parches operativos activos (V241, V243, V331, V193, V313).
+   No se fabrican indicadores ni se toca ninguna regla de cálculo. */
+/* 01 Centro Ejecutivo: conservar exactamente cuatro tarjetas en la misma fila.
+   En móvil es una versión reducida del panel de escritorio. */
+html body.or410-ui.or356-center-active #page-operativo :is(.ocl-lane,.ocl-lane-metric){
+ overflow:visible!important
+}
+html body.or410-ui.or356-center-active #page-operativo .ocl-lane .ocl-detail-button{
+ min-width:0!important;white-space:normal!important
+}
+/* 02–03 Conversión y recuperación: acentos legibles con KPIs existentes. */
+html body.or410-ui[data-or410-tab="operations.conversion"] #operativoDynamicContent .report-kpis,
+html body.or410-ui[data-or410-tab="operations.recovery"] #operativoDynamicContent .report-kpis{
+ gap:9px!important;grid-template-columns:repeat(auto-fit,minmax(165px,1fr))!important
+}
+/* 04 Tasa de recuperación: datos originales de V243. */
+html body.or410-ui[data-or410-tab="operations.recovery_store"] #operativoDynamicContent .rr243-kpis{
+ gap:8px!important;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important
+}
+html body.or410-ui[data-or410-tab="operations.recovery_store"] #operativoDynamicContent .rr243-tablewrap{
+ overflow-x:auto!important;max-width:100%!important
+}
+/* 05 Calidad y revisión: clases V331 reales, sin alterar alertas. */
+html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent .v331-kpis{
+ gap:9px!important
+}
+html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent .v331-card{
+ border:1px solid #d5e3f4!important;border-radius:10px!important
+}
+/* 06 Productividad: ranking y desempeño, no cargar captura en esa pantalla. */
+html body.or410-ui[data-or410-tab="operations.productivity"] #operativoDynamicContent .or362-productivity-layout{
+ gap:9px!important;max-width:100%!important
+}
+/* 07 Cargar productividad: V241 es el componente activo, no V199 ni V222. */
+html body.or410-ui.v241-cm-capture #v241CmCapture{
+ border:1px solid #d3e4f7!important;
+ box-shadow:none!important;row-gap:9px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-capture-meta{
+ grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-capture-meta>span{
+ background:#edf5ff!important;min-width:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-capture{
+ border:1px solid #d5e4f6!important;background:#f8fbff!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture :is(#v241Start,#v241Finish){
+ font-size:14px!important;min-width:140px!important
+}
+html body.or410-ui.v241-cm-capture .v241-history-panel{
+ border:1px solid #d5e4f6!important;box-shadow:none!important
+}
+html body.or410-ui.v241-cm-capture .v241-history{
+ max-width:100%!important;overflow-x:auto!important
+}
+html body.or410-ui.v241-cm-capture .v241-history th{
+ white-space:normal!important;min-width:90px!important
+}
+/* 08 Recorridos: calendario y totales reales V240. */
+html body.or410-ui[data-or410-tab="operations.routes"] #operativoDynamicContent :is(.v240-route-calendar,.v240-week-cards){
+ max-width:100%!important;gap:7px!important
+}
+/* 09 carga operativa: conservar adjunto, validaciones y estado de publicación. */
+html body.or410-ui[data-or410-tab="operations.upload"] #operativoDynamicContent :is(.uploadgrid,.drop,.panel){
+ border-radius:10px!important
+}
+/* 10 Metas y tiendas: edición administrativa, componentes de la versión actual. */
+html body.or410-ui[data-or410-tab="operations.goals"] #operativoDynamicContent :is(.usergrid,.or362-goals-kpis){
+ gap:7px!important;max-width:100%!important
+}
+/* 11 Bonos: no alterar los seis criterios ni el Bono 1. */
+html body.or410-ui #page-bonuses :is(.v313-kpis,.v313-matrixcards){
+ gap:8px!important
+}
+html body.or410-ui #page-bonuses :is(.v313-table,.v313-model-table){
+ max-width:100%!important;overflow-x:auto!important
+}
+/* 12–15 Macro, Tiendas, Sección y Ubicación: bloques reales. */
+html body.or410-ui #page-macro :is(#sectionSummary,#macroAreaTable){font-variant-numeric:tabular-nums!important}
+html body.or410-ui #page-stores #storeTable{font-variant-numeric:tabular-nums!important}
+html body.or410-ui #page-sections #rubroTable{font-variant-numeric:tabular-nums!important}
+html body.or410-ui #page-areas #areaTables{max-width:100%!important;min-width:0!important}
+html body.or410-ui #page-areas #areaTables .tablewrap{overflow-x:auto!important}
+/* 16 80/20: tablas y selector real dentro de Macro. */
+html body.or410-ui #page-macro :is(#paretoGroupSwitch,#paretoSummaryNote){margin-block:5px!important}
+html body.or410-ui #page-macro #paretoSummaryTable td,
+html body.or410-ui #page-macro #champTable td{padding-block:7px!important}
+/* 17 Modelos Lentos: conservar inclusión por entrada >30 días. */
+html body.or410-ui #page-macro #slowTotals{margin-block:7px!important}
+html body.or410-ui #page-macro #slowTable td{line-height:1.3!important}
+/* 18 Sugerido 0–1: conservar entrada <=30 días y valores en piezas. */
+html body.or410-ui #page-macro #zeroTotals{margin-block:7px!important}
+html body.or410-ui #page-macro #zeroTable td{line-height:1.3!important}
+/* 19 Ventas por periodo: año actual vs anterior sin alterar celdas. */
+html body.or410-ui #page-macro :is(.sales-month-table,.v176-month-store-bar){
+ max-width:100%!important;overflow-x:auto!important
+}
+/* 20 Sell-through: V193 RAW-V2 reemplaza a pantalla anterior. */
+html body.or410-ui #page-sellthrough-clean .v193-st-kpis{gap:8px!important}
+html body.or410-ui #page-sellthrough-clean .v193-st-tablewrap{
+ max-width:100%!important;overflow-x:auto!important
+}
+html body.or410-ui #page-sellthrough-clean #v193StTable thead th{
+ white-space:normal!important;line-height:1.25!important
+}
+/* 21 Acordeón: mantener jerarquía y siete desplegables. */
+html body.or410-ui #page-accordion #accordion>.acc{margin-bottom:6px!important}
+/* 22 Matrices CIA y Regla: únicamente legibilidad, estructura intacta. */
+html body.or410-ui #page-sections #subcatParticipationReports{
+ max-width:100%!important;min-width:0!important
+}
+html body.or410-ui #page-sections :is(#subcatCiaReport,#subcatRuleReport){
+ overflow-x:auto!important;max-width:100%!important
+}
+/* 23 Lencería: dos columnas paralelas con los 10 campeones. */
+html body.or410-ui #page-lingerie-checklist .lingerie-grid{
+ grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:9px!important
+}
+html body.or410-ui #page-lingerie-checklist .lingerie-grid>.panel{min-width:0!important}
+/* 24 Carga comercial: vista de carga e historial. */
+html body.or410-ui #page-analysis-upload .uploadgrid{
+ display:grid!important;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))!important;gap:10px!important
+}
+html body.or410-ui #page-analysis-upload #analysisCapacityHistory{max-width:100%!important;overflow-x:auto!important}
+/* 25 Más opciones: tres accesos existentes, respetando el rol administrativo. */
+html body.or410-ui #page-more>.cards{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media(max-width:850px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-capture-meta{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important
+ }
+ html body.or410-ui #page-lingerie-checklist .lingerie-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important
+ }
+}
+@media(max-width:520px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-capture-meta{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions :is(#v241Start,#v241Finish){
+  flex:1 1 34%!important;min-width:0!important
+ }
+ html body.or410-ui #page-more>.cards{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important
+ }
+ html body.or410-ui #page-more>.cards>.card{padding:6px!important}
 }
