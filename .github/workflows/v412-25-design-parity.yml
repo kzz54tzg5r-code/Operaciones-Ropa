@@ -8,6 +8,11 @@ on:
       - "web/correccion_visual_v411.js"
       - "tests/test_v412_design_parity.py"
       - "tests/ui/v412-route-parity.cjs"
+      - "tests/ui/v412-accordion-hierarchy.cjs"
+      - "web/acordeon_jerarquico_v412.js"
+      - "web/acordeon_jerarquico_v412.css"
+      - "v241_cm_capture_authoritative_patch.py"
+      - "v199_access_perf_productivity_patch.py"
       - ".github/workflows/v412-25-design-parity.yml"
   push:
     branches: [main]
@@ -40,3 +45,5 @@ jobs:
           node --check web/designs_25_approved_v410.js
           node --check web/correccion_visual_v411.js
           node tests/ui/v412-route-parity.cjs
+          node tests/ui/v412-accordion-hierarchy.cjs
+          python -m py_compile v241_cm_capture_authoritative_patch.py v199_access_perf_productivity_patch.py
