@@ -60,9 +60,13 @@ def test_no_ghost_sellthrough_or_older_capture_selectors():
     assert "#page-sell :is(.st-kpis" not in CSS
     assert "#page-sellthrough-clean" in CSS
     assert "#v241CmCapture" in CSS
+    assert "#v241Performance" in CSS
+    assert "#v241Start" in CSS and "#v241Finish" in CSS
     assert "#v193StTable" in CSS
     assert "#v198SlowSummary" not in CSS
     assert "#v198ZeroSummary" not in CSS
+    assert "acordeon_jerarquico_v412.css?v=412" in HTML
+    assert "acordeon_jerarquico_v412.js?v=412" in HTML
     assert "'sellthrough-clean':'commercial.sell'" in JS
     assert "if(liveSell)return 'commercial.sell'" in JS
     assert "if(capture)return 'operations.capture'" in JS
@@ -78,6 +82,10 @@ def test_tab_scroll_text_and_original_actions_preserved():
     for original_id in ("v241Start","v241Finish","v241Timer","v241Activity","v241PieceCaptureHost"):
         assert original_id in capture
     # No llamadas al backend ni nueva lógica transaccional en los parches de estilo.
+    assert "daily_goal_pieces" in (ROOT/"v199_access_perf_productivity_patch.py").read_text(encoding="utf-8")
+    assert "Piezas del día" in capture and "Meta diaria" in capture
+    assert "Cumplimiento" in capture and "Tiempo efectivo" in capture
+    assert "<th>Inicio</th><th>Fin</th>" in capture
     for source in (JS,NAV):
         assert "fetch(" not in source
         assert "XMLHttpRequest" not in source
@@ -89,6 +97,6 @@ def test_25_styles_syntax_and_order():
     assert uncommented.count("{")==uncommented.count("}")
     assert HTML.index("reporte_adaptable_v407.css")<HTML.index("designs_25_approved_v410.css")
     assert HTML.index("designs_25_approved_v410.css")<HTML.index("correccion_visual_v411.css")
-    for path in ("web/designs_25_approved_v410.js","web/correccion_visual_v411.js"):
+    for path in ("web/designs_25_approved_v410.js","web/correccion_visual_v411.js","web/acordeon_jerarquico_v412.js"):
         result=subprocess.run(["node","--check",str(ROOT/path)],capture_output=True,text=True,check=False)
         assert result.returncode==0,result.stderr
