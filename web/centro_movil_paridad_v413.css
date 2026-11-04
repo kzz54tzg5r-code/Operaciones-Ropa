@@ -1,0 +1,192 @@
+/* V413 · Centro Operativo móvil: miniatura fiel de la vista de escritorio.
+   ÚNICAMENTE presentación del Centro. Sin cálculos, filtros, eventos o nuevas API.
+   Cuatro indicadores completos en una fila; los números nunca se parten. */
+@media screen and (max-width:700px){
+  /* V410 había reemplazado el safe-area-top por 6px en iOS. */
+  html body.or410-ui.or356-center-active #appView .main{
+    padding-top:max(10px, calc(env(safe-area-inset-top,0px) + 8px))!important;
+    padding-left:7px!important;padding-right:7px!important;
+    max-width:100%!important;min-width:0!important;
+  }
+  html body.or410-ui.or356-center-active #appView .main>.hero{
+    height:auto!important;max-height:none!important;min-height:38px!important;
+    padding:7px 10px!important;margin:0 0 6px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo :is(#operativoDynamicTitle,#operativoDynamicSub){
+    max-width:100%!important;overflow-wrap:normal!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo #operativoDynamicTitle{
+    font-size:clamp(17px,4.5vw,21px)!important;line-height:1.14!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo #operativoDynamicSub{
+    font-size:10px!important;line-height:1.25!important;
+  }
+
+  /* La fuente V356 activa un grid de 4 tarjetas; no hay cambio de orden. */
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lanes{
+    display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-auto-rows:auto!important;align-items:stretch!important;
+    width:100%!important;min-width:0!important;
+    gap:4px!important;margin:5px 0 8px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lanes>.ocl-lane{
+    display:flex!important;flex-direction:column!important;
+    min-width:0!important;max-width:100%!important;
+    width:auto!important;min-height:0!important;height:auto!important;max-height:none!important;
+    padding:5px 3px 6px!important;gap:4px!important;
+    border-top-width:4px!important;border-radius:8px!important;
+    overflow:hidden!important;box-shadow:none!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane-head{
+    display:flex!important;flex-direction:column!important;align-items:center!important;
+    justify-content:flex-start!important;text-align:center!important;
+    gap:2px!important;min-height:26px!important;height:auto!important;margin:0!important;
+    padding:0!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane-head :is(.ocl-icon,.ocl-caption){
+    display:none!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane h3{
+    font-size:clamp(9px,2.6vw,11px)!important;
+    line-height:1.15!important;font-weight:850!important;
+    overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
+    text-align:center!important;max-width:100%!important;margin:0!important;
+  }
+  /* La causa principal de las tarjetas gigantes era flex:1 y altura mínima
+     de la tarjeta interna, heredados de la vista PC. */
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane>.ocl-lane-metric{
+    flex:0 0 auto!important;display:flex!important;flex-direction:column!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    min-height:0!important;height:auto!important;max-height:none!important;
+    margin:0!important;padding:5px 4px!important;gap:4px!important;
+    overflow:hidden!important;border-radius:7px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-label{
+    font-size:clamp(8px,2.1vw,9px)!important;line-height:1.15!important;
+    font-weight:800!important;letter-spacing:-.02em!important;
+    overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
+    white-space:normal!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-quantity{
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    flex-wrap:nowrap!important;gap:1px!important;margin:0!important;
+    max-width:100%!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] :is(.ocl-number,.ocl-route-number){
+    display:block!important;
+    max-width:100%!important;min-width:0!important;
+    font-size:clamp(11px,3.3vw,14px)!important;
+    font-weight:900!important;letter-spacing:-.045em!important;line-height:1.13!important;
+    white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-route-number{
+    font-size:clamp(9px,2.65vw,11px)!important;letter-spacing:-.045em!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-unit{
+    display:block!important;margin:0!important;font-size:9px!important;
+    line-height:1.15!important;font-weight:750!important;white-space:nowrap!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] :is(.ocl-percent,.ocl-route-percent){
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    flex-wrap:nowrap!important;gap:2px!important;
+    margin:0!important;line-height:1.15!important;font-size:9px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] :is(.ocl-percent,.ocl-route-percent) b{
+    display:block!important;font-size:clamp(11px,3vw,13px)!important;
+    line-height:1.13!important;white-space:nowrap!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] :is(.ocl-percent,.ocl-route-percent) span{
+    display:block!important;font-size:8px!important;line-height:1.15!important;
+    overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-track{
+    display:block!important;width:100%!important;max-width:100%!important;
+    height:5px!important;min-height:5px!important;margin:1px 0!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-pending{
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    flex-wrap:nowrap!important;gap:1px!important;
+    min-width:0!important;max-width:100%!important;
+    min-height:0!important;height:auto!important;max-height:none!important;
+    margin:3px 0 0!important;padding:4px 3px!important;
+    line-height:1.14!important;font-size:8px!important;
+    overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-pending b{
+    font-size:clamp(9px,2.7vw,11px)!important;
+    line-height:1.15!important;font-weight:900!important;
+    white-space:nowrap!important;letter-spacing:-.045em!important;
+    overflow-wrap:normal!important;word-break:normal!important;
+    margin:0!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-pending span{
+    font-size:8px!important;line-height:1.15!important;
+    white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important;
+    hyphens:none!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-route-metric{
+    flex:0 0 auto!important;min-height:0!important;height:auto!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-route-score{
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    gap:3px!important;min-width:0!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-lane>.ocl-detail-button{
+    flex:0 0 auto!important;margin:auto 0 0!important;
+    display:flex!important;align-items:center!important;justify-content:space-between!important;
+    width:100%!important;min-width:0!important;min-height:28px!important;
+    height:28px!important;max-height:30px!important;
+    border-radius:6px!important;padding:4px 3px!important;
+    font-size:clamp(8px,2.3vw,10px)!important;line-height:1.1!important;
+    white-space:nowrap!important;overflow:hidden!important;
+    overflow-wrap:normal!important;word-break:normal!important;
+    gap:2px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-detail-button::after{
+    font-size:14px!important;flex:0 0 auto!important;
+  }
+  /* El informe original no se escala: columnas completas con desplazamiento
+     horizontal propio, encabezados visibles, sin destruir los anchos de PC. */
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell .ocl-full{
+    max-width:100%!important;min-width:0!important;overflow:hidden!important;
+    margin:6px 0!important;padding:0!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell .ocl-full>summary{
+    font-size:clamp(11px,3vw,13px)!important;line-height:1.22!important;
+    padding:10px 9px!important;white-space:normal!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell .ocl-original{
+    max-width:100%!important;min-width:0!important;overflow:visible!important;
+    padding:7px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original :is(.tablewrap,.or356-scroll,.monthly-cross-desktop,.chart-scroll){
+    display:block!important;width:100%!important;max-width:100%!important;
+    min-width:0!important;overflow-x:auto!important;
+    overscroll-behavior-x:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original :is(.table,.or356-table,.monthly-cross-table){
+    width:max-content!important;min-width:max(660px,100%)!important;
+    max-width:none!important;table-layout:auto!important;
+    border-collapse:collapse!important;font-variant-numeric:tabular-nums!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original :is(.table,.or356-table,.monthly-cross-table) th{
+    font-size:10px!important;min-width:62px!important;
+    line-height:1.2!important;white-space:normal!important;
+    overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
+    padding:7px 6px!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original :is(.table,.or356-table,.monthly-cross-table) td{
+    font-size:10px!important;white-space:nowrap!important;
+    overflow-wrap:normal!important;padding:6px!important;
+  }
+}
+@media screen and (max-width:360px){
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] :is(.ocl-number,.ocl-route-number){
+    font-size:10px!important;letter-spacing:-.055em!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-pending b{
+    font-size:9px!important;
+  }
+}
