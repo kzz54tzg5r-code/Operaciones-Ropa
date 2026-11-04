@@ -199,3 +199,39 @@ html body.or411-fix #globalFilters .or-filter-summary-v3{
   max-width:100%!important;white-space:normal!important;
   overflow:visible!important;line-height:1.2!important
 }
+
+/* Prioridad frente a V363/V407: sus selectores incluyen #appView y .main. */
+html body.or411-fix.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs){
+  display:flex!important;flex-flow:row nowrap!important;align-items:stretch!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  padding:5px!important;gap:6px!important;margin:0 0 8px!important;
+  height:auto!important;max-height:none!important;min-height:72px!important
+}
+html body.or411-fix.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs).hidden{
+  display:none!important
+}
+html body.or411-fix.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:not(.hidden):not([hidden]){
+  display:flex!important;flex:0 0 var(--v407-tab-width,145px)!important;
+  width:var(--v407-tab-width,145px)!important;
+  min-width:var(--v407-tab-width,145px)!important;
+  max-width:var(--v407-tab-width,145px)!important;
+  flex-direction:column!important;justify-content:center!important;
+  height:auto!important;min-height:62px!important;max-height:none!important;
+  white-space:normal!important;overflow:visible!important;padding:7px!important
+}
+html body.or411-fix.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button :is(.rt-tab-label,.v203-tab-label){
+  display:block!important;position:static!important;
+  width:100%!important;max-height:none!important;height:auto!important;
+  white-space:normal!important;overflow:visible!important;
+  -webkit-line-clamp:unset!important;
+  line-height:1.2!important;font-size:11px!important;text-align:center!important
+}
+@media(max-width:530px){
+  html body.or411-fix.or363-navigation #appView .main :is(#operativoNav,#analysisNav,#v200OperationTabs)>button:not(.hidden):not([hidden]){
+    flex-basis:var(--v407-tab-width,105px)!important;
+    width:var(--v407-tab-width,105px)!important;
+    min-width:var(--v407-tab-width,105px)!important;
+    max-width:var(--v407-tab-width,105px)!important
+  }
+}
