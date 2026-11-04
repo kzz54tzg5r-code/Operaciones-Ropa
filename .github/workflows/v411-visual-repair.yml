@@ -1,0 +1,32 @@
+name: V411 navegación y filtros visuales
+on:
+  pull_request:
+    paths:
+      - "web/correccion_visual_v411.css"
+      - "web/correccion_visual_v411.js"
+      - "web/index.html"
+      - "tests/ui/v411-navigation.cjs"
+      - ".github/workflows/v411-visual-repair.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/correccion_visual_v411.css"
+      - "web/correccion_visual_v411.js"
+      - "web/index.html"
+      - "tests/ui/v411-navigation.cjs"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/ui/package-lock.json
+      - run: npm --prefix tests/ui ci
+      - name: JS parser
+        run: node --check web/correccion_visual_v411.js
+      - name: Layout and DOM contract
+        run: node tests/ui/v411-navigation.cjs
