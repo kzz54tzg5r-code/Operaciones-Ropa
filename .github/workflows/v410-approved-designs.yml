@@ -1,0 +1,33 @@
+name: V410 diseños aprobados (25 vistas)
+on:
+  pull_request:
+    paths:
+      - "web/designs_25_approved_v410.css"
+      - "web/designs_25_approved_v410.js"
+      - "web/index.html"
+      - "tests/test_v410_approved_designs.py"
+      - ".github/workflows/v410-approved-designs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/designs_25_approved_v410.css"
+      - "web/designs_25_approved_v410.js"
+      - "web/index.html"
+      - "tests/test_v410_approved_designs.py"
+jobs:
+  syntax-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate JS and CSS/HTML contracts
+        run: |
+          node --check web/designs_25_approved_v410.js
+          python -m pip install -q pytest
+          python -m pytest -q tests/test_v410_approved_designs.py

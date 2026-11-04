@@ -1,0 +1,284 @@
+/* Operaciones Ropa · diseños aprobados (25 vistas) · 2026-11-04
+ * Capa de presentación únicamente. No altera datos, fórmulas, permisos ni listeners.
+ * Carga al final de index.html para prevalecer sobre los estilos históricos.
+ */
+html body.or410-ui{--or410-blue:#3366cc;--or410-pink:#ff99ff;--or410-ink:#103d74;--or410-border:#d6e4f4;--or410-surface:#fff}
+html body.or410-ui #appView .main{min-width:0}
+html body.or410-ui #appView .main>.hero{
+ background:#174b86!important;color:#fff!important;
+ border:0!important;border-radius:12px!important;
+ box-shadow:none!important
+}
+html body.or410-ui #appView .main>.hero :is(#heroTitle,#heroSub){color:#fff!important}
+html body.or410-ui :is(#operativoNav,#analysisNav){min-width:0!important;scrollbar-width:thin;scrollbar-color:#bad4f6 transparent}
+html body.or410-ui :is(#operativoNav,#analysisNav)>.switch{
+ border-color:#d6e5f7!important;border-radius:10px!important;
+ background:#fff!important;color:#0f477f!important;box-shadow:none!important
+}
+html body.or410-ui :is(#operativoNav,#analysisNav)>.switch.active{
+ background:#0c60c9!important;border-color:#0c60c9!important;color:white!important
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload,#page-bonuses) :is(.panel,.card,.report-kpi,.kpi){
+ border-radius:10px!important;border-color:var(--or410-border)!important;
+ box-shadow:none!important;min-width:0
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) :is(.tablewrap,.subcat-matrix-wrap,.v331-tablewrap){
+ max-width:100%!important;overflow-x:auto!important;overscroll-behavior-x:contain;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) table{
+ font-variant-numeric:tabular-nums
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) table thead th{
+ position:sticky;top:0;z-index:3;line-height:1.18!important;
+ white-space:normal!important;overflow-wrap:normal!important;
+ padding:7px 8px!important
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) table tbody td{
+ padding:6px 8px!important;line-height:1.25!important
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) :is(input,select,button){
+ max-width:100%;font-family:inherit
+}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) :is(input,select):focus-visible{
+ outline:2px solid #2e74db!important;outline-offset:2px
+}
+/* 01 Centro: opción 1. Mismas cuatro etapas y mismo reporte debajo. */
+html body.or410-ui.or356-center-active #page-operativo .ocl-lanes{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ gap:7px!important;margin:6px 0!important
+}
+html body.or410-ui.or356-center-active #page-operativo .ocl-lane{
+ border-top-width:4px!important;min-width:0!important;
+ border-radius:10px!important;box-shadow:none!important
+}
+html body.or410-ui.or356-center-active #page-operativo .ocl-lane-metric{
+ min-width:0!important;background:#f2f7fd!important;border-radius:9px!important
+}
+html body.or410-ui.or356-center-active #page-operativo :is(.ocl-number,.ocl-route-number){
+ font-variant-numeric:tabular-nums!important;overflow-wrap:anywhere!important
+}
+html body.or410-ui.or356-center-active #page-operativo .ocl-full{
+ border-radius:10px!important;overflow:clip!important
+}
+html body.or410-ui.or356-center-active #page-operativo .ocl-full>summary{
+ background:#edf5ff!important;color:#123e73!important;font-weight:850!important
+}
+/* 02 Conversión: opción 2 (comparativo por periodos sin inventar cifras).
+ * 03 Recuperación: opción 2. Los datos siguen saliendo del mismo reporte. */
+html body.or410-ui:is([data-or410-tab="operations.conversion"],[data-or410-tab="operations.recovery"]) #operativoDynamicContent .report-kpis{
+ grid-template-columns:repeat(auto-fit,minmax(170px,1fr))!important
+}
+html body.or410-ui:is([data-or410-tab="operations.conversion"],[data-or410-tab="operations.recovery"]) #operativoDynamicContent .report-kpi:nth-child(even){border-top:3px solid #ff99ff!important}
+html body.or410-ui:is([data-or410-tab="operations.conversion"],[data-or410-tab="operations.recovery"]) #operativoDynamicContent .report-kpi:nth-child(odd){border-top:3px solid #3366cc!important}
+/* 04 Tasa de recuperación: opción 2, lectura comparativa limpia. */
+html body.or410-ui[data-or410-tab="operations.recovery_store"] #operativoDynamicContent :is(.report-kpi,.rr243-kpi){border-top:3px solid #3366cc!important}
+/* 05 Revisión: opción 2, priorizar calidad de datos y alertas. */
+html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent .v331-root{
+ display:flex!important;flex-direction:column!important;gap:8px!important
+}
+html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent :is(.v331-warning,.v331-alert,.v331-notice,[class*="warning"]){
+ order:-1!important;border-left:4px solid #e49e20!important
+}
+html body.or410-ui[data-or410-tab="operations.recovery_audit"] #operativoDynamicContent .v331-tablewrap{max-height:72vh!important}
+/* 06 Productividad: opción 2, comparación y avance. */
+html body.or410-ui[data-or410-tab="operations.productivity"] #operativoDynamicContent .or362-productivity-layout{
+ grid-template-columns:minmax(190px,.32fr) minmax(0,1fr)!important;gap:8px!important
+}
+html body.or410-ui[data-or410-tab="operations.productivity"] #operativoDynamicContent :is(.or362-prod-stores,.or362-prod-collaborators){
+ border:1px solid var(--or410-border)!important;border-radius:10px!important;background:#fff!important
+}
+/* 07 Captura de productividad: opción 2, indicadores horarios sin retirar Inicio/Fin. */
+html body.or410-ui #operativoDynamicContent .or362-time-grid{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important
+}
+html body.or410-ui #operativoDynamicContent :is(.v199-start,.v199-finish,.v222-start,.v222-finish){
+ min-height:38px!important;border-radius:8px!important;white-space:normal!important
+}
+/* 08 Recorridos: opción 2, destacar avance real contra meta. */
+html body.or410-ui[data-or410-tab="operations.routes"] #operativoDynamicContent .or362-routes-detail{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+}
+html body.or410-ui[data-or410-tab="operations.routes"] #operativoDynamicContent .or362-routes-table{
+ min-width:0!important;padding:8px;border:1px solid var(--or410-border);border-radius:10px;background:#fff
+}
+/* 09 Carga de datos operativo: opción 2, conservar validación y publicación. */
+html body.or410-ui[data-or410-tab="operations.upload"] #operativoDynamicContent :is(#opsDropzone,#opsPreview,.dropzone){
+ border-radius:10px!important;border-color:#9fbfe8!important
+}
+html body.or410-ui[data-or410-tab="operations.upload"] #operativoDynamicContent .preview-grid{
+ display:grid!important;grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important
+}
+/* 10 Metas y Tiendas: opción 2, configuración modular. */
+html body.or410-ui[data-or410-tab="operations.goals"] #operativoDynamicContent :is(.or362-goals-toolbar,.or362-goals-kpis){
+ margin-block:7px!important
+}
+html body.or410-ui[data-or410-tab="operations.goals"] #operativoDynamicContent :is(.usergrid,.or362-goals-kpis){
+ grid-template-columns:repeat(4,minmax(0,1fr))!important
+}
+/* 11 Bonos: opción 2, manteniendo intacto Bono 1 y los seis cálculos. */
+html body.or410-ui #page-bonuses :is(.v313-tabs,.v313-bonus){
+ display:flex!important;flex-wrap:wrap!important;gap:5px!important
+}
+html body.or410-ui #page-bonuses :is(.v313-panel,.v313-card){border-radius:10px!important}
+html body.or410-ui #page-bonuses .v313-scroll{max-height:72vh!important}
+/* 12 Macro Compañía: opción 2, inventario + capacidad. */
+html body.or410-ui #page-macro :is(.kpis,.macro-kpis,.mini3){gap:7px!important}
+html body.or410-ui #page-macro :is(.kpi,.mini){border-top:3px solid #3366cc!important}
+/* 13 Tiendas: opción 2, venta/inventario/participación. */
+html body.or410-ui #page-stores :is(.kpis,.cards){gap:7px!important}
+html body.or410-ui #page-stores .tablewrap{margin-top:7px!important}
+/* 14 Sección/Rubro: opción 2, desempeño integral por subcategoría. */
+html body.or410-ui #page-sections :is(#sectionCards,.cards){gap:7px!important}
+html body.or410-ui #page-sections #rubroSectionSwitch{display:flex!important;flex-wrap:wrap!important;gap:5px!important}
+/* 15 Ubicación/Área: opción 2, lectura integral. */
+html body.or410-ui #page-areas :is(#areaCards,.cards){gap:7px!important}
+/* 16 Pareto 80/20: opción 2, bloques compactos con scroll propio. */
+html body.or410-ui #page-macro :is(#v198ChampSummary,#v198ChampDetails,#v144-8020-card){
+ border-radius:9px!important
+}
+html body.or410-ui #page-macro :is(#champTable,.v144-8020-table){font-variant-numeric:tabular-nums!important}
+/* 17 Modelos lentos: opción 2, conservar regla >30 días y checklists. */
+html body.or410-ui #page-macro :is(#v198SlowSummary,#v198SlowDetails){border-radius:9px!important}
+html body.or410-ui #page-macro #slowTable td{white-space:nowrap}
+/* 18 Sugerido 0-1: opción 2, conservar última entrada <=30 días. */
+html body.or410-ui #page-macro :is(#v198ZeroSummary,#v198ZeroDetails){border-radius:9px!important}
+html body.or410-ui #page-macro #zeroTable td{white-space:nowrap}
+/* 19 Ventas mensuales: opción 3, comparativo anual existente en tablas. */
+html body.or410-ui #page-macro :is(#salesExecKpis,.sales-exec-controls){gap:7px!important}
+html body.or410-ui #page-macro :is(#salesExecRows,#salesExecStoresRows){font-variant-numeric:tabular-nums!important}
+/* 20 Sell-through: opción 2, lectura integral. */
+html body.or410-ui #page-sell :is(.st-kpis,.kpis){gap:7px!important}
+html body.or410-ui #page-sell .st-table th:first-child{background:#0b57ad!important}
+/* 21 Acordeón: opción 4, lectura jerárquica. */
+html body.or410-ui #page-accordion .acc{
+ border:1px solid var(--or410-border)!important;margin-bottom:5px!important
+}
+html body.or410-ui #page-accordion .acc>button{min-height:38px!important;background:#f4f8ff!important;font-size:12px!important}
+html body.or410-ui #page-accordion .acc.open>button{background:#e6f1ff!important;color:#104a8c!important}
+/* 22 Participación vs CIA / Regla: mantener matriz original, solo optimizar. */
+html body.or410-ui #page-sections .subcat-report-card{border:1px solid var(--or410-border)!important;border-radius:10px!important}
+html body.or410-ui #page-sections .subcat-matrix-wrap{max-height:77vh!important}
+html body.or410-ui #page-sections .subcat-matrix thead th{position:sticky!important;top:0!important;z-index:4!important}
+html body.or410-ui #page-sections .subcat-selected{box-shadow:inset 2px 0 #2673dd,inset -2px 0 #2673dd!important}
+/* 23 Checklist lencería: opción 2, captura a la izquierda y comparación a la derecha. */
+html body.or410-ui #page-lingerie-checklist .lingerie-grid{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)!important;gap:8px!important
+}
+html body.or410-ui #page-lingerie-checklist :is(.lingerie-entry-table,.lingerie-result-ok,.lingerie-result-warn,.lingerie-result-bad){
+ font-variant-numeric:tabular-nums!important
+}
+/* 24 Carga comercial: opción 2, validación y estado. */
+html body.or410-ui #page-analysis-upload :is(.uploadgrid,.preview-grid){gap:8px!important}
+html body.or410-ui #page-analysis-upload :is(.drop,.panel){border:1px solid var(--or410-border)!important;border-radius:10px!important}
+/* 25 Más opciones: opción 2, tres herramientas con acceso seguro original. */
+html body.or410-ui #page-more .cards{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important
+}
+html body.or410-ui #page-more .cards>.card{border-top:4px solid #3366cc!important}
+html body.or410-ui #page-more .cards>.card:nth-child(2){border-top-color:#ff99ff!important}
+html body.or410-ui #page-more .cards>.card.adminOnly{border-top-color:#7047c8!important}
+/* Un mismo lenguaje visual en todos los reportes; mantener botones activos. */
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) :is(.title,h2,h3){color:#103f77}
+html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist,#page-analysis-upload) .tablewrap{scroll-margin-top:70px}
+/* Móvil tipo versión de computadora REDUCIDA, sin filas de tarjetas distintas. */
+@media(max-width:700px){
+ html body.or410-ui .main{padding:6px 6px max(16px,env(safe-area-inset-bottom))!important}
+ html body.or410-ui .main>.hero{padding:9px!important;border-radius:10px!important;min-height:48px!important}
+ html body.or410-ui .main>.hero #heroTitle{font-size:15px!important}
+ html body.or410-ui :is(#operativoNav,#analysisNav){
+  min-height:57px!important;max-height:none!important;padding:3px!important;gap:4px!important
+ }
+ html body.or410-ui :is(#operativoNav,#analysisNav)>.switch:not([hidden]){
+  min-height:51px!important;max-height:none!important;
+  width:var(--v407-tab-width,110px)!important;
+  min-width:var(--v407-tab-width,110px)!important;
+  max-width:var(--v407-tab-width,110px)!important;
+  padding:4px!important;line-height:1.1!important
+ }
+ html body.or410-ui :is(#operativoNav,#analysisNav) .rt-tab-label{font-size:9px!important;line-height:1.15!important}
+ html body.or410-ui.or356-center-active #page-operativo .ocl-lanes{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:4px!important;margin:4px 0 6px!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-lane{
+  gap:3px!important;padding:5px 3px!important;min-width:0!important;
+  border-radius:7px!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-lane-head{
+  display:block!important;min-width:0!important;text-align:center!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-lane-head .ocl-icon{
+  display:none!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-lane h3{
+  font-size:clamp(9px,2.45vw,12px)!important;line-height:1.14!important;margin:0!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-caption{
+  font-size:clamp(7px,1.7vw,9px)!important;line-height:1.15!important;
+  overflow-wrap:break-word!important;margin-top:2px!important;min-height:25px!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-lane-metric{
+  padding:4px 3px!important;min-width:0!important;min-height:72px!important;
+  gap:2px!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-label{font-size:8px!important}
+ html body.or410-ui.or356-center-active #page-operativo :is(.ocl-number,.ocl-route-number){
+  font-size:clamp(12px,3.2vw,17px)!important;line-height:1.1!important;
+  white-space:normal!important;overflow-wrap:anywhere!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo :is(.ocl-percent,.ocl-route-percent,.ocl-pending,.ocl-unit){
+  font-size:clamp(7px,1.7vw,9px)!important;white-space:normal!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .ocl-detail-button{
+  font-size:9px!important;min-height:29px!important;max-width:100%!important;padding:4px 2px!important
+ }
+ html body.or410-ui.v403-center-mode #operativoPeriodBar>.or-report-filter-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.75fr) minmax(0,.95fr) minmax(0,1.2fr) minmax(0,.8fr) 30px!important;
+  gap:3px!important;align-items:end!important
+ }
+ html body.or410-ui.v403-center-mode #operativoPeriodBar :is(#v403CenterModes,#operPeriodSelectWrap,#operStoreWrap,#operPeriodApply,#centerLaneRefresh){
+  grid-row:1!important;min-width:0!important
+ }
+ html body.or410-ui.v403-center-mode #operativoPeriodBar #v403CenterModes{grid-column:1!important}
+ html body.or410-ui.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap{grid-column:2!important}
+ html body.or410-ui.v403-center-mode #operativoPeriodBar #operStoreWrap{grid-column:3!important}
+ html body.or410-ui.v403-center-mode #operativoPeriodBar #operPeriodApply{grid-column:4!important}
+ html body.or410-ui.v403-center-mode #operativoPeriodBar #centerLaneRefresh{grid-column:5!important;width:30px!important}
+ html body.or410-ui.v403-center-mode #operativoPeriodBar :is(label,.v403-mode-label){font-size:8px!important}
+ html body.or410-ui.v403-center-mode #v403CenterModes .v403-mode-buttons{height:32px!important;min-height:32px!important}
+ html body.or410-ui.v403-center-mode #v403CenterModes .v403-mode-buttons button{font-size:8px!important;padding:0 1px!important}
+ html body.or410-ui.v403-center-mode #operativoPeriodBar :is(select,button){min-height:32px!important;font-size:9px!important;padding:3px!important}
+ html body.or410-ui.or356-center-active #page-operativo .or356-dashboard{
+  display:grid!important;grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr)!important;gap:4px!important
+ }
+ html body.or410-ui.or356-center-active #page-operativo .or356-card{padding:4px!important;min-width:0!important}
+ html body.or410-ui.or356-center-active #page-operativo .or356-sidepanels{gap:4px!important}
+ html body.or410-ui[data-or410-tab="operations.productivity"] #operativoDynamicContent .or362-productivity-layout{
+  grid-template-columns:minmax(0,.35fr) minmax(0,.65fr)!important
+ }
+ html body.or410-ui[data-or410-tab="operations.routes"] #operativoDynamicContent .or362-routes-detail{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important
+ }
+ html body.or410-ui[data-or410-tab="operations.goals"] #operativoDynamicContent :is(.usergrid,.or362-goals-kpis){
+  grid-template-columns:repeat(2,minmax(0,1fr))!important
+ }
+ html body.or410-ui #page-lingerie-checklist .lingerie-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important
+ }
+ html body.or410-ui #page-lingerie-checklist .lingerie-grid>.panel{padding:5px!important;min-width:0!important}
+ html body.or410-ui #page-more .cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important}
+ html body.or410-ui #page-more .cards>.card{padding:6px!important}
+ html body.or410-ui #page-more .cards>.card :is(h3,.big){font-size:11px!important;overflow-wrap:anywhere}
+ html body.or410-ui #page-more .cards>.card small{font-size:9px!important}
+ html body.or410-ui :is(#page-operativo,#page-macro,#page-stores,#page-sections,#page-areas,#page-accordion,#page-more,#page-lingerie-checklist) .tablewrap{overflow-x:auto!important}
+}
+@media(max-width:380px){
+ html body.or410-ui.or356-center-active #page-operativo .ocl-caption{min-height:30px!important}
+ html body.or410-ui.or356-center-active #page-operativo .ocl-pending{font-size:7px!important}
+}
+@media print{
+ html body.or410-ui .ocl-full{overflow:visible!important}
+ html body.or410-ui :is(.tablewrap,.subcat-matrix-wrap){overflow:visible!important;max-height:none!important}
+}
