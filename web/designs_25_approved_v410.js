@@ -55,11 +55,19 @@
     'lingerie-checklist':'commercial.lingerie_checklist',
     'analysis-upload':'commercial.upload',
     'more':'commercial.more',
-    'sell':'commercial.sell'
+    'sell':'commercial.sell',
+    'sellthrough-clean':'commercial.sell',
+    'sellthrough':'commercial.sell'
   };
   const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
   function identify(){
     const analysis=document.querySelector('#analysisNav:not(.hidden) .switch.active:not(.hidden)');
+    const liveSell=document.querySelector('#v193SellBtn.active,#page-sellthrough-clean.active');
+    const liveBonuses=document.querySelector('#page-bonuses.active');
+    const capture=document.body.classList.contains('v241-cm-capture') && document.querySelector('#page-operativo.active');
+    if(liveSell)return 'commercial.sell';
+    if(liveBonuses)return 'operations.bonuses';
+    if(capture)return 'operations.capture';
     const operative=document.querySelector('#operativoNav:not(.hidden) .switch.active:not(.hidden)');
     const activeMain=document.querySelector('#sidebar [data-main].active')?.dataset.main;
     if(activeMain==='analysis'||(analysis&&!operative)){
@@ -98,11 +106,11 @@
   }
   function init(){
     update();
-    ['#operativoNav','#analysisNav','#page-operativo','#page-macro','#page-lingerie-checklist']
+    ['#operativoNav','#analysisNav','#page-operativo','#page-macro','#page-lingerie-checklist','#page-sellthrough-clean','#page-bonuses']
       .forEach(selector=>{
         const el=document.querySelector(selector);
         if(!el)return;
-        new MutationObserver(schedule).observe(el,{attributes:true,attributeFilter:['class','hidden','aria-selected']});
+        new MutationObserver(schedule).observe(el,{attributes:true,subtree:el.id==='operativoNav'||el.id==='analysisNav',attributeFilter:['class','hidden','aria-selected']});
       });
     document.addEventListener('click',e=>{
       if(e.target.closest?.('#operativoNav,#analysisNav,[data-main],#v200OperationTabs'))schedule();

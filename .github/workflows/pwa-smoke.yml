@@ -40,11 +40,14 @@ jobs:
           assert {"192x192", "512x512"} <= sizes
 
           index = Path("web/index.html").read_text(encoding="utf-8")
-          assert 'rel="manifest" href="/manifest.webmanifest"' in index
-          assert '/static/pwa_install.js?v=auto-update-v1' in index
-          assert '/static/report_tab_carousel.js?v=20260928-carousel-v8' in index
-          assert '/static/report_tab_mundial_v7.js?v=20260928-mundial-disabled-v8' in index
-          assert '/static/report_tab_icon_rail_v1.js?v=20260928-iconrail-v10' in index
+          assert 'rel="manifest" href="/manifest.webmanifest?v=' in index
+          assert '/static/pwa_install.js?v=' in index
+          assert '/static/navegacion_unificada_v363.js?v=' in index
+          assert '/static/reporte_adaptable_v407.js?v=' in index
+          assert '/static/designs_25_approved_v410.js?v=' in index
+          assert '/static/correccion_visual_v411.js?v=' in index
+          assert '/static/acordeon_jerarquico_v412.css?v=412' in index
+          assert '/static/acordeon_jerarquico_v412.js?v=412' in index
           assert '/static/pwa_brand.js' in index
           assert '/static/pwa_brand.css' in index
           assert '/static/app-icon-maskable.svg' in Path("web/manifest.webmanifest").read_text(encoding="utf-8")
@@ -55,10 +58,13 @@ jobs:
           assert "networkFirst(request" in sw
           assert "cache: 'no-store'" in sw
           assert "REFRESH_APP_SHELL" in sw
-          assert "'/static/report_tab_carousel.js'" in sw
-          assert "'/static/report_tab_mundial_v7.js'" in sw
-          assert "'/static/report_tab_icon_rail_v1.js'" in sw
-          assert "operaciones-ropa-runtime-v9" in sw
+          assert "'/static/designs_25_approved_v410.css?v=410'" in sw
+          assert "'/static/designs_25_approved_v410.js?v=410'" in sw
+          assert "'/static/correccion_visual_v411.css?v=411'" in sw
+          assert "'/static/correccion_visual_v411.js?v=411'" in sw
+          assert "'/static/acordeon_jerarquico_v412.css?v=412'" in sw
+          assert "'/static/acordeon_jerarquico_v412.js?v=412'" in sw
+          assert "operaciones-ropa-runtime-safe-update-v412" in sw
 
           entry = Path("server_entry.py").read_text(encoding="utf-8")
           assert "_install_pwa_patch(web_app)" in entry
@@ -70,7 +76,7 @@ jobs:
           pwa = Path("web/pwa_install.js").read_text(encoding="utf-8")
           assert "Nueva versión disponible" in pwa
           assert "updateViaCache: 'none'" in pwa
-          assert "120000" in pwa
+          assert "60000" in pwa  # versión visible: comprobar cada 60 s
           print("PWA auto-update smoke check OK")
           PY
           node --check web/pwa_install.js

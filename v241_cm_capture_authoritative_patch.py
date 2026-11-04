@@ -418,7 +418,17 @@ body.v241-cm-capture .v241-history-empty{
       const hist=await A('/api/cm-productivity/history?date='+encodeURIComponent(mxToday())+'&store='+encodeURIComponent(store));
       if(mine!==seq)return;
 
-      const lastFinished=(hist?.items||[]).find(r=>r.status==='finished')||null;
+      const myRows=(hist?.items||[]).filter(r=>String(r.created_by||'')===String(meta?.user?.username||''));
+      const completedMine=myRows.filter(r=>r.status==='finished');
+      const piecesToday=hist?.my_summary?.pieces!=null
+        ?n(hist.my_summary.pieces):completedMine.reduce((sum,r)=>sum+rowPieces(r),0);
+      const durationToday=hist?.my_summary?.seconds!=null
+        ?n(hist.my_summary.seconds):completedMine.reduce((sum,r)=>sum+n(r.duration_seconds),0);
+      const dailyGoal=n(meta?.daily_goal_pieces);
+      const complianceToday=dailyGoal>0
+        ?(piecesToday/dailyGoal*100).toLocaleString('es-MX',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'
+        :'N/D';
+      const lastFinished=completedMine[0]||null;
       lastDuration=active?0:n(lastFinished?.duration_seconds);
       const activity=active?.activity||ALLOWED[0];
       const options=(active&&!ALLOWED.includes(activity)?[activity,...ALLOWED]:ALLOWED)
@@ -443,16 +453,22 @@ body.v241-cm-capture .v241-history-empty{
             '</div><div class="v241-clock-current"><small>Tiempo de sesión</small><b id="v241Timer" class="v241-timer">00:00:00</b></div></div>'+
             '<span id="v241Msg" role="status" class="v241-msg"></span></div>'+
         '</div>'+
+        '<div id="v241Performance" class="v241-performance-kpis" aria-label="Desempeño del colaborador">'+
+          '<div class="v241-performance-kpi"><small>Piezas del día</small><b>'+nf(piecesToday)+'</b></div>'+
+          '<div class="v241-performance-kpi"><small>Meta diaria</small><b>'+(dailyGoal>0?nf(dailyGoal):'N/D')+'</b></div>'+
+          '<div class="v241-performance-kpi"><small>Cumplimiento</small><b>'+complianceToday+'</b></div>'+
+          '<div class="v241-performance-kpi"><small>Tiempo efectivo</small><b>'+hms(durationToday)+'</b></div>'+
+        '</div>'+
         '<div class="v241-capture-panel v241-history-panel">'+
           '<div class="v241-history-heading"><h3>Capturas de hoy</h3>'+
             '<div class="v241-history-summary"><span>Capturas: <b>'+nf(hist?.items?.length||0)+'</b></span>'+
               '<span>Piezas: <b>'+nf((hist?.items||[]).filter(r=>r.status!=='active').reduce((sum,r)=>sum+rowPieces(r),0))+'</b></span>'+
               '<span>Tiempo total: <b>'+hms((hist?.items||[]).filter(r=>r.status!=='active').reduce((sum,r)=>sum+n(r.duration_seconds),0))+'</b></span>'+
             '</div></div>'+
-          '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle de piezas</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
+          '<div class="v241-history"><table><thead><tr><th>Colaborador</th><th>Actividad</th><th>Piezas</th><th>Detalle de piezas</th><th>Inicio</th><th>Fin</th><th>Tiempo</th><th>Estado</th></tr></thead><tbody>'+
           ((hist?.items||[]).map(r=>'<tr><td><b>'+esc(r.employee_name)+'</b></td><td>'+esc(r.activity)+'</td><td><b>'+nf(rowPieces(r))+'</b></td>'+
-            '<td>'+esc(historyDetail(r))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||
-            '<tr><td colspan="6" class="v241-history-empty">Sin capturas de hoy. Se mostrarán aquí cuando finalices una actividad.</td></tr>')+
+            '<td>'+esc(historyDetail(r))+'</td><td>'+esc(clockTime(r.started_at))+'</td><td>'+esc(clockTime(r.ended_at))+'</td><td>'+hms(r.duration_seconds)+'</td><td>'+esc(r.status==='active'?'En curso':'Finalizado')+'</td></tr>').join('')||
+            '<tr><td colspan="8" class="v241-history-empty">Sin capturas de hoy. Se mostrarán aquí cuando finalices una actividad.</td></tr>')+
           '</tbody></table></div></div>';
 
       if(active)startClock();else{clearInterval(timer);updateClock()}

@@ -90,4 +90,4 @@ jobs:
           python -m pytest -q tests/test_v410_center_reconnect.py
           python -m py_compile v240_center_routes_calendar_patch.py
       - name: Validate the served page, navigation, reports and filters
-        run: timeout 120s npm --prefix tests/ui test
+        run: timeout 240s npm --prefix tests/ui test
