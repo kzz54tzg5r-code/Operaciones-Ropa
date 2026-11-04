@@ -181,3 +181,21 @@ html body.or411-fix #appView :is(#analysisNav,#operativoNav)>button.or411-duplic
 html body.or411-fix #analysisNav:has(#v193SellBtn)>button[data-sub="sellthrough"]{
   display:none!important
 }
+
+/* Panel Comercial sin cabecera azul sobredimensionada. */
+html body.or411-fix #globalFilters .or-filter-head-v3{
+  display:flex!important;align-items:center!important;
+  width:100%!important;max-width:100%!important;
+  min-height:43px!important;max-height:none!important;
+  padding:7px 12px!important;margin:0!important;
+  border:0!important;border-bottom:1px solid #d7e4f3!important;
+  background:#edf5ff!important;color:#123f77!important;
+  border-radius:11px 11px 0 0!important
+}
+html body.or411-fix #globalFilters .or-filter-head-v3 b{
+  color:#123f77!important;font-size:13px!important
+}
+html body.or411-fix #globalFilters .or-filter-summary-v3{
+  max-width:100%!important;white-space:normal!important;
+  overflow:visible!important;line-height:1.2!important
+}
