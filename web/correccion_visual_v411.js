@@ -30,6 +30,19 @@ function normalizeTabs(nav){
    }
  });
 }
+function alignActive(nav){
+ if(!nav)return;
+ const active=nav.querySelector(':scope > button.active:not(.or411-duplicate):not([hidden])');
+ if(!active)return;
+ const key=active.id||active.dataset.tabKey||active.dataset.opview||active.dataset.sub||active.textContent.trim();
+ if(nav.dataset.or411Active===key)return;
+ nav.dataset.or411Active=key;
+ // Alinea la pestaña seleccionada; evita que a la izquierda aparezca media palabra.
+ if(nav.scrollWidth<=nav.clientWidth+2)return;
+ const r=active.getBoundingClientRect(),c=nav.getBoundingClientRect();
+ const left=Math.max(0,nav.scrollLeft+(r.left-c.left)-5);
+ if(Number.isFinite(left)&&Math.abs(nav.scrollLeft-left)>4)nav.scrollLeft=left;
+}
 function reconcile(){
  if(running)return;
  running=true;
@@ -49,6 +62,7 @@ function reconcile(){
    }
   }
   normalizeTabs(op);normalizeTabs(analysis);
+  alignActive(op);alignActive(analysis);
  }finally{running=false}
 }
 function schedule(){
