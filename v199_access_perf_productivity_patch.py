@@ -306,7 +306,23 @@ def install(m):
                 "SELECT * FROM cm_productivity_capture WHERE "+" AND ".join(where)+" ORDER BY id DESC LIMIT 60",
                 tuple(params)
             ).fetchall()
-        return {"items":[dict(x) for x in rows]}
+            # Totales del colaborador SIN LIMIT 60 y con el mismo ámbito
+            # autorizado de la consulta. No modifica el historial visible.
+            own_where=[*where,"status='finished'","created_by=?"]
+            own_params=[*params,str(actor.get("username") or "")]
+            daily=con.execute(
+                """SELECT COUNT(*) AS captures,
+                    COALESCE(SUM(CASE WHEN COALESCE(pieces,0)>0 THEN pieces
+                    ELSE COALESCE(muertos,0)+COALESCE(cajas,0)+COALESCE(probador,0)
+                    END),0) AS pieces,
+                    COALESCE(SUM(COALESCE(duration_seconds,0)),0) AS seconds
+                    FROM cm_productivity_capture WHERE """+" AND ".join(own_where),
+                tuple(own_params)
+            ).fetchone()
+        return {"items":[dict(x) for x in rows],
+                "my_summary":{"captures":int(daily["captures"] or 0),
+                              "pieces":float(daily["pieces"] or 0),
+                              "seconds":int(daily["seconds"] or 0)}}
 
     def _period_bounds(period_type, period_value):
         today=datetime.now(MX).date()
