@@ -12,6 +12,9 @@ assert.equal((html.match(/correccion_visual_v411\.js/g)||[]).length,1);
 assert.ok(css.includes('grid-template-columns:repeat(auto-fit,minmax(168px,1fr))'));
 assert.ok(css.includes('#accordion>.acc:first-child .mini3'));
 assert.ok(css.includes('.or411-duplicate{display:none!important}'));
+assert.ok(css.includes('#analysisNav:has(#v193SellBtn)>button[data-sub="sellthrough"]'));
+assert.ok(css.includes('display:none!important'));
+
 const parts=[
 '<div id="appView"><main class="main"><header class="hero">Cabecera</header>',
 '<div class="bad-legacy-flex">',
