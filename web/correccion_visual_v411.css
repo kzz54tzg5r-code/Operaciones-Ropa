@@ -235,3 +235,7 @@ html body.or411-fix.or363-navigation #appView .main :is(#operativoNav,#analysisN
     max-width:var(--v407-tab-width,105px)!important
   }
 }
+
+/* La ocultación de duplicados debe prevalecer sobre el display:flex de V407. */
+html body.or411-fix.or363-navigation #appView .main #analysisNav>button.or411-duplicate:not([hidden]),
+html body.or411-fix.or363-navigation #appView .main #operativoNav>button.or411-duplicate:not([hidden]){display:none!important}
