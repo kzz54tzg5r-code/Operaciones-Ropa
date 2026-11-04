@@ -110,7 +110,7 @@
       .forEach(selector=>{
         const el=document.querySelector(selector);
         if(!el)return;
-        new MutationObserver(schedule).observe(el,{attributes:true,subtree:true,attributeFilter:['class','hidden','aria-selected']});
+        new MutationObserver(schedule).observe(el,{attributes:true,subtree:el.id==='operativoNav'||el.id==='analysisNav',attributeFilter:['class','hidden','aria-selected']});
       });
     document.addEventListener('click',e=>{
       if(e.target.closest?.('#operativoNav,#analysisNav,[data-main],#v200OperationTabs'))schedule();
