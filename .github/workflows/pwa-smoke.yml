@@ -40,7 +40,7 @@ jobs:
           assert {"192x192", "512x512"} <= sizes
 
           index = Path("web/index.html").read_text(encoding="utf-8")
-          assert 'rel="manifest" href="/manifest.webmanifest"' in index
+          assert 'rel="manifest" href="/manifest.webmanifest?v=' in index
           assert '/static/pwa_install.js?v=' in index
           assert '/static/navegacion_unificada_v363.js?v=' in index
           assert '/static/reporte_adaptable_v407.js?v=' in index
@@ -72,7 +72,7 @@ jobs:
           pwa = Path("web/pwa_install.js").read_text(encoding="utf-8")
           assert "Nueva versión disponible" in pwa
           assert "updateViaCache: 'none'" in pwa
-          assert "120000" in pwa
+          assert "60000" in pwa  # versión visible: comprobar cada 60 s
           print("PWA auto-update smoke check OK")
           PY
           node --check web/pwa_install.js
