@@ -174,3 +174,10 @@ html body.or411-fix #page-more .cards>.card{min-width:0!important}
 
 /* Evitar accesos exactamente duplicados sin eliminar el botón ni su evento. */
 html body.or411-fix #appView :is(#analysisNav,#operativoNav)>button.or411-duplicate{display:none!important}
+
+/* V193 mantiene Sell Through RAW-V2 y oculta el legacy.
+ * V407 reabrió indebidamente el botón viejo con display:flex!important.
+ * Ocultarlo SOLO si existe el botón moderno de V193. */
+html body.or411-fix #analysisNav:has(#v193SellBtn)>button[data-sub="sellthrough"]{
+  display:none!important
+}
