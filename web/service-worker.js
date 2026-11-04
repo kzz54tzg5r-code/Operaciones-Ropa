@@ -38,6 +38,8 @@ const STATIC_ASSETS = [
   '/static/designs_25_approved_v410.js?v=410',
   '/static/correccion_visual_v411.css?v=411',
   '/static/correccion_visual_v411.js?v=411',
+  '/static/acordeon_jerarquico_v412.css?v=412',
+  '/static/acordeon_jerarquico_v412.js?v=412',
   '/static/center_lanes.js?v=373'
 ];
 
