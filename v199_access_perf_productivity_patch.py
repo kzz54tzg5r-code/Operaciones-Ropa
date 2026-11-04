@@ -172,6 +172,7 @@ def install(m):
                 "profile_required":bool(actor.get("profile_required")),
             },
             "activities":["Clasificado","Acondicionado","Ubicado","Recolección","Planchado"],
+            "daily_goal_pieces":float(m.get_goals().get("productividad_diaria",784) or 784),
         }
 
     @m.app.get("/api/cm-productivity/active")
