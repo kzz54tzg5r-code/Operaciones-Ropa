@@ -171,3 +171,6 @@ html body.or411-fix #page-more .cards>.card{min-width:0!important}
   }
 }
 @media print{html body.or411-fix #globalFilters{display:none!important}}
+
+/* Evitar accesos exactamente duplicados sin eliminar el botón ni su evento. */
+html body.or411-fix #appView :is(#analysisNav,#operativoNav)>button.or411-duplicate{display:none!important}
