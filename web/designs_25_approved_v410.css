@@ -432,3 +432,132 @@ html body.or410-ui #page-more>.cards{grid-template-columns:repeat(3,minmax(0,1fr
  }
  html body.or410-ui #page-more>.cards>.card{padding:6px!important}
 }
+
+
+/* V412 · Captura de productividad opción 2:
+   actividad + 4 áreas + Inicio/Fin vertical + horas + 4 KPIs reales. */
+html body.or410-ui.v241-cm-capture #v241CmCapture{
+  display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  align-items:stretch!important;gap:9px!important;padding:13px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture>.v241-field{
+  grid-column:1/span3!important;grid-row:3!important;
+  display:flex!important;flex-direction:column!important;justify-content:center!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
+  grid-column:4/span4!important;grid-row:3!important;min-width:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-capture{
+  width:100%!important;min-height:125px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-title{
+  flex-direction:column!important;align-items:flex-start!important;gap:3px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-title span{
+  white-space:normal!important;line-height:1.2!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions{
+  grid-column:8/span5!important;grid-row:3!important;
+  display:grid!important;grid-template-columns:minmax(110px,.36fr) minmax(180px,.64fr)!important;
+  grid-template-rows:minmax(48px,1fr) minmax(48px,1fr) auto!important;
+  gap:7px!important;align-items:stretch!important;padding:0!important;margin:0!important;
+  min-width:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions #v241Start{
+  grid-column:1!important;grid-row:1!important;width:100%!important;margin:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions #v241Finish{
+  grid-column:1!important;grid-row:2!important;width:100%!important;margin:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions .v241-clockbox{
+  grid-column:2!important;grid-row:1/span2!important;margin:0!important;
+  min-width:0!important;width:100%!important;max-width:none!important;
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;
+  justify-content:center!important;gap:9px!important;padding:9px!important;
+  background:#f4ebff!important;border:1px solid #dec8f9!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-times{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:8px!important;align-items:stretch!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-times span{
+  min-width:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-current{
+  border-top:1px solid #d9c1f6!important;padding-top:6px!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture #v241Timer{
+  font-size:clamp(18px,2vw,29px)!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions #v241Msg{
+  grid-column:1/-1!important;grid-row:3!important;margin:0!important;min-height:0!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance{
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:9px!important;margin:8px 0!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance>.v241-performance-kpi{
+  min-width:0!important;border:1px solid #d2e1f5!important;
+  border-top:4px solid #3366cc!important;border-radius:10px!important;
+  background:#f7fbff!important;padding:11px 13px!important;min-height:70px!important;
+  display:flex!important;flex-direction:column!important;justify-content:center!important;gap:4px!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance>.v241-performance-kpi:nth-child(2){
+  border-top-color:#b241ee!important;background:#faf5ff!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance>.v241-performance-kpi:nth-child(3){
+  border-top-color:#0bba5f!important;background:#f4fff8!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance>.v241-performance-kpi:nth-child(4){
+  border-top-color:#a551e7!important;background:#faf5ff!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance small{
+  color:#436386!important;font-size:11px!important;font-weight:800!important
+}
+html body.or410-ui.v241-cm-capture #v241Performance b{
+  color:#123f73!important;font-size:clamp(17px,1.7vw,24px)!important;
+  font-variant-numeric:tabular-nums!important;line-height:1.15!important
+}
+html body.or410-ui.v241-cm-capture .v241-history-panel .v241-history-heading{
+  margin-bottom:7px!important
+}
+html body.or410-ui.v241-cm-capture .v241-history th{
+  position:sticky!important;top:0!important;z-index:2!important;
+  white-space:normal!important;font-size:11px!important
+}
+@media(max-width:900px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture>.v241-field,
+ html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
+  grid-column:1/span6!important;grid-row:auto!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
+  grid-column:7/span6!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions{
+  grid-column:1/-1!important;grid-row:auto!important;
+  grid-template-columns:minmax(120px,.26fr) minmax(0,.74fr)!important
+ }
+}
+@media(max-width:530px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture{padding:8px!important;gap:6px!important}
+ html body.or410-ui.v241-cm-capture #v241CmCapture>.v241-field{
+  grid-column:1/-1!important;grid-row:auto!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
+  grid-column:1/-1!important;grid-row:auto!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions{
+  grid-column:1/-1!important;grid-row:auto!important;
+  grid-template-columns:minmax(94px,.35fr) minmax(0,.65fr)!important
+ }
+ html body.or410-ui.v241-cm-capture #v241Performance{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important
+ }
+ html body.or410-ui.v241-cm-capture #v241Performance>.v241-performance-kpi{
+  min-height:60px!important;padding:7px!important
+ }
+ html body.or410-ui.v241-cm-capture #v241Performance b{font-size:16px!important}
+}
