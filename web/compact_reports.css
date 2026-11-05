@@ -331,7 +331,17 @@ html body #page-operativo .ocl-detail-table thead{background:#edf5ff}
 html body #page-operativo .ocl-full{padding:0}
 html body #page-operativo .ocl-full>summary{cursor:pointer;font-size:13px!important;font-weight:650;padding:12px;line-height:1.3}
 html body #page-operativo .ocl-original{padding:10px;max-width:100%;overflow:visible}
-html body #page-operativo .ocl-original .monthly-cross-desktop{display:block!important;max-width:100%;overflow-x:auto!important;overflow-y:visible!important;touch-action:pan-x pan-y}
+html body #page-operativo .ocl-original .monthly-cross-desktop{max-width:100%;overflow-x:auto!important;overflow-y:visible!important;touch-action:pan-x pan-y}
+html body #page-operativo .ocl-shell:not([data-design="ultracompact-four"]) .ocl-original .monthly-cross-desktop{display:block!important}
+/* V413: evitar que el bloque antiguo "Categoría / Indicador / Valor" reaparezca
+   cuando Centro Operativo usa las cuatro tarjetas aprobadas. Aplica tanto a
+   PC como a PWA móvil con viewport de escritorio en miniatura. No oculta
+   tablas, gráficas ni exportaciones del informe por tienda. */
+html body #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-original .monthly-cross-desktop,
+html body #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-original .monthly-cross-mobile,
+html body #page-operativo .ocl-shell[data-design="ultracompact-four"] .ocl-original .mct-kpi-grid{
+  display:none!important
+}
 html body #page-operativo .ocl-original .monthly-cross-mobile{display:none!important}
 html body #page-operativo .ocl-full>.ocl-back{margin:10px}
 html body.center-three-lanes #operativoPeriodBar>.or-report-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr)) 36px!important;gap:6px!important}

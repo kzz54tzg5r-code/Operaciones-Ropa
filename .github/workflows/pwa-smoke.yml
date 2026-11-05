@@ -48,6 +48,7 @@ jobs:
           assert '/static/correccion_visual_v411.js?v=' in index
           assert '/static/acordeon_jerarquico_v412.css?v=412' in index
           assert '/static/acordeon_jerarquico_v412.js?v=412' in index
+          assert '/static/compact_reports.css?v=413' in index
           assert '/static/pwa_brand.js' in index
           assert '/static/pwa_brand.css' in index
           assert '/static/app-icon-maskable.svg' in Path("web/manifest.webmanifest").read_text(encoding="utf-8")
@@ -67,6 +68,7 @@ jobs:
           assert "'/static/centro_movil_paridad_v413.css?v=413'" in sw
           assert '/static/centro_movil_paridad_v413.css?v=413' in index
           assert "operaciones-ropa-runtime-safe-update-v413" in sw
+          assert "'/static/compact_reports.css?v=413'" in sw
 
           entry = Path("server_entry.py").read_text(encoding="utf-8")
           assert "_install_pwa_patch(web_app)" in entry
