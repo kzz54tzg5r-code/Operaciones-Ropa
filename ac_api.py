@@ -82,7 +82,14 @@ def create_ac_router(bridge: ACBridge, require_actor):
         role, store, employee_id, actor = actor_from(request, CAPTURE_ROLES)
         if not store:
             raise HTTPException(403, "Se requiere tienda asignada")
-        # El usuario no suministra tienda ni nombre de colaborador; provienen de sesión.
+        # Verificar además el alcance en la base de datos: no confiar en session_id.
+        with bridge.operation.transaction() as db:
+            session = db.execute(
+                "SELECT store, employee_id FROM ac_sessions WHERE id=?",
+                (payload.session_id,)
+            ).fetchone()
+        if not session or session["store"] != store or session["employee_id"] != employee_id:
+            raise HTTPException(403, "Sesión ajena a la tienda o colaborador")
         try:
             return {"capture_id": bridge.capture(event_key=payload.event_key,
                     session_id=payload.session_id,employee_id=employee_id,
