@@ -51,7 +51,7 @@ def test_real_data_events_and_all_four_areas_preserved():
     assert "q('#v241Finish')?.addEventListener('click'" in V241
     for term in ['Piezas del día','Meta diaria','Cumplimiento','Tiempo efectivo','<th>Inicio</th><th>Fin</th>']:
         assert term in V241
-    assert 'designs_25_approved_v410.css?v=410' in HTML
+    assert 'designs_25_approved_v410.css?v=414' in HTML
 
 def test_no_rogue_v412_fixed_column_spans_remain():
     section=CSS.split('/* V414: Cargar Productividad',1)[1]
