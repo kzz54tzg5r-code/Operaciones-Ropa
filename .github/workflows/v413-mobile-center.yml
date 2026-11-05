@@ -31,4 +31,4 @@ jobs:
         run: |
           test -s web/centro_movil_paridad_v413.css
           grep -q "centro_movil_paridad_v413.css?v=413" web/index.html
-          grep -q "operaciones-ropa-runtime-safe-update-v413" web/service-worker.js
+          grep -q "operaciones-ropa-runtime-safe-update-v414" web/service-worker.js
