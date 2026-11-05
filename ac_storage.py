@@ -54,8 +54,12 @@ CREATE TABLE IF NOT EXISTS ac_locations (
  pallet TEXT NOT NULL DEFAULT '', active INTEGER NOT NULL DEFAULT 1,
  UNIQUE(store,kind,aisle,face,section,level,pallet)
 );
+CREATE TABLE IF NOT EXISTS ac_movement_batches (
+ id TEXT PRIMARY KEY, event_key TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS ac_movements (
- id TEXT PRIMARY KEY, event_key TEXT NOT NULL UNIQUE,
+ id TEXT PRIMARY KEY, batch_id TEXT NOT NULL REFERENCES ac_movement_batches(id),
+ event_key TEXT NOT NULL UNIQUE,
  store TEXT NOT NULL, model_id TEXT NOT NULL, size TEXT NOT NULL,
  pieces INTEGER NOT NULL CHECK(pieces > 0),
  from_location TEXT REFERENCES ac_locations(id),
@@ -129,7 +133,10 @@ class ACStore:
             db.close()
 
     def initialize(self):
-        with self.transaction() as db:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(str(self.path), timeout=15) as db:
+            db.execute("PRAGMA journal_mode=WAL")
+            db.execute("PRAGMA foreign_keys=ON")
             db.executescript(SCHEMA)
 
     def start_session(self, store, employee_id, flow, stage, area):
@@ -205,13 +212,14 @@ class ACStore:
             raise ValueError("Origen y destino deben ser distintos")
         result=[]
         with self.transaction() as db:
-            existing=db.execute("SELECT id FROM ac_movements WHERE event_key=?",(event_key,)).fetchone()
+            existing=db.execute("SELECT id FROM ac_movement_batches WHERE event_key=?",(event_key,)).fetchone()
             if existing:
                 return existing["id"]
             locs=db.execute("SELECT id,store FROM ac_locations WHERE id IN (?,?)",(source,target)).fetchall()
             if len(locs)!=2 or any(x["store"]!=store for x in locs):
                 raise ValueError("Las ubicaciones deben pertenecer a la tienda")
             movement_id=uuid.uuid4().hex
+            db.execute("INSERT INTO ac_movement_batches(id,event_key,created_at) VALUES(?,?,?)",(movement_id,event_key,timestamp()))
             for size,qty in sizes.items():
                 available=db.execute("SELECT pieces-reserved AS n FROM ac_stock WHERE store=? AND location_id=? AND model_id=? AND size=?",
                     (store,source,model_id,size)).fetchone()
@@ -222,9 +230,9 @@ class ACStore:
                 db.execute("""INSERT INTO ac_stock(store,location_id,model_id,size,pieces) VALUES(?,?,?,?,?)
                 ON CONFLICT(store,location_id,model_id,size) DO UPDATE SET pieces=pieces+excluded.pieces""",
                 (store,target,model_id,size,qty))
-                result.append((uuid.uuid4().hex,event_key+":"+size,store,model_id,size,qty,source,target,employee_id,partner_id,timestamp()))
-            db.executemany("""INSERT INTO ac_movements(id,event_key,store,model_id,size,pieces,from_location,to_location,created_by,partner_id,captured_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",result)
+                result.append((uuid.uuid4().hex,movement_id,event_key+":"+size,store,model_id,size,qty,source,target,employee_id,partner_id,timestamp()))
+            db.executemany("""INSERT INTO ac_movements(id,batch_id,event_key,store,model_id,size,pieces,from_location,to_location,created_by,partner_id,captured_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",result)
             return movement_id
 
     def reserve(self, *, event_key, store, location_id, model_id, size, pieces, requested_by):
