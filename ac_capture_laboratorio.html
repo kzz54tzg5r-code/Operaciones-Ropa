@@ -72,13 +72,18 @@ function renderSizes(){const root=$("sizes");root.replaceChildren();for(const si
 async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
 function clearModel(){for(const size of order)counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";pending=null;renderSizes();$("model").focus()}
 function parseVoice(value){
- const text=value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[,.]/g," ");
- const sizes=[["doble extra grande","XXG"],["extra extra grande","XXG"],["extra chica","XCH"],["extra grande","XG"],["mediana","M"],["mediano","M"],["chica","CH"],["chico","CH"],["grande","G"],["xxg","XXG"],["xch","XCH"],["xg","XG"]];
- const numberNames={"cero":0,"uno":1,"una":1,"dos":2,"tres":3,"cuatro":4,"cinco":5,"seis":6,"siete":7,"ocho":8,"nueve":9,"diez":10,"once":11,"doce":12,"trece":13,"catorce":14,"quince":15,"dieciseis":16,"diecisiete":17,"dieciocho":18,"diecinueve":19,"veinte":20};
- const chunks=text.split(/\\s+y\\s+|\\s*;\\s*|\\s*,\\s*/);
- const output={};for(const chunk of chunks){let found=null;for(const [phrase,size] of sizes){const idx=chunk.indexOf(phrase);if(idx>=0&&(found===null||phrase.length>found.phrase.length))found={phrase,size,idx}}
- if(!found)continue;const remain=chunk.slice(found.idx+found.phrase.length).trim().split(/\\s+/)[0];const quantity=/^\\d+$/.test(remain)?Number(remain):numberNames[remain];if(!Number.isSafeInteger(quantity)||quantity<0||quantity>10000)throw Error("Cantidad no reconocida para "+found.phrase);if(Object.hasOwn(output,found.size))throw Error("Talla repetida: "+found.size);output[found.size]=quantity}
- if(!Object.keys(output).length)throw Error("No reconocí tallas y cantidades");return output;
+ const text=value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+ const canonical=[["doble extra grande","XXG"],["extra extra grande","XXG"],["extra chica","XCH"],["extra grande","XG"],["mediana","M"],["mediano","M"],["chica","CH"],["chico","CH"],["grande","G"],["xxg","XXG"],["xch","XCH"],["xg","XG"]];
+ const words={"cero":0,"uno":1,"una":1,"dos":2,"tres":3,"cuatro":4,"cinco":5,"seis":6,"siete":7,"ocho":8,"nueve":9,"diez":10,"once":11,"doce":12,"trece":13,"catorce":14,"quince":15,"dieciseis":16,"diecisiete":17,"dieciocho":18,"diecinueve":19,"veinte":20};
+ const matcher=new RegExp("(?:^|[\\s,;])("+canonical.map(x=>x[0]).join("|")+")\\s+(\\d+|[a-z]+)(?=$|[\\s,;])","g");
+ const result={};let match;while((match=matcher.exec(text))!==null){const size=canonical.find(x=>x[0]===match[1])[1];
+   const qty=/^\d+$/.test(match[2])?Number(match[2]):words[match[2]];
+   if(!Number.isSafeInteger(qty)||qty<0||qty>10000)throw Error("Cantidad no reconocida: "+match[2]);
+   if(Object.hasOwn(result,size))throw Error("Talla repetida: "+size);
+   result[size]=qty;
+ }
+ if(!Object.keys(result).length)throw Error("No reconocí tallas y cantidades");
+ return result;
 }
 $("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
 $("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
