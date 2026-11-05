@@ -14,7 +14,7 @@ const STATIC_ASSETS = [
   '/static/report_tab_mundial_v7.js',
   '/static/pwa_install.js',
   '/static/ios_native.js',
-  '/static/compact_reports.css?v=354',
+  '/static/compact_reports.css?v=413',
   '/static/compact_reports.js?v=363',
   '/static/center_lanes.js?v=354',
   '/static/navegacion_unificada_v363.css?v=3635',
