@@ -2,6 +2,8 @@ name: V412 paridad de 25 diseños autorizados
 on:
   pull_request:
     paths:
+      - "web/compact_reports.css"
+      - "tests/test_v413_center_cleanup.py"
       - "web/designs_25_approved_v410.css"
       - "web/designs_25_approved_v410.js"
       - "web/correccion_visual_v411.css"
@@ -41,7 +43,7 @@ jobs:
       - name: Validate actual components and selected styles
         run: |
           python -m pip install -q pytest
-          python -m pytest -q tests/test_v412_design_parity.py tests/test_v410_approved_designs.py
+          python -m pytest -q tests/test_v413_center_cleanup.py tests/test_v412_design_parity.py tests/test_v410_approved_designs.py
           node --check web/designs_25_approved_v410.js
           node --check web/correccion_visual_v411.js
           node tests/ui/v412-route-parity.cjs
