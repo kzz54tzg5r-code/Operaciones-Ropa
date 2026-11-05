@@ -434,66 +434,105 @@ html body.or410-ui #page-more>.cards{grid-template-columns:repeat(3,minmax(0,1fr
 }
 
 
-/* V412 · Captura de productividad opción 2:
-   actividad + 4 áreas + Inicio/Fin vertical + horas + 4 KPIs reales. */
+/* V414: Cargar Productividad — opción 2 autorizada. GRID sin solapamientos.
+   Se corrige en el archivo original V410/V412, NO se suma una capa global. */
 html body.or410-ui.v241-cm-capture #v241CmCapture{
-  display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;
-  align-items:stretch!important;gap:9px!important;padding:13px!important
+ display:grid!important;
+ grid-template-columns:minmax(0,2.7fr) minmax(0,5fr) minmax(0,4.3fr)!important;
+ grid-template-areas:"head head head" "meta meta meta" "activity pieces actions"!important;
+ grid-template-rows:auto auto auto!important;
+ align-items:stretch!important;column-gap:10px!important;row-gap:9px!important;
+ padding:13px!important;width:100%!important;max-width:100%!important;
+ box-sizing:border-box!important;overflow:visible!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture>.v241-field{
-  grid-column:1/span3!important;grid-row:3!important;
-  display:flex!important;flex-direction:column!important;justify-content:center!important
+html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-capture-head{
+ grid-area:head!important;grid-column:auto!important;grid-row:auto!important;min-width:0!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
-  grid-column:4/span4!important;grid-row:3!important;min-width:0!important
+html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-capture-meta{
+ grid-area:meta!important;grid-column:auto!important;grid-row:auto!important;min-width:0!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-field{
+ grid-area:activity!important;grid-column:auto!important;grid-row:auto!important;
+ display:flex!important;flex-direction:column!important;justify-content:center!important;
+ min-width:0!important;max-width:100%!important;
+ margin:0!important;box-sizing:border-box!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture > #v241PieceCaptureHost{
+ grid-area:pieces!important;grid-column:auto!important;grid-row:auto!important;
+ min-width:0!important;max-width:100%!important;width:100%!important;
+ display:flex!important;overflow:visible!important;box-sizing:border-box!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture > #v241PieceCaptureHost > *,
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-capture{
+ box-sizing:border-box!important;width:100%!important;min-width:0!important;
+ max-width:100%!important;margin:0!important;overflow:visible!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-grid{
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:7px!important;max-width:100%!important;min-width:0!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-capture{
-  width:100%!important;min-height:125px!important
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-box{
+ min-width:0!important;max-width:100%!important;overflow:visible!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-box input{
+ display:block!important;width:100%!important;max-width:100%!important;
+ min-width:0!important;box-sizing:border-box!important;position:static!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-title{
-  flex-direction:column!important;align-items:flex-start!important;gap:3px!important
+ flex-direction:column!important;align-items:flex-start!important;gap:3px!important;
+ margin:0 0 6px!important;min-width:0!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-title span{
-  white-space:normal!important;line-height:1.2!important
+ white-space:normal!important;line-height:1.2!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions{
-  grid-column:8/span5!important;grid-row:3!important;
-  display:grid!important;grid-template-columns:minmax(110px,.36fr) minmax(180px,.64fr)!important;
-  grid-template-rows:minmax(48px,1fr) minmax(48px,1fr) auto!important;
-  gap:7px!important;align-items:stretch!important;padding:0!important;margin:0!important;
-  min-width:0!important
+html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-actions{
+ grid-area:actions!important;grid-column:auto!important;grid-row:auto!important;
+ display:grid!important;grid-template-columns:minmax(0,.38fr) minmax(0,.62fr)!important;
+ grid-template-rows:minmax(43px,1fr) minmax(43px,1fr) auto!important;
+ align-self:stretch!important;align-items:stretch!important;
+ min-width:0!important;max-width:100%!important;width:100%!important;
+ box-sizing:border-box!important;gap:8px!important;padding:0!important;margin:0!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions #v241Start{
-  grid-column:1!important;grid-row:1!important;width:100%!important;margin:0!important
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > #v241Start{
+ grid-area:1 / 1 / 2 / 2!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions #v241Finish{
-  grid-column:1!important;grid-row:2!important;width:100%!important;margin:0!important
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > #v241Finish{
+ grid-area:2 / 1 / 3 / 2!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions .v241-clockbox{
-  grid-column:2!important;grid-row:1/span2!important;margin:0!important;
-  min-width:0!important;width:100%!important;max-width:none!important;
-  display:flex!important;flex-direction:column!important;align-items:stretch!important;
-  justify-content:center!important;gap:9px!important;padding:9px!important;
-  background:#f4ebff!important;border:1px solid #dec8f9!important
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > :is(#v241Start,#v241Finish){
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ box-sizing:border-box!important;position:static!important;transform:none!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ height:auto!important;min-height:43px!important;max-height:none!important;
+ padding:8px 5px!important;margin:0!important;border-radius:9px!important;
+ white-space:nowrap!important;z-index:auto!important
+}
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > .v241-clockbox{
+ grid-area:1 / 2 / 3 / 3!important;
+ display:flex!important;flex-direction:column!important;justify-content:center!important;
+ box-sizing:border-box!important;position:static!important;
+ min-width:0!important;max-width:100%!important;width:100%!important;
+ margin:0!important;padding:10px!important;gap:9px!important;
+ border:1px solid #dec8f9!important;border-radius:10px!important;
+ background:#f4ebff!important;overflow:visible!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-times{
-  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:8px!important;align-items:stretch!important
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:8px!important;align-items:start!important;min-width:0!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-times span{
-  min-width:0!important
+ min-width:0!important;max-width:100%!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture .v241-clock-current{
-  border-top:1px solid #d9c1f6!important;padding-top:6px!important
+ border-top:1px solid #d9c1f6!important;padding-top:6px!important;
+ min-width:0!important
 }
 html body.or410-ui.v241-cm-capture #v241CmCapture #v241Timer{
-  font-size:clamp(18px,2vw,29px)!important
+ font-size:clamp(18px,1.7vw,26px)!important;min-width:0!important
 }
-html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions #v241Msg{
-  grid-column:1/-1!important;grid-row:3!important;margin:0!important;min-height:0!important
+html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > #v241Msg{
+ grid-area:3 / 1 / 4 / 3!important;min-width:0!important;
+ margin:0!important;min-height:0!important
 }
 html body.or410-ui.v241-cm-capture #v241Performance{
   display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
@@ -528,36 +567,66 @@ html body.or410-ui.v241-cm-capture .v241-history th{
   position:sticky!important;top:0!important;z-index:2!important;
   white-space:normal!important;font-size:11px!important
 }
-@media(max-width:900px){
- html body.or410-ui.v241-cm-capture #v241CmCapture>.v241-field,
- html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
-  grid-column:1/span6!important;grid-row:auto!important
+
+/* Móvil mantiene las mismas piezas reales; nunca se superponen acciones. */
+@media(max-width:1100px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-areas:"head head" "meta meta" "activity pieces" "actions actions"!important;
+  grid-template-rows:auto auto auto auto!important
  }
- html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
-  grid-column:7/span6!important
- }
- html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions{
-  grid-column:1/-1!important;grid-row:auto!important;
-  grid-template-columns:minmax(120px,.26fr) minmax(0,.74fr)!important
+ html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-actions{
+  grid-template-columns:minmax(0,.35fr) minmax(0,.65fr)!important
  }
 }
-@media(max-width:530px){
- html body.or410-ui.v241-cm-capture #v241CmCapture{padding:8px!important;gap:6px!important}
- html body.or410-ui.v241-cm-capture #v241CmCapture>.v241-field{
-  grid-column:1/-1!important;grid-row:auto!important
+@media(max-width:650px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-areas:"head" "meta" "activity" "pieces" "actions"!important;
+  grid-template-rows:auto auto auto auto auto!important;
+  gap:7px!important;padding:9px!important
  }
- html body.or410-ui.v241-cm-capture #v241CmCapture #v241PieceCaptureHost{
-  grid-column:1/-1!important;grid-row:auto!important
+ html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-capture-meta{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important
  }
- html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions{
-  grid-column:1/-1!important;grid-row:auto!important;
-  grid-template-columns:minmax(94px,.35fr) minmax(0,.65fr)!important
+ html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-field{
+  padding:8px!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-area-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-actions{
+  grid-template-columns:minmax(0,.32fr) minmax(0,.68fr)!important;gap:6px!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > :is(#v241Start,#v241Finish){
+  min-height:42px!important;font-size:12px!important;padding:5px 3px!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > .v241-clockbox{
+  padding:7px!important
  }
  html body.or410-ui.v241-cm-capture #v241Performance{
   grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important
  }
- html body.or410-ui.v241-cm-capture #v241Performance>.v241-performance-kpi{
+ html body.or410-ui.v241-cm-capture #v241Performance > .v241-performance-kpi{
   min-height:60px!important;padding:7px!important
  }
  html body.or410-ui.v241-cm-capture #v241Performance b{font-size:16px!important}
+}
+@media(max-width:340px){
+ html body.or410-ui.v241-cm-capture #v241CmCapture > .v241-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-rows:auto auto auto!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > #v241Start{
+  grid-area:1 / 1 / 2 / 2!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > #v241Finish{
+  grid-area:1 / 2 / 2 / 3!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > .v241-clockbox{
+  grid-area:2 / 1 / 3 / 3!important
+ }
+ html body.or410-ui.v241-cm-capture #v241CmCapture .v241-actions > #v241Msg{
+  grid-area:3 / 1 / 4 / 3!important
+ }
 }
