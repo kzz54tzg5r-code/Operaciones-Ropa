@@ -31,11 +31,11 @@ jobs:
           assert 'viewport-fit=cover' in html
           assert 'class="monthly-cross-mobile"' in html
           assert 'TOTAL GENERAL · TOTAL PZS' in html
-          assert '/static/designs_25_approved_v410.css?v=410' in html
+          assert '/static/designs_25_approved_v410.css?v=414' in html
           assert '/static/designs_25_approved_v410.js?v=410' in html
           assert '/static/correccion_visual_v411.css?v=411' in html
           assert '/static/correccion_visual_v411.js?v=411' in html
-          assert html.index('/static/designs_25_approved_v410.css?v=410') < html.index('/static/correccion_visual_v411.css?v=411')
+          assert html.index('/static/designs_25_approved_v410.css?v=414') < html.index('/static/correccion_visual_v411.css?v=411')
           assets=set(re.findall(r'''(?:src|href)=[\"']/static/([^\"'?]+\.(?:js|css))(?:\?[^\"']+)?[\"']''', html, flags=re.I))
           assert len(assets)>=25, f"Only {len(assets)} active resources"
           for asset in sorted(assets):
