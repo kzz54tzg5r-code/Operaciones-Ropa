@@ -163,6 +163,10 @@ class ACStore:
         with self.transaction() as db:
             existing = db.execute("SELECT id FROM ac_captures WHERE event_key=?", (event_key,)).fetchone()
             if existing:
+                previous=db.execute("SELECT c.*,s.store AS session_store FROM ac_captures c JOIN ac_sessions s ON s.id=c.session_id WHERE c.id=?",(existing["id"],)).fetchone()
+                old_sizes={r["size"]:r["pieces"] for r in db.execute("SELECT size,pieces FROM ac_capture_sizes WHERE capture_id=?",(existing["id"],))}
+                if not previous or previous["session_id"]!=session_id or previous["created_by"]!=employee_id or previous["model_id"]!=model_id or previous["color"]!=str(color or "") or old_sizes!=pieces:
+                    raise ValueError("Clave de evento reutilizada con datos diferentes")
                 return existing["id"]
             s = db.execute("SELECT * FROM ac_sessions WHERE id=? AND employee_id=?", (session_id,employee_id)).fetchone()
             if not s or s["status"] != "active":
@@ -214,6 +218,10 @@ class ACStore:
         with self.transaction() as db:
             existing=db.execute("SELECT id FROM ac_movement_batches WHERE event_key=?",(event_key,)).fetchone()
             if existing:
+                detail=db.execute("SELECT store,model_id,from_location,to_location,created_by,partner_id,size,pieces FROM ac_movements WHERE batch_id=?",(existing["id"],)).fetchall()
+                old_sizes={r["size"]:r["pieces"] for r in detail}
+                if not detail or len(detail)!=len(sizes) or old_sizes!=sizes or any(r["store"]!=store or r["model_id"]!=model_id or r["from_location"]!=source or r["to_location"]!=target or r["created_by"]!=employee_id or r["partner_id"]!=partner_id for r in detail):
+                    raise ValueError("Clave de movimiento reutilizada con datos diferentes")
                 return existing["id"]
             locs=db.execute("SELECT id,store FROM ac_locations WHERE id IN (?,?)",(source,target)).fetchall()
             if len(locs)!=2 or any(x["store"]!=store for x in locs):
