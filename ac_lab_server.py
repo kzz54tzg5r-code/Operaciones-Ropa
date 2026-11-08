@@ -34,6 +34,7 @@ import web_app  # noqa: E402
 from web_app import app, require_user  # noqa: E402
 from ac_api import create_ac_router  # noqa: E402
 from ac_bridge import ACBridge  # noqa: E402
+from ac_catalog import ExistingCatalogLookup  # noqa: E402
 from v314_bonus_product_photos_patch import install as install_bonus_photos  # noqa: E402
 
 # V314 ya está instalado por server_entry en la aplicación habitual.
@@ -41,9 +42,16 @@ from v314_bonus_product_photos_patch import install as install_bonus_photos  # n
 # disponible /api/bonuses/product-photo/{ID} sin inventar otro servicio.
 install_bonus_photos(web_app)
 
+# Impedir la importación de usuarios desde una base heredada del repositorio.
+# Los perfiles de prueba deben pertenecer EXCLUSIVAMENTE al directorio de laboratorio.
+web_app.LEGACY_DB = lab_root / "legacy_user_import_disabled.db"
+
 ac = ACBridge(lab_root)
 ac.initialize()
-app.include_router(create_ac_router(ac, require_user))
+app.include_router(create_ac_router(
+    ac, require_user,
+    catalog_lookup=ExistingCatalogLookup(web_app._latest_capacity_frame),
+))
 
 @app.get("/ac/laboratorio", include_in_schema=False)
 def ac_lab_ui(request: Request):
