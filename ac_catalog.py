@@ -5,9 +5,8 @@ normalizado, habitualmente web_app._latest_capacity_frame(). Se consulta sólo
 la tienda del usuario; no inventa descripción, color ni ubicación.
 """
 from __future__ import annotations
-from functools import lru_cache
-import re
-import threading
+from collections import OrderedDict
+from threading import RLock
 import unicodedata
 
 
@@ -70,12 +69,43 @@ def from_capacity_frame(frame, store, model_id):
 
 
 class ExistingCatalogLookup:
-    """Utiliza el cache de capacidades ya cargado por Análisis Comercial."""
+    """Consulta el catálogo ya cargado. Cachea hasta 4 tiendas para evitar
+    recorrer 196 mil filas en cada escaneo de un colaborador.
+    """
 
     def __init__(self, frame_provider):
         self.frame_provider = frame_provider
+        self._frame_id = None
+        self._store_frames = OrderedDict()
+        self._lock = RLock()
 
     def __call__(self, store, model_id):
         if not store or not model_id:
             return None
-        return from_capacity_frame(self.frame_provider(), store, model_id)
+        frame = self.frame_provider()
+        if frame is None or getattr(frame, "empty", True):
+            return None
+        if not {"ID_ART", "Tienda"}.issubset(frame.columns):
+            return None
+        key = _key(store)
+        with self._lock:
+            if id(frame) != self._frame_id:
+                self._store_frames.clear()
+                self._frame_id = id(frame)
+            if key in self._store_frames:
+                scoped = self._store_frames[key]
+                self._store_frames.move_to_end(key)
+            else:
+                scoped = frame.loc[frame["Tienda"].astype(str).map(_key).eq(key)]
+                # Sólo conservar metadatos de la ficha, no cientos de columnas
+                # de inventario, ventas y costos.
+                fields = [c for c in (
+                    "Tienda", "ID_ART", "Modelo", "Descripción", "Descripcion",
+                    "Color", "COLOR", "Ubicación detalle",
+                    "Pasillo operativo", "Pasillo"
+                ) if c in scoped.columns]
+                scoped = scoped[fields].copy()
+                self._store_frames[key] = scoped
+                if len(self._store_frames) > 4:
+                    self._store_frames.popitem(last=False)
+        return from_capacity_frame(scoped, store, model_id)
