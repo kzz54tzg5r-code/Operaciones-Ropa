@@ -42,8 +42,8 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 <div><label for="color">Color</label><input id="color" autocomplete="off" placeholder="Opcional"></div>
 </div>
 <div class="grid" style="grid-template-columns:1fr 2fr;margin-top:8px">
-<div id="photo"><span class="small">Fotografía de macro: pendiente de integración</span></div>
-<div><strong id="modelName">Modelo sin escanear</strong><p id="modelDetails" class="muted small">Ingresa un ID para consultar la ficha. Las fotos solo aparecerán si existe una fuente oficial conectada.</p>
+<div id="photo"><span class="small">Fotografía por ID · misma fuente de Bonos</span></div>
+<div><strong id="modelName">Modelo sin escanear</strong><p id="modelDetails" class="muted small">Ingresa un ID para consultar los datos del modelo y su fotografía mediante el servicio existente de Bonos.</p>
 <div class="row"><button id="voice" type="button" disabled>🎙 Dictar tallas</button><button id="complete" type="button" disabled>Modelo completo</button></div></div>
 </div>
 </section>
@@ -87,9 +87,23 @@ async function findModel(){
   const photo=$("photo");photo.replaceChildren();
   if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
     const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;img.src=info.photo_url;img.style.cssText="width:100%;height:115px;object-fit:contain";
-    img.onerror=()=>{photo.replaceChildren();photo.textContent="Fotografía no disponible"};
+    img.onerror=()=>{
+      if(token!==lookupEpoch)return;
+      photo.replaceChildren();
+      const label=document.createElement("span");
+      label.className="small";label.textContent="No se pudo mostrar la foto del ID "+model+".";
+      const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
+      retry.onclick=()=>{
+        if(token!==lookupEpoch)return;
+        photo.replaceChildren();
+        // Reutiliza V314 y su parámetro de reintento para errores temporales.
+        img.src=info.photo_url+"?retry=1&t="+Date.now();
+        photo.append(img);
+      };
+      photo.append(label,retry);
+    };
     photo.append(img);
-  }else photo.textContent="Sin fotografía oficial conectada";
+  }else photo.textContent="No hay fotografía para este ID";
  }catch(e){if(token===lookupEpoch){$("modelDetails").textContent="No se pudo consultar la ficha: "+e.message;$("photo").textContent="Fotografía pendiente"}}
 }
 async function resumeSession(){
