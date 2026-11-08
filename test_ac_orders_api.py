@@ -48,7 +48,7 @@ def test_api_approval_restricts_role_and_store():
             assert data.json()["total"]==10
             wrong=client.get("/api/ac/orders/preview?model_id=914629&area=Colgado",
                              headers={**supervisor,"x-store":"Vallejo"})
-            assert wrong.json()["total"]==0
+            assert wrong.status_code==400  # Sin corte de capacidades de esa tienda
             issued=client.post("/api/ac/orders/approve",headers=manager,json=payload)
             assert issued.status_code==201,issued.text
             oid=issued.json()["id"]
