@@ -13,6 +13,9 @@ carga documental nueva. Surtido y Resurtido utilizan capturas en base de datos.
 - `ac_capture_laboratorio.html`: captura compacta con ID, tallas, voz, Inicio y Fin.
 - `ac_lab_server.py`: instancia experimental que usa la sesión actual de FastAPI
   **pero con datos de laboratorio**, sin compartir la base de usuarios de producción.
+- `v314_bonus_product_photos_patch.py`: fuente EXISTENTE en Bonos 1–6; el laboratorio
+  la instala para conservar la ruta autenticada `/api/bonuses/product-photo/{ID}`.
+  AC no duplica solicitudes a la CDN ni altera los cálculos de Bonos.
 
 ## Ejecución fuera de producción
 
@@ -35,18 +38,23 @@ después de iniciar sesión en esta misma instancia.
 ## Pruebas
 
 ```bash
-python -m pytest -q test_ac_bridge.py test_ac_api.py
+python -m pytest -q test_ac_bridge.py test_ac_api.py tests/test_bonus_photos_backend.py
 node test_ac_voice.cjs
 ```
 
 También existe `.github/workflows/ac-laboratorio.yml` limitado a la rama de
-laboratorio. Hasta contar con el resultado real de CI no debe declararse aprobado.
+laboratorio. Revisar cada ejecución real de CI; las pruebas unitarias no
+sustituyen la validación de fotografías para IDs existentes en la CDN.
 
 ## Limitaciones conocidas, bloqueantes del piloto
 
-1. La macro de fotografías oficiales no está identificada ni conectada. El
-   endpoint `GET /api/ac/model` indica explícitamente `catalog_not_connected`.
-   No inventar imágenes ni tomar una fotografía de un modelo distinto.
+1. Las fotos YA están conectadas en Bonos V314 por ID, desde el origen
+   `http://static.priceshoes.com.mx/imgs/original/articulo/`. AC reutiliza
+   exactamente la ruta autenticada `/api/bonuses/product-photo/{ID}`. El
+   endpoint `GET /api/ac/model` entrega esta ruta sólo para IDs numéricos
+   válidos, sin prometer que exista fotografía para todos los modelos.
+   Todavía falta comprobar fotografías de muestra en la ejecución del piloto,
+   y conectar de manera independiente nombre, color y ubicación oficial.
 2. `Modelo completo` todavía está deshabilitado: primero se requiere la cola
    con cantidades autorizadas por talla, procedentes de una captura previa.
 3. Las capturas se almacenan, pero aún falta su conciliación con inventario
