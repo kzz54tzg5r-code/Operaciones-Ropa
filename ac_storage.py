@@ -14,7 +14,7 @@ from pathlib import Path
 
 STAGES = {"Separar", "Acondicionar", "Ubicar", "Pizca", "Excedentes"}
 FLOWS = {"Surtido", "Resurtido"}
-AREAS = {"Colgado", "Doblado"}
+AREAS = {"Colgado", "Doblado", "Jeans", "Lencería"}
 STORAGE_KINDS = {"Piso", "Rack", "Septimos", "Tarima", "Transito"}
 SESSION_STATES = {"active", "paused", "finished"}
 NEXT_STAGE = {
