@@ -1,0 +1,17 @@
+const fs=require("node:fs");
+const vm=require("node:vm");
+const assert=require("node:assert/strict");
+const html=fs.readFileSync("ac_capture_laboratorio.html","utf8");
+const begin=html.indexOf("function parseVoice(value){");
+const end=html.indexOf('\n$("start").addEventListener',begin);
+assert.ok(begin>=0&&end>begin,"La pantalla debe incluir el lector por voz");
+const parseVoice=vm.runInNewContext("("+html.slice(begin,end)+")");
+const plain=x=>JSON.parse(JSON.stringify(x));
+assert.deepEqual(plain(parseVoice("extra chica cinco, mediana siete, grande seis")),{XCH:5,M:7,G:6});
+assert.deepEqual(plain(parseVoice("xch 5, g 6, m 7")),{XCH:5,G:6,M:7});
+assert.deepEqual(plain(parseVoice("ch 2; m 4; g 2")),{CH:2,M:4,G:2});
+assert.throws(()=>parseVoice("m ocho m dos"),/repetida/);
+assert.throws(()=>parseVoice("mediana cantidades"),/Cantidad/);
+assert.ok(html.includes('command==="finalizar"'),"Debe conservar comando finalizar");
+assert.ok(html.includes('command==="siguiente"'),"Debe conservar comando siguiente");
+console.log("7 verificaciones de voz e interfaz completadas");
