@@ -3,16 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 from ac_capacities import CapacityStore
 from ac_storage import ACStore, suggested_quantity
+from ac_orders import OrderService
 
 class ACBridge:
     def __init__(self, data_directory):
         self.path=Path(data_directory)/"propuesta_ac.sqlite3"
         self.capacities=CapacityStore(self.path)
         self.operation=ACStore(self.path)
+        self.orders=OrderService(self)
 
     def initialize(self):
         self.operation.initialize()
         self.capacities.initialize()
+        self.orders.initialize()
 
     def upload_capacities(self, excel_bytes, *, version, admin_user):
         """Única carga Excel del módulo nuevo; permisos se verifican en el servidor."""
