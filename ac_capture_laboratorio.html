@@ -43,7 +43,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 </div>
 <div class="grid" style="grid-template-columns:1fr 2fr;margin-top:8px">
 <div id="photo"><span class="small">Fotografía de macro: pendiente de integración</span></div>
-<div><strong id="modelName">Modelo sin escanear</strong><p class="muted small">Al confirmar el código se consultará el catálogo oficial. Esta pantalla aún no dispone de ese servicio.</p>
+<div><strong id="modelName">Modelo sin escanear</strong><p id="modelDetails" class="muted small">Ingresa un ID para consultar la ficha. Las fotos solo aparecerán si existe una fuente oficial conectada.</p>
 <div class="row"><button id="voice" type="button" disabled>🎙 Dictar tallas</button><button id="complete" type="button" disabled>Modelo completo</button></div></div>
 </div>
 </section>
@@ -62,7 +62,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 const $=id=>document.getElementById(id);
 const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
-let session="",started=0,busy=false,pending=null,recognition=null;
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0;
 const counts=Object.fromEntries(order.map(x=>[x,0]));
 function show(text,kind=""){const el=$("message");el.textContent=text;el.className="status "+kind}
 function controls(){let active=!!session;$("start").disabled=active||busy;$("finish").disabled=!active||busy;$("save").disabled=!active||busy||!$("model").value.trim()||!order.some(x=>counts[x]>0);$("voice").disabled=!active||busy||!("SpeechRecognition" in window || "webkitSpeechRecognition" in window);["flow","stage","area"].forEach(id=>$(id).disabled=active||busy)}
@@ -70,7 +70,43 @@ function pad(v){return String(v).padStart(2,"0")}
 function tick(){const delta=started?Math.floor((Date.now()-started)/1000):0;$("clock").textContent=pad(Math.floor(delta/3600))+":"+pad(Math.floor(delta/60)%60)+":"+pad(delta%60)}
 function renderSizes(){const root=$("sizes");root.replaceChildren();for(const size of order){const wrap=document.createElement("div");const label=document.createElement("label");const input=document.createElement("input");label.textContent=names[size]+" ("+size+")";input.type="number";input.min="0";input.step="1";input.inputMode="numeric";input.className="qty";input.value=String(counts[size]);input.setAttribute("aria-label","Piezas "+names[size]);input.addEventListener("input",()=>{const value=Number(input.value);counts[size]=Number.isSafeInteger(value)&&value>=0?value:-1;controls()});wrap.append(label,input);root.append(wrap)}controls()}
 async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
-function clearModel(){for(const size of order)counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";pending=null;renderSizes();$("model").focus()}
+function clearModel(){for(const size of order)counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+async function getJson(path){const response=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const value=await response.json().catch(()=>({}));if(!response.ok)throw Error(value.detail||"HTTP "+response.status);return value}
+async function findModel(){
+ const model=$("model").value.trim();const token=++lookupEpoch;
+ if(!model){$("modelName").textContent="Modelo sin escanear";return}
+ $("modelName").textContent="ID "+model;$("modelDetails").textContent="Buscando ficha oficial…";
+ try{
+  const info=await getJson("/model?model_id="+encodeURIComponent(model));
+  if(token!==lookupEpoch||$("model").value.trim()!==model)return;
+  $("modelName").textContent=info.name||"ID "+model;
+  $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
+  if(info.color&&!$("color").value.trim())$("color").value=info.color;
+  const photo=$("photo");photo.replaceChildren();
+  if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
+    const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;img.src=info.photo_url;img.style.cssText="width:100%;height:115px;object-fit:contain";
+    img.onerror=()=>{photo.replaceChildren();photo.textContent="Fotografía no disponible"};
+    photo.append(img);
+  }else photo.textContent="Sin fotografía oficial conectada";
+ }catch(e){if(token===lookupEpoch){$("modelDetails").textContent="No se pudo consultar la ficha: "+e.message;$("photo").textContent="Fotografía pendiente"}}
+}
+async function resumeSession(){
+ try{
+  const me=await getJson("/me");if(!me.store){show("Tu perfil todavía no tiene tienda asignada.","warn");return}
+  const active=await getJson("/session/active");
+  if(!active.session){sessionStorage.removeItem("acPendingCapture");show("Inicia una actividad para capturar modelos.");return}
+  session=active.session.id;started=Date.parse(active.session.started_at)||Date.now();
+  $("flow").value=active.session.flow;$("stage").value=active.session.stage;$("area").value=active.session.area;
+  const saved=sessionStorage.getItem("acPendingCapture");
+  if(saved){try{const data=JSON.parse(saved);if(data.session_id===session){
+    pending=data;$("model").value=data.model_id;$("color").value=data.color||"";
+    for(const size of order)counts[size]=Number(data.sizes[size]||0);
+    renderSizes();show("Hay una captura pendiente de confirmación. Reintenta Guardar sin cambiar sus piezas.","warn");
+  }else sessionStorage.removeItem("acPendingCapture");}catch(e){sessionStorage.removeItem("acPendingCapture")}}
+  if(!pending)show("Actividad recuperada: "+active.session.stage+".","ok");tick();
+ }catch(e){show("No se pudo consultar la sesión: "+e.message,"error")}
+ finally{controls()}
+}
 function parseVoice(value){
  const text=value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
  const canonical=[["doble extra grande","XXG"],["extra extra grande","XXG"],["extra chica","XCH"],["extra grande","XG"],["mediana","M"],["mediano","M"],["chica","CH"],["chico","CH"],["grande","G"],["xxg","XXG"],["xch","XCH"],["xg","XG"]];
@@ -87,18 +123,20 @@ function parseVoice(value){
 }
 $("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
 $("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
-$("model").addEventListener("input",()=>{pending=null;$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
+$("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
+$("model").addEventListener("change",findModel);
+$("model").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findModel()}});
 $("clear").addEventListener("click",()=>{for(const size of order)counts[size]=0;pending=null;renderSizes()});
 $("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const parsed=parseVoice(spoken);for(const size of order)if(Object.hasOwn(parsed,size))counts[size]=parsed[size];pending=null;renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
 $("save").addEventListener("click",async()=>{
  const model=$("model").value.trim();const sizes={};for(const size of order){const n=counts[size];if(!Number.isSafeInteger(n)||n<0){show("Revisa las cantidades de todas las tallas.","error");return}if(n>0)sizes[size]=n}
  if(!model||!Object.keys(sizes).length||!session)return;
- if(!pending)pending={event_key:crypto.randomUUID(),session_id:session,model_id:model,color:$("color").value.trim(),sizes};
+ if(!pending){pending={event_key:crypto.randomUUID(),session_id:session,model_id:model,color:$("color").value.trim(),sizes};sessionStorage.setItem("acPendingCapture",JSON.stringify(pending))}
  else if(pending.model_id!==model||JSON.stringify(pending.sizes)!==JSON.stringify(sizes)){show("Hay un envío pendiente. Restablece sus valores o corrige el fallo antes de continuar.","warn");return}
  busy=true;controls();try{const result=await api("/capture",pending);show("Guardado confirmado. Captura "+result.capture_id,"ok");clearModel()}catch(e){show("Sin confirmación del servidor: "+e.message+". Reintenta sin cambiar cantidades.","error")}finally{busy=false;controls()}
 });
 $("complete").title="Se habilitará al contar con tarea previa de cantidades por talla";
-renderSizes();setInterval(tick,1000);
+renderSizes();setInterval(tick,1000);resumeSession();
 })();
 </script>
 </body></html>
