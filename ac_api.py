@@ -33,6 +33,10 @@ class CaptureSizes(BaseModel):
     model_id: str = Field(min_length=1, max_length=120)
     color: str = Field(default="", max_length=120)
     sizes: Dict[str, int]
+    task_id: str | None = None
+
+class TaskClaim(BaseModel):
+    session_id: str
 
 class FinishActivity(BaseModel):
     session_id: str
@@ -125,6 +129,33 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
             ).fetchone()
         return {"session":dict(row) if row else None}
 
+    @router.get("/tasks")
+    def task_queue(request: Request, session_id: str):
+        _, store, employee_id, _ = actor_from(request, CAPTURE_ROLES)
+        with bridge.operation.transaction() as db:
+            s = db.execute(
+                "SELECT flow,stage,area FROM ac_sessions WHERE id=? AND store=? "
+                "AND employee_id=? AND status='active'",(session_id,store,employee_id)
+            ).fetchone()
+        if not s:
+            raise HTTPException(403, "Debes tener una actividad activa de tu tienda")
+        return {"tasks":bridge.tasks(
+            store=store,flow=s["flow"],stage=s["stage"],area=s["area"],
+            employee_id=employee_id
+        )}
+
+    @router.post("/tasks/{task_id}/claim")
+    def claim_task(task_id: str, payload: TaskClaim, request: Request):
+        _, store, employee_id, _ = actor_from(request, CAPTURE_ROLES)
+        if not store:
+            raise HTTPException(403, "Tienda no asignada")
+        try:
+            claimed=bridge.claim(store=store,task_id=task_id,
+                                 session_id=payload.session_id,
+                                 employee_id=employee_id)
+            return {"task_id":claimed,"status":"in_progress"}
+        except Exception as exc:fail(exc)
+
     @router.post("/session/start", status_code=201)
     def start_activity(payload: StartActivity, request: Request):
         role, store, employee_id, actor = actor_from(request, CAPTURE_ROLES)
@@ -151,7 +182,8 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
         try:
             return {"capture_id": bridge.capture(event_key=payload.event_key,
                     session_id=payload.session_id,employee_id=employee_id,
-                    model_id=payload.model_id,color=payload.color,sizes=payload.sizes)}
+                    model_id=payload.model_id,color=payload.color,sizes=payload.sizes,
+                    task_id=payload.task_id)}
         except Exception as exc:fail(exc)
 
     @router.post("/session/finish")
