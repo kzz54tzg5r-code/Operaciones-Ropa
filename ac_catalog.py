@@ -1,0 +1,81 @@
+"""Lectura de la ficha AC desde el catálogo comercial que ya existe.
+
+No importa ni escribe datos comerciales. El caller proporciona un dataframe
+normalizado, habitualmente web_app._latest_capacity_frame(). Se consulta sólo
+la tienda del usuario; no inventa descripción, color ni ubicación.
+"""
+from __future__ import annotations
+from functools import lru_cache
+import re
+import threading
+import unicodedata
+
+
+def _key(value):
+    raw = unicodedata.normalize("NFKD", str(value or "").strip())
+    return "".join(c for c in raw if not unicodedata.combining(c)).casefold()
+
+
+def _clean(value):
+    text = str(value if value is not None else "").strip()
+    return "" if text.casefold() in {"", "nan", "none", "nat", "<na>"} else text
+
+
+def from_capacity_frame(frame, store, model_id):
+    """Busca ID exacto y tienda exacta en el dataframe ya normalizado.
+
+    Distintos locales pueden tener un modelo en ubicaciones diferentes.
+    En tal caso no se devuelve una ubicación arbitraria: se listan hasta
+    tres ubicaciones existentes sin confundirlas con una asignación operativa.
+    """
+    store = _clean(store)
+    model_id = _clean(model_id)
+    if not store or not model_id or frame is None or getattr(frame, "empty", True):
+        return None
+    if not {"ID_ART", "Tienda"}.issubset(frame.columns):
+        return None
+
+    scoped = frame.loc[
+        frame["Tienda"].astype(str).map(_key).eq(_key(store)) &
+        frame["ID_ART"].astype(str).str.replace(r"\\.0$", "", regex=True).str.strip().eq(model_id)
+    ]
+    if scoped.empty:
+        return None
+
+    def first(*columns):
+        for column in columns:
+            if column not in scoped:
+                continue
+            for value in scoped[column]:
+                clean = _clean(value)
+                if clean:
+                    return clean
+        return None
+
+    locs = []
+    for column in ("Ubicación detalle", "Pasillo operativo", "Pasillo"):
+        if column in scoped.columns:
+            locs = list(dict.fromkeys(
+                clean for clean in (_clean(v) for v in scoped[column])
+                if clean
+            ))
+            if locs:
+                break
+
+    return {
+        "name": first("Modelo", "Descripción", "Descripcion") or model_id,
+        "color": first("Color", "COLOR"),
+        "location": " / ".join(locs[:3]) if locs else None,
+    }
+
+
+class ExistingCatalogLookup:
+    """Utiliza el cache de capacidades ya cargado por Análisis Comercial."""
+
+    def __init__(self, frame_provider):
+        self.frame_provider = frame_provider
+
+    def __call__(self, store, model_id):
+        if not store or not model_id:
+            return None
+        return from_capacity_frame(self.frame_provider(), store, model_id)
