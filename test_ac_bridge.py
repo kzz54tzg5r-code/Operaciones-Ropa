@@ -1,6 +1,7 @@
 """Pruebas AC aisladas. Ejecutar: python -m unittest -v test_ac_bridge.py"""
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from openpyxl import Workbook
 from ac_bridge import ACBridge
@@ -53,5 +54,39 @@ class TestACBridge(unittest.TestCase):
         self.assertEqual(self.ac.operation.move(**args),self.ac.operation.move(**args))
         self.assertEqual(self.ac.operation.available("Iztapalapa",sept,"914629","M")["pieces"],5)
         self.assertEqual(self.ac.operation.available("Iztapalapa",floor,"914629","M")["pieces"],3)
+
+    def test_twenty_workers_two_hundred_models(self):
+        """20 colaboradores, 10 modelos por persona; ningún evento se pierde."""
+        sessions=[self.ac.start(store="Iztapalapa",employee_id=f"EMP{i:02d}",
+                    flow="Surtido",stage="Separar",area="Colgado") for i in range(20)]
+        def capture(worker):
+            return [
+                self.ac.capture(event_key=f"bulk-{worker}-{j}",session_id=sessions[worker],
+                    employee_id=f"EMP{worker:02d}",model_id=f"MODEL{worker:02d}-{j:02d}",
+                    sizes={"M":2,"G":3})
+                for j in range(10)
+            ]
+        with ThreadPoolExecutor(max_workers=20) as pool:
+            results=list(pool.map(capture,range(20)))
+        self.assertEqual(len({event for group in results for event in group}),200)
+        with self.ac.operation.transaction() as db:
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM ac_captures").fetchone()[0],200)
+            self.assertEqual(db.execute("SELECT SUM(pieces) FROM ac_capture_sizes").fetchone()[0],1000)
+
+    def test_concurrent_reservations_never_oversubscribe(self):
+        loc=self.ac.operation.add_location(store="Iztapalapa",kind="Tarima",pallet="T-01")
+        self.ac.operation.seed_verified_stock(store="Iztapalapa",location_id=loc,
+                                              model_id="914629",sizes={"G":5})
+        def reserve(i):
+            try:
+                self.ac.operation.reserve(event_key=f"parallel-{i}",store="Iztapalapa",
+                    location_id=loc,model_id="914629",size="G",pieces=4,requested_by=f"U{i}")
+                return True
+            except ValueError:
+                return False
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(reserve,range(2)))
+        self.assertEqual(sorted(results),[False,True])
+        self.assertEqual(self.ac.operation.available("Iztapalapa",loc,"914629","G")["reserved"],4)
 
 if __name__=="__main__":unittest.main()
