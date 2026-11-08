@@ -12,7 +12,7 @@ for(const fragment of [
  'id="model"','id="criterion"','id="area"','id="sizes"','id="approve"',
  '"/orders/preview?model_id="','"/orders/approve"',
  'acPendingOrder','Autorizar y reservar','confirm("¿Autorizar',
- 'id="history"','"/orders"','/api/bonuses/product-photo/'
+ 'id="history"','"/orders"','data.photo_url'
 ])assert.ok(orders.includes(fragment),"Falta en pedidos: "+fragment);
 for(const fragment of [
  'id="floorLocation"','async function loadFloorLocations()',
