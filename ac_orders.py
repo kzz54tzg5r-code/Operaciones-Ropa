@@ -6,6 +6,7 @@ inventario de Rack para el sugerido ni duplica las reservas existentes.
 """
 from __future__ import annotations
 import json
+import sqlite3
 import uuid
 from ac_storage import AREAS, require_text, timestamp
 
@@ -48,7 +49,10 @@ class OrderService:
         self.bridge=bridge
 
     def initialize(self):
-        with self.bridge.operation.transaction() as db:
+        # sqlite3.executescript confirma implícitamente las transacciones:
+        # inicializar esquema fuera de ACStore.transaction().
+        with sqlite3.connect(self.bridge.path,timeout=15) as db:
+            db.execute("PRAGMA foreign_keys=ON")
             db.executescript(ORDER_SCHEMA)
 
     def _capacity_rows(self, db, store, model_id, selected):
