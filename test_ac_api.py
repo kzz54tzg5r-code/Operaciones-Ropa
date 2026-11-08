@@ -120,7 +120,7 @@ class TestCaptureAPI(unittest.TestCase):
         ubic={**self.user,"x-test-user":"U"}
         ubicado=self.client.post("/api/ac/session/start",headers=ubic,json={
             "flow":"Surtido","stage":"Ubicar","area":"Colgado"}).json()["session_id"]
-        ulist=self.client.get("/api/ac/tasks?session_id="+ubic,headers=ubic).json()["tasks"]
+        ulist=self.client.get("/api/ac/tasks?session_id="+ubicado,headers=ubic).json()["tasks"]
         self.assertEqual(len(ulist),1)
         self.assertEqual(ulist[0]["remaining"],{"M":5,"G":3})
         claimed=self.client.post("/api/ac/tasks/"+ulist[0]["id"]+"/claim",
