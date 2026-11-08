@@ -17,6 +17,12 @@ FLOWS = {"Surtido", "Resurtido"}
 AREAS = {"Colgado", "Doblado"}
 STORAGE_KINDS = {"Piso", "Rack", "Septimos", "Tarima", "Transito"}
 SESSION_STATES = {"active", "paused", "finished"}
+NEXT_STAGE = {
+    ("Surtido", "Separar"): "Acondicionar",
+    ("Surtido", "Acondicionar"): "Ubicar",
+    ("Resurtido", "Pizca"): "Acondicionar",
+    ("Resurtido", "Acondicionar"): "Ubicar",
+}
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS ac_capacity_batches (
  id INTEGER PRIMARY KEY, store TEXT NOT NULL, version TEXT NOT NULL,
@@ -47,6 +53,28 @@ CREATE TABLE IF NOT EXISTS ac_capture_sizes (
  size TEXT NOT NULL, pieces INTEGER NOT NULL CHECK(pieces > 0),
  PRIMARY KEY(capture_id,size)
 );
+CREATE TABLE IF NOT EXISTS ac_tasks (
+ id TEXT PRIMARY KEY,
+ source_capture_id TEXT NOT NULL REFERENCES ac_captures(id),
+ store TEXT NOT NULL, model_id TEXT NOT NULL, color TEXT NOT NULL DEFAULT '',
+ flow TEXT NOT NULL, stage TEXT NOT NULL, area TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'pending'
+ CHECK(status IN ('pending','in_progress','completed')),
+ assigned_to TEXT, created_at TEXT NOT NULL, finished_at TEXT,
+ UNIQUE(source_capture_id,stage)
+);
+CREATE TABLE IF NOT EXISTS ac_task_sizes (
+ task_id TEXT NOT NULL REFERENCES ac_tasks(id),
+ size TEXT NOT NULL, total INTEGER NOT NULL CHECK(total > 0),
+ completed INTEGER NOT NULL DEFAULT 0 CHECK(completed >= 0 AND completed <= total),
+ PRIMARY KEY(task_id,size)
+);
+CREATE TABLE IF NOT EXISTS ac_task_captures (
+ capture_id TEXT PRIMARY KEY REFERENCES ac_captures(id),
+ task_id TEXT NOT NULL REFERENCES ac_tasks(id)
+);
+CREATE INDEX IF NOT EXISTS ac_tasks_queue
+ ON ac_tasks(store,flow,stage,area,status,created_at);
 CREATE TABLE IF NOT EXISTS ac_locations (
  id TEXT PRIMARY KEY, store TEXT NOT NULL, kind TEXT NOT NULL,
  aisle TEXT NOT NULL DEFAULT '', face TEXT NOT NULL DEFAULT '',
@@ -165,29 +193,179 @@ class ACStore:
                                  (timestamp(),sid,employee_id)).rowcount
             if not changed:
                 raise ValueError("La sesión no existe, no pertenece al colaborador o ya finalizó")
+            # Al terminar el turno, las tareas incompletas vuelven a la cola.
+            # Los avances por talla ya confirmados permanecen intactos.
+            session = db.execute("SELECT store,flow,stage,area FROM ac_sessions WHERE id=?", (sid,)).fetchone()
+            db.execute(
+                "UPDATE ac_tasks SET status='pending',assigned_to=NULL "
+                "WHERE assigned_to=? AND store=? AND flow=? AND stage=? AND area=? AND status='in_progress'",
+                (employee_id,session["store"],session["flow"],session["stage"],session["area"])
+            )
 
-    def capture(self, *, event_key, session_id, employee_id, model_id, color="", sizes):
-        """Guarda una captura validada una sola vez, incluso ante reintentos de red."""
+    def list_tasks(self, *, store, flow, stage, area, employee_id, limit=40):
+        if flow not in FLOWS or stage not in STAGES or area not in AREAS:
+            raise ValueError("Consulta de cola inválida")
+        with self.transaction() as db:
+            tasks = db.execute(
+                "SELECT id,model_id,color,stage,flow,area,status,assigned_to,created_at "
+                "FROM ac_tasks WHERE store=? AND flow=? AND stage=? AND area=? "
+                "AND (status='pending' OR (status='in_progress' AND assigned_to=?)) "
+                "ORDER BY CASE WHEN assigned_to=? THEN 0 ELSE 1 END,created_at,id LIMIT ?",
+                (store,flow,stage,area,employee_id,employee_id,min(100,max(1,limit)))
+            ).fetchall()
+            result=[]
+            for task in tasks:
+                remaining={
+                    size["size"]:size["total"]-size["completed"]
+                    for size in db.execute(
+                        "SELECT size,total,completed FROM ac_task_sizes WHERE task_id=?",
+                        (task["id"],)
+                    )
+                    if size["total"]>size["completed"]
+                }
+                if remaining:
+                    result.append({**dict(task),"remaining":remaining})
+            return result
+
+    def claim_task(self, *, store, task_id, session_id, employee_id):
+        with self.transaction() as db:
+            session=db.execute(
+                "SELECT store,flow,stage,area FROM ac_sessions "
+                "WHERE id=? AND employee_id=? AND status='active'",
+                (session_id,employee_id)
+            ).fetchone()
+            task=db.execute("SELECT * FROM ac_tasks WHERE id=? AND store=?",(task_id,store)).fetchone()
+            if not session or session["store"]!=store or not task:
+                raise ValueError("Tarea o sesión no autorizada")
+            if any(session[key]!=task[key] for key in ("flow","stage","area")):
+                raise ValueError("La tarea pertenece a otra actividad")
+            if task["status"]=="in_progress" and task["assigned_to"]==employee_id:
+                return task_id
+            if task["status"]!="pending":
+                raise ValueError("La tarea ya fue tomada por otro colaborador")
+            changed=db.execute(
+                "UPDATE ac_tasks SET status='in_progress',assigned_to=? "
+                "WHERE id=? AND status='pending'",
+                (employee_id,task_id)
+            ).rowcount
+            if not changed:
+                raise ValueError("La tarea ya no está disponible")
+            return task_id
+
+    def capture(self, *, event_key, session_id, employee_id, model_id,
+                color="", sizes, task_id=None):
+        """Captura, descuenta la tarea y encola la siguiente etapa EN UNA transacción.
+
+        Una pieza sigue siendo la misma al pasar por varias actividades.
+        Las capturas registran productividad, no ingresos físicos adicionales.
+        """
         pieces = normalize_sizes(sizes)
         event_key = require_text(event_key, "Clave de evento")
         model_id = require_text(model_id, "ID de modelo")
         with self.transaction() as db:
             existing = db.execute("SELECT id FROM ac_captures WHERE event_key=?", (event_key,)).fetchone()
             if existing:
-                previous=db.execute("SELECT c.*,s.store AS session_store FROM ac_captures c JOIN ac_sessions s ON s.id=c.session_id WHERE c.id=?",(existing["id"],)).fetchone()
-                old_sizes={r["size"]:r["pieces"] for r in db.execute("SELECT size,pieces FROM ac_capture_sizes WHERE capture_id=?",(existing["id"],))}
-                if not previous or previous["session_id"]!=session_id or previous["created_by"]!=employee_id or previous["model_id"]!=model_id or previous["color"]!=str(color or "") or old_sizes!=pieces:
+                previous = db.execute(
+                    "SELECT * FROM ac_captures WHERE id=?", (existing["id"],)
+                ).fetchone()
+                old_sizes = {
+                    r["size"]:r["pieces"] for r in db.execute(
+                        "SELECT size,pieces FROM ac_capture_sizes WHERE capture_id=?",
+                        (existing["id"],)
+                    )
+                }
+                link = db.execute(
+                    "SELECT task_id FROM ac_task_captures WHERE capture_id=?",
+                    (existing["id"],)
+                ).fetchone()
+                old_task_id = link["task_id"] if link else None
+                if (not previous or previous["session_id"] != session_id
+                        or previous["created_by"] != employee_id
+                        or previous["model_id"] != model_id
+                        or previous["color"] != str(color or "")
+                        or old_sizes != pieces or old_task_id != task_id):
                     raise ValueError("Clave de evento reutilizada con datos diferentes")
                 return existing["id"]
-            s = db.execute("SELECT * FROM ac_sessions WHERE id=? AND employee_id=?", (session_id,employee_id)).fetchone()
+
+            s = db.execute(
+                "SELECT * FROM ac_sessions WHERE id=? AND employee_id=?",
+                (session_id,employee_id)
+            ).fetchone()
             if not s or s["status"] != "active":
                 raise ValueError("Sesión no activa o colaborador no autorizado")
+
+            # Acondicionar y Ubicar sólo se capturan mediante una tarea previa.
+            if not task_id and s["stage"] in {"Acondicionar","Ubicar"}:
+                raise ValueError("Selecciona una tarea pendiente antes de registrar piezas")
+            # Resurtido necesita un pedido validado antes de autorizar Pizca.
+            # No se permite inventar mercancía mediante una captura libre.
+            if not task_id and s["flow"]=="Resurtido" and s["stage"]=="Pizca":
+                raise ValueError("Pizca requiere pedido de resurtido confirmado")
+            if not task_id and not (
+                (s["flow"]=="Surtido" and s["stage"] in {"Separar","Excedentes"})
+                or (s["flow"]=="Resurtido" and s["stage"]=="Excedentes")
+            ):
+                raise ValueError("Actividad inicial no habilitada sin tarea")
+
+            if task_id:
+                task = db.execute("SELECT * FROM ac_tasks WHERE id=?", (task_id,)).fetchone()
+                if (not task or task["store"] != s["store"]
+                        or task["flow"] != s["flow"] or task["stage"] != s["stage"]
+                        or task["area"] != s["area"] or task["model_id"] != model_id
+                        or task["color"] != str(color or "")
+                        or task["assigned_to"] != employee_id
+                        or task["status"] != "in_progress"):
+                    raise ValueError("Tarea ajena, vencida o no asignada")
+                for size,qty in pieces.items():
+                    changed = db.execute(
+                        "UPDATE ac_task_sizes SET completed=completed+? "
+                        "WHERE task_id=? AND size=? AND total-completed>=?",
+                        (qty,task_id,size,qty)
+                    ).rowcount
+                    if not changed:
+                        raise ValueError(f"Las piezas de {size} exceden el pendiente")
+                missing = db.execute(
+                    "SELECT 1 FROM ac_task_sizes WHERE task_id=? AND completed<total LIMIT 1",
+                    (task_id,)
+                ).fetchone()
+                if not missing:
+                    db.execute(
+                        "UPDATE ac_tasks SET status='completed',finished_at=? WHERE id=?",
+                        (timestamp(),task_id)
+                    )
+
             cid = uuid.uuid4().hex
-            db.execute("INSERT INTO ac_captures(id,event_key,store,model_id,color,flow,stage,area,session_id,recorded_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                       (cid,event_key,s["store"],model_id,str(color or ""),s["flow"],s["stage"],s["area"],session_id,timestamp(),employee_id))
-            db.executemany("INSERT INTO ac_capture_sizes(capture_id,size,pieces) VALUES(?,?,?)",
-                           [(cid,size,qty) for size,qty in pieces.items()])
+            db.execute(
+                "INSERT INTO ac_captures(id,event_key,store,model_id,color,flow,stage,"
+                "area,session_id,recorded_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                (cid,event_key,s["store"],model_id,str(color or ""),s["flow"],
+                 s["stage"],s["area"],session_id,timestamp(),employee_id)
+            )
+            db.executemany(
+                "INSERT INTO ac_capture_sizes(capture_id,size,pieces) VALUES(?,?,?)",
+                [(cid,size,qty) for size,qty in pieces.items()]
+            )
+            if task_id:
+                db.execute(
+                    "INSERT INTO ac_task_captures(capture_id,task_id) VALUES(?,?)",
+                    (cid,task_id)
+                )
+
+            next_stage = NEXT_STAGE.get((s["flow"],s["stage"]))
+            if next_stage:
+                new_id = uuid.uuid4().hex
+                db.execute(
+                    "INSERT INTO ac_tasks(id,source_capture_id,store,model_id,color,"
+                    "flow,stage,area,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                    (new_id,cid,s["store"],model_id,str(color or ""),s["flow"],
+                     next_stage,s["area"],timestamp())
+                )
+                db.executemany(
+                    "INSERT INTO ac_task_sizes(task_id,size,total) VALUES(?,?,?)",
+                    [(new_id,size,qty) for size,qty in pieces.items()]
+                )
             return cid
+
 
     def add_location(self, *, store, kind, aisle="", face="", section="", level="", pallet=""):
         if kind not in STORAGE_KINDS:
