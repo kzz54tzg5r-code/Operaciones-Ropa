@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS ac_reservations (
 CREATE INDEX IF NOT EXISTS ac_captures_store_model ON ac_captures(store,model_id,recorded_at);
 CREATE INDEX IF NOT EXISTS ac_movements_store_model ON ac_movements(store,model_id,size);
 CREATE INDEX IF NOT EXISTS ac_sessions_store_employee ON ac_sessions(store,employee_id,started_at);
+CREATE UNIQUE INDEX IF NOT EXISTS ac_unique_active_session ON ac_sessions(store,employee_id) WHERE status="active";
 """
 
 def timestamp():
@@ -142,10 +143,20 @@ class ACStore:
     def start_session(self, store, employee_id, flow, stage, area):
         if flow not in FLOWS or stage not in STAGES or area not in AREAS:
             raise ValueError("Proceso, actividad o clasificación inválido")
+        store = require_text(store, "Tienda")
+        employee_id = require_text(employee_id, "Colaborador")
         sid = uuid.uuid4().hex
         with self.transaction() as db:
+            active = db.execute(
+                "SELECT id,flow,stage,area FROM ac_sessions WHERE store=? AND employee_id=? AND status='active'",
+                (store, employee_id)
+            ).fetchone()
+            if active:
+                if (active["flow"], active["stage"], active["area"]) == (flow, stage, area):
+                    return active["id"]
+                raise ValueError("Finaliza la actividad anterior antes de iniciar otra")
             db.execute("INSERT INTO ac_sessions(id,store,employee_id,flow,stage,area,started_at) VALUES(?,?,?,?,?,?,?)",
-                       (sid,require_text(store,"Tienda"),require_text(employee_id,"Colaborador"),flow,stage,area,timestamp()))
+                       (sid,store,employee_id,flow,stage,area,timestamp()))
         return sid
 
     def finish_session(self, sid, employee_id):
