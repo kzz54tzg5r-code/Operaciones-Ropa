@@ -13,6 +13,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from typing import Dict
 from urllib.parse import urlsplit
+import re
 
 from ac_bridge import ACBridge
 
@@ -87,24 +88,29 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
             raise HTTPException(403, "Tienda no asignada")
         if not model_id or len(model_id)>120:
             raise HTTPException(400, "ID inválido")
+        # Reutilizar EXACTAMENTE el servicio de fotografías de Bonos V314.
+        # Este endpoint autentica la solicitud, valida el ID, cachea y prueba
+        # JPG / PNG / WebP sin sustituir nunca fotografías de otros modelos.
+        photo = ("/api/bonuses/product-photo/" + model_id
+                 if re.fullmatch(r"[0-9]{1,15}", model_id) else None)
+        # La foto se verifica realmente al pedir la imagen: 404 significa
+        # ausencia y 503 fallo temporal; nunca anticipar "foto disponible".
         if catalog_lookup is None:
             return {"model_id":model_id, "name":None, "color":None,
-                    "location":None, "photo_url":None,
-                    "photo_status":"catalog_not_connected"}
-        # El proveedor deberá consultar un catálogo autorizado POR TIENDA y
-        # nunca aceptar URLs arbitrarias suministradas por el navegador.
+                    "location":None, "photo_url":photo,
+                    "photo_status":"bonus_lookup_pending" if photo else "invalid_photo_id"}
+        # Este proveedor opcional sólo aporta metadatos por tienda.
+        # No puede proporcionar un origen externo arbitrario de imágenes.
         result = catalog_lookup(store, model_id)
         if result is None:
             return {"model_id":model_id, "name":None, "color":None,
-                    "location":None, "photo_url":None, "photo_status":"not_found"}
+                    "location":None, "photo_url":photo,
+                    "photo_status":"bonus_lookup_pending" if photo else "not_found"}
         if not isinstance(result, dict):
             raise HTTPException(500, "Catálogo inválido")
-        photo = result.get("photo_url")
-        if photo and (not isinstance(photo, str) or not (photo.startswith("/static/") or photo.startswith("/api/catalog/photo/"))):
-            photo = None
         return {"model_id":model_id, "name":result.get("name"),
                 "color":result.get("color"), "location":result.get("location"),
-                "photo_url":photo, "photo_status":"ready" if photo else "not_available"}
+                "photo_url":photo, "photo_status":"bonus_lookup_pending" if photo else "invalid_photo_id"}
 
     @router.get("/session/active")
     def active_session(request: Request):
