@@ -228,7 +228,16 @@ class ACStore:
                     if size["total"]>size["completed"]
                 }
                 if remaining:
-                    result.append({**dict(task),"remaining":remaining})
+                    item={**dict(task),"remaining":remaining}
+                    if task["flow"]=="Resurtido" and task["stage"]=="Pizca":
+                        source=db.execute("""
+                            SELECT l.kind,l.aisle,l.face,l.section,l.level,l.pallet
+                            FROM ac_order_lines a
+                            JOIN ac_locations l ON l.id=a.location_id
+                            WHERE a.task_id=?
+                        """,(task["id"],)).fetchone()
+                        if source:item["source_location"]=dict(source)
+                    result.append(item)
             return result
 
     def claim_task(self, *, store, task_id, session_id, employee_id):
@@ -343,6 +352,11 @@ class ACStore:
                         "UPDATE ac_tasks SET status='completed',finished_at=? WHERE id=?",
                         (timestamp(),task_id)
                     )
+
+            if target_location_id and not (
+                s["flow"]=="Resurtido" and s["stage"]=="Ubicar"
+            ):
+                raise ValueError("Ubicación de destino no corresponde a esta actividad")
 
             # Pedido aprobado: Pizca consume reserva y traslada a Tránsito,
             # sin aumentar el inventario en piso antes de Ubicar.
