@@ -29,7 +29,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 <div class="grid3">
 <div><label for="flow">Proceso</label><select id="flow"><option>Surtido</option><option>Resurtido</option></select></div>
 <div><label for="stage">Actividad</label><select id="stage"><option>Separar</option><option>Acondicionar</option><option>Ubicar</option><option>Pizca</option><option>Excedentes</option></select></div>
-<div><label for="area">Clasificación</label><select id="area"><option>Colgado</option><option>Doblado</option></select></div>
+<div><label for="area">Clasificación</label><select id="area"><option>Colgado</option><option>Doblado</option><option>Jeans</option><option>Lencería</option></select></div>
 </div>
 <div class="row" style="margin-top:9px">
 <button id="start" class="primary" type="button">▶ Inicio</button><button id="finish" type="button" disabled>■ Fin</button>
@@ -85,6 +85,7 @@ function controls(){
  $("complete").disabled=!active||busy||!!pending||!selectedTask;
  $("refreshQueue").disabled=!active||busy;
  $("clear").disabled=busy||!!pending;
+ document.querySelectorAll("[data-ac-claim]").forEach(x=>x.disabled=busy||!!pending);
  $("model").readOnly=!!pending||!!selectedTask;
  $("color").readOnly=!!pending||!!selectedTask;
  document.querySelectorAll(".qty").forEach(x=>x.disabled=!!pending);
@@ -138,7 +139,7 @@ async function refreshTasks(){
      const info=document.createElement("span");
      info.textContent="ID "+task.model_id+" · "+Object.entries(task.remaining).map(([k,v])=>k+":"+v).join(" · ");
      const take=document.createElement("button");take.type="button";
-     take.textContent=task.assigned_to?"Continuar tarea":"Tomar tarea";
+     take.textContent=task.assigned_to?"Continuar tarea":"Tomar tarea";take.dataset.acClaim="1";
      take.disabled=busy||!!pending;
      take.addEventListener("click",()=>takeTask(task));
      line.append(info,take);host.append(line);
