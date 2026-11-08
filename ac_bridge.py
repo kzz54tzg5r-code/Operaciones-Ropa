@@ -25,11 +25,11 @@ class ACBridge:
         return self.operation.start_session(store,employee_id,flow,stage,area)
 
     def capture(self, *, event_key, session_id, employee_id, model_id, sizes,
-                color="", task_id=None):
+                color="", task_id=None, target_location_id=None):
         """Un movimiento operativo y su siguiente tarea se confirman juntos."""
         return self.operation.capture(event_key=event_key,session_id=session_id,
             employee_id=employee_id,model_id=model_id,color=color,sizes=sizes,
-            task_id=task_id)
+            task_id=task_id,target_location_id=target_location_id)
 
     def tasks(self, *, store, flow, stage, area, employee_id):
         return self.operation.list_tasks(store=store,flow=flow,stage=stage,
@@ -38,6 +38,19 @@ class ACBridge:
     def claim(self, *, store, task_id, session_id, employee_id):
         return self.operation.claim_task(store=store,task_id=task_id,
                                          session_id=session_id,employee_id=employee_id)
+
+    def order_preview(self, *, store, model_id, area, criterion="curve", sizes=None):
+        return self.orders.preview(store=store,model_id=model_id,
+                                   area=area,criterion=criterion,sizes=sizes)
+
+    def approve_order(self, *, event_key, store, model_id, area, requested_by,
+                      approver_role, criterion="curve", sizes=None):
+        return self.orders.approve(event_key=event_key,store=store,model_id=model_id,
+            area=area,requested_by=requested_by,approver_role=approver_role,
+            criterion=criterion,sizes=sizes)
+
+    def list_orders(self, *, store):
+        return self.orders.list_orders(store=store)
 
     def finish(self, session_id, employee_id):
         return self.operation.finish_session(session_id,employee_id)
