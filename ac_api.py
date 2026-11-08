@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
-from typing import Dict
+from typing import Dict, List
 from urllib.parse import urlsplit
 import re
 
@@ -20,7 +20,8 @@ from ac_bridge import ACBridge
 COLLABORATOR_ROLES = {"colaborador", "colaborador_operativo"}
 CAPTURE_ROLES = COLLABORATOR_ROLES | {"admin", "superadmin", "tienda"}
 CAPACITY_ROLES = {"admin", "superadmin"}
-VIEW_ROLES = CAPTURE_ROLES | {"director"}
+VIEW_ROLES = CAPTURE_ROLES | {"director","supervisor","gerente"}
+ORDER_ROLES = {"supervisor","gerente","admin","superadmin"}
 
 class StartActivity(BaseModel):
     flow: str
@@ -34,6 +35,14 @@ class CaptureSizes(BaseModel):
     color: str = Field(default="", max_length=120)
     sizes: Dict[str, int]
     task_id: str | None = None
+    target_location_id: str | None = None
+
+class ApproveOrder(BaseModel):
+    event_key: str = Field(min_length=8, max_length=128)
+    model_id: str = Field(min_length=1, max_length=120)
+    area: str
+    criterion: str = "curve"
+    sizes: List[str] | None = None
 
 class TaskClaim(BaseModel):
     session_id: str
@@ -129,6 +138,49 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
             ).fetchone()
         return {"session":dict(row) if row else None}
 
+    @router.get("/orders/preview")
+    def preview_order(request: Request, model_id: str, area: str,
+                      criterion: str="curve", sizes: str=""):
+        role, store, _, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403, "La aprobación requiere tienda autorizada")
+        try:
+            return bridge.order_preview(store=store,model_id=model_id,area=area,
+                criterion=criterion,sizes=[x.strip() for x in sizes.split(",") if x.strip()] if sizes else None)
+        except Exception as exc:fail(exc)
+
+    @router.get("/orders")
+    def order_history(request: Request):
+        _, store, _, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403, "Consulta por tienda obligatoria")
+        return {"orders":bridge.list_orders(store=store)}
+
+    @router.post("/orders/approve", status_code=201)
+    def approve_order(payload: ApproveOrder,request: Request):
+        role, store, employee_id, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403, "No tienes una tienda autorizada")
+        try:
+            return bridge.approve_order(
+                event_key=payload.event_key,store=store,model_id=payload.model_id,
+                area=payload.area,requested_by=employee_id,approver_role=role,
+                criterion=payload.criterion,sizes=payload.sizes)
+        except Exception as exc:fail(exc)
+
+    @router.get("/locations")
+    def available_locations(request: Request, kind: str="Piso"):
+        _, store, _, _ = actor_from(request, VIEW_ROLES)
+        if not store or kind!="Piso":
+            raise HTTPException(403, "Sólo ubicaciones de piso de la tienda")
+        with bridge.operation.transaction() as db:
+            rows=db.execute(
+                "SELECT id,aisle,face,section,level,pallet FROM ac_locations "
+                "WHERE store=? AND kind='Piso' AND active=1 ORDER BY aisle,face,section,level",
+                (store,)
+            ).fetchall()
+        return {"locations":[dict(r) for r in rows]}
+
     @router.get("/tasks")
     def task_queue(request: Request, session_id: str):
         _, store, employee_id, _ = actor_from(request, CAPTURE_ROLES)
@@ -183,7 +235,8 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
             return {"capture_id": bridge.capture(event_key=payload.event_key,
                     session_id=payload.session_id,employee_id=employee_id,
                     model_id=payload.model_id,color=payload.color,sizes=payload.sizes,
-                    task_id=payload.task_id)}
+                    task_id=payload.task_id,
+                    target_location_id=payload.target_location_id)}
         except Exception as exc:fail(exc)
 
     @router.post("/session/finish")
