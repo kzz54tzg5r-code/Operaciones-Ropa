@@ -64,8 +64,10 @@ const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
 let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0;
 const counts=Object.fromEntries(order.map(x=>[x,0]));
+const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
+function updateStageOptions(){const select=$("stage");const current=select.value;select.replaceChildren();for(const stage of stageOptions[$("flow").value]){const option=document.createElement("option");option.textContent=stage;select.append(option)}if(stageOptions[$("flow").value].includes(current))select.value=current}
 function show(text,kind=""){const el=$("message");el.textContent=text;el.className="status "+kind}
-function controls(){let active=!!session;$("start").disabled=active||busy;$("finish").disabled=!active||busy;$("save").disabled=!active||busy||!$("model").value.trim()||!order.some(x=>counts[x]>0);$("voice").disabled=!active||busy||!("SpeechRecognition" in window || "webkitSpeechRecognition" in window);["flow","stage","area"].forEach(id=>$(id).disabled=active||busy)}
+function controls(){let active=!!session;$("start").disabled=active||busy;$("finish").disabled=!active||busy;$("save").disabled=!active||busy||!$("model").value.trim()||!order.some(x=>counts[x]>0);$("voice").disabled=!active||busy||!("SpeechRecognition" in window || "webkitSpeechRecognition" in window);$("model").readOnly=!!pending;$("color").readOnly=!!pending;document.querySelectorAll(".qty").forEach(x=>x.disabled=!!pending);["flow","stage","area"].forEach(id=>$(id).disabled=active||busy)}
 function pad(v){return String(v).padStart(2,"0")}
 function tick(){const delta=started?Math.floor((Date.now()-started)/1000):0;$("clock").textContent=pad(Math.floor(delta/3600))+":"+pad(Math.floor(delta/60)%60)+":"+pad(delta%60)}
 function renderSizes(){const root=$("sizes");root.replaceChildren();for(const size of order){const wrap=document.createElement("div");const label=document.createElement("label");const input=document.createElement("input");label.textContent=names[size]+" ("+size+")";input.type="number";input.min="0";input.step="1";input.inputMode="numeric";input.className="qty";input.value=String(counts[size]);input.setAttribute("aria-label","Piezas "+names[size]);input.addEventListener("input",()=>{const value=Number(input.value);counts[size]=Number.isSafeInteger(value)&&value>=0?value:-1;controls()});wrap.append(label,input);root.append(wrap)}controls()}
@@ -96,7 +98,7 @@ async function resumeSession(){
   const active=await getJson("/session/active");
   if(!active.session){sessionStorage.removeItem("acPendingCapture");show("Inicia una actividad para capturar modelos.");return}
   session=active.session.id;started=Date.parse(active.session.started_at)||Date.now();
-  $("flow").value=active.session.flow;$("stage").value=active.session.stage;$("area").value=active.session.area;
+  $("flow").value=active.session.flow;updateStageOptions();$("stage").value=active.session.stage;$("area").value=active.session.area;
   const saved=sessionStorage.getItem("acPendingCapture");
   if(saved){try{const data=JSON.parse(saved);if(data.session_id===session){
     pending=data;$("model").value=data.model_id;$("color").value=data.color||"";
@@ -109,7 +111,7 @@ async function resumeSession(){
 }
 function parseVoice(value){
  const text=value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
- const canonical=[["doble extra grande","XXG"],["extra extra grande","XXG"],["extra chica","XCH"],["extra grande","XG"],["mediana","M"],["mediano","M"],["chica","CH"],["chico","CH"],["grande","G"],["xxg","XXG"],["xch","XCH"],["xg","XG"]];
+ const canonical=[["doble extra grande","XXG"],["extra extra grande","XXG"],["extra chica","XCH"],["extra grande","XG"],["mediana","M"],["mediano","M"],["chica","CH"],["chico","CH"],["grande","G"],["xxg","XXG"],["xch","XCH"],["xg","XG"],["ch","CH"],["m","M"],["g","G"]];
  const words={"cero":0,"uno":1,"una":1,"dos":2,"tres":3,"cuatro":4,"cinco":5,"seis":6,"siete":7,"ocho":8,"nueve":9,"diez":10,"once":11,"doce":12,"trece":13,"catorce":14,"quince":15,"dieciseis":16,"diecisiete":17,"dieciocho":18,"diecinueve":19,"veinte":20};
  const matcher=new RegExp("(?:^|[\\s,;])("+canonical.map(x=>x[0]).join("|")+")\\s+(\\d+|[a-z]+)(?=$|[\\s,;])","g");
  const result={};let match;while((match=matcher.exec(text))!==null){const size=canonical.find(x=>x[0]===match[1])[1];
@@ -127,7 +129,7 @@ $("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendi
 $("model").addEventListener("change",findModel);
 $("model").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findModel()}});
 $("clear").addEventListener("click",()=>{for(const size of order)counts[size]=0;pending=null;renderSizes()});
-$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const parsed=parseVoice(spoken);for(const size of order)if(Object.hasOwn(parsed,size))counts[size]=parsed[size];pending=null;renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
+$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const command=spoken.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(command==="finalizar"){if(pending)throw Error("Confirma la captura pendiente antes de finalizar");$("finish").click();return}if(command==="siguiente"){if(pending)throw Error("Reintenta el guardado pendiente");$("save").click();return}if(pending)throw Error("La captura anterior sigue pendiente de confirmación");const parsed=parseVoice(spoken);for(const size of order)if(Object.hasOwn(parsed,size))counts[size]=parsed[size];renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
 $("save").addEventListener("click",async()=>{
  const model=$("model").value.trim();const sizes={};for(const size of order){const n=counts[size];if(!Number.isSafeInteger(n)||n<0){show("Revisa las cantidades de todas las tallas.","error");return}if(n>0)sizes[size]=n}
  if(!model||!Object.keys(sizes).length||!session)return;
@@ -136,7 +138,7 @@ $("save").addEventListener("click",async()=>{
  busy=true;controls();try{const result=await api("/capture",pending);show("Guardado confirmado. Captura "+result.capture_id,"ok");clearModel()}catch(e){show("Sin confirmación del servidor: "+e.message+". Reintenta sin cambiar cantidades.","error")}finally{busy=false;controls()}
 });
 $("complete").title="Se habilitará al contar con tarea previa de cantidades por talla";
-renderSizes();setInterval(tick,1000);resumeSession();
+$("flow").addEventListener("change",updateStageOptions);updateStageOptions();renderSizes();setInterval(tick,1000);resumeSession();
 })();
 </script>
 </body></html>
