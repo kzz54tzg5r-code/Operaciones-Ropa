@@ -113,7 +113,7 @@ function renderSizes(){
    wrap.append(label,input);
    if(selectedTask&&$("stage").value==="Ubicar"&&Number.isInteger(limit)&&limit>0){
      const done=document.createElement("label");done.className="small";
-     const checkbox=document.createElement("input");checkbox.type="checkbox";
+     const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.disabled=!!pending;
      checkbox.checked=counts[size]===limit;
      checkbox.setAttribute("aria-label","Ubicada toda la talla "+size);
      checkbox.addEventListener("change",()=>{
@@ -174,7 +174,7 @@ async function findModel(){
   if(token!==lookupEpoch||$("model").value.trim()!==model)return;
   $("modelName").textContent=info.name||"ID "+model;
   $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
-  if(info.color&&!$("color").value.trim())$("color").value=info.color;
+  if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
   const photo=$("photo");photo.replaceChildren();
   if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
     const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;img.src=info.photo_url;img.style.cssText="width:100%;height:115px;object-fit:contain";
@@ -240,6 +240,15 @@ $("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||
 $("save").addEventListener("click",async()=>{
  const model=$("model").value.trim();const sizes={};for(const size of knownSizes()){const n=counts[size];if(!Number.isSafeInteger(n)||n<0){show("Revisa las cantidades de todas las tallas.","error");return}if(n>0)sizes[size]=n}
  if(!model||!Object.keys(sizes).length||!session)return;
+ if(selectedTask){
+   for(const [size,qty] of Object.entries(sizes)){
+     const max=selectedTask.remaining[size];
+     if(!Number.isInteger(max)||qty>max){
+       show("La talla "+size+" supera las piezas pendientes de la tarea.","error");
+       return;
+     }
+   }
+ }
  if(needsTask()&&!selectedTask){show("Selecciona primero una tarea de la cola.","warn");return}
  if(!pending){pending={event_key:crypto.randomUUID(),session_id:session,model_id:model,color:$("color").value.trim(),sizes,task_id:selectedTask?.id||null};sessionStorage.setItem("acPendingCapture",JSON.stringify(pending))}
  else if(pending.model_id!==model||JSON.stringify(pending.sizes)!==JSON.stringify(sizes)){show("Hay un envío pendiente. Restablece sus valores o corrige el fallo antes de continuar.","warn");return}
