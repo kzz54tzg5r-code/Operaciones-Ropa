@@ -171,6 +171,40 @@ class ACStore:
             db.execute("PRAGMA journal_mode=WAL")
             db.execute("PRAGMA foreign_keys=ON")
             db.executescript(SCHEMA)
+            # Migrar únicamente la SQLite aislada de laboratorio cuando provenga
+            # de una versión AC donde toda tarea exigía captura de origen.
+            # Los pedidos aprobados originan tareas de Pizca sin captura previa.
+            columns=db.execute("PRAGMA table_info(ac_tasks)").fetchall()
+            legacy_source=next((row for row in columns if row["name"]=="source_capture_id"),None)
+            if legacy_source and legacy_source["notnull"]:
+                db.execute("PRAGMA foreign_keys=OFF")
+                db.executescript("""
+                    BEGIN IMMEDIATE;
+                    CREATE TABLE ac_tasks_migrated (
+                     id TEXT PRIMARY KEY,
+                     source_capture_id TEXT REFERENCES ac_captures(id),
+                     store TEXT NOT NULL, model_id TEXT NOT NULL,
+                     color TEXT NOT NULL DEFAULT '', flow TEXT NOT NULL,
+                     stage TEXT NOT NULL, area TEXT NOT NULL,
+                     status TEXT NOT NULL DEFAULT 'pending'
+                      CHECK(status IN ('pending','in_progress','completed')),
+                     assigned_to TEXT, created_at TEXT NOT NULL, finished_at TEXT,
+                     UNIQUE(source_capture_id,stage)
+                    );
+                    INSERT INTO ac_tasks_migrated
+                    SELECT id,source_capture_id,store,model_id,color,flow,
+                           stage,area,status,assigned_to,created_at,finished_at
+                    FROM ac_tasks;
+                    DROP TABLE ac_tasks;
+                    ALTER TABLE ac_tasks_migrated RENAME TO ac_tasks;
+                    CREATE INDEX IF NOT EXISTS ac_tasks_queue
+                     ON ac_tasks(store,flow,stage,area,status,created_at);
+                    COMMIT;
+                """)
+                db.execute("PRAGMA foreign_keys=ON")
+                violations=db.execute("PRAGMA foreign_key_check").fetchall()
+                if violations:
+                    raise RuntimeError("La migración de tareas AC no pasó la validación referencial")
 
     def start_session(self, store, employee_id, flow, stage, area):
         if flow not in FLOWS or stage not in STAGES or area not in AREAS:
