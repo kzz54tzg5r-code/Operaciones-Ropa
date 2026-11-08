@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 from typing import Dict
+from urllib.parse import urlsplit
 
 from ac_bridge import ACBridge
 
@@ -35,11 +36,17 @@ class CaptureSizes(BaseModel):
 class FinishActivity(BaseModel):
     session_id: str
 
-def create_ac_router(bridge: ACBridge, require_actor):
+def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
     """Montar sólo después de validar identidad/alcance y aprobar integración."""
     router = APIRouter(prefix="/api/ac", tags=["AC experimental"])
 
     def actor_from(request: Request, allowed):
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            origin = request.headers.get("origin")
+            if origin and urlsplit(origin).netloc != request.url.netloc:
+                raise HTTPException(403, "Origen de solicitud no autorizado")
+            if request.headers.get("sec-fetch-site", "") in {"cross-site", "same-site"}:
+                raise HTTPException(403, "Solicitud externa no autorizada")
         try:
             actor = require_actor(request)
         except HTTPException:
@@ -66,6 +73,51 @@ def create_ac_router(bridge: ACBridge, require_actor):
         if isinstance(exc, HTTPException):
             raise exc
         raise exc
+
+    @router.get("/me")
+    def identity(request: Request):
+        role, store, employee_id, _ = actor_from(request, VIEW_ROLES)
+        return {"role":role,"store":store,"employee_id":employee_id}
+
+    @router.get("/model")
+    def model_info(request: Request, model_id: str):
+        _, store, _, _ = actor_from(request, VIEW_ROLES)
+        model_id = model_id.strip()
+        if not store:
+            raise HTTPException(403, "Tienda no asignada")
+        if not model_id or len(model_id)>120:
+            raise HTTPException(400, "ID inválido")
+        if catalog_lookup is None:
+            return {"model_id":model_id, "name":None, "color":None,
+                    "location":None, "photo_url":None,
+                    "photo_status":"catalog_not_connected"}
+        # El proveedor deberá consultar un catálogo autorizado POR TIENDA y
+        # nunca aceptar URLs arbitrarias suministradas por el navegador.
+        result = catalog_lookup(store, model_id)
+        if result is None:
+            return {"model_id":model_id, "name":None, "color":None,
+                    "location":None, "photo_url":None, "photo_status":"not_found"}
+        if not isinstance(result, dict):
+            raise HTTPException(500, "Catálogo inválido")
+        photo = result.get("photo_url")
+        if photo and (not isinstance(photo, str) or not photo.startswith("/")):
+            photo = None
+        return {"model_id":model_id, "name":result.get("name"),
+                "color":result.get("color"), "location":result.get("location"),
+                "photo_url":photo, "photo_status":"ready" if photo else "not_available"}
+
+    @router.get("/session/active")
+    def active_session(request: Request):
+        _, store, employee_id, _ = actor_from(request, CAPTURE_ROLES)
+        if not store:
+            raise HTTPException(403, "Tienda no asignada")
+        with bridge.operation.transaction() as db:
+            row = db.execute(
+                "SELECT id,flow,stage,area,started_at FROM ac_sessions "
+                "WHERE store=? AND employee_id=? AND status='active' "
+                "ORDER BY started_at DESC LIMIT 1", (store,employee_id)
+            ).fetchone()
+        return {"session":dict(row) if row else None}
 
     @router.post("/session/start", status_code=201)
     def start_activity(payload: StartActivity, request: Request):
