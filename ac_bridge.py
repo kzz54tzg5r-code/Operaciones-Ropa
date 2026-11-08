@@ -21,10 +21,20 @@ class ACBridge:
     def start(self, *, store, employee_id, flow, stage, area):
         return self.operation.start_session(store,employee_id,flow,stage,area)
 
-    def capture(self, *, event_key, session_id, employee_id, model_id, sizes, color=""):
-        """event_key debe ser único y estable para reintentos del mismo dispositivo."""
+    def capture(self, *, event_key, session_id, employee_id, model_id, sizes,
+                color="", task_id=None):
+        """Un movimiento operativo y su siguiente tarea se confirman juntos."""
         return self.operation.capture(event_key=event_key,session_id=session_id,
-            employee_id=employee_id,model_id=model_id,color=color,sizes=sizes)
+            employee_id=employee_id,model_id=model_id,color=color,sizes=sizes,
+            task_id=task_id)
+
+    def tasks(self, *, store, flow, stage, area, employee_id):
+        return self.operation.list_tasks(store=store,flow=flow,stage=stage,
+                                         area=area,employee_id=employee_id)
+
+    def claim(self, *, store, task_id, session_id, employee_id):
+        return self.operation.claim_task(store=store,task_id=task_id,
+                                         session_id=session_id,employee_id=employee_id)
 
     def finish(self, session_id, employee_id):
         return self.operation.finish_session(session_id,employee_id)
