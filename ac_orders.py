@@ -104,12 +104,28 @@ class OrderService:
                 ORDER BY CASE l.kind WHEN 'Septimos' THEN 0 ELSE 1 END,
                          l.aisle,l.face,l.section,l.level,l.pallet,s.location_id
             """,(store,store,model_id,size)).fetchall()
+            # No duplicar la necesidad cuando hay pedidos aprobados o piezas
+            # físicamente en Tránsito esperando ser ubicadas.
+            awaiting=db.execute("""
+                SELECT COALESCE(SUM(a.pieces-a.completed),0) AS pieces
+                FROM ac_order_lines a JOIN ac_orders o ON o.id=a.order_id
+                WHERE o.store=? AND o.model_id=? AND a.size=? AND o.status='approved'
+            """,(store,model_id,size)).fetchone()["pieces"]
+            in_transit=db.execute("""
+                SELECT COALESCE(SUM(s.pieces),0) AS pieces
+                FROM ac_stock s JOIN ac_locations l ON l.id=s.location_id
+                WHERE s.store=? AND l.store=? AND l.active=1
+                  AND l.kind='Transito' AND l.aisle='RESURTIDO'
+                  AND s.model_id=? AND s.size=?
+            """,(store,store,model_id,size)).fetchone()["pieces"]
             goal=int(cap[criterion]); physical=int(floor["pieces"])
+            already_in_process=int(awaiting)+int(in_transit)
             total=sum(int(r["available"]) for r in surplus)
-            suggested=min(max(goal-physical,0),total)
+            suggested=min(max(goal-physical-already_in_process,0),total)
             status=("ready" if suggested else
-                    "at_goal" if physical>=goal else "no_available_surplus")
+                    "at_goal" if physical+already_in_process>=goal else "no_available_surplus")
             rows.append({"size":size,"goal":goal,"physical_floor":physical,
+                         "incoming":already_in_process,
                          "available_surplus":total,"suggested":suggested,
                          "version":cap["version"],"status":status,
                          "sources":[dict(r) for r in surplus]})
