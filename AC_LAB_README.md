@@ -18,6 +18,9 @@ carga documental nueva. Surtido y Resurtido utilizan capturas en base de datos.
 - `ac_catalog.py`: consulta nombre y ubicación por tienda e ID desde la misma
   fuente normalizada de Análisis Comercial, en modo lectura y con caché
   compacta. El color sólo aparece cuando el origen proporciona esa columna.
+- `ac_tasks` y `ac_task_sizes`: cola por tienda, modelo, talla y actividad,
+  con reclamo exclusivo del colaborador y cantidades pendientes; se crean
+  junto con el registro confirmado, en una sola transacción SQLite.
   AC no duplica solicitudes a la CDN ni altera los cálculos de Bonos.
 
 ## Ejecución fuera de producción
@@ -41,8 +44,8 @@ después de iniciar sesión en esta misma instancia.
 ## Pruebas
 
 ```bash
-python -m pytest -q test_ac_bridge.py test_ac_api.py test_ac_catalog.py tests/test_bonus_photos_backend.py
-node test_ac_voice.cjs
+python -m pytest -q test_ac_bridge.py test_ac_api.py test_ac_catalog.py test_ac_queue.py tests/test_bonus_photos_backend.py
+node test_ac_voice.cjs && node test_ac_queue_ui.cjs
 ```
 
 También existe `.github/workflows/ac-laboratorio.yml` limitado a la rama de
@@ -62,12 +65,16 @@ sustituyen la validación de fotografías para IDs existentes en la CDN.
    procesadas; el color sólo se muestra si la fuente incluye ese dato.
    La instalación de laboratorio no puede utilizar automáticamente los
    datos de la instancia productiva debido a su aislamiento.
-2. `Modelo completo` todavía está deshabilitado: primero se requiere la cola
-   con cantidades autorizadas por talla, procedentes de una captura previa.
-3. Las capturas se almacenan, pero aún falta su conciliación con inventario
-   físico, asignación de tareas y productividad oficial.
+2. La cadena Surtido `Separar → Acondicionar → Ubicar` ya crea tareas por
+   talla. Cada captura parcial genera la siguiente tarea sólo por esas piezas.
+   `Modelo completo` y las casillas de ubicado usan exclusivamente cantidades
+   pendientes de la tarea tomada; no sirven para inventar piezas.
+3. Las capturas se almacenan, pero aún falta conciliarlas con inventario
+   físico, asignación avanzada de tareas y productividad oficial. El histórico
+   por etapa no debe sumarse como piezas recibidas nuevas.
 4. La creación de pedidos por Supervisor/Gerente y el permiso efectivo de esos
-   roles aún no están implementados en la aplicación existente.
+   roles aún no están implementados en la aplicación existente. Pizca queda
+   bloqueada mientras no exista un pedido confirmado.
 5. Antes de activar dispositivos reales, validar soporte de micrófono/cámara,
    reconexión, índices, retención de datos, backups y 20 colaboradores
    simultáneos con evidencia de pruebas.
