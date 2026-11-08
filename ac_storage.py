@@ -168,6 +168,7 @@ class ACStore:
     def initialize(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(str(self.path), timeout=15) as db:
+            db.row_factory = sqlite3.Row
             db.execute("PRAGMA journal_mode=WAL")
             db.execute("PRAGMA foreign_keys=ON")
             db.executescript(SCHEMA)
