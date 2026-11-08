@@ -25,4 +25,4 @@ jobs:
         with:
           node-version: '22'
       - name: Validar dictado de tallas en pantalla
-        run: node test_ac_voice.cjs
+        run: node test_ac_voice.cjs && node test_ac_queue_ui.cjs
