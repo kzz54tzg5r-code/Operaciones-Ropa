@@ -100,7 +100,7 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
         if not isinstance(result, dict):
             raise HTTPException(500, "Catálogo inválido")
         photo = result.get("photo_url")
-        if photo and (not isinstance(photo, str) or not photo.startswith("/")):
+        if photo and (not isinstance(photo, str) or not (photo.startswith("/static/") or photo.startswith("/api/catalog/photo/"))):
             photo = None
         return {"model_id":model_id, "name":result.get("name"),
                 "color":result.get("color"), "location":result.get("location"),
@@ -151,6 +151,11 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
     @router.post("/session/finish")
     def finish_activity(payload: FinishActivity, request: Request):
         _, store, employee_id, _ = actor_from(request, CAPTURE_ROLES)
+        with bridge.operation.transaction() as db:
+            owned = db.execute("SELECT id FROM ac_sessions WHERE id=? AND store=? AND employee_id=?",
+                               (payload.session_id,store,employee_id)).fetchone()
+        if not owned:
+            raise HTTPException(403, "Sesión ajena a la tienda o colaborador")
         try:
             bridge.finish(payload.session_id,employee_id)
             return {"ok":True}
