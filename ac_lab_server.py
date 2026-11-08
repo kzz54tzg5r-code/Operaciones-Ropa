@@ -65,3 +65,16 @@ def ac_lab_ui(request: Request):
         media_type="text/html",
         headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}
     )
+
+@app.get("/ac/pedidos-laboratorio", include_in_schema=False)
+def ac_orders_lab_ui(request: Request):
+    user = require_user(request)
+    if str(user.get("role") or "").lower() not in {
+        "supervisor","gerente","admin","superadmin"
+    } or not str(user.get("store") or "").strip():
+        raise HTTPException(403, "Los pedidos requieren Supervisor, Gerente o Administrador asignado a tienda")
+    return FileResponse(
+        repo_root / "ac_orders_laboratorio.html",
+        media_type="text/html",
+        headers={"Cache-Control":"no-store","X-Robots-Tag":"noindex"}
+    )
