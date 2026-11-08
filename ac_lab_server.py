@@ -30,9 +30,16 @@ if (
 
 # El directorio se fija ANTES de importar web_app para aislar su SQLite y archivos.
 os.environ["OPERACIONES_ROPA_DATA"] = str(lab_root)
+import web_app  # noqa: E402
 from web_app import app, require_user  # noqa: E402
 from ac_api import create_ac_router  # noqa: E402
 from ac_bridge import ACBridge  # noqa: E402
+from v314_bonus_product_photos_patch import install as install_bonus_photos  # noqa: E402
+
+# V314 ya está instalado por server_entry en la aplicación habitual.
+# Este laboratorio importa sólo web_app: instalar el MISMO V314 aquí hace
+# disponible /api/bonuses/product-photo/{ID} sin inventar otro servicio.
+install_bonus_photos(web_app)
 
 ac = ACBridge(lab_root)
 ac.initialize()
