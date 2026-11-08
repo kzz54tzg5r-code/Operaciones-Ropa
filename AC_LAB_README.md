@@ -15,6 +15,9 @@ carga documental nueva. Surtido y Resurtido utilizan capturas en base de datos.
   **pero con datos de laboratorio**, sin compartir la base de usuarios de producción.
 - `v314_bonus_product_photos_patch.py`: fuente EXISTENTE en Bonos 1–6; el laboratorio
   la instala para conservar la ruta autenticada `/api/bonuses/product-photo/{ID}`.
+- `ac_catalog.py`: consulta nombre y ubicación por tienda e ID desde la misma
+  fuente normalizada de Análisis Comercial, en modo lectura y con caché
+  compacta. El color sólo aparece cuando el origen proporciona esa columna.
   AC no duplica solicitudes a la CDN ni altera los cálculos de Bonos.
 
 ## Ejecución fuera de producción
@@ -38,7 +41,7 @@ después de iniciar sesión en esta misma instancia.
 ## Pruebas
 
 ```bash
-python -m pytest -q test_ac_bridge.py test_ac_api.py tests/test_bonus_photos_backend.py
+python -m pytest -q test_ac_bridge.py test_ac_api.py test_ac_catalog.py tests/test_bonus_photos_backend.py
 node test_ac_voice.cjs
 ```
 
@@ -53,8 +56,12 @@ sustituyen la validación de fotografías para IDs existentes en la CDN.
    exactamente la ruta autenticada `/api/bonuses/product-photo/{ID}`. El
    endpoint `GET /api/ac/model` entrega esta ruta sólo para IDs numéricos
    válidos, sin prometer que exista fotografía para todos los modelos.
-   Todavía falta comprobar fotografías de muestra en la ejecución del piloto,
-   y conectar de manera independiente nombre, color y ubicación oficial.
+   Todavía falta comprobar fotografías de muestra en la ejecución del piloto.
+   El nombre de modelo y las ubicaciones existentes se consultan desde
+   el catálogo comercial de la instancia, si el mismo tiene capacidades
+   procesadas; el color sólo se muestra si la fuente incluye ese dato.
+   La instalación de laboratorio no puede utilizar automáticamente los
+   datos de la instancia productiva debido a su aislamiento.
 2. `Modelo completo` todavía está deshabilitado: primero se requiere la cola
    con cantidades autorizadas por talla, procedentes de una captura previa.
 3. Las capturas se almacenan, pero aún falta su conciliación con inventario
