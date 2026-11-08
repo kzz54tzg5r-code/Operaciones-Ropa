@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS ac_capture_sizes (
 );
 CREATE TABLE IF NOT EXISTS ac_tasks (
  id TEXT PRIMARY KEY,
- source_capture_id TEXT NOT NULL REFERENCES ac_captures(id),
+ source_capture_id TEXT REFERENCES ac_captures(id),
  store TEXT NOT NULL, model_id TEXT NOT NULL, color TEXT NOT NULL DEFAULT '',
  flow TEXT NOT NULL, stage TEXT NOT NULL, area TEXT NOT NULL,
  status TEXT NOT NULL DEFAULT 'pending'
@@ -72,6 +72,10 @@ CREATE TABLE IF NOT EXISTS ac_task_sizes (
 CREATE TABLE IF NOT EXISTS ac_task_captures (
  capture_id TEXT PRIMARY KEY REFERENCES ac_captures(id),
  task_id TEXT NOT NULL REFERENCES ac_tasks(id)
+);
+CREATE TABLE IF NOT EXISTS ac_capture_destinations (
+ capture_id TEXT PRIMARY KEY REFERENCES ac_captures(id),
+ location_id TEXT NOT NULL REFERENCES ac_locations(id)
 );
 CREATE INDEX IF NOT EXISTS ac_tasks_queue
  ON ac_tasks(store,flow,stage,area,status,created_at);
@@ -253,7 +257,7 @@ class ACStore:
             return task_id
 
     def capture(self, *, event_key, session_id, employee_id, model_id,
-                color="", sizes, task_id=None):
+                color="", sizes, task_id=None, target_location_id=None):
         """Captura, descuenta la tarea y encola la siguiente etapa EN UNA transacción.
 
         Una pieza sigue siendo la misma al pasar por varias actividades.
@@ -279,11 +283,17 @@ class ACStore:
                     (existing["id"],)
                 ).fetchone()
                 old_task_id = link["task_id"] if link else None
+                destination=db.execute(
+                    "SELECT location_id FROM ac_capture_destinations WHERE capture_id=?",
+                    (existing["id"],)
+                ).fetchone()
+                old_destination=destination["location_id"] if destination else None
                 if (not previous or previous["session_id"] != session_id
                         or previous["created_by"] != employee_id
                         or previous["model_id"] != model_id
                         or previous["color"] != str(color or "")
-                        or old_sizes != pieces or old_task_id != task_id):
+                        or old_sizes != pieces or old_task_id != task_id
+                        or old_destination != target_location_id):
                     raise ValueError("Clave de evento reutilizada con datos diferentes")
                 return existing["id"]
 
@@ -334,6 +344,101 @@ class ACStore:
                         (timestamp(),task_id)
                     )
 
+            # Pedido aprobado: Pizca consume reserva y traslada a Tránsito,
+            # sin aumentar el inventario en piso antes de Ubicar.
+            if s["flow"]=="Resurtido" and s["stage"]=="Pizca":
+                if not task_id:
+                    raise ValueError("Pizca requiere pedido autorizado")
+                order_line=db.execute(
+                    "SELECT * FROM ac_order_lines WHERE task_id=?",(task_id,)
+                ).fetchone()
+                if not order_line:
+                    raise ValueError("Tarea de Pizca sin reserva validada")
+                if set(pieces)!={order_line["size"]}:
+                    raise ValueError("La Pizca debe registrar la talla reservada")
+                qty=pieces[order_line["size"]]
+                changed=db.execute(
+                    "UPDATE ac_order_lines SET completed=completed+? "
+                    "WHERE id=? AND pieces-completed>=?",
+                    (qty,order_line["id"],qty)
+                ).rowcount
+                if changed!=1:
+                    raise ValueError("Piezas superiores a la reserva")
+                source=db.execute(
+                    "UPDATE ac_stock SET pieces=pieces-?, reserved=reserved-? "
+                    "WHERE store=? AND location_id=? AND model_id=? AND size=? "
+                    "AND reserved>=? AND pieces>=?",
+                    (qty,qty,s["store"],order_line["location_id"],model_id,
+                     order_line["size"],qty,qty)
+                ).rowcount
+                if source!=1:
+                    raise ValueError("Existencia reservada ya no coincide")
+                transit=db.execute(
+                    "SELECT id FROM ac_locations WHERE store=? AND kind='Transito' "
+                    "AND aisle='RESURTIDO' AND active=1",
+                    (s["store"],)
+                ).fetchone()
+                if not transit:
+                    transit_id=uuid.uuid4().hex
+                    db.execute(
+                        "INSERT INTO ac_locations(id,store,kind,aisle) "
+                        "VALUES(?,?,'Transito','RESURTIDO')",
+                        (transit_id,s["store"])
+                    )
+                else:
+                    transit_id=transit["id"]
+                db.execute(
+                    "INSERT INTO ac_stock(store,location_id,model_id,size,pieces) "
+                    "VALUES(?,?,?,?,?) ON CONFLICT(store,location_id,model_id,size) "
+                    "DO UPDATE SET pieces=pieces+excluded.pieces",
+                    (s["store"],transit_id,model_id,order_line["size"],qty)
+                )
+                remaining=db.execute(
+                    "SELECT pieces-completed AS n FROM ac_order_lines WHERE id=?",
+                    (order_line["id"],)
+                ).fetchone()["n"]
+                if not remaining:
+                    db.execute(
+                        "UPDATE ac_reservations SET status='fulfilled' "
+                        "WHERE id=? AND status='active'",
+                        (order_line["reservation_id"],)
+                    )
+
+            # Ubicar Resurtido requiere la ubicación física de destino,
+            # para evitar declarar ubicada una pieza que sigue en Tránsito.
+            if s["flow"]=="Resurtido" and s["stage"]=="Ubicar":
+                if not target_location_id:
+                    raise ValueError("Selecciona la ubicación de piso antes de Ubicar")
+                floor_loc=db.execute(
+                    "SELECT id FROM ac_locations "
+                    "WHERE id=? AND store=? AND kind='Piso' AND active=1",
+                    (target_location_id,s["store"])
+                ).fetchone()
+                if not floor_loc:
+                    raise ValueError("Ubicación de piso inexistente o de otra tienda")
+                transit=db.execute(
+                    "SELECT id FROM ac_locations WHERE store=? AND kind='Transito' "
+                    "AND aisle='RESURTIDO' AND active=1",
+                    (s["store"],)
+                ).fetchone()
+                if not transit:
+                    raise ValueError("No hay piezas de resurtido en Tránsito")
+                for size,qty in pieces.items():
+                    changed=db.execute(
+                        "UPDATE ac_stock SET pieces=pieces-? WHERE "
+                        "store=? AND location_id=? AND model_id=? AND size=? "
+                        "AND pieces-reserved>=?",
+                        (qty,s["store"],transit["id"],model_id,size,qty)
+                    ).rowcount
+                    if changed!=1:
+                        raise ValueError("Piezas insuficientes en Tránsito para "+size)
+                    db.execute(
+                        "INSERT INTO ac_stock(store,location_id,model_id,size,pieces) "
+                        "VALUES(?,?,?,?,?) ON CONFLICT(store,location_id,model_id,size) "
+                        "DO UPDATE SET pieces=pieces+excluded.pieces",
+                        (s["store"],target_location_id,model_id,size,qty)
+                    )
+
             cid = uuid.uuid4().hex
             db.execute(
                 "INSERT INTO ac_captures(id,event_key,store,model_id,color,flow,stage,"
@@ -349,6 +454,11 @@ class ACStore:
                 db.execute(
                     "INSERT INTO ac_task_captures(capture_id,task_id) VALUES(?,?)",
                     (cid,task_id)
+                )
+            if target_location_id:
+                db.execute(
+                    "INSERT INTO ac_capture_destinations(capture_id,location_id) VALUES(?,?)",
+                    (cid,target_location_id)
                 )
 
             next_stage = NEXT_STAGE.get((s["flow"],s["stage"]))
