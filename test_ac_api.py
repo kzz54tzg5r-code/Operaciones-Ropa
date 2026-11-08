@@ -74,8 +74,11 @@ class TestCaptureAPI(unittest.TestCase):
         self.assertEqual(result.status_code,201,result.text)
         meta=self.client.get("/api/ac/model?model_id=914629",headers=self.user)
         self.assertEqual(meta.status_code,200)
-        self.assertIsNone(meta.json()["photo_url"])
-        self.assertEqual(meta.json()["photo_status"],"catalog_not_connected")
+        self.assertEqual(meta.json()["photo_url"],"/api/bonuses/product-photo/914629")
+        self.assertEqual(meta.json()["photo_status"],"bonus_lookup_pending")
+        malformed=self.client.get("/api/ac/model?model_id=INVALID-MODEL",headers=self.user)
+        self.assertIsNone(malformed.json()["photo_url"])
+        self.assertEqual(malformed.json()["photo_status"],"invalid_photo_id")
 
     def test_cross_site_post_blocked(self):
         result=self.client.post("/api/ac/session/start",
