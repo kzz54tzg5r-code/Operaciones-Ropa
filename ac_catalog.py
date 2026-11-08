@@ -36,7 +36,7 @@ def from_capacity_frame(frame, store, model_id):
 
     scoped = frame.loc[
         frame["Tienda"].astype(str).map(_key).eq(_key(store)) &
-        frame["ID_ART"].astype(str).str.replace(r"\\.0$", "", regex=True).str.strip().eq(model_id)
+        frame["ID_ART"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip().eq(model_id)
     ]
     if scoped.empty:
         return None
