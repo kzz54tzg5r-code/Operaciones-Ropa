@@ -36,6 +36,11 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 <div class="status small">Duración: <span id="clock" class="ticker">00:00:00</span></div>
 </div>
 </section>
+<section class="card" id="floorSection" hidden>
+  <label for="floorLocation">Destino confirmado · Mueble / piso</label>
+  <select id="floorLocation"><option value="">Seleccionar ubicación de piso</option></select>
+  <p class="small muted">Resurtido: al finalizar Ubicar, las piezas salen de Tránsito y se acreditan a este mueble. Debe existir previamente en la configuración de la tienda.</p>
+</section>
 <section class="card" id="queueSection" hidden>
   <div class="row"><strong id="queueTitle">Tareas pendientes</strong>
   <button id="refreshQueue" type="button">↻ Actualizar cola</button></div>
@@ -80,7 +85,7 @@ function controls(){
  const valid=Object.values(counts).some(n=>n>0);
  $("start").disabled=active||busy;
  $("finish").disabled=!active||busy;
- $("save").disabled=!active||busy||!$("model").value.trim()||!valid||(needsTask()&&!selectedTask);
+ $("save").disabled=!active||busy||!$("model").value.trim()||!valid||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
  $("voice").disabled=!active||busy||!!pending||!("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
  $("complete").disabled=!active||busy||!!pending||!selectedTask;
  $("refreshQueue").disabled=!active||busy;
@@ -91,6 +96,8 @@ function controls(){
  document.querySelectorAll(".qty").forEach(x=>x.disabled=!!pending);
  ["flow","stage","area"].forEach(id=>$(id).disabled=active||busy);
  $("queueSection").hidden=!active||!needsTask();
+ $("floorSection").hidden=!active||$("flow").value!=="Resurtido"||$("stage").value!=="Ubicar";
+ $("floorLocation").disabled=busy||!!pending;
 }
 
 function pad(v){return String(v).padStart(2,"0")}
@@ -126,6 +133,24 @@ function renderSizes(){
  }
  controls();
 }
+async function loadFloorLocations(){
+ const select=$("floorLocation");const desired=select.value;select.replaceChildren();
+ const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar ubicación de piso";select.append(blank);
+ if($("flow").value!=="Resurtido"||$("stage").value!=="Ubicar")return;
+ try{
+   const locations=await getJson("/locations?kind=Piso");
+   for(const loc of locations.locations){
+     const option=document.createElement("option");option.value=loc.id;
+     option.textContent=[loc.aisle,loc.face,loc.section,loc.level].filter(Boolean).join(" / ")||loc.id.slice(0,8);
+     select.append(option);
+   }
+   const pendingLocation=pending?.target_location_id;
+   const target=pendingLocation||desired;
+   if(target && Array.from(select.options).some(o=>o.value===target))select.value=target;
+   if(!locations.locations.length)show("No hay muebles de piso registrados para esta tienda; Ubicar Resurtido estará bloqueado.","warn");
+ }catch(e){show("No se pudieron consultar los muebles de piso: "+e.message,"error")}
+ controls();
+}
 async function refreshTasks(){
  if(!session||!needsTask()){taskRows=[];$("taskList").textContent="Sin tareas para esta actividad.";controls();return}
  try{
@@ -137,7 +162,7 @@ async function refreshTasks(){
    for(const task of taskRows){
      const line=document.createElement("div");line.className="row";line.style.cssText="padding:6px 0;border-top:1px solid #e6edf6";
      const info=document.createElement("span");
-     info.textContent="ID "+task.model_id+" · "+Object.entries(task.remaining).map(([k,v])=>k+":"+v).join(" · ");
+     info.textContent="ID "+task.model_id+" · "+Object.entries(task.remaining).map(([k,v])=>k+":"+v).join(" · ")+(task.source_location?" · Origen: "+[task.source_location.kind,task.source_location.aisle,task.source_location.face,task.source_location.section,task.source_location.level,task.source_location.pallet].filter(Boolean).join(" / "):"");
      const take=document.createElement("button");take.type="button";
      take.textContent=task.assigned_to?"Continuar tarea":"Tomar tarea";take.dataset.acClaim="1";
      take.disabled=busy||!!pending;
@@ -211,7 +236,7 @@ async function resumeSession(){
     for(const size of order)counts[size]=Number(data.sizes[size]||0);
     renderSizes();show("Hay una captura pendiente de confirmación. Reintenta Guardar sin cambiar sus piezas.","warn");
   }else sessionStorage.removeItem("acPendingCapture");}catch(e){sessionStorage.removeItem("acPendingCapture")}}
-  await refreshTasks();
+  await loadFloorLocations();await refreshTasks();
   if(pending?.task_id){selectedTask=taskRows.find(t=>t.id===pending.task_id)||null;renderSizes()}
   if(!pending)show("Actividad recuperada: "+active.session.stage+".","ok");tick();
  }catch(e){show("No se pudo consultar la sesión: "+e.message,"error")}
@@ -231,7 +256,7 @@ function parseVoice(value){
  if(!Object.keys(result).length)throw Error("No reconocí tallas y cantidades");
  return result;
 }
-$("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");await refreshTasks();$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
+$("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");await loadFloorLocations();await refreshTasks();$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
 $("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";selectedTask=null;taskRows=[];started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
 $("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
 $("model").addEventListener("change",findModel);
@@ -250,8 +275,9 @@ $("save").addEventListener("click",async()=>{
      }
    }
  }
- if(needsTask()&&!selectedTask){show("Selecciona primero una tarea de la cola.","warn");return}
- if(!pending){pending={event_key:crypto.randomUUID(),session_id:session,model_id:model,color:$("color").value.trim(),sizes,task_id:selectedTask?.id||null};sessionStorage.setItem("acPendingCapture",JSON.stringify(pending))}
+ if(needsTask()&&!selectedTask&&!pending){show("Selecciona primero una tarea de la cola.","warn");return}
+ if($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending){show("Debes seleccionar el destino de piso antes de Ubicar.","error");return}
+ if(!pending){pending={event_key:crypto.randomUUID(),session_id:session,model_id:model,color:$("color").value.trim(),sizes,task_id:selectedTask?.id||null,target_location_id:$("flow").value==="Resurtido"&&$("stage").value==="Ubicar"?$("floorLocation").value:null};sessionStorage.setItem("acPendingCapture",JSON.stringify(pending))}
  else if(pending.model_id!==model||JSON.stringify(pending.sizes)!==JSON.stringify(sizes)){show("Hay un envío pendiente. Restablece sus valores o corrige el fallo antes de continuar.","warn");return}
  busy=true;controls();try{const result=await api("/capture",pending);show("Guardado confirmado. Captura "+result.capture_id,"ok");clearModel();await refreshTasks()}catch(e){show("Sin confirmación del servidor: "+e.message+". Reintenta sin cambiar cantidades.","error")}finally{busy=false;controls()}
 });
@@ -262,6 +288,7 @@ $("complete").addEventListener("click",()=>{
  show("Modelo completo: se marcaron todas las piezas pendientes de esta tarea. Confirma para registrar.","warn");
 });
 $("refreshQueue").addEventListener("click",refreshTasks);
+$("floorLocation").addEventListener("change",controls);
 $("flow").addEventListener("change",updateStageOptions);updateStageOptions();renderSizes();setInterval(tick,1000);resumeSession();
 })();
 </script>
