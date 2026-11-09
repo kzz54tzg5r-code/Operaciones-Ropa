@@ -306,36 +306,99 @@ document.addEventListener("visibilitychange",()=>{if(document.hidden)camera.stop
 async function getJson(path){const response=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const value=await response.json().catch(()=>({}));if(!response.ok)throw Error(value.detail||"HTTP "+response.status);return value}
 async function findModel(){
  const model=$("model").value.trim();const token=++lookupEpoch;
- if(!model){$("modelName").textContent="Modelo sin escanear";return}
- $("modelName").textContent="ID "+model;$("modelDetails").textContent="Buscando ficha oficial…";
- try{
-  const info=await getJson("/model?model_id="+encodeURIComponent(model));
-  if(token!==lookupEpoch||$("model").value.trim()!==model)return;
-  $("modelName").textContent=info.name||"ID "+model;
-  $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
-  if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
-  const photo=$("photo");photo.replaceChildren();
-  if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
-    const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;img.src=info.photo_url;img.style.cssText="width:100%;height:115px;object-fit:contain";
-    img.onerror=()=>{
-      if(token!==lookupEpoch)return;
-      photo.replaceChildren();
-      const label=document.createElement("span");
-      label.className="small";label.textContent="No se pudo mostrar la foto del ID "+model+".";
-      const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
-      retry.onclick=()=>{
-        if(token!==lookupEpoch)return;
-        photo.replaceChildren();
-        // Reutiliza V314 y su parámetro de reintento para errores temporales.
-        img.src=info.photo_url+"?retry=1&t="+Date.now();
-        photo.append(img);
-      };
-      photo.append(label,retry);
-    };
-    photo.append(img);
-  }else photo.textContent="No hay fotografía para este ID";
- }catch(e){if(token===lookupEpoch){$("modelDetails").textContent="No se pudo consultar la ficha: "+e.message;$("photo").textContent="Fotografía pendiente"}}
+ if(!model){
+   capacitySizes=[];capacityVersion=null;scannedBarcode=null;scannedLabelSize=null;
+   $("sizeRange").textContent="Escanea un ID para consultar sus tallas.";
+   $("modelName").textContent="Modelo sin escanear";renderSizes();return;
+ }
+ loadingSizes=true;
+ if(!selectedTask){capacitySizes=[];capacityVersion=null}
+ $("modelName").textContent="ID "+model;
+ $("modelDetails").textContent="Buscando ficha oficial…";
+ $("sizeRange").textContent="Buscando tallas del modelo en Capacidades por Talla…";
+ renderSizes();
+ // Dos consultas independientes: si no hay foto, sigue mostrando las tallas;
+ // si falta Capacidades, nunca sustituye el rango por XCH/CH/M/G.
+ const [capResponse,modelResponse]=await Promise.allSettled([
+   getJson("/capacity/model-sizes?model_id="+encodeURIComponent(model)),
+   getJson("/model?model_id="+encodeURIComponent(model))
+ ]);
+ if(token!==lookupEpoch||$("model").value.trim()!==model)return;
+ loadingSizes=false;
+ const caps=capResponse.status==="fulfilled"?capResponse.value:null;
+ if(caps?.status==="ready"&&Array.isArray(caps.sizes)&&caps.sizes.length){
+   capacitySizes=Array.from(new Set(caps.sizes.map(item=>String(item.size||"").trim()).filter(Boolean)));
+   capacityVersion=caps.version||null;
+ }else{
+   capacitySizes=[];capacityVersion=null;
+ }
+ const displayed=knownSizes();
+ if(selectedTask){
+   $("sizeRange").textContent="Tallas pendientes autorizadas de esta tarea: "+displayed.join(", ")+
+     (capacityVersion?" · Corte "+capacityVersion:"");
+ }else if(capacitySizes.length){
+   $("sizeRange").textContent="Rango del modelo: "+(caps.from_size||capacitySizes[0])+
+     " a "+(caps.to_size||capacitySizes[capacitySizes.length-1])+
+     " · "+capacitySizes.length+" tallas"+(capacityVersion?" · Corte "+capacityVersion:"");
+ }else{
+   $("sizeRange").textContent=capResponse.status==="rejected"
+     ?"No se pudo consultar Capacidades por Talla. Reintenta antes de guardar."
+     :"Sin tallas cargadas para este modelo y tienda en Capacidades por Talla.";
+ }
+ if(scannedBarcode){
+   const resolved=window.ACBarcode.resolveSize(scannedBarcode,displayed);
+   scannedLabelSize=resolved.size;
+   if(resolved.status==="matched"){
+     $("scanSize").textContent="✓ Talla identificada automáticamente: "+resolved.size+
+       " · ID "+model+" · Clave "+scannedBarcode.sizeCode;
+     show("Escaneado automáticamente: ID "+model+", talla "+resolved.size+
+       ". Captura las piezas y confirma el registro.","ok");
+   }else if(resolved.status==="ambiguous"){
+     $("scanSize").textContent="Código leído: "+scannedBarcode.raw+
+       ". La talla coincide con varias opciones: selecciónala de la lista.";
+     show("Talla ambigua en Capacidades. Revisa la etiqueta antes de guardar.","warn");
+   }else if(!displayed.length){
+     $("scanSize").textContent="ID "+model+
+       " leído. No se puede identificar su talla sin Capacidades por Talla.";
+     show("Carga o revisa el rango de tallas del ID en Capacidades por Talla.","warn");
+   }else{
+     $("scanSize").textContent="ID "+model+" leído. La clave de talla "+
+       (scannedBarcode.sizeCode||"no disponible")+
+       " no tiene equivalencia verificada en este modelo. Elige la talla del rango.";
+     show("El ID se leyó correctamente. Confirma la talla del modelo.","warn");
+   }
+ }else{
+   scannedLabelSize=null;
+ }
+ renderSizes();
+ if(modelResponse.status!=="fulfilled"){
+   $("modelDetails").textContent="No se pudo consultar la fotografía o ubicación. Las tallas se consultaron por separado.";
+   return;
+ }
+ const info=modelResponse.value;
+ $("modelName").textContent=info.name||"ID "+model;
+ $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
+ if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
+ const photo=$("photo");photo.replaceChildren();
+ if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
+   const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;
+   img.style.cssText="width:100%;height:115px;object-fit:contain";
+   img.onerror=()=>{
+     if(token!==lookupEpoch)return;
+     photo.replaceChildren();
+     const label=document.createElement("span");label.className="small";
+     label.textContent="No se pudo mostrar la foto del ID "+model+".";
+     const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
+     retry.onclick=()=>{
+       if(token!==lookupEpoch)return;
+       photo.replaceChildren();img.src=info.photo_url+"?retry=1&t="+Date.now();photo.append(img);
+     };
+     photo.append(label,retry);
+   };
+   img.src=info.photo_url;photo.append(img);
+ }else photo.textContent="No hay fotografía para este ID";
 }
+
 async function resumeSession(){
  try{
   const me=await getJson("/me");if(!me.store){show("Tu perfil todavía no tiene tienda asignada.","warn");return}
