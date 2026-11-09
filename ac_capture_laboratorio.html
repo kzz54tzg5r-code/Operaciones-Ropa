@@ -298,7 +298,7 @@ $("manualId").addEventListener("click",()=>{
  manualEntry=true;controls();$("model").focus();
 });
 $("closeCamera").addEventListener("click",()=>camera.stop());
-$("cameraManual").addEventListener("click",()=>{camera.stop();$("model").focus()});
+$("cameraManual").addEventListener("click",()=>{camera.stop();manualEntry=true;controls();$("model").focus()});
 $("cameraTorch").addEventListener("click",()=>camera.switchTorch());
 window.addEventListener("pagehide",()=>camera.stop());
 document.addEventListener("visibilitychange",()=>{if(document.hidden)camera.stop()});
@@ -409,7 +409,8 @@ async function resumeSession(){
   const saved=sessionStorage.getItem("acPendingCapture");
   if(saved){try{const data=JSON.parse(saved);if(data.session_id===session){
     pending=data;$("model").value=data.model_id;$("color").value=data.color||"";
-    for(const size of order)counts[size]=Number(data.sizes[size]||0);
+    resetCounts();
+    for(const [size,qty] of Object.entries(data.sizes||{}))counts[size]=Number(qty);
     renderSizes();show("Hay una captura pendiente de confirmación. Reintenta Guardar sin cambiar sus piezas.","warn");
   }else sessionStorage.removeItem("acPendingCapture");}catch(e){sessionStorage.removeItem("acPendingCapture")}}
   await loadFloorLocations();await refreshTasks();
@@ -434,14 +435,30 @@ function parseVoice(value){
 }
 $("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");await loadFloorLocations();await refreshTasks();$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
 $("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";selectedTask=null;taskRows=[];started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
-$("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}scannedLabelSize=null;$("scanSize").textContent="";$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
+$("model").addEventListener("input",()=>{
+ if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}
+ ++lookupEpoch;resetCounts();capacitySizes=[];capacityVersion=null;scannedBarcode=null;scannedLabelSize=null;loadingSizes=false;
+ $("scanSize").textContent="";$("sizeRange").textContent="Consulta las tallas del nuevo ID en Capacidades por Talla.";
+ $("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";
+ renderSizes();
+});
 $("model").addEventListener("change",findModel);
 $("model").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findModel()}});
-$("clear").addEventListener("click",()=>{for(const size of order)counts[size]=0;pending=null;renderSizes()});
-$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const command=spoken.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(command==="finalizar"){if(pending)throw Error("Confirma la captura pendiente antes de finalizar");$("finish").click();return}if(command==="siguiente"){if(pending)throw Error("Reintenta el guardado pendiente");$("save").click();return}if(pending)throw Error("La captura anterior sigue pendiente de confirmación");const parsed=parseVoice(spoken);for(const size of order)if(Object.hasOwn(parsed,size))counts[size]=parsed[size];renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
+$("clear").addEventListener("click",()=>{
+ for(const size of knownSizes())counts[size]=0;
+ pending=null;renderSizes();
+});
+$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const command=spoken.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(command==="finalizar"){if(pending)throw Error("Confirma la captura pendiente antes de finalizar");$("finish").click();return}if(command==="siguiente"){if(pending)throw Error("Reintenta el guardado pendiente");$("save").click();return}if(pending)throw Error("La captura anterior sigue pendiente de confirmación");const parsed=parseVoice(spoken);for(const [size,qty] of Object.entries(parsed)){
+  if(!knownSizes().includes(size))throw Error("La talla "+size+" no corresponde a este modelo según Capacidades");
+  counts[size]=qty;
+ }renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
 $("save").addEventListener("click",async()=>{
  const model=$("model").value.trim();const sizes={};for(const size of knownSizes()){const n=counts[size];if(!Number.isSafeInteger(n)||n<0){show("Revisa las cantidades de todas las tallas.","error");return}if(n>0)sizes[size]=n}
- if(!model||!Object.keys(sizes).length||!session)return;
+ if(!model||!session){show("Inicia una actividad y escanea un ID.","warn");return}
+ if(!selectedTask&&!pending&&!capacitySizes.length){
+   show("Este modelo no tiene tallas disponibles del corte de Capacidades. No se puede guardar todavía.","error");return
+ }
+ if(!Object.keys(sizes).length){show("Indica las piezas por talla antes de guardar.","warn");return}
  if(selectedTask){
    for(const [size,qty] of Object.entries(sizes)){
      const max=selectedTask.remaining[size];
