@@ -12,7 +12,7 @@ def test_mobile_center_is_last_stylesheet_and_cache_is_versioned():
     assert HTML.count('centro_movil_paridad_v413.css?v=413')==1
     assert HTML.index('acordeon_jerarquico_v412.css')<HTML.index('centro_movil_paridad_v413.css')
     assert SW.count("'/static/centro_movil_paridad_v413.css?v=413'")==1
-    assert "operaciones-ropa-runtime-safe-update-v415" in SW
+    assert "operaciones-ropa-runtime-safe-update-v416" in SW
 
 def test_four_lanes_in_one_row_and_no_oversized_flex_metric():
     assert '@media screen and (max-width:700px)' in CSS

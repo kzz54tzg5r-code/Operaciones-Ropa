@@ -67,7 +67,7 @@ jobs:
           assert "'/static/acordeon_jerarquico_v412.js?v=412'" in sw
           assert "'/static/centro_movil_paridad_v413.css?v=413'" in sw
           assert '/static/centro_movil_paridad_v413.css?v=413' in index
-          assert "operaciones-ropa-runtime-safe-update-v415" in sw
+          assert "operaciones-ropa-runtime-safe-update-v416" in sw
           assert "'/static/compact_reports.css?v=413'" in sw
 
           entry = Path("server_entry.py").read_text(encoding="utf-8")
@@ -86,3 +86,4 @@ jobs:
           node --check web/pwa_install.js
           node --check web/pwa_brand.js
           node tests/ui/ac_menu_visible.cjs
+          node tests/ui/ac_camera_scan.cjs
