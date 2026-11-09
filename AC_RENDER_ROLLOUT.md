@@ -12,7 +12,9 @@ Bajo la bandera habilitada se añade `/ac`, y se crean tablas nuevas en
 
 **Antes de habilitar en producción:** identificar el servicio real de Render
 y su rama, respaldar datos importantes según política del servicio, comprobar
-espacio disponible del disco y registrar el último despliegue correcto.
+espacio disponible del disco y registrar el último despliegue correcto. AC no habilita rutas si el
+almacenamiento persistente tiene menos de **64 MiB libres**; mantiene la
+aplicación anterior operativa y no crea roles nuevos en ese caso.
 
 ## Flujo de publicación y reversión
 
