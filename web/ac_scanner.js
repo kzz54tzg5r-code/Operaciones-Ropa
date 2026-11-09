@@ -9,9 +9,7 @@
 })(typeof window!=="undefined"?window:null,function(){
 "use strict";
 const CDNS=[
- // Principal: biblioteca incluida en Operaciones Ropa, sin CDN ni terceros.
- "/static/ac_zxing_browser_0_2_1.min.js?v=416",
- // Respaldo si el servidor está sirviendo una versión sin el archivo local.
+ // Versión fijada de ZXing para iPhone; requiere red al cargar por primera vez.
  "https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/umd/zxing-browser.min.js",
  "https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"
 ];
