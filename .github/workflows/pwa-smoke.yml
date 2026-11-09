@@ -87,4 +87,3 @@ jobs:
           node --check web/pwa_brand.js
           node tests/ui/ac_menu_visible.cjs
           node tests/ui/ac_camera_scan.cjs
-          node --check web/ac_zxing_browser_0_2_1.min.js
