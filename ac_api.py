@@ -308,6 +308,13 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
             return {"ok":True}
         except Exception as exc:fail(exc)
 
+    @router.get("/capacity/model-sizes")
+    def model_capacity_sizes(request: Request, model_id: str):
+        _, store, _, _ = actor_from(request, VIEW_ROLES)
+        if not store:
+            raise HTTPException(403, "Se requiere tienda asignada para consultar tallas")
+        return bridge.capacities.model_sizes(store,model_id)
+
     @router.get("/capacity")
     def capacity_by_size(request: Request, model_id: str, size: str):
         _, store, _, _ = actor_from(request, VIEW_ROLES)
