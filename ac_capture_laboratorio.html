@@ -20,6 +20,32 @@ kbd{padding:2px 5px;border:1px solid #b9c5d4;border-radius:4px}#photo{min-height
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;text-align:left;padding:6px 4px}th{font-size:12px}
 .qty{width:72px;text-align:center}.ticker{font-variant-numeric:tabular-nums;font-weight:700}
 @media (max-width:600px){.shell{padding:7px;gap:7px}.card{padding:9px}.grid{gap:7px}.grid3{gap:5px}header{padding:10px}h1{font-size:17px}select,input,button{font-size:13px;padding:7px;min-height:38px}}
+
+/* Captura AC: iPhone en vertical, sin desplazamiento horizontal */
+.shell,.card,.grid,.grid3,.grid>*{min-width:0}
+.grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.model-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}
+.model-entry input{min-width:0;font-size:16px}
+.scan-open{white-space:nowrap;background:#eff5ff}
+.scan-size{font-size:12px;color:#1a5d8d;display:block;margin-top:5px;font-weight:700}
+.ac-camera-overlay[hidden]{display:none!important}
+.ac-camera-overlay{position:fixed;inset:0;z-index:9999;background:#081225f5;display:flex;justify-content:center;align-items:center;padding:env(safe-area-inset-top) 9px env(safe-area-inset-bottom);color:white}
+.ac-camera-panel{width:min(100%,600px);display:flex;flex-direction:column;gap:11px;max-height:100dvh;padding:10px;background:#152844;border-radius:12px}
+.ac-camera-panel h2{font-size:17px;margin:0}
+.ac-camera-view{position:relative;overflow:hidden;background:#000;border-radius:12px;min-height:225px;max-height:64dvh}
+.ac-camera-view video{display:block;width:100%;max-height:64dvh;min-height:225px;object-fit:cover}
+.ac-camera-target{pointer-events:none;position:absolute;left:12%;right:12%;top:30%;height:34%;border:3px solid #6affdc;border-radius:8px;box-shadow:0 0 0 100vmax #0004}
+.ac-camera-panel button{background:#fff;color:#173b73;border-color:#e0e7f0}
+.ac-camera-panel .row{flex:0 0 auto}
+.ac-camera-status{font-size:13px;color:#fff;min-height:32px}
+@media(max-width:650px){
+  .capture-model-grid{grid-template-columns:minmax(0,1fr)!important}
+  .capture-info-grid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important}
+  .model-entry{grid-template-columns:minmax(0,1fr) auto}
+  .scan-open{padding:7px 9px!important}
+  .card{overflow-wrap:break-word}
+  .camera-action-row{display:flex;flex-wrap:wrap}
+}
 </style>
 </head>
 <body>
@@ -48,11 +74,11 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
   <div id="taskList" class="small" aria-live="polite">Inicia la actividad para consultar la cola.</div>
 </section>
 <section class="card">
-<div class="grid" style="grid-template-columns:2fr 1fr">
-<div><label for="model">Escanea o escribe ID del modelo</label><input id="model" inputmode="text" autocomplete="off" placeholder="ID o código de barras"></div>
+<div class="grid capture-model-grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+<div><label for="model">ID del modelo</label><div class="model-entry"><input id="model" inputmode="numeric" autocomplete="off" placeholder="ID de la etiqueta"><button id="openCamera" class="scan-open" type="button" aria-label="Abrir cámara para escanear código de barras">📷 Escanear</button></div><span id="scanSize" class="scan-size" aria-live="polite"></span></div>
 <div><label for="color">Color</label><input id="color" autocomplete="off" placeholder="Opcional"></div>
 </div>
-<div class="grid" style="grid-template-columns:1fr 2fr;margin-top:8px">
+<div class="grid capture-info-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);margin-top:8px">
 <div id="photo"><span class="small">Fotografía por ID · misma fuente de Bonos</span></div>
 <div><strong id="modelName">Modelo sin escanear</strong><p id="modelDetails" class="muted small">Ingresa un ID para consultar los datos del modelo y su fotografía mediante el servicio existente de Bonos.</p>
 <div class="row"><button id="voice" type="button" disabled>🎙 Dictar tallas</button><button id="complete" type="button" disabled>Modelo completo</button></div></div>
@@ -67,6 +93,17 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 </section>
 <section class="card small muted">Esta interfaz es un prototipo aislado. El envío usa /api/ac con la identidad del usuario autenticado en el servidor; no se almacenan cantidades en el navegador como si fueran confirmadas. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. El resurtido Pizca sigue bloqueado hasta integrar pedidos autorizados.</section>
 </main>
+<div id="cameraOverlay" class="ac-camera-overlay" role="dialog" aria-modal="true" aria-label="Escáner de código de barras" hidden>
+  <div class="ac-camera-panel">
+    <div class="row"><h2>📷 Escanear etiqueta Price Shoes</h2><button id="closeCamera" type="button">✕ Cerrar</button></div>
+    <div class="ac-camera-view"><video id="cameraVideo" autoplay muted playsinline webkit-playsinline></video><div class="ac-camera-target"></div></div>
+    <div id="cameraStatus" role="status" aria-live="polite" class="ac-camera-status">Acerca el código de barras al recuadro. Puedes girar la etiqueta.</div>
+    <div class="row camera-action-row"><button type="button" id="cameraTorch" hidden>🔦 Linterna</button><button type="button" id="cameraPhoto">📸 Tomar foto</button><button type="button" id="cameraManual">Introducir ID manualmente</button></div>
+    <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden>
+    <small>El video se analiza en tu dispositivo; no se envían imágenes al servidor.</small>
+  </div>
+</div>
+<script src="/static/ac_barcode.js?v=416"></script>
 <script>
 "use strict";
 (()=>{
