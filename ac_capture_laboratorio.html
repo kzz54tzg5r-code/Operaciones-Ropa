@@ -417,9 +417,11 @@ async function findModel(){
      " a "+(caps.to_size||capacitySizes[capacitySizes.length-1])+
      " · "+capacitySizes.length+" tallas"+(capacityVersion?" · Corte "+capacityVersion:"");
  }else{
-   $("sizeRange").textContent=capResponse.status==="rejected"
-     ?"No se pudo consultar Capacidades por Talla. Reintenta antes de guardar."
-     :"Sin tallas cargadas para este modelo y tienda en Capacidades por Talla.";
+   $("sizeRange").textContent=!activeStore
+     ?"Selecciona arriba una tienda del proyecto para consultar las tallas de este ID."
+     :capResponse.status==="rejected"
+     ?"No se pudo consultar Capacidades por Talla para la tienda "+activeStore+". Reintenta."
+     :"No hay tallas AC cargadas para este ID en la tienda "+activeStore+".";
  }
  if(scannedBarcode){
    const resolved=window.ACBarcode.resolveSize(scannedBarcode,displayed);
@@ -435,8 +437,10 @@ async function findModel(){
      show("Talla ambigua en Capacidades. Revisa la etiqueta antes de guardar.","warn");
    }else if(!displayed.length){
      $("scanSize").textContent="ID "+model+
-       " leído. No se puede identificar su talla sin Capacidades por Talla.";
-     show("Carga o revisa el rango de tallas del ID en Capacidades por Talla.","warn");
+       " leído. La fotografía de Bonos se consulta por separado.";
+     show(!activeStore
+       ?"Selecciona arriba la tienda del proyecto para obtener las tallas del modelo."
+       :"No se encontraron tallas de este ID en Capacidades AC de "+activeStore+".","warn");
    }else{
      $("scanSize").textContent="ID "+model+" leído. La clave de talla "+
        (scannedBarcode.sizeCode||"no disponible")+
