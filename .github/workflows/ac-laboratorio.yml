@@ -3,6 +3,14 @@ on:
   push:
     branches:
       - feature/propuesta-ac-almacenamiento
+  pull_request:
+    paths:
+      - 'ac_*.py'
+      - 'ac_capture_laboratorio.html'
+      - 'web/ac_*.js'
+      - 'test_ac*.py'
+      - 'tests/ui/ac_camera_scan.cjs'
+      - '.github/workflows/ac-laboratorio.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,9 +28,9 @@ jobs:
       - name: Instalar dependencias limitadas para AC
         run: python -m pip install "fastapi==0.116.1" "uvicorn==0.35.0" "python-multipart==0.0.20" "httpx>=0.27,<0.30" "openpyxl==3.1.5" "pytest==8.4.1" "Pillow==12.3.0" "itsdangerous>=2.2,<3" "pandas>=2.2,<3"
       - name: Ejecutar pruebas sobre bases temporales
-        run: python -m pytest -q test_ac_bridge.py test_ac_api.py test_ac_catalog.py test_ac_queue.py test_ac_orders.py test_ac_orders_api.py test_ac_migration.py test_ac_production.py tests/test_bonus_photos_backend.py
+        run: python -m pytest -q test_ac_bridge.py test_ac_api.py test_ac_catalog.py test_ac_queue.py test_ac_orders.py test_ac_orders_api.py test_ac_migration.py test_ac_production.py test_ac_model_sizes.py tests/test_bonus_photos_backend.py
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Validar dictado de tallas en pantalla
-        run: node test_ac_voice.cjs && node test_ac_queue_ui.cjs && node test_ac_orders_ui.cjs && node test_ac_config_ui.cjs
+        run: node test_ac_voice.cjs && node test_ac_queue_ui.cjs && node test_ac_orders_ui.cjs && node test_ac_config_ui.cjs && node tests/ui/ac_camera_scan.cjs
