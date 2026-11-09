@@ -1,0 +1,153 @@
+<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operaciones Ropa · Configuración AC</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;color:#173b73;font-size:15px}
+*{box-sizing:border-box}body{margin:0}header{background:#173b73;color:#fff;padding:16px 18px}h1{font-size:20px;margin:0}
+main{max-width:1050px;margin:auto;padding:10px;display:grid;gap:10px}
+section{background:white;border:1px solid #d9e2ef;border-radius:10px;padding:14px}
+h2{font-size:17px;margin:0 0 10px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+label{display:block;font-size:12px;font-weight:700;margin:0 0 5px}
+input,select,button{font:inherit;border-radius:7px;min-height:39px}
+input,select{border:1px solid #b7c5d7;color:#152e51;background:#fff;padding:8px;width:100%}
+button{color:#275cc6;background:white;border:1px solid #275cc6;padding:9px 12px;cursor:pointer;font-weight:700}
+button.primary{color:white;background:#275cc6}button:disabled{opacity:.5;cursor:not-allowed}
+p{margin:8px 0}.muted{color:#63748b}.small{font-size:12px}
+.info{padding:11px;border-radius:7px;background:#edf3fd}.success{background:#e7f7ef;color:#126331}.error{background:#fff0ed;color:#9c2828}
+nav{display:flex;flex-wrap:wrap;gap:8px}nav a{display:inline-block;padding:9px 12px;border:1px solid #c0cce0;border-radius:7px;color:#173b73;text-decoration:none}
+@media(max-width:650px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}section{padding:9px}main{padding:6px}h1{font-size:18px}nav a{font-size:12px}}
+</style></head><body>
+<header><h1>OPERACIONES ROPA · CONFIGURACIÓN AC</h1><small>Administración de capacidades, tiendas, inventario inicial y perfiles</small></header>
+<main>
+<section><h2>Accesos AC</h2>
+<nav><a href="/ac/captura">Captura de colaborador</a><a href="/ac/pedidos">Pedidos Supervisor / Gerente</a><a href="/">Volver al proyecto</a></nav>
+<p id="message" role="status" aria-live="polite" class="info">Consultando usuario…</p></section>
+<section><h2>1. Tienda que vas a administrar</h2>
+<div class="grid"><div><label for="store">Tienda</label><select id="store"></select></div>
+<div><label>&nbsp;</label><button class="primary" type="button" id="setStore">Elegir tienda</button></div></div>
+<p id="activeStore" class="muted small">La tienda seleccionada controla los pedidos y registros físicos.</p></section>
+<section id="capacitySection"><h2>2. Capacidades por Talla</h2>
+<p class="small muted">Es el único Excel nuevo de Propuesta AC. Los cortes anteriores se conservan. Debe contener tienda, ID, talla, curva y capacidad.</p>
+<div class="grid"><div><label for="capacityFile">Excel .xlsx</label><input id="capacityFile" type="file" accept=".xlsx"></div>
+<div><label for="capacityVersion">Nombre del corte</label><input id="capacityVersion" placeholder="2026-11-09"></div>
+<div><label>&nbsp;</label><button type="button" class="primary" id="upload">Cargar corte</button></div></div></section>
+<section><h2>3. Ubicación física de tienda</h2>
+<div class="grid">
+<div><label for="kind">Tipo</label><select id="kind"><option>Piso</option><option>Septimos</option><option>Tarima</option><option>Rack</option></select></div>
+<div><label for="aisle">Pasillo</label><input id="aisle" placeholder="03"></div>
+<div><label for="face">Cara</label><input id="face" placeholder="A o B"></div>
+<div><label for="section">Tramo / mesa</label><input id="section" placeholder="Mesa 1 / tramo 2"></div>
+<div><label for="level">Nivel</label><input id="level" placeholder="1–4"></div>
+<div><label for="pallet">Tarima ID (si aplica)</label><input id="pallet" placeholder="T-01"></div>
+</div><p><button class="primary" type="button" id="createLocation">Registrar ubicación</button></p>
+<p class="small muted">El registro no agrega piezas; primero debes realizar un conteo físico verificado.</p></section>
+<section><h2>4. Conteo físico inicial verificado</h2>
+<p class="muted small">Sin un conteo confirmado no se autoriza Pizca. El conteo inicial de cada ID y talla sólo se registra una vez; posteriormente se actualiza mediante movimientos. No modifica los inventarios de Análisis Comercial.</p>
+<div class="grid">
+<div><label for="location">Ubicación</label><select id="location"><option value="">Selecciona una tienda</option></select></div>
+<div><label for="model">ID del artículo</label><input id="model" inputmode="numeric"></div>
+<div><label for="size">Talla</label><input id="size" placeholder="M"></div>
+<div><label for="pieces">Piezas contadas</label><input id="pieces" type="number" min="0" step="1"></div>
+<div><label>&nbsp;</label><button class="primary" type="button" id="saveCount">Confirmar conteo</button></div>
+<div><label>&nbsp;</label><button type="button" id="viewStock">Consultar existencias ID</button></div>
+</div>
+<div id="stock" class="small muted" style="margin-top:10px">Sin consulta.</div>
+</section>
+<section id="usersSection"><h2>5. Perfiles operativos</h2>
+<p class="small muted">Crea cuentas con tienda asignada. No se modifican permisos de otros usuarios; las contraseñas temporales deben cambiarse en el primer acceso.</p>
+<div class="grid">
+<div><label for="username">Usuario / nómina</label><input id="username" autocomplete="off"></div>
+<div><label for="password">Contraseña temporal</label><input id="password" type="password" autocomplete="new-password"></div>
+<div><label for="role">Rol</label><select id="role"><option value="colaborador_operativo">Colaborador operativo</option><option value="supervisor">Supervisor</option><option value="gerente">Gerente</option></select></div>
+<div><label>&nbsp;</label><button id="newUser" type="button" class="primary">Crear cuenta para esta tienda</button></div>
+</div></section>
+</main><script>
+"use strict";(()=>{
+const $=id=>document.getElementById(id);
+let role="",store="",busy=false,pendingCount=null;
+function show(text,kind=""){const el=$("message");el.textContent=text;el.className="info "+kind}
+async function json(path,method="GET",body){const options={method,credentials:"same-origin",headers:{Accept:"application/json"}};
+ if(body!==undefined){options.headers["Content-Type"]="application/json";options.body=JSON.stringify(body)}
+ const r=await fetch(path,options);const out=await r.json().catch(()=>({}));
+ if(!r.ok)throw Error(typeof out.detail==="string"?out.detail:"HTTP "+r.status);
+ return out}
+function lock(value){busy=value;for(const id of ["setStore","upload","createLocation","saveCount","newUser","viewStock"])$(id).disabled=busy}
+async function stores(){
+ const data=await json("/api/ac/stores");
+ const sel=$("store");sel.replaceChildren();
+ for(const name of data.stores){const op=document.createElement("option");op.value=name;op.textContent=name;sel.append(op)}
+ if(data.selected)sel.value=data.selected;store=data.selected||"";
+ if(data.stores.length===1&&store){sel.disabled=true;$("setStore").disabled=true}
+ $("activeStore").textContent=store?"Tienda activa: "+store:"Selecciona la tienda antes de consultar o registrar mercancía.";
+ await locations();
+}
+async function locations(){
+ const data=store?await json("/api/ac/stock/locations").catch(()=>({locations:[]})):{locations:[]};
+ const sel=$("location");const current=sel.value;sel.replaceChildren();
+ const blank=document.createElement("option");blank.value="";blank.textContent="Selecciona ubicación";sel.append(blank);
+ for(const row of data.locations){const op=document.createElement("option");op.value=row.id;
+  op.textContent=[row.kind,row.aisle,row.face,row.section,row.level,row.pallet].filter(Boolean).join(" / ");sel.append(op)}
+ if(current&&data.locations.some(x=>x.id===current))sel.value=current;
+}
+$("setStore").addEventListener("click",async()=>{lock(true);try{const r=await json("/api/ac/select-store","POST",{store:$("store").value});store=r.store;show("Tienda seleccionada: "+store,"success");await locations()}catch(e){show(e.message,"error")}finally{lock(false)}});
+$("createLocation").addEventListener("click",async()=>{if(!store){show("Selecciona primero la tienda","error");return}lock(true);try{
+ const body={kind:$("kind").value,aisle:$("aisle").value.trim(),face:$("face").value.trim(),section:$("section").value.trim(),level:$("level").value.trim(),pallet:$("pallet").value.trim()};
+ const r=await json("/api/ac/stock/locations","POST",body);
+ await locations();$("location").value=r.id;show("Ubicación registrada para "+store,"success")
+ }catch(e){show("Error de ubicación: "+e.message,"error")}finally{lock(false)}});
+$("saveCount").addEventListener("click",async()=>{
+ if(!store||!$("location").value){show("Debes elegir tienda y ubicación","error");return}
+ const pieces=Number($("pieces").value);
+ if(!Number.isSafeInteger(pieces)||pieces<0||$("pieces").value.trim()===""){show("Cantidad inválida","error");return}
+ if(!pendingCount){
+  pendingCount={event_key:crypto.randomUUID(),location_id:$("location").value,model_id:$("model").value.trim(),size:$("size").value.trim(),pieces};
+  if(!pendingCount.model_id||!pendingCount.size){pendingCount=null;show("ID y talla obligatorios","error");return}
+  if(!confirm("¿Confirmas el conteo físico inicial de "+pieces+" piezas en "+store+"?")){pendingCount=null;return}
+  sessionStorage.setItem("acPendingPhysicalCount",JSON.stringify(pendingCount));
+ }
+ lock(true);try{await json("/api/ac/stock/initial-count","POST",pendingCount);
+  sessionStorage.removeItem("acPendingPhysicalCount");pendingCount=null;
+  show("Conteo inicial verificado y guardado.","success")
+ }catch(e){show("Conteo sin confirmación: "+e.message+". Reintenta con la misma clave.","error")}
+ finally{lock(false)}
+});
+$("viewStock").addEventListener("click",async()=>{if(!store||!$("model").value.trim())return;
+ try{const data=await json("/api/ac/stock?model_id="+encodeURIComponent($("model").value.trim()));
+ const root=$("stock");root.replaceChildren();
+ if(!data.stock.length){root.textContent="Este ID no tiene existencias físicas verificadas.";return}
+ for(const row of data.stock){const p=document.createElement("p");p.textContent=[row.kind,row.aisle,row.face,row.section,row.level,row.pallet].filter(Boolean).join(" / ")+" · "+row.size+" · "+row.pieces+" piezas, "+row.reserved+" reservadas";root.append(p)}
+ }catch(e){show(e.message,"error")}
+});
+$("upload").addEventListener("click",async()=>{
+ const file=$("capacityFile").files[0],version=$("capacityVersion").value.trim();
+ if(!file||!version){show("Selecciona Excel y versión","error");return}
+ if(!file.name.toLowerCase().endsWith(".xlsx")){show("Sólo XLSX","error");return}
+ if(!confirm("¿Publicar el corte "+version+" de capacidades por talla?"))return;
+ lock(true);try{
+  const data=new FormData();data.append("file",file);
+  const r=await fetch("/api/ac/capacity/upload?version="+encodeURIComponent(version),
+      {method:"POST",credentials:"same-origin",body:data});
+  const out=await r.json().catch(()=>({}));if(!r.ok)throw Error(out.detail||"HTTP "+r.status);
+  show("Capacidades guardadas. Corte #"+out.batch_id,"success")
+ }catch(e){show("No se pudo guardar el corte: "+e.message,"error")}finally{lock(false)}
+});
+$("newUser").addEventListener("click",async()=>{
+ const username=$("username").value.trim(),password=$("password").value;
+ if(!store||username.length<3||password.length<8){show("Tienda, usuario o contraseña insuficientes","error");return}
+ if(!confirm("¿Crear cuenta "+username+" con el rol "+$("role").value+" para "+store+"?"))return;
+ lock(true);try{
+  await json("/api/users","POST",{username,password,role:$("role").value,store});
+  $("password").value="";show("Cuenta creada para "+store+". Entrega la contraseña temporal por un canal seguro.","success")
+ }catch(e){show("No se creó el usuario: "+e.message,"error")}finally{lock(false)}
+});
+(async()=>{try{
+ const me=await json("/api/ac/me");role=me.role;
+ if(!["supervisor","gerente","admin","superadmin"].includes(role))throw Error("Perfil sin permiso");
+ $("capacitySection").hidden=!["admin","superadmin"].includes(role);
+ $("usersSection").hidden=!["admin","superadmin"].includes(role);
+ await stores();show("Configuración AC autorizada. Los conteos y pedidos se registrarán por tienda.","success");
+ const prev=sessionStorage.getItem("acPendingPhysicalCount");
+ if(prev){try{pendingCount=JSON.parse(prev);show("Existe un conteo pendiente de confirmación. Reintenta con los mismos datos.","error")}catch(e){sessionStorage.removeItem("acPendingPhysicalCount")}}
+ }catch(e){show("Sesión no autorizada: "+e.message,"error")}
+})();
+})();
+</script></body></html>
