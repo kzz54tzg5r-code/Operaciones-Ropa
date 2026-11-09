@@ -44,6 +44,13 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 .ac-camera-panel .camera-action-row>button{flex:1 1 auto;min-width:0}
 .scan-matched{outline:2px solid #16a36f;border-radius:8px;padding:5px}
 .size-range-info{font-size:12px;margin:8px 0 0;color:#214e88}
+.ac-store-chooser{border-color:#eab0d3;background:#fff7fb}
+.ac-store-chooser[hidden]{display:none!important}
+.ac-store-chooser .ac-store-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px}
+.ac-photo-error{display:grid;place-items:center;gap:6px;padding:8px;text-align:center;font-size:12px}
+.ac-photo-error button{font-size:12px}
+@media(max-width:650px){.ac-store-chooser .ac-store-row{grid-template-columns:minmax(0,1fr)}}
+
 #sizes.empty{display:block!important}
 
 .ac-camera-status{font-size:13px;color:#fff;min-height:32px}
@@ -66,6 +73,14 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 <body>
 <header><h1>OPERACIONES ROPA · CAPTURA AC</h1><small>Surtido · Resurtido · Escaneo con cámara</small></header>
 <main class="shell">
+<section class="card ac-store-chooser" id="acStoreChooser" hidden>
+  <strong>Selecciona la tienda para consultar tallas y guardar capturas</strong>
+  <p class="small muted">Las fotos se consultan desde Bonos por ID; las tallas y cantidades corresponden a la tienda seleccionada.</p>
+  <div class="ac-store-row">
+    <div><label for="acStore">Tienda activa</label><select id="acStore"><option value="">Selecciona una tienda del proyecto</option></select></div>
+    <button id="applyAcStore" type="button" class="primary">Usar tienda</button>
+  </div>
+</section>
 <section class="card">
 <div class="grid3 ac-activity-grid">
 <div><label for="flow">Proceso</label><select id="flow"><option>Surtido</option><option>Resurtido</option></select></div>
