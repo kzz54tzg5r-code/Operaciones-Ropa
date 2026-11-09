@@ -269,27 +269,20 @@ const camera=window.ACScanner.create({
 function acceptScannedCode(raw){
  if(pending){camera.statusText("Primero confirma el registro pendiente.");return false}
  const result=window.ACBarcode.parse(raw);
- if(!result.valid){camera.statusText("No reconozco el formato: "+result.raw+". Reintenta la lectura.");return false}
+ if(!result.valid){camera.statusText("No reconozco esta etiqueta. Enfoca de nuevo el código.");return false}
  if(selectedTask&&result.modelId!==selectedTask.model_id){
-   camera.statusText("Esta tarea corresponde al ID "+selectedTask.model_id+". Escanea su etiqueta.");return false
+   camera.statusText("Esta tarea corresponde al ID "+selectedTask.model_id+". Escanea esa etiqueta.");return false
  }
- if(selectedTask&&result.size&&!Object.hasOwn(selectedTask.remaining,result.size)){
-   camera.statusText("La talla "+result.size+" no está pendiente en la tarea actual.");return false
- }
+ const different=$("model").value.trim()!==result.modelId;
+ if(different&&!selectedTask){resetCounts();capacitySizes=[];capacityVersion=null}
  $("model").value=result.modelId;
- manualEntry=false;
- scannedLabelSize=result.size;
- if(scannedLabelSize&&!Object.hasOwn(counts,scannedLabelSize))counts[scannedLabelSize]=0;
- $("scanSize").textContent=result.size
-   ?"Talla detectada: "+result.size+" años · Código de talla "+result.sizeCode+" · ID "+result.modelId
-   :result.needsReview
-    ?"ID "+result.modelId+" · Confirma talla manualmente (clave "+result.sizeCode+")"
-    :"ID "+result.modelId+" · Captura las tallas y cantidades";
+ manualEntry=false;scannedBarcode=result;scannedLabelSize=null;
+ $("scanSize").textContent="Código leído automáticamente: ID "+result.modelId+". Consultando la talla en Capacidades…";
+ show("Etiqueta detectada. Consultando tallas autorizadas del ID "+result.modelId+".","ok");
  renderSizes();
- show("Escaneo correcto: ID "+result.modelId+(result.size?", talla "+result.size:"")+". Verifica las piezas antes de guardar.","ok");
- // No incrementar piezas automáticamente: una lectura identifica el modelo.
- // Sólo confirmar/guardar registra movimientos en la base del servidor.
  findModel();
+ // Se cierra al reconocer CODE128, sin foto ni botón para tomar imagen.
+ // Nunca sumar piezas hasta Confirmar y guardar.
  return true
 }
 $("openCamera").addEventListener("click",()=>{
@@ -307,11 +300,6 @@ $("manualId").addEventListener("click",()=>{
 $("closeCamera").addEventListener("click",()=>camera.stop());
 $("cameraManual").addEventListener("click",()=>{camera.stop();$("model").focus()});
 $("cameraTorch").addEventListener("click",()=>camera.switchTorch());
-$("cameraPhoto").addEventListener("click",()=>$("cameraFile").click());
-$("cameraFile").addEventListener("change",async()=>{
- const file=$("cameraFile").files?.[0];$("cameraFile").value="";
- if(file)await camera.scanFile(file);
-});
 window.addEventListener("pagehide",()=>camera.stop());
 document.addEventListener("visibilitychange",()=>{if(document.hidden)camera.stop()});
 
