@@ -116,6 +116,8 @@ function create({video,overlay,status,torchButton,onCode}){
      }
    }catch(error){
      if(mine!==generation)return;
+     if(stream){for(const t of stream.getTracks())try{t.stop()}catch(e){}stream=null}
+     video.srcObject=null;
      const name=String(error.name||"");
      statusText(/NotAllowed|Permission/.test(name)
        ?"No hay permiso de cámara. Autorízalo en Safari o usa captura manual."
