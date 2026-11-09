@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import shutil
 from pathlib import Path
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse
@@ -35,6 +36,13 @@ def install(web_app):
     dbdir=root/"ac"
     if not str(dbdir).startswith(str(root)+os.sep):
         raise RuntimeError("Directorio AC fuera de la persistencia autorizada")
+    try:
+        if not root.is_dir() or shutil.disk_usage(root).free < 64 * 1024 * 1024:
+            LOG.error("AC no se activó: disco persistente ausente o menos de 64 MiB libres")
+            return False
+    except OSError:
+        LOG.exception("AC no se activó: no se pudo verificar espacio del disco persistente")
+        return False
     try:
         bridge=ACBridge(dbdir)
         bridge.initialize()
