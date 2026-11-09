@@ -36,6 +36,7 @@ def web(tmp):
         ROLE_LABELS={r:r for r in original_roles},
         app=app,
         PROJECT_STORES=("Iztapalapa","Vallejo","Atemajac"),
+        project_store_names=lambda active_only=True:["Iztapalapa","Vallejo","Atemajac"],
         login_key=key,
         require_user=require_user,
         _latest_capacity_frame=lambda:None,
