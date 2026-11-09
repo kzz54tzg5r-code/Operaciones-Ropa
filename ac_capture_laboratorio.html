@@ -104,19 +104,20 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
   </div>
 </div>
 <script src="/static/ac_barcode.js?v=416"></script>
+<script src="/static/ac_scanner.js?v=416"></script>
 <script>
 "use strict";
 (()=>{
 const $=id=>document.getElementById(id);
 const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
-let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[];
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null;
 const counts=Object.fromEntries(order.map(x=>[x,0]));
 const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
 function updateStageOptions(){const select=$("stage");const current=select.value;select.replaceChildren();for(const stage of stageOptions[$("flow").value]){const option=document.createElement("option");option.textContent=stage;select.append(option)}if(stageOptions[$("flow").value].includes(current))select.value=current}
 function show(text,kind=""){const el=$("message");el.textContent=text;el.className="status "+kind}
 function needsTask(){return ["Acondicionar","Ubicar","Pizca"].includes($("stage").value)}
-function knownSizes(){return Array.from(new Set([...order,...Object.keys(selectedTask?.remaining||{})]))}
+function knownSizes(){return Array.from(new Set([...order,...(scannedLabelSize?[scannedLabelSize]:[]),...Object.keys(selectedTask?.remaining||{})]))}
 function controls(){
  const active=!!session;
  const valid=Object.values(counts).some(n=>n>0);
@@ -126,6 +127,7 @@ function controls(){
  $("voice").disabled=!active||busy||!!pending||!("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
  $("complete").disabled=!active||busy||!!pending||!selectedTask;
  $("refreshQueue").disabled=!active||busy;
+ $("openCamera").disabled=busy||!!pending;
  $("clear").disabled=busy||!!pending;
  document.querySelectorAll("[data-ac-claim]").forEach(x=>x.disabled=busy||!!pending);
  $("model").readOnly=!!pending||!!selectedTask;
@@ -226,7 +228,52 @@ async function takeTask(task){
 }
 
 async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
-function clearModel(){lookupEpoch++;selectedTask=null;for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;$("scanSize").textContent="";for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+
+const camera=window.ACScanner.create({
+ video:$("cameraVideo"),overlay:$("cameraOverlay"),status:$("cameraStatus"),
+ torchButton:$("cameraTorch"),onCode:acceptScannedCode
+});
+function acceptScannedCode(raw){
+ if(pending){camera.statusText("Primero confirma el registro pendiente.");return false}
+ const result=window.ACBarcode.parse(raw);
+ if(!result.valid){camera.statusText("No reconozco el formato: "+result.raw+". Reintenta la lectura.");return false}
+ if(selectedTask&&result.modelId!==selectedTask.model_id){
+   camera.statusText("Esta tarea corresponde al ID "+selectedTask.model_id+". Escanea su etiqueta.");return false
+ }
+ if(selectedTask&&result.size&&!Object.hasOwn(selectedTask.remaining,result.size)){
+   camera.statusText("La talla "+result.size+" no está pendiente en la tarea actual.");return false
+ }
+ $("model").value=result.modelId;
+ scannedLabelSize=result.size;
+ if(scannedLabelSize&&!Object.hasOwn(counts,scannedLabelSize))counts[scannedLabelSize]=0;
+ $("scanSize").textContent=result.size
+   ?"Talla detectada: "+result.size+" años · Código de talla "+result.sizeCode+" · ID "+result.modelId
+   :result.needsReview
+    ?"ID "+result.modelId+" · Confirma talla manualmente (clave "+result.sizeCode+")"
+    :"ID "+result.modelId+" · Captura las tallas y cantidades";
+ renderSizes();
+ show("Escaneo correcto: ID "+result.modelId+(result.size?", talla "+result.size:"")+". Verifica las piezas antes de guardar.","ok");
+ // No incrementar piezas automáticamente: una lectura identifica el modelo.
+ // Sólo confirmar/guardar registra movimientos en la base del servidor.
+ findModel();
+ return true
+}
+$("openCamera").addEventListener("click",()=>{
+ if(pending){show("Confirma primero la captura pendiente.","warn");return}
+ $("model").blur();camera.open();
+});
+$("closeCamera").addEventListener("click",()=>camera.stop());
+$("cameraManual").addEventListener("click",()=>{camera.stop();$("model").focus()});
+$("cameraTorch").addEventListener("click",()=>camera.switchTorch());
+$("cameraPhoto").addEventListener("click",()=>$("cameraFile").click());
+$("cameraFile").addEventListener("change",async()=>{
+ const file=$("cameraFile").files?.[0];$("cameraFile").value="";
+ if(file)await camera.scanFile(file);
+});
+window.addEventListener("pagehide",()=>camera.stop());
+document.addEventListener("visibilitychange",()=>{if(document.hidden)camera.stop()});
+
 async function getJson(path){const response=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const value=await response.json().catch(()=>({}));if(!response.ok)throw Error(value.detail||"HTTP "+response.status);return value}
 async function findModel(){
  const model=$("model").value.trim();const token=++lookupEpoch;
@@ -295,7 +342,7 @@ function parseVoice(value){
 }
 $("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");await loadFloorLocations();await refreshTasks();$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
 $("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";selectedTask=null;taskRows=[];started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
-$("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
+$("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}scannedLabelSize=null;$("scanSize").textContent="";$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
 $("model").addEventListener("change",findModel);
 $("model").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findModel()}});
 $("clear").addEventListener("click",()=>{for(const size of order)counts[size]=0;pending=null;renderSizes()});
