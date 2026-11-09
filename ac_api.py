@@ -37,6 +37,21 @@ class CaptureSizes(BaseModel):
     task_id: str | None = None
     target_location_id: str | None = None
 
+class NewStockLocation(BaseModel):
+    kind: str
+    aisle: str = ""
+    face: str = ""
+    section: str = ""
+    level: str = ""
+    pallet: str = ""
+
+class InitialStockCount(BaseModel):
+    event_key: str = Field(min_length=8,max_length=128)
+    location_id: str = Field(min_length=1,max_length=120)
+    model_id: str = Field(min_length=1,max_length=120)
+    size: str = Field(min_length=1,max_length=30)
+    pieces: int = Field(ge=0,le=1000000)
+
 class ApproveOrder(BaseModel):
     event_key: str = Field(min_length=8, max_length=128)
     model_id: str = Field(min_length=1, max_length=120)
@@ -137,6 +152,47 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
                 "ORDER BY started_at DESC LIMIT 1", (store,employee_id)
             ).fetchone()
         return {"session":dict(row) if row else None}
+
+    @router.get("/stock")
+    def stock_view(request: Request, model_id: str):
+        _, store, _, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403,"Tienda no seleccionada")
+        return {"stock":bridge.stock_setup.stock(store=store,model_id=model_id)}
+
+    @router.get("/stock/locations")
+    def stock_locations(request: Request, kind: str=""):
+        _, store, _, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403,"Tienda no seleccionada")
+        if kind and kind not in {"Piso","Rack","Septimos","Tarima"}:
+            raise HTTPException(400,"Ubicación inválida")
+        return {"locations":bridge.stock_setup.locations(store=store,kind=kind)}
+
+    @router.post("/stock/locations", status_code=201)
+    def new_stock_location(payload: NewStockLocation,request: Request):
+        _, store, _, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403,"Tienda no seleccionada")
+        try:
+            loc=bridge.stock_setup.add_location(store=store,kind=payload.kind,
+                aisle=payload.aisle,face=payload.face,section=payload.section,
+                level=payload.level,pallet=payload.pallet)
+            return {"id":loc,"ok":True}
+        except Exception as exc:fail(exc)
+
+    @router.post("/stock/initial-count", status_code=201)
+    def initial_physical_count(payload: InitialStockCount,request: Request):
+        role, store, employee_id, _ = actor_from(request, ORDER_ROLES)
+        if not store:
+            raise HTTPException(403,"Tienda no seleccionada")
+        try:
+            code=bridge.stock_setup.initial_count(event_key=payload.event_key,
+                store=store,location_id=payload.location_id,
+                model_id=payload.model_id,size=payload.size,pieces=payload.pieces,
+                verified_by=employee_id)
+            return {"id":code,"ok":True}
+        except Exception as exc:fail(exc)
 
     @router.get("/orders/preview")
     def preview_order(request: Request, model_id: str, area: str,
