@@ -30,7 +30,18 @@
 .field input,.field select{width:100%;padding:12px;border:1px solid #ccd6e2;border-radius:10px;color:var(--text);background:#fff}.primary{border:0;background:var(--blue);color:#fff;font-weight:900;border-radius:10px;padding:11px 14px;cursor:pointer}.full{width:100%}.msg{font-size:11px;color:var(--red);margin-top:8px;white-space:pre-wrap}
 .shell{display:grid;grid-template-columns:218px minmax(0,1fr);min-height:100vh}.side{background:#fff;border-right:1px solid var(--line);padding:15px 10px;display:flex;flex-direction:column;gap:5px;position:sticky;top:0;height:100vh}
 .sidebrand{display:flex;align-items:center;gap:9px;padding:5px 7px 15px}.sidebrand .mark{width:39px;height:39px;border-radius:11px}.sidebrand .mark:after{font-size:19px}.sidebrand b{font-size:14px}.sidebrand small{display:block;color:var(--muted);font-size:8px}
-.group{font-size:8px;text-transform:uppercase;color:#98a2b3;font-weight:950;padding:11px 10px 3px;letter-spacing:.7px}.nav{border:0;background:transparent;text-align:left;padding:10px;border-radius:9px;color:#344054;font-size:10px;font-weight:850;cursor:pointer}.nav:hover{background:#f1f5fb}.nav.active{background:var(--blue);color:#fff}.nav small{display:block;font-size:7.5px;opacity:.72;margin-top:2px}.profile{margin-top:auto;border-top:1px solid var(--line);padding:10px 8px 2px}.profile b{font-size:10px}.profile small{display:block;color:var(--muted);font-size:8px}.logout{margin-top:7px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 9px;font-size:9px;cursor:pointer}
+.group{font-size:8px;text-transform:uppercase;color:#98a2b3;font-weight:950;padding:11px 10px 3px;letter-spacing:.7px}.nav{border:0;background:transparent;text-align:left;padding:10px;border-radius:9px;color:#344054;font-size:10px;font-weight:850;cursor:pointer}.nav:hover{background:#f1f5fb}.nav.active{background:var(--blue);color:#fff}.nav small{display:block;font-size:7.5px;opacity:.72;margin-top:2px}
+.ac-sidebar-entry{display:block;text-decoration:none;text-align:left;padding:11px 10px;border-radius:9px;background:#fff1f8;border:1px solid #f2bedc;color:#8c0755;font-size:11px;font-weight:900;line-height:1.3}
+.ac-sidebar-entry:hover,.ac-sidebar-entry:focus-visible{background:#fce1f0;outline:2px solid #ec007c;outline-offset:1px}
+.ac-sidebar-entry small{display:block;font-size:8px;font-weight:700;color:#744461;margin-top:3px}
+.ac-hero-entry{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 11px;background:#ec007c;border-radius:8px;color:white;text-decoration:none;font-size:11px;font-weight:850}
+.ac-hero-entry:hover,.ac-hero-entry:focus-visible{background:#cc006f;outline:2px solid white;outline-offset:2px}
+.ac-mobile-entry{text-decoration:none;color:#8b1453;font-weight:900;background:#fff0f7;border-radius:9px}
+.ac-mobile-entry:focus-visible{outline:2px solid #ec007c;outline-offset:-2px}
+.shell.sidebar-collapsed .ac-sidebar-entry{font-size:0;text-align:center;padding:10px 0}
+.shell.sidebar-collapsed .ac-sidebar-entry .ac-icon{font-size:21px;display:block}
+.shell.sidebar-collapsed .ac-sidebar-entry small{display:none!important}
+@media(max-width:900px){.ac-hero-entry{font-size:10px;padding:7px 9px}.ac-mobile-entry{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;gap:1px;min-height:48px;font-size:7.5px}.ac-mobile-entry .mnav-icon{font-size:17px}}.profile{margin-top:auto;border-top:1px solid var(--line);padding:10px 8px 2px}.profile b{font-size:10px}.profile small{display:block;color:var(--muted);font-size:8px}.logout{margin-top:7px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 9px;font-size:9px;cursor:pointer}
 .main{padding:13px 17px 82px;min-width:0}.hero{background:linear-gradient(135deg,#10366b,#194a87);color:#fff;border-radius:17px;padding:17px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;box-shadow:0 8px 24px #0b2d5c1c}.hero h1{margin:0;font-size:23px}.hero p{margin:5px 0 0;color:#cbdaf1;font-size:10px}.badge{background:#ffffff18;border:1px solid #ffffff26;border-radius:9px;padding:7px 9px;font-size:8px;font-weight:900}
 .filters{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px;margin:9px 0;display:flex;gap:7px;align-items:end;flex-wrap:wrap}.filter label{display:block;font-size:7.5px;color:var(--muted);font-weight:900;margin-bottom:4px;text-transform:uppercase}.filter select,.filter input{min-height:35px;border:1px solid #d3dce7;border-radius:8px;background:#fff;color:var(--text);padding:6px 25px 6px 8px;font-size:10px}
 .page{display:none}.page.active{display:block}.title{font-size:15px;font-weight:950;margin:13px 0 8px}.subtitle{font-size:9px;color:var(--muted);margin:-5px 0 10px}
@@ -376,10 +387,11 @@ body{max-width:100%;overflow-x:hidden}
 <div id="appView" class="hidden"><div class="shell"><aside class="side" id="sidebar"><button id="sidebarToggle" class="sidebar-toggle" title="Contraer / expandir menú">☰</button><div class="sidebrand"><img src="/static/price_shoes_white.svg?v=403" alt="Price Shoes" width="211" height="121" style="width:88px;height:auto;object-fit:contain"><div class="sidebrand-text"><b>Operaciones Ropa</b><small>Producto Ropa</small></div></div><div class="group">Menú principal</div>
 <button class="nav active" data-main="operativo">Cambios y Muertos<small>Recuperación, recolección y conversión</small></button>
 <button class="nav" data-main="analysis">Análisis Comercial<small>Venta, sugerido y utilidad</small></button>
+<a id="acSidebarLink" class="ac-sidebar-entry ac-entry hidden" href="/ac" title="Abrir Operaciones AC"><span class="ac-icon">📦</span> Operaciones AC<small>Surtido · Resurtido · Ubicado · Pedidos</small></a>
 <button class="nav adminOnly" data-main="users">Usuarios<small>Administración de accesos</small></button>
 <button class="nav adminOnly" data-main="share">Compartir sistema<small>Liga para móvil y usuarios</small></button>
 <div class="profile"><b id="profileName">Usuario</b><small id="profileRole"></small><div id="viewRoleBox" class="hidden" style="margin-top:6px"><small>Ver sistema como</small><select id="viewRoleSelect" style="width:100%;font-size:9px;padding:5px"><option value="superadmin">Super Administrador</option><option value="admin">Administrador</option><option value="director">Director</option><option value="tienda">Tienda</option><option value="colaborador_lenceria">Demo · Colaborador de Lencería</option><option value="colaborador_operativo">Demo · Colaborador Operativo · Productividad</option></select><div id="viewRoleStoreWrap" class="hidden" style="margin-top:5px"><small>Tienda demo</small><select id="viewRoleStore" style="width:100%;font-size:9px;padding:5px"></select></div></div><small id="profileMeta">V40 · fuentes sin cargar</small><button class="logout" id="logout">Cerrar sesión</button></div></aside>
-<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div><div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_white.svg?v=403" alt="Price Shoes" width="211" height="121"></div></div><div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
+<main class="main"><div class="hero"><div><h1 id="heroTitle">Cambios</h1><p id="heroSub">Recuperación de mercancía</p><a id="acHeroLink" class="ac-hero-entry ac-entry hidden" href="/ac">📦 Abrir Operaciones AC</a></div><div class="hero-greeting"><b id="heroGreeting">Buen día</b><span id="heroDate"></span></div><div class="or-report-brand" aria-label="Price Shoes"><img src="/static/price_shoes_white.svg?v=403" alt="Price Shoes" width="211" height="121"></div></div><div id="operativoNav" class="op-tabs" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px;margin:0 0 9px;display:flex;gap:5px;overflow-x:auto;white-space:nowrap">
   <button class="switch active" data-opview="Centro Ejecutivo" data-tab-key="operations.center">Centro Operativo</button>
   <button class="switch hidden" hidden aria-hidden="true" data-opview="Operación Diaria" data-tab-key="operations.day">Día</button>
   <button class="switch hidden" hidden aria-hidden="true" data-opview="Reporte Semanal" data-tab-key="operations.week">Semanal</button>
@@ -702,9 +714,10 @@ body{max-width:100%;overflow-x:hidden}
     <div class="msg" id="systemMsg"></div>
   </div>
 </section>
-</main></div><nav class="mobile" id="mobileMainNav" style="grid-template-columns:repeat(4,1fr)">
+</main></div><nav class="mobile" id="mobileMainNav" style="grid-template-columns:repeat(5,minmax(0,1fr))">
 <button class="mnav active" data-main="operativo"><span class="mnav-icon">↻</span><span>Cambios</span></button>
 <button class="mnav" data-main="analysis"><span class="mnav-icon">▦</span><span>Comercial</span></button>
+<a id="acMobileLink" class="mnav ac-mobile-entry ac-entry hidden" href="/ac" aria-label="Abrir Operaciones AC"><span class="mnav-icon">📦</span><span>Operaciones AC</span></a>
 <button class="mnav adminOnly" data-main="users"><span class="mnav-icon">♙</span><span>Usuarios</span></button>
 <button class="mnav adminOnly" data-main="share"><span class="mnav-icon">↗</span><span>Compartir</span></button>
 </nav></div>
@@ -729,7 +742,7 @@ const rememberAnalysisStore=value=>{
   try{localStorage.setItem(ANALYSIS_STORE_KEY,store)}catch(_){}
   return store;
 };
-const roleLabel={superadmin:'Super Administrador · Propietario',admin:'Administrador',director:'Director / Consulta',tienda:'Tienda',colaborador_lenceria:'Colaborador de Lencería',colaborador_operativo:'Colaborador Operativo · Productividad'};
+const roleLabel={superadmin:'Super Administrador · Propietario',admin:'Administrador',director:'Director / Consulta',tienda:'Tienda',colaborador_lenceria:'Colaborador de Lencería',colaborador_operativo:'Colaborador Operativo · Productividad',supervisor:'Supervisor · Operaciones AC',gerente:'Gerente · Operaciones AC'};
 function state(ddi){return ddi>=121?['Exceso','bad']:ddi>=91?['Atención','warn']:['Óptimo','ok']}
 const ropaApiInflight=new Map();
 async function api(url,opt={}){
