@@ -17,7 +17,7 @@
     const cleaned=original.toUpperCase().replace(/\s+/g,"");
     const single=cleaned.match(/^(\d{7})$/);
     if(single)return {valid:true,raw:original,modelId:single[1],size:null,sizeCode:null,needsReview:false};
-    const labeled=cleaned.match(/^(?:OI\d{2})?(\d{7})(\d{2})(?:\$|S)?$/);
+    const labeled=cleaned.match(/^(?:(?:O[I1]\d{2})|0)?(\d{7})(\d{2})(?:\$|S)?$/);
     if(!labeled)return {valid:false,raw:original,reason:"Formato de etiqueta desconocido; verifica el ID impreso"};
     const size=ageSizes[labeled[2]]||null;
     return {valid:true,raw:original,modelId:labeled[1],sizeCode:labeled[2],
