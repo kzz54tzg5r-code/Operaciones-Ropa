@@ -2,7 +2,7 @@
 <html lang="es-MX">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Operaciones Ropa · Captura AC (laboratorio)</title>
+<title>Operaciones Ropa · Captura AC</title>
 <style>
 :root{font-family:Arial,sans-serif;color:#17253e;background:#f5f7fd;font-size:15px}
 *{box-sizing:border-box}body{margin:0}header{background:#173b73;color:white;padding:14px 18px}
@@ -24,7 +24,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 /* Captura AC: iPhone en vertical, sin desplazamiento horizontal */
 .shell,.card,.grid,.grid3,.grid>*{min-width:0}
 .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.model-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}
+.model-entry{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px}
 .model-entry input{min-width:0;font-size:16px}
 .scan-open{white-space:nowrap;background:#eff5ff}
 .scan-size{font-size:12px;color:#1a5d8d;display:block;margin-top:5px;font-weight:700}
@@ -42,22 +42,28 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
   .capture-model-grid{grid-template-columns:minmax(0,1fr)!important}
   .capture-info-grid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)!important}
   .model-entry{grid-template-columns:minmax(0,1fr) auto}
-  .scan-open{padding:7px 9px!important}
+  .scan-open{padding:7px 8px!important;font-size:13px!important}
+  .ac-activity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ac-activity-grid>div:nth-child(3){grid-column:1/-1}
+  .ac-activity-controls{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ac-activity-controls>.status{grid-column:1/-1}
+  .model-entry button{min-width:0;white-space:nowrap}
+  .manual-id{padding:7px!important}
   .card{overflow-wrap:break-word}
   .camera-action-row{display:flex;flex-wrap:wrap}
 }
 </style>
 </head>
 <body>
-<header><h1>OPERACIONES ROPA · PROPUESTA AC</h1><small>Laboratorio · Captura operativa · No conectar a producción</small></header>
+<header><h1>OPERACIONES ROPA · CAPTURA AC</h1><small>Surtido · Resurtido · Escaneo con cámara</small></header>
 <main class="shell">
 <section class="card">
-<div class="grid3">
+<div class="grid3 ac-activity-grid">
 <div><label for="flow">Proceso</label><select id="flow"><option>Surtido</option><option>Resurtido</option></select></div>
 <div><label for="stage">Actividad</label><select id="stage"><option>Separar</option><option>Acondicionar</option><option>Ubicar</option><option>Pizca</option><option>Excedentes</option></select></div>
 <div><label for="area">Clasificación</label><select id="area"><option>Colgado</option><option>Doblado</option><option>Jeans</option><option>Lencería</option></select></div>
 </div>
-<div class="row" style="margin-top:9px">
+<div class="row ac-activity-controls" style="margin-top:9px">
 <button id="start" class="primary" type="button">▶ Inicio</button><button id="finish" type="button" disabled>■ Fin</button>
 <div class="status small">Duración: <span id="clock" class="ticker">00:00:00</span></div>
 </div>
@@ -75,7 +81,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 </section>
 <section class="card">
 <div class="grid capture-model-grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
-<div><label for="model">ID del modelo</label><div class="model-entry"><input id="model" inputmode="numeric" autocomplete="off" placeholder="ID de la etiqueta"><button id="openCamera" class="scan-open" type="button" aria-label="Abrir cámara para escanear código de barras">📷 Escanear</button></div><span id="scanSize" class="scan-size" aria-live="polite"></span></div>
+<div><label for="model">ID del modelo</label><div class="model-entry"><input id="model" inputmode="numeric" autocomplete="off" placeholder="ID de la etiqueta"><button id="openCamera" class="scan-open" type="button" aria-label="Abrir cámara para escanear código de barras">📷 Escanear</button><button id="manualId" class="manual-id" type="button" aria-label="Escribir ID manualmente">⌨️</button></div><span id="scanSize" class="scan-size" aria-live="polite"></span></div>
 <div><label for="color">Color</label><input id="color" autocomplete="off" placeholder="Opcional"></div>
 </div>
 <div class="grid capture-info-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);margin-top:8px">
@@ -91,7 +97,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 <div class="row"><button type="button" id="clear">Limpiar tallas</button><button type="button" class="primary" id="save" disabled>Confirmar y guardar</button></div>
 <div id="message" role="status" aria-live="polite" class="status" style="margin-top:10px">Inicia la actividad para comenzar.</div>
 </section>
-<section class="card small muted">Esta interfaz es un prototipo aislado. El envío usa /api/ac con la identidad del usuario autenticado en el servidor; no se almacenan cantidades en el navegador como si fueran confirmadas. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. El resurtido Pizca sigue bloqueado hasta integrar pedidos autorizados.</section>
+<section class="card small muted">La cámara lee las etiquetas en el dispositivo. Los movimientos sólo se registran al presionar Confirmar y guardar, con la identidad del usuario autenticado. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. El resurtido Pizca sigue bloqueado hasta integrar pedidos autorizados.</section>
 </main>
 <div id="cameraOverlay" class="ac-camera-overlay" role="dialog" aria-modal="true" aria-label="Escáner de código de barras" hidden>
   <div class="ac-camera-panel">
@@ -111,7 +117,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 const $=id=>document.getElementById(id);
 const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
-let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null;
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,manualEntry=false;
 const counts=Object.fromEntries(order.map(x=>[x,0]));
 const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
 function updateStageOptions(){const select=$("stage");const current=select.value;select.replaceChildren();for(const stage of stageOptions[$("flow").value]){const option=document.createElement("option");option.textContent=stage;select.append(option)}if(stageOptions[$("flow").value].includes(current))select.value=current}
@@ -128,9 +134,10 @@ function controls(){
  $("complete").disabled=!active||busy||!!pending||!selectedTask;
  $("refreshQueue").disabled=!active||busy;
  $("openCamera").disabled=busy||!!pending;
+ $("manualId").disabled=busy||!!pending||!!selectedTask;
  $("clear").disabled=busy||!!pending;
  document.querySelectorAll("[data-ac-claim]").forEach(x=>x.disabled=busy||!!pending);
- $("model").readOnly=!!pending||!!selectedTask;
+ $("model").readOnly=!!pending||!!selectedTask||(window.matchMedia("(max-width:650px)").matches&&!manualEntry);
  $("color").readOnly=!!pending||!!selectedTask;
  document.querySelectorAll(".qty").forEach(x=>x.disabled=!!pending);
  ["flow","stage","area"].forEach(id=>$(id).disabled=active||busy);
@@ -228,7 +235,7 @@ async function takeTask(task){
 }
 
 async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
-function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;$("scanSize").textContent="";for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;manualEntry=false;$("scanSize").textContent="";for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
 
 const camera=window.ACScanner.create({
  video:$("cameraVideo"),overlay:$("cameraOverlay"),status:$("cameraStatus"),
@@ -245,6 +252,7 @@ function acceptScannedCode(raw){
    camera.statusText("La talla "+result.size+" no está pendiente en la tarea actual.");return false
  }
  $("model").value=result.modelId;
+ manualEntry=false;
  scannedLabelSize=result.size;
  if(scannedLabelSize&&!Object.hasOwn(counts,scannedLabelSize))counts[scannedLabelSize]=0;
  $("scanSize").textContent=result.size
@@ -262,6 +270,14 @@ function acceptScannedCode(raw){
 $("openCamera").addEventListener("click",()=>{
  if(pending){show("Confirma primero la captura pendiente.","warn");return}
  $("model").blur();camera.open();
+});
+$("model").addEventListener("click",()=>{
+ if(window.matchMedia("(max-width:650px)").matches&&!manualEntry&&!pending){
+   $("model").blur();camera.open();
+ }
+});
+$("manualId").addEventListener("click",()=>{
+ manualEntry=true;controls();$("model").focus();
 });
 $("closeCamera").addEventListener("click",()=>camera.stop());
 $("cameraManual").addEventListener("click",()=>{camera.stop();$("model").focus()});
