@@ -112,3 +112,18 @@ def test_conteo_manual_verificado_una_vez_y_auditado(monkeypatch):
             assert len(stock)==1 and stock[0]["pieces"]==7
             assert client.post("/api/ac/stock/locations",headers={"x-role":"colaborador_operativo","x-store":"Iztapalapa"},
                 json={"kind":"Piso","aisle":"04"}).status_code==403
+
+def test_low_disk_fails_closed_without_changing_roles(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        import ac_production
+        monkeypatch.setenv("OPERACIONES_ROPA_AC_ENABLED","1")
+        monkeypatch.setattr(ac_production.shutil,"disk_usage",
+                            lambda path:SimpleNamespace(free=0))
+        m=web(tmp)
+        before=m.ROLES
+        assert install(m) is False
+        assert m.ROLES==before
+        assert "gerente" not in m.ROLE_LABELS
+        with TestClient(m.app) as client:
+            assert client.get("/legacy").status_code==200
+            assert client.get("/ac").status_code==404
