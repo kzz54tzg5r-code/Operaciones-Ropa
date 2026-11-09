@@ -1,4 +1,4 @@
-const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v417';
+const CACHE_NAME = 'operaciones-ropa-runtime-safe-update-v418';
 const STATIC_ASSETS = [
   '/static/ac_barcode.js?v=417',
   '/static/ac_scanner.js?v=417',

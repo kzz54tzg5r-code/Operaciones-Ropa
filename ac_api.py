@@ -110,9 +110,12 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
 
     @router.get("/model")
     def model_info(request: Request, model_id: str):
-        _, store, _, _ = actor_from(request, VIEW_ROLES)
+        role, store, _, _ = actor_from(request, VIEW_ROLES)
         model_id = model_id.strip()
-        if not store:
+        # La fotografía de Bonos V314 se protege por la sesión, NO depende
+        # de una tienda. Un administrador puede consultar la foto antes de
+        # elegir tienda; los metadatos e inventario sí conservan el filtro.
+        if not store and role not in {"admin","superadmin","director"}:
             raise HTTPException(403, "Tienda no asignada")
         if not model_id or len(model_id)>120:
             raise HTTPException(400, "ID inválido")
@@ -127,18 +130,24 @@ def create_ac_router(bridge: ACBridge, require_actor, catalog_lookup=None):
             return {"model_id":model_id, "name":None, "color":None,
                     "location":None, "photo_url":photo,
                     "photo_status":"bonus_lookup_pending" if photo else "invalid_photo_id"}
-        # Este proveedor opcional sólo aporta metadatos por tienda.
-        # No puede proporcionar un origen externo arbitrario de imágenes.
-        result = catalog_lookup(store, model_id)
-        if result is None:
-            return {"model_id":model_id, "name":None, "color":None,
-                    "location":None, "photo_url":photo,
-                    "photo_status":"bonus_lookup_pending" if photo else "not_found"}
+        # El catálogo es complementario. Una tienda sin seleccionar o un
+        # error de metadatos nunca deben impedir consultar la foto ya
+        # disponible desde Bonos con el mismo inicio de sesión.
+        result = None
+        if store:
+            try:
+                result = catalog_lookup(store, model_id)
+            except Exception:
+                import logging
+                logging.getLogger("operaciones_ropa.ac").exception(
+                    "Fallo de metadatos comerciales AC para modelo %s", model_id
+                )
         if not isinstance(result, dict):
-            raise HTTPException(500, "Catálogo inválido")
+            result = {}
         return {"model_id":model_id, "name":result.get("name"),
                 "color":result.get("color"), "location":result.get("location"),
-                "photo_url":photo, "photo_status":"bonus_lookup_pending" if photo else "invalid_photo_id"}
+                "photo_url":photo,
+                "photo_status":"bonus_lookup_pending" if photo else "invalid_photo_id"}
 
     @router.get("/session/active")
     def active_session(request: Request):
