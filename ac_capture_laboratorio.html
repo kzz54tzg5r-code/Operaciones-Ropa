@@ -32,11 +32,20 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 .ac-camera-overlay{position:fixed;inset:0;z-index:9999;background:#081225f5;display:flex;justify-content:center;align-items:center;padding:env(safe-area-inset-top) 9px env(safe-area-inset-bottom);color:white}
 .ac-camera-panel{width:min(100%,600px);display:flex;flex-direction:column;gap:11px;max-height:100dvh;padding:10px;background:#152844;border-radius:12px}
 .ac-camera-panel h2{font-size:17px;margin:0}
-.ac-camera-view{position:relative;overflow:hidden;background:#000;border-radius:12px;min-height:225px;max-height:64dvh}
-.ac-camera-view video{display:block;width:100%;max-height:64dvh;min-height:225px;object-fit:cover}
+.ac-camera-view{position:relative;overflow:hidden;background:#000;border-radius:12px;height:min(52dvh,490px);min-height:250px;flex:0 0 auto}
+.ac-camera-view video{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .ac-camera-target{pointer-events:none;position:absolute;left:12%;right:12%;top:30%;height:34%;border:3px solid #6affdc;border-radius:8px;box-shadow:0 0 0 100vmax #0004}
 .ac-camera-panel button{background:#fff;color:#173b73;border-color:#e0e7f0}
 .ac-camera-panel .row{flex:0 0 auto}
+.ac-camera-panel .row>h2{flex:1 1 180px}
+.ac-camera-panel .row>button{flex:0 0 auto}
+.ac-camera-panel{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);overflow-y:auto}
+.ac-camera-panel .camera-action-row{justify-content:center}
+.ac-camera-panel .camera-action-row>button{flex:1 1 auto;min-width:0}
+.scan-matched{outline:2px solid #16a36f;border-radius:8px;padding:5px}
+.size-range-info{font-size:12px;margin:8px 0 0;color:#214e88}
+#sizes.empty{display:block!important}
+
 .ac-camera-status{font-size:13px;color:#fff;min-height:32px}
 @media(max-width:650px){
   .capture-model-grid{grid-template-columns:minmax(0,1fr)!important}
@@ -92,25 +101,25 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 </section>
 <section class="card">
 <div class="row"><strong>Tallas y piezas</strong><span class="muted small">Dictar: «extra chica cinco, mediana siete, grande seis»</span></div>
-<div class="grid3" id="sizes" style="margin-top:10px"></div>
+<div id="sizeRange" class="size-range-info" aria-live="polite">Escanea un ID para consultar sus tallas en Capacidades por Talla.</div>
+<div class="grid3 empty" id="sizes" style="margin-top:10px"></div>
 <p class="small muted" id="speechHint">El micrófono se habilita con una sesión iniciada y un navegador compatible; hay captura manual de respaldo.</p>
 <div class="row"><button type="button" id="clear">Limpiar tallas</button><button type="button" class="primary" id="save" disabled>Confirmar y guardar</button></div>
 <div id="message" role="status" aria-live="polite" class="status" style="margin-top:10px">Inicia la actividad para comenzar.</div>
 </section>
-<section class="card small muted">La cámara lee las etiquetas en el dispositivo. Los movimientos sólo se registran al presionar Confirmar y guardar, con la identidad del usuario autenticado. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. El resurtido Pizca sigue bloqueado hasta integrar pedidos autorizados.</section>
+<section class="card small muted">La cámara lee las etiquetas en el dispositivo. Los movimientos sólo se registran al presionar Confirmar y guardar, con la identidad del usuario autenticado. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. Pizca sólo acepta pedidos de resurtido autorizados.</section>
 </main>
 <div id="cameraOverlay" class="ac-camera-overlay" role="dialog" aria-modal="true" aria-label="Escáner de código de barras" hidden>
   <div class="ac-camera-panel">
     <div class="row"><h2>📷 Escanear etiqueta Price Shoes</h2><button id="closeCamera" type="button">✕ Cerrar</button></div>
     <div class="ac-camera-view"><video id="cameraVideo" autoplay muted playsinline webkit-playsinline></video><div class="ac-camera-target"></div></div>
-    <div id="cameraStatus" role="status" aria-live="polite" class="ac-camera-status">Acerca el código de barras al recuadro. Puedes girar la etiqueta.</div>
-    <div class="row camera-action-row"><button type="button" id="cameraTorch" hidden>🔦 Linterna</button><button type="button" id="cameraPhoto">📸 Tomar foto</button><button type="button" id="cameraManual">Introducir ID manualmente</button></div>
-    <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden>
-    <small>El video se analiza en tu dispositivo; no se envían imágenes al servidor.</small>
+    <div id="cameraStatus" role="status" aria-live="polite" class="ac-camera-status">Lectura automática activa. Coloca el código en horizontal y las barras verticales dentro del recuadro.</div>
+    <div class="row camera-action-row"><button type="button" id="cameraTorch" hidden>🔦 Linterna</button><button type="button" id="cameraManual">⌨️ Escribir ID</button></div>
+    <small>El escaneo es continuo: no necesitas tomar una foto ni presionar otro botón. Las imágenes de cámara no se envían al servidor.</small>
   </div>
 </div>
-<script src="/static/ac_barcode.js?v=416"></script>
-<script src="/static/ac_scanner.js?v=416"></script>
+<script src="/static/ac_barcode.js?v=417"></script>
+<script src="/static/ac_scanner.js?v=417"></script>
 <script>
 "use strict";
 (()=>{
