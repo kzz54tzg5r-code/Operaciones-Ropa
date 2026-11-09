@@ -501,4 +501,9 @@ _install_v405_access(web_app)
 # Diagnósticos V386-V388 y reparación automática V387 desactivados tras
 # publicar octubre: conservar sólo el lector V389 y reparación manual V368.
 
+# Propuesta AC: aislamiento de SQLite y rutas propias. Se activa únicamente
+# cuando Render define OPERACIONES_ROPA_AC_ENABLED=1.
+from ac_production import install as _install_operaciones_ac
+_install_operaciones_ac(web_app)
+
 app = web_app.app
