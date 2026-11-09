@@ -43,9 +43,18 @@ def install(web_app):
         # No registrar rutas con una base incompleta.
         return False
 
-    valid_store_keys={
-        web_app.login_key(s):s for s in web_app.PROJECT_STORES
-    }
+    def authorized_stores():
+        # Sólo tiendas activas y marcadas como Proyecto en el sistema actual.
+        # Se consulta dinámicamente: un cambio de alcance se aplica también
+        # a sesiones AC existentes, sin reiniciar el módulo.
+        selected=web_app.project_store_names(True)
+        approved={web_app.login_key(s) for s in web_app.PROJECT_STORES}
+        return {
+            web_app.login_key(s):s
+            for s in selected
+            if web_app.login_key(s) in approved
+        }
+
     def store_from_user(request: Request,user: dict):
         role=str(user.get("role") or "")
         real=str(user.get("real_role") or role)
@@ -53,7 +62,7 @@ def install(web_app):
             requested=str(request.session.get("ac_store") or user.get("store") or "")
         else:
             requested=str(user.get("store") or "")
-        return valid_store_keys.get(web_app.login_key(requested),"") if requested else ""
+        return authorized_stores().get(web_app.login_key(requested),"") if requested else ""
 
     def actor(request: Request):
         user=web_app.require_user(request)
@@ -124,7 +133,7 @@ def install(web_app):
     def ac_stores(request: Request):
         u=require_ac_user(request,{"superadmin","admin","supervisor","gerente"})
         if u["role"] in {"superadmin","admin"}:
-            return {"stores":list(valid_store_keys.values()),"selected":u["store"]}
+            return {"stores":list(authorized_stores().values()),"selected":u["store"]}
         return {"stores":[u["store"]],"selected":u["store"]}
 
     @web_app.app.post("/api/ac/select-store")
@@ -132,7 +141,7 @@ def install(web_app):
         check_same_site(request)
         user=web_app.require_user(request,("superadmin","admin"))
         body=await request.json()
-        store=valid_store_keys.get(web_app.login_key(body.get("store")),"")
+        store=authorized_stores().get(web_app.login_key(body.get("store")),"")
         if not store:
             raise HTTPException(400,"La tienda no existe dentro del proyecto")
         request.session["ac_store"]=store
