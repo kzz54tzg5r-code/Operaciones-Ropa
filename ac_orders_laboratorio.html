@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operaciones Ropa · Pedidos AC · Laboratorio</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#142a48;background:#f4f6fc;font-size:15px}
+*{box-sizing:border-box}body{margin:0}header{background:#173b73;color:#fff;padding:14px 16px}
+h1{font-size:20px;margin:0}main{max-width:1040px;margin:0 auto;padding:12px;display:grid;gap:10px}
+.card{border:1px solid #d6dfed;background:white;border-radius:12px;padding:14px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+label{font-weight:700;font-size:12px;display:block;margin-bottom:5px}
+input,select,button{font:inherit;min-height:40px;border-radius:8px}
+input,select{border:1px solid #bac6d9;background:white;color:#173b73;padding:7px;width:100%}
+button{border:1px solid #2866d0;color:#2866d0;background:#fff;padding:8px 12px;font-weight:700;cursor:pointer}
+button.primary{background:#2866d0;color:#fff}button:disabled{opacity:.55;cursor:not-allowed}
+.muted{color:#687a92}.small{font-size:12px}.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.row>*{flex:1}.info{padding:10px;border-radius:7px;background:#edf3fd}
+.info.ok{background:#e7f7ee;color:#176233}.info.error{background:#fff0ed;color:#9f2424}
+table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #e6ebf3;text-align:left;padding:9px 6px}th{font-size:12px}
+tfoot{font-weight:700}.pill{display:inline-block;border-radius:5px;background:#f0f4fa;padding:4px 6px;font-size:12px}
+h2{font-size:17px;margin:0 0 8px}
+#photo{height:115px;width:94px;display:grid;place-items:center;background:#f0f3f8;border-radius:8px;color:#758296}
+#photo img{width:100%;height:100%;object-fit:contain}
+@media(max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.card{padding:9px}main{padding:7px}th,td{font-size:12px;padding:6px 3px}h1{font-size:17px}}
+</style></head><body>
+<header><h1>OPERACIONES ROPA · PEDIDOS DE RESURTIDO</h1><small>Laboratorio AC · Supervisor y Gerente · No disponible en producción</small></header>
+<main>
+<section class="card"><h2>Pedido por modelo y talla</h2>
+<div class="grid">
+<div><label for="model">ID del modelo</label><input id="model" inputmode="numeric" autocomplete="off" placeholder="Escanea el ID"></div>
+<div><label for="area">Área</label><select id="area"><option>Colgado</option><option>Doblado</option><option>Jeans</option><option>Lencería</option></select></div>
+<div><label for="criterion">Meta</label><select id="criterion"><option value="curve">Curva por talla</option><option value="capacity">Capacidad por talla</option></select></div>
+<div style="grid-column:span 2"><label for="sizes">Tallas (opcional; separadas por coma)</label><input id="sizes" autocomplete="off" placeholder="Vacío = todas las tallas del modelo"></div>
+<div><label>Consulta</label><button id="preview" type="button" class="primary" style="width:100%">Calcular pedido</button></div>
+</div>
+<div class="row" style="margin-top:10px">
+<div id="photo">Foto por ID</div><div><strong id="modelName">Sin modelo consultado</strong>
+<p id="storeName" class="muted small">La tienda se obtiene de tu sesión.</p>
+<p class="muted small">Las fotos provienen del mismo servicio que Bonos.</p></div>
+</div></section>
+<section class="card" id="result" hidden>
+<h2>Sugerido por talla</h2>
+<p class="muted small">Piso físico + piezas ya apartadas o en Tránsito se descuentan de la necesidad. Sólo se puede reservar de Séptimos y Tarimas verificadas.</p>
+<div style="overflow-x:auto"><table>
+<thead><tr><th>Talla</th><th>Meta</th><th>Piso</th><th>En proceso</th><th>Disponible</th><th>Sugerido</th><th>Situación</th></tr></thead>
+<tbody id="lines"></tbody><tfoot><tr><td colspan="5">Total a autorizar</td><td id="sum">0</td><td></td></tr></tfoot>
+</table></div>
+<div class="row" style="margin-top:10px"><button id="approve" type="button" class="primary" disabled>Autorizar y reservar piezas</button></div>
+</section>
+<section class="card"><h2>Estado del pedido</h2>
+<div id="message" role="status" aria-live="polite" class="info">Consultando la sesión…</div>
+</section>
+<section class="card"><h2>Pedidos recientes de mi tienda</h2>
+<button id="historyRefresh" type="button">↻ Actualizar</button>
+<div id="history" class="small muted" style="margin-top:9px">Sin consulta.</div>
+</section>
+</main>
+<script>
+"use strict";
+(()=>{
+const $=id=>document.getElementById(id);
+let preview=null,pending=null,busy=false,epoch=0,store="";
+const statuses={ready:"Listo",at_goal:"Meta cubierta",missing_capacity:"Sin capacidad",missing_verified_floor:"Piso sin verificar",no_available_surplus:"Sin excedente"};
+function show(msg,kind=""){const el=$("message");el.textContent=msg;el.className="info "+kind}
+function controls(){const lock=busy||!!pending;for(const k of ["model","sizes","area","criterion"]){$(k).disabled=lock}
+ $("preview").disabled=lock;$("approve").disabled=lock||!preview||preview.total<=0;$("historyRefresh").disabled=busy}
+async function get(path){const res=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const body=await res.json().catch(()=>({}));if(!res.ok)throw Error(body.detail||"HTTP "+res.status);return body}
+async function post(path,body){const res=await fetch("/api/ac"+path,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(body)});const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(data.detail||"HTTP "+res.status);return data}
+function payload(){const model=$("model").value.trim();const area=$("area").value,criterion=$("criterion").value;
+ const sizes=$("sizes").value.trim()?$("sizes").value.toUpperCase().split(",").map(x=>x.trim()).filter(Boolean):null;
+ return {model_id:model,area,criterion,sizes};}
+async function modelInfo(id,token){const data=await get("/model?model_id="+encodeURIComponent(id));if(token!==epoch)return;
+ $("modelName").textContent=data.name||"ID "+id;
+ const photo=$("photo");photo.replaceChildren();
+ if(data.photo_url&&/^\/api\/bonuses\/product-photo\/\d{1,15}$/.test(data.photo_url)){
+  const img=document.createElement("img");img.alt="Foto del modelo "+id;img.src=data.photo_url;
+  img.onerror=()=>{if(token===epoch){photo.replaceChildren();photo.textContent="Sin foto por ID"}};
+  photo.append(img);
+ }else photo.textContent="Sin fotografía";
+}
+function render(data){$("result").hidden=false;$("lines").replaceChildren();
+ for(const item of data.sizes){const tr=document.createElement("tr");
+  for(const value of [item.size,item.goal??"—",item.physical_floor??"—",item.incoming??"—",item.available_surplus??"—",item.suggested,statuses[item.status]||item.status]){
+   const cell=document.createElement("td");cell.textContent=String(value);tr.append(cell)
+  }$("lines").append(tr)
+ }
+ $("sum").textContent=String(data.total);controls();
+}
+async function calculate(){
+ const id=$("model").value.trim();
+ if(!id){show("Escanea el ID del artículo.","error");return}
+ epoch++;const token=epoch;preview=null;$("result").hidden=true;busy=true;controls();
+ try{
+  const args=payload();const url="/orders/preview?model_id="+encodeURIComponent(args.model_id)+"&area="+encodeURIComponent(args.area)+"&criterion="+encodeURIComponent(args.criterion)+(args.sizes?"&sizes="+encodeURIComponent(args.sizes.join(",")):"");
+  const info=await get(url);preview=info;render(info);await modelInfo(id,token);
+  show(info.total>0?"Revisa las cantidades antes de confirmar.":"Sin mercancía verificable para generar este pedido.",info.total>0?"":"error")
+ }catch(e){show("No fue posible calcular el pedido: "+e.message,"error")}
+ finally{busy=false;controls()}
+}
+async function approve(){
+ if(!preview||preview.total<=0||pending)return;
+ const body={...payload(),event_key:crypto.randomUUID()};
+ if(body.model_id!==preview.model_id||body.area!==preview.area||body.criterion!==preview.criterion){show("El modelo cambió. Calcula otra vez.","error");return}
+ if(!confirm("¿Autorizar y reservar "+preview.total+" piezas de "+body.model_id+" para "+store+"?"))return;
+ pending=body;sessionStorage.setItem("acPendingOrder",JSON.stringify(body));await sendPending();
+}
+async function sendPending(){
+ if(!pending)return;busy=true;controls();
+ try{const data=await post("/orders/approve",pending);
+  pending=null;sessionStorage.removeItem("acPendingOrder");
+  show("Pedido "+data.id+" aprobado: "+data.total+" piezas reservadas. Pizca ya puede consultarlas.","ok");
+  preview=null;$("result").hidden=true;await history()
+ }catch(e){show("Sin confirmación del pedido: "+e.message+". Vuelve a enviar con la misma clave; no cambies cantidades.","error")}
+ finally{busy=false;controls()}
+}
+async function history(){
+ try{const data=await get("/orders");const root=$("history");root.replaceChildren();
+  if(!data.orders.length){root.textContent="Sin pedidos autorizados en esta tienda.";return}
+  for(const o of data.orders){const div=document.createElement("div");div.style.cssText="padding:8px 0;border-top:1px solid #e6edf6";
+   div.textContent="Pedido "+o.id.slice(0,8)+" · ID "+o.model_id+" · "+o.total+" pzas · Pizca "+o.picked+" · "+o.status;root.append(div)}
+ }catch(e){show("Histórico no disponible: "+e.message,"error")}
+}
+$("preview").addEventListener("click",calculate);$("approve").addEventListener("click",approve);
+$("historyRefresh").addEventListener("click",history);
+for(const id of ["model","area","criterion","sizes"])$(id).addEventListener("input",()=>{preview=null;$("result").hidden=true;controls()});
+(async()=>{try{const me=await get("/me");if(!["gerente","supervisor","admin","superadmin"].includes(me.role)||!me.store){show("Tu perfil no tiene autorización de pedidos para una tienda.","error");$("preview").disabled=true;return}store=me.store;$("storeName").textContent="Tienda: "+store+" · Rol: "+me.role;
+ const last=sessionStorage.getItem("acPendingOrder");if(last){try{pending=JSON.parse(last);show("Hay un pedido sin confirmación del servidor. Se reintentará con su misma clave.") ;await sendPending()}catch(e){sessionStorage.removeItem("acPendingOrder");pending=null}}
+ if(!pending)show("Consulta un modelo y sugiere el pedido según la existencia física.");await history()
+ }catch(e){show("No se pudo validar tu sesión: "+e.message,"error")}finally{controls()}})();
+})();
+</script></body></html>

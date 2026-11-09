@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operaciones Ropa · Captura AC (laboratorio)</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#17253e;background:#f5f7fd;font-size:15px}
+*{box-sizing:border-box}body{margin:0}header{background:#173b73;color:white;padding:14px 18px}
+h1{font-size:20px;margin:0}small{font-size:12px}.shell{max-width:1120px;margin:auto;padding:12px;display:grid;gap:10px}
+.card{background:white;border:1px solid #dce3f1;border-radius:11px;padding:13px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+label{display:block;font-weight:700;font-size:12px;margin:0 0 5px}select,input,button{font:inherit;border-radius:8px;min-height:39px}
+input,select{width:100%;padding:8px;border:1px solid #a9b7d1;background:white}
+button{padding:8px 12px;border:1px solid #3366cc;color:#3366cc;background:#fff;font-weight:700;cursor:pointer}
+button.primary{background:#3366cc;color:white}button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.row>*{flex:1}.muted{color:#5f6e83}.small{font-size:12px}
+.status{border-radius:7px;padding:8px;background:#eff4fb;min-height:32px}
+.warn{background:#fff3e4;color:#754308}.ok{background:#eaf8ef;color:#11612f}.error{background:#feecec;color:#9c2020}
+kbd{padding:2px 5px;border:1px solid #b9c5d4;border-radius:4px}#photo{min-height:90px;background:#eaf0f9;border:1px dashed #afbed0;border-radius:9px;display:grid;place-items:center;color:#60718a}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;text-align:left;padding:6px 4px}th{font-size:12px}
+.qty{width:72px;text-align:center}.ticker{font-variant-numeric:tabular-nums;font-weight:700}
+@media (max-width:600px){.shell{padding:7px;gap:7px}.card{padding:9px}.grid{gap:7px}.grid3{gap:5px}header{padding:10px}h1{font-size:17px}select,input,button{font-size:13px;padding:7px;min-height:38px}}
+</style>
+</head>
+<body>
+<header><h1>OPERACIONES ROPA · PROPUESTA AC</h1><small>Laboratorio · Captura operativa · No conectar a producción</small></header>
+<main class="shell">
+<section class="card">
+<div class="grid3">
+<div><label for="flow">Proceso</label><select id="flow"><option>Surtido</option><option>Resurtido</option></select></div>
+<div><label for="stage">Actividad</label><select id="stage"><option>Separar</option><option>Acondicionar</option><option>Ubicar</option><option>Pizca</option><option>Excedentes</option></select></div>
+<div><label for="area">Clasificación</label><select id="area"><option>Colgado</option><option>Doblado</option><option>Jeans</option><option>Lencería</option></select></div>
+</div>
+<div class="row" style="margin-top:9px">
+<button id="start" class="primary" type="button">▶ Inicio</button><button id="finish" type="button" disabled>■ Fin</button>
+<div class="status small">Duración: <span id="clock" class="ticker">00:00:00</span></div>
+</div>
+</section>
+<section class="card" id="floorSection" hidden>
+  <label for="floorLocation">Destino confirmado · Mueble / piso</label>
+  <select id="floorLocation"><option value="">Seleccionar ubicación de piso</option></select>
+  <p class="small muted">Resurtido: al finalizar Ubicar, las piezas salen de Tránsito y se acreditan a este mueble. Debe existir previamente en la configuración de la tienda.</p>
+</section>
+<section class="card" id="queueSection" hidden>
+  <div class="row"><strong id="queueTitle">Tareas pendientes</strong>
+  <button id="refreshQueue" type="button">↻ Actualizar cola</button></div>
+  <p class="small muted">Toma una tarea de tu tienda antes de acondicionar o ubicar. Las cantidades provienen de la actividad anterior y no se vuelven a registrar como mercancía recibida.</p>
+  <div id="taskList" class="small" aria-live="polite">Inicia la actividad para consultar la cola.</div>
+</section>
+<section class="card">
+<div class="grid" style="grid-template-columns:2fr 1fr">
+<div><label for="model">Escanea o escribe ID del modelo</label><input id="model" inputmode="text" autocomplete="off" placeholder="ID o código de barras"></div>
+<div><label for="color">Color</label><input id="color" autocomplete="off" placeholder="Opcional"></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 2fr;margin-top:8px">
+<div id="photo"><span class="small">Fotografía por ID · misma fuente de Bonos</span></div>
+<div><strong id="modelName">Modelo sin escanear</strong><p id="modelDetails" class="muted small">Ingresa un ID para consultar los datos del modelo y su fotografía mediante el servicio existente de Bonos.</p>
+<div class="row"><button id="voice" type="button" disabled>🎙 Dictar tallas</button><button id="complete" type="button" disabled>Modelo completo</button></div></div>
+</div>
+</section>
+<section class="card">
+<div class="row"><strong>Tallas y piezas</strong><span class="muted small">Dictar: «extra chica cinco, mediana siete, grande seis»</span></div>
+<div class="grid3" id="sizes" style="margin-top:10px"></div>
+<p class="small muted" id="speechHint">El micrófono se habilita con una sesión iniciada y un navegador compatible; hay captura manual de respaldo.</p>
+<div class="row"><button type="button" id="clear">Limpiar tallas</button><button type="button" class="primary" id="save" disabled>Confirmar y guardar</button></div>
+<div id="message" role="status" aria-live="polite" class="status" style="margin-top:10px">Inicia la actividad para comenzar.</div>
+</section>
+<section class="card small muted">Esta interfaz es un prototipo aislado. El envío usa /api/ac con la identidad del usuario autenticado en el servidor; no se almacenan cantidades en el navegador como si fueran confirmadas. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. El resurtido Pizca sigue bloqueado hasta integrar pedidos autorizados.</section>
+</main>
+<script>
+"use strict";
+(()=>{
+const $=id=>document.getElementById(id);
+const order=["XCH","CH","M","G","XG","XXG"];
+const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[];
+const counts=Object.fromEntries(order.map(x=>[x,0]));
+const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
+function updateStageOptions(){const select=$("stage");const current=select.value;select.replaceChildren();for(const stage of stageOptions[$("flow").value]){const option=document.createElement("option");option.textContent=stage;select.append(option)}if(stageOptions[$("flow").value].includes(current))select.value=current}
+function show(text,kind=""){const el=$("message");el.textContent=text;el.className="status "+kind}
+function needsTask(){return ["Acondicionar","Ubicar","Pizca"].includes($("stage").value)}
+function knownSizes(){return Array.from(new Set([...order,...Object.keys(selectedTask?.remaining||{})]))}
+function controls(){
+ const active=!!session;
+ const valid=Object.values(counts).some(n=>n>0);
+ $("start").disabled=active||busy;
+ $("finish").disabled=!active||busy;
+ $("save").disabled=!active||busy||!$("model").value.trim()||!valid||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
+ $("voice").disabled=!active||busy||!!pending||!("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
+ $("complete").disabled=!active||busy||!!pending||!selectedTask;
+ $("refreshQueue").disabled=!active||busy;
+ $("clear").disabled=busy||!!pending;
+ document.querySelectorAll("[data-ac-claim]").forEach(x=>x.disabled=busy||!!pending);
+ $("model").readOnly=!!pending||!!selectedTask;
+ $("color").readOnly=!!pending||!!selectedTask;
+ document.querySelectorAll(".qty").forEach(x=>x.disabled=!!pending);
+ ["flow","stage","area"].forEach(id=>$(id).disabled=active||busy);
+ $("queueSection").hidden=!active||!needsTask();
+ $("floorSection").hidden=!active||$("flow").value!=="Resurtido"||$("stage").value!=="Ubicar";
+ $("floorLocation").disabled=busy||!!pending;
+}
+
+function pad(v){return String(v).padStart(2,"0")}
+function tick(){const delta=started?Math.floor((Date.now()-started)/1000):0;$("clock").textContent=pad(Math.floor(delta/3600))+":"+pad(Math.floor(delta/60)%60)+":"+pad(delta%60)}
+function renderSizes(){
+ const root=$("sizes");root.replaceChildren();
+ for(const size of knownSizes()){
+   if(!Object.hasOwn(counts,size))counts[size]=0;
+   const wrap=document.createElement("div");
+   const label=document.createElement("label");
+   const input=document.createElement("input");
+   label.textContent=(names[size]||size)+" ("+size+")";
+   input.type="number";input.min="0";input.step="1";input.inputMode="numeric";input.className="qty";input.value=String(counts[size]);input.setAttribute("aria-label","Piezas "+(names[size]||size));
+   const limit=selectedTask?.remaining?.[size];
+   if(Number.isInteger(limit))input.max=String(limit);
+   input.addEventListener("input",()=>{
+     const value=Number(input.value);
+     counts[size]=Number.isSafeInteger(value)&&value>=0?value:-1;
+     controls();
+   });
+   wrap.append(label,input);
+   if(selectedTask&&$("stage").value==="Ubicar"&&Number.isInteger(limit)&&limit>0){
+     const done=document.createElement("label");done.className="small";
+     const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.disabled=!!pending;
+     checkbox.checked=counts[size]===limit;
+     checkbox.setAttribute("aria-label","Ubicada toda la talla "+size);
+     checkbox.addEventListener("change",()=>{
+       counts[size]=checkbox.checked?limit:0;renderSizes();
+     });
+     done.append(checkbox,document.createTextNode(" Ubicada"));wrap.append(done);
+   }
+   root.append(wrap);
+ }
+ controls();
+}
+async function loadFloorLocations(){
+ const select=$("floorLocation");const desired=select.value;select.replaceChildren();
+ const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar ubicación de piso";select.append(blank);
+ if($("flow").value!=="Resurtido"||$("stage").value!=="Ubicar")return;
+ try{
+   const locations=await getJson("/locations?kind=Piso");
+   for(const loc of locations.locations){
+     const option=document.createElement("option");option.value=loc.id;
+     option.textContent=[loc.aisle,loc.face,loc.section,loc.level].filter(Boolean).join(" / ")||loc.id.slice(0,8);
+     select.append(option);
+   }
+   const pendingLocation=pending?.target_location_id;
+   const target=pendingLocation||desired;
+   if(target && Array.from(select.options).some(o=>o.value===target))select.value=target;
+   if(!locations.locations.length)show("No hay muebles de piso registrados para esta tienda; Ubicar Resurtido estará bloqueado.","warn");
+ }catch(e){show("No se pudieron consultar los muebles de piso: "+e.message,"error")}
+ controls();
+}
+async function refreshTasks(){
+ if(!session||!needsTask()){taskRows=[];$("taskList").textContent="Sin tareas para esta actividad.";controls();return}
+ try{
+   const data=await getJson("/tasks?session_id="+encodeURIComponent(session));
+   taskRows=Array.isArray(data.tasks)?data.tasks:[];
+   const host=$("taskList");host.replaceChildren();
+   $("queueTitle").textContent="Tareas pendientes · "+$("stage").value+" ("+taskRows.length+")";
+   if(!taskRows.length)host.textContent="No hay tareas pendientes de esta actividad.";
+   for(const task of taskRows){
+     const line=document.createElement("div");line.className="row";line.style.cssText="padding:6px 0;border-top:1px solid #e6edf6";
+     const info=document.createElement("span");
+     info.textContent="ID "+task.model_id+" · "+Object.entries(task.remaining).map(([k,v])=>k+":"+v).join(" · ")+(task.source_location?" · Origen: "+[task.source_location.kind,task.source_location.aisle,task.source_location.face,task.source_location.section,task.source_location.level,task.source_location.pallet].filter(Boolean).join(" / "):"");
+     const take=document.createElement("button");take.type="button";
+     take.textContent=task.assigned_to?"Continuar tarea":"Tomar tarea";take.dataset.acClaim="1";
+     take.disabled=busy||!!pending;
+     take.addEventListener("click",()=>takeTask(task));
+     line.append(info,take);host.append(line);
+   }
+ }catch(e){show("No se pudo consultar la cola: "+e.message,"error")}
+ controls();
+}
+async function takeTask(task){
+ if(pending){show("Confirma primero la captura pendiente.","warn");return}
+ busy=true;controls();
+ try{
+   await api("/tasks/"+encodeURIComponent(task.id)+"/claim",{session_id:session});
+   selectedTask=task;
+   for(const size of Object.keys(counts))counts[size]=0;
+   for(const size of Object.keys(task.remaining))counts[size]=0;
+   $("model").value=task.model_id;$("color").value=task.color||"";
+   renderSizes();
+   show("Tarea asignada: ID "+task.model_id+". Captura las tallas realizadas o selecciona Modelo completo.","ok");
+   await findModel();
+ }catch(e){show("No se pudo tomar la tarea: "+e.message,"error")}
+ finally{busy=false;controls();await refreshTasks()}
+}
+
+async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
+function clearModel(){lookupEpoch++;selectedTask=null;for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+async function getJson(path){const response=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const value=await response.json().catch(()=>({}));if(!response.ok)throw Error(value.detail||"HTTP "+response.status);return value}
+async function findModel(){
+ const model=$("model").value.trim();const token=++lookupEpoch;
+ if(!model){$("modelName").textContent="Modelo sin escanear";return}
+ $("modelName").textContent="ID "+model;$("modelDetails").textContent="Buscando ficha oficial…";
+ try{
+  const info=await getJson("/model?model_id="+encodeURIComponent(model));
+  if(token!==lookupEpoch||$("model").value.trim()!==model)return;
+  $("modelName").textContent=info.name||"ID "+model;
+  $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
+  if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
+  const photo=$("photo");photo.replaceChildren();
+  if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
+    const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;img.src=info.photo_url;img.style.cssText="width:100%;height:115px;object-fit:contain";
+    img.onerror=()=>{
+      if(token!==lookupEpoch)return;
+      photo.replaceChildren();
+      const label=document.createElement("span");
+      label.className="small";label.textContent="No se pudo mostrar la foto del ID "+model+".";
+      const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
+      retry.onclick=()=>{
+        if(token!==lookupEpoch)return;
+        photo.replaceChildren();
+        // Reutiliza V314 y su parámetro de reintento para errores temporales.
+        img.src=info.photo_url+"?retry=1&t="+Date.now();
+        photo.append(img);
+      };
+      photo.append(label,retry);
+    };
+    photo.append(img);
+  }else photo.textContent="No hay fotografía para este ID";
+ }catch(e){if(token===lookupEpoch){$("modelDetails").textContent="No se pudo consultar la ficha: "+e.message;$("photo").textContent="Fotografía pendiente"}}
+}
+async function resumeSession(){
+ try{
+  const me=await getJson("/me");if(!me.store){show("Tu perfil todavía no tiene tienda asignada.","warn");return}
+  const active=await getJson("/session/active");
+  if(!active.session){sessionStorage.removeItem("acPendingCapture");show("Inicia una actividad para capturar modelos.");return}
+  session=active.session.id;started=Date.parse(active.session.started_at)||Date.now();
+  $("flow").value=active.session.flow;updateStageOptions();$("stage").value=active.session.stage;$("area").value=active.session.area;
+  const saved=sessionStorage.getItem("acPendingCapture");
+  if(saved){try{const data=JSON.parse(saved);if(data.session_id===session){
+    pending=data;$("model").value=data.model_id;$("color").value=data.color||"";
+    for(const size of order)counts[size]=Number(data.sizes[size]||0);
+    renderSizes();show("Hay una captura pendiente de confirmación. Reintenta Guardar sin cambiar sus piezas.","warn");
+  }else sessionStorage.removeItem("acPendingCapture");}catch(e){sessionStorage.removeItem("acPendingCapture")}}
+  await loadFloorLocations();await refreshTasks();
+  if(pending?.task_id){selectedTask=taskRows.find(t=>t.id===pending.task_id)||null;renderSizes()}
+  if(!pending)show("Actividad recuperada: "+active.session.stage+".","ok");tick();
+ }catch(e){show("No se pudo consultar la sesión: "+e.message,"error")}
+ finally{controls()}
+}
+function parseVoice(value){
+ const text=value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+ const canonical=[["doble extra grande","XXG"],["extra extra grande","XXG"],["extra chica","XCH"],["extra grande","XG"],["mediana","M"],["mediano","M"],["chica","CH"],["chico","CH"],["grande","G"],["xxg","XXG"],["xch","XCH"],["xg","XG"],["ch","CH"],["m","M"],["g","G"]];
+ const words={"cero":0,"uno":1,"una":1,"dos":2,"tres":3,"cuatro":4,"cinco":5,"seis":6,"siete":7,"ocho":8,"nueve":9,"diez":10,"once":11,"doce":12,"trece":13,"catorce":14,"quince":15,"dieciseis":16,"diecisiete":17,"dieciocho":18,"diecinueve":19,"veinte":20};
+ const matcher=new RegExp("(?:^|[\\s,;])("+canonical.map(x=>x[0]).join("|")+")\\s+(\\d+|[a-z]+)(?=$|[\\s,;])","g");
+ const result={};let match;while((match=matcher.exec(text))!==null){const size=canonical.find(x=>x[0]===match[1])[1];
+   const qty=/^\d+$/.test(match[2])?Number(match[2]):words[match[2]];
+   if(!Number.isSafeInteger(qty)||qty<0||qty>10000)throw Error("Cantidad no reconocida: "+match[2]);
+   if(Object.hasOwn(result,size))throw Error("Talla repetida: "+size);
+   result[size]=qty;
+ }
+ if(!Object.keys(result).length)throw Error("No reconocí tallas y cantidades");
+ return result;
+}
+$("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");await loadFloorLocations();await refreshTasks();$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
+$("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";selectedTask=null;taskRows=[];started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
+$("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
+$("model").addEventListener("change",findModel);
+$("model").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findModel()}});
+$("clear").addEventListener("click",()=>{for(const size of order)counts[size]=0;pending=null;renderSizes()});
+$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const command=spoken.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(command==="finalizar"){if(pending)throw Error("Confirma la captura pendiente antes de finalizar");$("finish").click();return}if(command==="siguiente"){if(pending)throw Error("Reintenta el guardado pendiente");$("save").click();return}if(pending)throw Error("La captura anterior sigue pendiente de confirmación");const parsed=parseVoice(spoken);for(const size of order)if(Object.hasOwn(parsed,size))counts[size]=parsed[size];renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
+$("save").addEventListener("click",async()=>{
+ const model=$("model").value.trim();const sizes={};for(const size of knownSizes()){const n=counts[size];if(!Number.isSafeInteger(n)||n<0){show("Revisa las cantidades de todas las tallas.","error");return}if(n>0)sizes[size]=n}
+ if(!model||!Object.keys(sizes).length||!session)return;
+ if(selectedTask){
+   for(const [size,qty] of Object.entries(sizes)){
+     const max=selectedTask.remaining[size];
+     if(!Number.isInteger(max)||qty>max){
+       show("La talla "+size+" supera las piezas pendientes de la tarea.","error");
+       return;
+     }
+   }
+ }
+ if(needsTask()&&!selectedTask&&!pending){show("Selecciona primero una tarea de la cola.","warn");return}
+ if($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending){show("Debes seleccionar el destino de piso antes de Ubicar.","error");return}
+ if(!pending){pending={event_key:crypto.randomUUID(),session_id:session,model_id:model,color:$("color").value.trim(),sizes,task_id:selectedTask?.id||null,target_location_id:$("flow").value==="Resurtido"&&$("stage").value==="Ubicar"?$("floorLocation").value:null};sessionStorage.setItem("acPendingCapture",JSON.stringify(pending))}
+ else if(pending.model_id!==model||JSON.stringify(pending.sizes)!==JSON.stringify(sizes)){show("Hay un envío pendiente. Restablece sus valores o corrige el fallo antes de continuar.","warn");return}
+ busy=true;controls();try{const result=await api("/capture",pending);show("Guardado confirmado. Captura "+result.capture_id,"ok");clearModel();await refreshTasks()}catch(e){show("Sin confirmación del servidor: "+e.message+". Reintenta sin cambiar cantidades.","error")}finally{busy=false;controls()}
+});
+$("complete").addEventListener("click",()=>{
+ if(!selectedTask||pending)return;
+ for(const size of knownSizes())counts[size]=Number(selectedTask.remaining[size]||0);
+ renderSizes();
+ show("Modelo completo: se marcaron todas las piezas pendientes de esta tarea. Confirma para registrar.","warn");
+});
+$("refreshQueue").addEventListener("click",refreshTasks);
+$("floorLocation").addEventListener("change",controls);
+$("flow").addEventListener("change",updateStageOptions);updateStageOptions();renderSizes();setInterval(tick,1000);resumeSession();
+})();
+</script>
+</body></html>
