@@ -24,14 +24,6 @@ def install(web_app):
         LOG.info("Propuesta AC no activada: rutas de producción intactas")
         return False
 
-    # Los roles quedan disponibles para crear cuentas en la administración
-    # existente; no se cambian cuentas ni se conceden permisos por defecto.
-    web_app.ROLES=tuple(dict.fromkeys((*web_app.ROLES,"supervisor","gerente")))
-    web_app.ROLE_LABELS.update({
-        "supervisor":"Supervisor · Operaciones AC",
-        "gerente":"Gerente · Operaciones AC",
-    })
-
     root=Path(web_app.DATA_ROOT).resolve()
     dbdir=root/"ac"
     if not str(dbdir).startswith(str(root)+os.sep):
@@ -50,6 +42,14 @@ def install(web_app):
         LOG.exception("AC no pudo inicializar su SQLite; la aplicación anterior sigue operativa")
         # No registrar rutas con una base incompleta.
         return False
+
+    # Los roles quedan disponibles para crear cuentas en la administración
+    # existente; no se cambian cuentas ni se conceden permisos por defecto.
+    web_app.ROLES=tuple(dict.fromkeys((*web_app.ROLES,"supervisor","gerente")))
+    web_app.ROLE_LABELS.update({
+        "supervisor":"Supervisor · Operaciones AC",
+        "gerente":"Gerente · Operaciones AC",
+    })
 
     def authorized_stores():
         # Sólo tiendas activas y marcadas como Proyecto en el sistema actual.
