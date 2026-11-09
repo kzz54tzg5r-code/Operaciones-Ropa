@@ -23,5 +23,24 @@
     return {valid:true,raw:original,modelId:labeled[1],sizeCode:labeled[2],
             size,needsReview:!size};
   }
-  return {parse,ageSizes};
+  function sizeToken(value){
+    return String(value??"").toUpperCase().trim()
+      .replace(/AÑOS?|ANOS?|YEARS?|TALLA|SIZE/g,"")
+      .replace(/\s+/g,"").replace(/[–—-]/g,"/");
+  }
+  function resolveSize(barcode, availableSizes){
+    // Los sufijos de barra NO tienen equivalencia universal.
+    // Se aceptan sólo coincidencias que existan en el corte de Capacidades
+    // para el ID y tienda consultados, nunca una talla fabricada por el lector.
+    const sizes=Array.isArray(availableSizes)?availableSizes.map(x=>String(x)):[];
+    if(!barcode?.valid||!barcode.sizeCode||!sizes.length)
+      return {size:null,status:"not_available"};
+    const candidateTokens=new Set([sizeToken(barcode.sizeCode)]);
+    if(barcode.size)candidateTokens.add(sizeToken(barcode.size));
+    const candidates=sizes.filter(x=>candidateTokens.has(sizeToken(x)));
+    if(candidates.length===1)return {size:candidates[0],status:"matched"};
+    if(candidates.length>1)return {size:null,status:"ambiguous"};
+    return {size:null,status:"unknown_code"};
+  }
+  return {parse,ageSizes,resolveSize,sizeToken};
 });
