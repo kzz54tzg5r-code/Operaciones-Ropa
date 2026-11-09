@@ -4853,7 +4853,8 @@ def clear_staged_processing():
     STAGE_STATE_FILE.unlink(missing_ok=True)
 
 
-def _sheet_names(file_path):
+@st.cache_data(show_spinner=False, max_entries=3)
+def _sheet_names_cached(file_path, mtime_ns, size):
     for engine in ("calamine", "openpyxl"):
         try:
             with pd.ExcelFile(file_path, engine=engine) as xls:
@@ -4861,6 +4862,11 @@ def _sheet_names(file_path):
         except Exception:
             continue
     raise RuntimeError("No fue posible obtener la lista de hojas del Excel.")
+
+
+def _sheet_names(file_path):
+    stat = Path(file_path).stat()
+    return _sheet_names_cached(str(file_path), stat.st_mtime_ns, stat.st_size)
 
 
 def _operation_sheet_names(file_path):
@@ -5448,8 +5454,9 @@ def read_operation_sheet(file_path, only_sheets=None):
     return result, pd.DataFrame(diagnostics)
 
 
-def read_plantilla(file_path):
-    """Lee únicamente la hoja Plantilla con el motor más rápido disponible."""
+@st.cache_data(show_spinner=False, max_entries=3)
+def _read_plantilla_cached(file_path, mtime_ns, size):
+    """Evita volver a abrir Plantilla para cada hoja operativa."""
     for engine in ("calamine", "openpyxl"):
         try:
             return pd.read_excel(
@@ -5463,7 +5470,12 @@ def read_plantilla(file_path):
     return pd.DataFrame()
 
 
-def _read_monthly_dev_openpyxl(file_path, progress=None):
+def read_plantilla(file_path):
+    stat = Path(file_path).stat()
+    return _read_plantilla_cached(str(file_path), stat.st_mtime_ns, stat.st_size)
+
+
+def _read_monthly_dev_openpyxl(file_path, progress=None, only_sheets=None):
     """Lector comercial optimizado por bloques.
 
     Evita cargar cada hoja completa en memoria. Lee únicamente:
@@ -5483,6 +5495,10 @@ def _read_monthly_dev_openpyxl(file_path, progress=None):
             norm_text(s),
         )
     ]
+
+    if only_sheets:
+        requested = {norm_text(sheet) for sheet in only_sheets}
+        monthly_sheets = [sheet for sheet in monthly_sheets if norm_text(sheet) in requested]
 
     all_records = []
     diag_rows = []
@@ -5867,7 +5883,7 @@ def read_monthly_dev(file_path, progress=None, only_sheets=None):
     compatible, utiliza automáticamente el lector OpenPyXL anterior.
     """
     if not _excel_fast_engine_available():
-        return _read_monthly_dev_openpyxl(file_path, progress=progress)
+        return _read_monthly_dev_openpyxl(file_path, progress=progress, only_sheets=only_sheets)
 
     try:
         xls = pd.ExcelFile(file_path, engine="calamine")
@@ -6130,7 +6146,7 @@ def read_monthly_dev(file_path, progress=None, only_sheets=None):
 
     except Exception:
         # El respaldo mantiene compatibilidad con cualquier estructura especial.
-        return _read_monthly_dev_openpyxl(file_path, progress=progress)
+        return _read_monthly_dev_openpyxl(file_path, progress=progress, only_sheets=only_sheets)
 
 
 def split_operation(op):
