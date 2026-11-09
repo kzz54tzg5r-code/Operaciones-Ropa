@@ -998,14 +998,20 @@ async function enter(u){
   if(u.can_preview_roles)await loadPreviewRoleStores(u);
 
   const adminView=['superadmin','admin'].includes(u.role);
-  $$('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
+  $('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
   if(adminView)$('[data-opview="Carga de datos"]')?.classList.remove('hidden');
-  if(!adminView){
-    const mn=$('#mobileMainNav');
-    if(mn)mn.style.gridTemplateColumns='repeat(2,1fr)';
-  }else{
-    const mn=$('#mobileMainNav');
-    if(mn)mn.style.gridTemplateColumns='repeat(4,1fr)';
+
+  // El backend AC valida sesión, rol y tienda; este enlace sólo permite
+  // descubrir las pantallas ya desplegadas. No modifica reportes.
+  const canOpenAC=['superadmin','admin','supervisor','gerente','tienda','colaborador_operativo'].includes(u.role);
+  $('.ac-entry').forEach(x=>x.classList.toggle('hidden',!canOpenAC));
+  const mn=$('#mobileMainNav');
+  if(mn)mn.style.gridTemplateColumns=adminView?'repeat(5,minmax(0,1fr))':'repeat(3,minmax(0,1fr))';
+
+  if(['supervisor','gerente'].includes(u.role)){
+    // Estos usuarios abren el módulo de pedidos con la misma sesión.
+    location.assign('/ac/pedidos');
+    return;
   }
 
   await loadTabVisibility();
@@ -1022,7 +1028,7 @@ async function enter(u){
   if(u.role==='colaborador_operativo'){
     $$('[data-main]').forEach(x=>x.classList.toggle('hidden',x.dataset.main!=='operativo'));
     $$('#operativoNav [data-opview]').forEach(x=>x.classList.toggle('hidden',x.dataset.opview!=='Productividad por Colaborador'));
-    const mn=$('#mobileMainNav');if(mn)mn.style.gridTemplateColumns='1fr';
+    const mn=$('#mobileMainNav');if(mn)mn.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
     await goMain('operativo');
     OP_VIEW='Productividad por Colaborador';
     await renderOperativoView(OP_VIEW,false);
