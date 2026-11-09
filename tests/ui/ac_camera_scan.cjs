@@ -10,7 +10,9 @@ const samples=[
  ["122400022S","1224000","11/12","22"],
  ["122400018S","1224000","9/10","18"],
  ["OI26133408726$","1334087","13/14","26"],
- ["OI25122400022S","1224000","11/12","22"]
+ ["OI25122400022S","1224000","11/12","22"],
+ ["O126133408726$","1334087","13/14","26"],
+ ["0133408714$","1334087","7/8","14"]
 ];
 for(const [raw,id,size,code] of samples){
  const parsed=barcode.parse(raw);
@@ -33,6 +35,8 @@ for(const file of ["ac_capture_laboratorio.html"]){
  assert.ok(html.includes('id="cameraVideo"'),"Video tag missing");
  assert.ok(html.includes('id="cameraFile"'),"Native camera file fallback missing");
  assert.ok(html.includes('id="scanSize"'),"Detected child age size missing");
+ assert.ok(html.includes('id="manualId"'),"Keyboard fallback missing");
+ assert.ok(html.includes('$("model").addEventListener("click"'),"Tapping ID should open iPhone camera");
  assert.ok(html.includes("scannedLabelSize"),"Age size must be included in quantities");
  assert.ok(html.includes("findModel();"),"Scanned model must invoke official photo lookup");
  assert.ok(html.includes('src="/static/ac_barcode.js?v=416"'));
