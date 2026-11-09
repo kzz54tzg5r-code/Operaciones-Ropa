@@ -51,6 +51,9 @@ Bonos ni comerciales. Conservar la SQLite AC para auditoría; no borrarla.
 
 Los roles `supervisor` y `gerente` sólo se asignan cuando un administrador
 crea o edita explícitamente un usuario. No se eleva ningún rol por defecto.
+AC limita cada operación a tiendas activas marcadas como **Proyecto** en
+Metas y Tiendas; cuando un administrador cambia esa selección, el alcance AC
+se actualiza sin reiniciar Render.
 
 ## Precauciones
 
