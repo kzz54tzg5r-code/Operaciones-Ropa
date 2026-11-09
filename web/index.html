@@ -998,13 +998,13 @@ async function enter(u){
   if(u.can_preview_roles)await loadPreviewRoleStores(u);
 
   const adminView=['superadmin','admin'].includes(u.role);
-  $('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
+  document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!adminView));
   if(adminView)$('[data-opview="Carga de datos"]')?.classList.remove('hidden');
 
   // El backend AC valida sesión, rol y tienda; este enlace sólo permite
   // descubrir las pantallas ya desplegadas. No modifica reportes.
   const canOpenAC=['superadmin','admin','supervisor','gerente','tienda','colaborador_operativo'].includes(u.role);
-  $('.ac-entry').forEach(x=>x.classList.toggle('hidden',!canOpenAC));
+  document.querySelectorAll('.ac-entry').forEach(x=>x.classList.toggle('hidden',!canOpenAC));
   const mn=$('#mobileMainNav');
   if(mn)mn.style.gridTemplateColumns=adminView?'repeat(5,minmax(0,1fr))':'repeat(3,minmax(0,1fr))';
 
