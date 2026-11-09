@@ -9,7 +9,7 @@ def test_bumped_css_and_pwa_cache_versions():
     href="/static/designs_25_approved_v410.css?v=414"
     assert HTML.count(href)==1
     assert WORKER.count("'"+href+"'")==1
-    assert "operaciones-ropa-runtime-safe-update-v416" in WORKER
+    assert "operaciones-ropa-runtime-safe-update-v417" in WORKER
     assert "designs_25_approved_v410.css?v=410" not in HTML
     assert "designs_25_approved_v410.css?v=410" not in WORKER
 

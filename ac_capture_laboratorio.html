@@ -32,11 +32,20 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 .ac-camera-overlay{position:fixed;inset:0;z-index:9999;background:#081225f5;display:flex;justify-content:center;align-items:center;padding:env(safe-area-inset-top) 9px env(safe-area-inset-bottom);color:white}
 .ac-camera-panel{width:min(100%,600px);display:flex;flex-direction:column;gap:11px;max-height:100dvh;padding:10px;background:#152844;border-radius:12px}
 .ac-camera-panel h2{font-size:17px;margin:0}
-.ac-camera-view{position:relative;overflow:hidden;background:#000;border-radius:12px;min-height:225px;max-height:64dvh}
-.ac-camera-view video{display:block;width:100%;max-height:64dvh;min-height:225px;object-fit:cover}
+.ac-camera-view{position:relative;overflow:hidden;background:#000;border-radius:12px;height:min(52dvh,490px);min-height:250px;flex:0 0 auto}
+.ac-camera-view video{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
 .ac-camera-target{pointer-events:none;position:absolute;left:12%;right:12%;top:30%;height:34%;border:3px solid #6affdc;border-radius:8px;box-shadow:0 0 0 100vmax #0004}
 .ac-camera-panel button{background:#fff;color:#173b73;border-color:#e0e7f0}
 .ac-camera-panel .row{flex:0 0 auto}
+.ac-camera-panel .row>h2{flex:1 1 180px}
+.ac-camera-panel .row>button{flex:0 0 auto}
+.ac-camera-panel{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);overflow-y:auto}
+.ac-camera-panel .camera-action-row{justify-content:center}
+.ac-camera-panel .camera-action-row>button{flex:1 1 auto;min-width:0}
+.scan-matched{outline:2px solid #16a36f;border-radius:8px;padding:5px}
+.size-range-info{font-size:12px;margin:8px 0 0;color:#214e88}
+#sizes.empty{display:block!important}
+
 .ac-camera-status{font-size:13px;color:#fff;min-height:32px}
 @media(max-width:650px){
   .capture-model-grid{grid-template-columns:minmax(0,1fr)!important}
@@ -92,44 +101,51 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 </section>
 <section class="card">
 <div class="row"><strong>Tallas y piezas</strong><span class="muted small">Dictar: «extra chica cinco, mediana siete, grande seis»</span></div>
-<div class="grid3" id="sizes" style="margin-top:10px"></div>
+<div id="sizeRange" class="size-range-info" aria-live="polite">Escanea un ID para consultar sus tallas en Capacidades por Talla.</div>
+<div class="grid3 empty" id="sizes" style="margin-top:10px"></div>
 <p class="small muted" id="speechHint">El micrófono se habilita con una sesión iniciada y un navegador compatible; hay captura manual de respaldo.</p>
 <div class="row"><button type="button" id="clear">Limpiar tallas</button><button type="button" class="primary" id="save" disabled>Confirmar y guardar</button></div>
 <div id="message" role="status" aria-live="polite" class="status" style="margin-top:10px">Inicia la actividad para comenzar.</div>
 </section>
-<section class="card small muted">La cámara lee las etiquetas en el dispositivo. Los movimientos sólo se registran al presionar Confirmar y guardar, con la identidad del usuario autenticado. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. El resurtido Pizca sigue bloqueado hasta integrar pedidos autorizados.</section>
+<section class="card small muted">La cámara lee las etiquetas en el dispositivo. Los movimientos sólo se registran al presionar Confirmar y guardar, con la identidad del usuario autenticado. «Modelo completo» usa exclusivamente las cantidades pendientes de una tarea asignada. Pizca sólo acepta pedidos de resurtido autorizados.</section>
 </main>
 <div id="cameraOverlay" class="ac-camera-overlay" role="dialog" aria-modal="true" aria-label="Escáner de código de barras" hidden>
   <div class="ac-camera-panel">
     <div class="row"><h2>📷 Escanear etiqueta Price Shoes</h2><button id="closeCamera" type="button">✕ Cerrar</button></div>
     <div class="ac-camera-view"><video id="cameraVideo" autoplay muted playsinline webkit-playsinline></video><div class="ac-camera-target"></div></div>
-    <div id="cameraStatus" role="status" aria-live="polite" class="ac-camera-status">Acerca el código de barras al recuadro. Puedes girar la etiqueta.</div>
-    <div class="row camera-action-row"><button type="button" id="cameraTorch" hidden>🔦 Linterna</button><button type="button" id="cameraPhoto">📸 Tomar foto</button><button type="button" id="cameraManual">Introducir ID manualmente</button></div>
-    <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden>
-    <small>El video se analiza en tu dispositivo; no se envían imágenes al servidor.</small>
+    <div id="cameraStatus" role="status" aria-live="polite" class="ac-camera-status">Lectura automática activa. Coloca el código en horizontal y las barras verticales dentro del recuadro.</div>
+    <div class="row camera-action-row"><button type="button" id="cameraTorch" hidden>🔦 Linterna</button><button type="button" id="cameraManual">⌨️ Escribir ID</button></div>
+    <small>El escaneo es continuo: no necesitas tomar una foto ni presionar otro botón. Las imágenes de cámara no se envían al servidor.</small>
   </div>
 </div>
-<script src="/static/ac_barcode.js?v=416"></script>
-<script src="/static/ac_scanner.js?v=416"></script>
+<script src="/static/ac_barcode.js?v=417"></script>
+<script src="/static/ac_scanner.js?v=417"></script>
 <script>
 "use strict";
 (()=>{
 const $=id=>document.getElementById(id);
 const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
-let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,manualEntry=false;
-const counts=Object.fromEntries(order.map(x=>[x,0]));
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,scannedBarcode=null,manualEntry=false,capacitySizes=[],capacityVersion=null,loadingSizes=false;
+const counts={};
+function resetCounts(){for(const key of Object.keys(counts))delete counts[key];}
 const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
 function updateStageOptions(){const select=$("stage");const current=select.value;select.replaceChildren();for(const stage of stageOptions[$("flow").value]){const option=document.createElement("option");option.textContent=stage;select.append(option)}if(stageOptions[$("flow").value].includes(current))select.value=current}
 function show(text,kind=""){const el=$("message");el.textContent=text;el.className="status "+kind}
 function needsTask(){return ["Acondicionar","Ubicar","Pizca"].includes($("stage").value)}
-function knownSizes(){return Array.from(new Set([...order,...(scannedLabelSize?[scannedLabelSize]:[]),...Object.keys(selectedTask?.remaining||{})]))}
+function knownSizes(){
+ // Sólo las tallas de Capacidades del ID/tienda, o las de una tarea ya autorizada.
+ // Nunca mostrar por defecto XCH, CH, M, G para un modelo infantil.
+ if(pending)return Object.keys(pending.sizes||{});
+ if(selectedTask)return Object.keys(selectedTask.remaining||{});
+ return capacitySizes;
+}
 function controls(){
  const active=!!session;
- const valid=Object.values(counts).some(n=>n>0);
+ const valid=knownSizes().some(size=>Number.isSafeInteger(counts[size])&&counts[size]>0);
  $("start").disabled=active||busy;
  $("finish").disabled=!active||busy;
- $("save").disabled=!active||busy||!$("model").value.trim()||!valid||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
+ $("save").disabled=!active||busy||!$("model").value.trim()||!valid||loadingSizes||(!selectedTask&&!pending&&!capacitySizes.length)||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
  $("voice").disabled=!active||busy||!!pending||!("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
  $("complete").disabled=!active||busy||!!pending||!selectedTask;
  $("refreshQueue").disabled=!active||busy;
@@ -150,12 +166,20 @@ function pad(v){return String(v).padStart(2,"0")}
 function tick(){const delta=started?Math.floor((Date.now()-started)/1000):0;$("clock").textContent=pad(Math.floor(delta/3600))+":"+pad(Math.floor(delta/60)%60)+":"+pad(delta%60)}
 function renderSizes(){
  const root=$("sizes");root.replaceChildren();
- for(const size of knownSizes()){
+ const listed=knownSizes();root.classList.toggle("empty",!listed.length);
+ if(!listed.length){
+   const label=document.createElement("p");label.className="small muted";
+   label.textContent=loadingSizes?"Consultando las tallas de este modelo…":
+      "No hay tallas cargadas para este ID y tienda. Revisa Capacidades por Talla.";
+   root.append(label);
+ }
+ for(const size of listed){
    if(!Object.hasOwn(counts,size))counts[size]=0;
    const wrap=document.createElement("div");
+   if(size===scannedLabelSize)wrap.className="scan-matched";
    const label=document.createElement("label");
    const input=document.createElement("input");
-   label.textContent=(names[size]||size)+" ("+size+")";
+   label.textContent=(names[size]||size)+(size===scannedLabelSize?" ✓ escaneada":"");
    input.type="number";input.min="0";input.step="1";input.inputMode="numeric";input.className="qty";input.value=String(counts[size]);input.setAttribute("aria-label","Piezas "+(names[size]||size));
    const limit=selectedTask?.remaining?.[size];
    if(Number.isInteger(limit))input.max=String(limit);
@@ -179,6 +203,7 @@ function renderSizes(){
  }
  controls();
 }
+
 async function loadFloorLocations(){
  const select=$("floorLocation");const desired=select.value;select.replaceChildren();
  const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar ubicación de piso";select.append(blank);
@@ -224,7 +249,7 @@ async function takeTask(task){
  try{
    await api("/tasks/"+encodeURIComponent(task.id)+"/claim",{session_id:session});
    selectedTask=task;
-   for(const size of Object.keys(counts))counts[size]=0;
+   resetCounts();capacitySizes=[];capacityVersion=null;scannedLabelSize=null;scannedBarcode=null;
    for(const size of Object.keys(task.remaining))counts[size]=0;
    $("model").value=task.model_id;$("color").value=task.color||"";
    renderSizes();
@@ -235,7 +260,7 @@ async function takeTask(task){
 }
 
 async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
-function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;manualEntry=false;$("scanSize").textContent="";for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;scannedBarcode=null;capacitySizes=[];capacityVersion=null;loadingSizes=false;manualEntry=false;$("scanSize").textContent="";$("sizeRange").textContent="Escanea otro ID para consultar sus tallas.";resetCounts();$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes()}
 
 const camera=window.ACScanner.create({
  video:$("cameraVideo"),overlay:$("cameraOverlay"),status:$("cameraStatus"),
@@ -244,27 +269,20 @@ const camera=window.ACScanner.create({
 function acceptScannedCode(raw){
  if(pending){camera.statusText("Primero confirma el registro pendiente.");return false}
  const result=window.ACBarcode.parse(raw);
- if(!result.valid){camera.statusText("No reconozco el formato: "+result.raw+". Reintenta la lectura.");return false}
+ if(!result.valid){camera.statusText("No reconozco esta etiqueta. Enfoca de nuevo el código.");return false}
  if(selectedTask&&result.modelId!==selectedTask.model_id){
-   camera.statusText("Esta tarea corresponde al ID "+selectedTask.model_id+". Escanea su etiqueta.");return false
+   camera.statusText("Esta tarea corresponde al ID "+selectedTask.model_id+". Escanea esa etiqueta.");return false
  }
- if(selectedTask&&result.size&&!Object.hasOwn(selectedTask.remaining,result.size)){
-   camera.statusText("La talla "+result.size+" no está pendiente en la tarea actual.");return false
- }
+ const different=$("model").value.trim()!==result.modelId;
+ if(different&&!selectedTask){resetCounts();capacitySizes=[];capacityVersion=null}
  $("model").value=result.modelId;
- manualEntry=false;
- scannedLabelSize=result.size;
- if(scannedLabelSize&&!Object.hasOwn(counts,scannedLabelSize))counts[scannedLabelSize]=0;
- $("scanSize").textContent=result.size
-   ?"Talla detectada: "+result.size+" años · Código de talla "+result.sizeCode+" · ID "+result.modelId
-   :result.needsReview
-    ?"ID "+result.modelId+" · Confirma talla manualmente (clave "+result.sizeCode+")"
-    :"ID "+result.modelId+" · Captura las tallas y cantidades";
+ manualEntry=false;scannedBarcode=result;scannedLabelSize=null;
+ $("scanSize").textContent="Código leído automáticamente: ID "+result.modelId+". Consultando la talla en Capacidades…";
+ show("Etiqueta detectada. Consultando tallas autorizadas del ID "+result.modelId+".","ok");
  renderSizes();
- show("Escaneo correcto: ID "+result.modelId+(result.size?", talla "+result.size:"")+". Verifica las piezas antes de guardar.","ok");
- // No incrementar piezas automáticamente: una lectura identifica el modelo.
- // Sólo confirmar/guardar registra movimientos en la base del servidor.
  findModel();
+ // Se cierra al reconocer CODE128, sin foto ni botón para tomar imagen.
+ // Nunca sumar piezas hasta Confirmar y guardar.
  return true
 }
 $("openCamera").addEventListener("click",()=>{
@@ -280,49 +298,107 @@ $("manualId").addEventListener("click",()=>{
  manualEntry=true;controls();$("model").focus();
 });
 $("closeCamera").addEventListener("click",()=>camera.stop());
-$("cameraManual").addEventListener("click",()=>{camera.stop();$("model").focus()});
+$("cameraManual").addEventListener("click",()=>{camera.stop();manualEntry=true;controls();$("model").focus()});
 $("cameraTorch").addEventListener("click",()=>camera.switchTorch());
-$("cameraPhoto").addEventListener("click",()=>$("cameraFile").click());
-$("cameraFile").addEventListener("change",async()=>{
- const file=$("cameraFile").files?.[0];$("cameraFile").value="";
- if(file)await camera.scanFile(file);
-});
 window.addEventListener("pagehide",()=>camera.stop());
 document.addEventListener("visibilitychange",()=>{if(document.hidden)camera.stop()});
 
 async function getJson(path){const response=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const value=await response.json().catch(()=>({}));if(!response.ok)throw Error(value.detail||"HTTP "+response.status);return value}
 async function findModel(){
  const model=$("model").value.trim();const token=++lookupEpoch;
- if(!model){$("modelName").textContent="Modelo sin escanear";return}
- $("modelName").textContent="ID "+model;$("modelDetails").textContent="Buscando ficha oficial…";
- try{
-  const info=await getJson("/model?model_id="+encodeURIComponent(model));
-  if(token!==lookupEpoch||$("model").value.trim()!==model)return;
-  $("modelName").textContent=info.name||"ID "+model;
-  $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
-  if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
-  const photo=$("photo");photo.replaceChildren();
-  if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
-    const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;img.src=info.photo_url;img.style.cssText="width:100%;height:115px;object-fit:contain";
-    img.onerror=()=>{
-      if(token!==lookupEpoch)return;
-      photo.replaceChildren();
-      const label=document.createElement("span");
-      label.className="small";label.textContent="No se pudo mostrar la foto del ID "+model+".";
-      const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
-      retry.onclick=()=>{
-        if(token!==lookupEpoch)return;
-        photo.replaceChildren();
-        // Reutiliza V314 y su parámetro de reintento para errores temporales.
-        img.src=info.photo_url+"?retry=1&t="+Date.now();
-        photo.append(img);
-      };
-      photo.append(label,retry);
-    };
-    photo.append(img);
-  }else photo.textContent="No hay fotografía para este ID";
- }catch(e){if(token===lookupEpoch){$("modelDetails").textContent="No se pudo consultar la ficha: "+e.message;$("photo").textContent="Fotografía pendiente"}}
+ if(!model){
+   capacitySizes=[];capacityVersion=null;scannedBarcode=null;scannedLabelSize=null;
+   $("sizeRange").textContent="Escanea un ID para consultar sus tallas.";
+   $("modelName").textContent="Modelo sin escanear";renderSizes();return;
+ }
+ loadingSizes=true;
+ if(!selectedTask){capacitySizes=[];capacityVersion=null}
+ $("modelName").textContent="ID "+model;
+ $("modelDetails").textContent="Buscando ficha oficial…";
+ $("sizeRange").textContent="Buscando tallas del modelo en Capacidades por Talla…";
+ renderSizes();
+ // Dos consultas independientes: si no hay foto, sigue mostrando las tallas;
+ // si falta Capacidades, nunca sustituye el rango por XCH/CH/M/G.
+ const [capResponse,modelResponse]=await Promise.allSettled([
+   getJson("/capacity/model-sizes?model_id="+encodeURIComponent(model)),
+   getJson("/model?model_id="+encodeURIComponent(model))
+ ]);
+ if(token!==lookupEpoch||$("model").value.trim()!==model)return;
+ loadingSizes=false;
+ const caps=capResponse.status==="fulfilled"?capResponse.value:null;
+ if(caps?.status==="ready"&&Array.isArray(caps.sizes)&&caps.sizes.length){
+   capacitySizes=Array.from(new Set(caps.sizes.map(item=>String(item.size||"").trim()).filter(Boolean)));
+   capacityVersion=caps.version||null;
+ }else{
+   capacitySizes=[];capacityVersion=null;
+ }
+ const displayed=knownSizes();
+ if(selectedTask){
+   $("sizeRange").textContent="Tallas pendientes autorizadas de esta tarea: "+displayed.join(", ")+
+     (capacityVersion?" · Corte "+capacityVersion:"");
+ }else if(capacitySizes.length){
+   $("sizeRange").textContent="Rango del modelo: "+(caps.from_size||capacitySizes[0])+
+     " a "+(caps.to_size||capacitySizes[capacitySizes.length-1])+
+     " · "+capacitySizes.length+" tallas"+(capacityVersion?" · Corte "+capacityVersion:"");
+ }else{
+   $("sizeRange").textContent=capResponse.status==="rejected"
+     ?"No se pudo consultar Capacidades por Talla. Reintenta antes de guardar."
+     :"Sin tallas cargadas para este modelo y tienda en Capacidades por Talla.";
+ }
+ if(scannedBarcode){
+   const resolved=window.ACBarcode.resolveSize(scannedBarcode,displayed);
+   scannedLabelSize=resolved.size;
+   if(resolved.status==="matched"){
+     $("scanSize").textContent="✓ Talla identificada automáticamente: "+resolved.size+
+       " · ID "+model+" · Clave "+scannedBarcode.sizeCode;
+     show("Escaneado automáticamente: ID "+model+", talla "+resolved.size+
+       ". Captura las piezas y confirma el registro.","ok");
+   }else if(resolved.status==="ambiguous"){
+     $("scanSize").textContent="Código leído: "+scannedBarcode.raw+
+       ". La talla coincide con varias opciones: selecciónala de la lista.";
+     show("Talla ambigua en Capacidades. Revisa la etiqueta antes de guardar.","warn");
+   }else if(!displayed.length){
+     $("scanSize").textContent="ID "+model+
+       " leído. No se puede identificar su talla sin Capacidades por Talla.";
+     show("Carga o revisa el rango de tallas del ID en Capacidades por Talla.","warn");
+   }else{
+     $("scanSize").textContent="ID "+model+" leído. La clave de talla "+
+       (scannedBarcode.sizeCode||"no disponible")+
+       " no tiene equivalencia verificada en este modelo. Elige la talla del rango.";
+     show("El ID se leyó correctamente. Confirma la talla del modelo.","warn");
+   }
+ }else{
+   scannedLabelSize=null;
+ }
+ renderSizes();
+ if(modelResponse.status!=="fulfilled"){
+   $("modelDetails").textContent="No se pudo consultar la fotografía o ubicación. Las tallas se consultaron por separado.";
+   return;
+ }
+ const info=modelResponse.value;
+ $("modelName").textContent=info.name||"ID "+model;
+ $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
+ if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
+ const photo=$("photo");photo.replaceChildren();
+ if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
+   const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;
+   img.style.cssText="width:100%;height:115px;object-fit:contain";
+   img.onerror=()=>{
+     if(token!==lookupEpoch)return;
+     photo.replaceChildren();
+     const label=document.createElement("span");label.className="small";
+     label.textContent="No se pudo mostrar la foto del ID "+model+".";
+     const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
+     retry.onclick=()=>{
+       if(token!==lookupEpoch)return;
+       photo.replaceChildren();img.src=info.photo_url+"?retry=1&t="+Date.now();photo.append(img);
+     };
+     photo.append(label,retry);
+   };
+   img.src=info.photo_url;photo.append(img);
+ }else photo.textContent="No hay fotografía para este ID";
 }
+
 async function resumeSession(){
  try{
   const me=await getJson("/me");if(!me.store){show("Tu perfil todavía no tiene tienda asignada.","warn");return}
@@ -333,7 +409,8 @@ async function resumeSession(){
   const saved=sessionStorage.getItem("acPendingCapture");
   if(saved){try{const data=JSON.parse(saved);if(data.session_id===session){
     pending=data;$("model").value=data.model_id;$("color").value=data.color||"";
-    for(const size of order)counts[size]=Number(data.sizes[size]||0);
+    resetCounts();
+    for(const [size,qty] of Object.entries(data.sizes||{}))counts[size]=Number(qty);
     renderSizes();show("Hay una captura pendiente de confirmación. Reintenta Guardar sin cambiar sus piezas.","warn");
   }else sessionStorage.removeItem("acPendingCapture");}catch(e){sessionStorage.removeItem("acPendingCapture")}}
   await loadFloorLocations();await refreshTasks();
@@ -358,14 +435,30 @@ function parseVoice(value){
 }
 $("start").addEventListener("click",async()=>{busy=true;controls();try{const result=await api("/session/start",{flow:$("flow").value,stage:$("stage").value,area:$("area").value});session=result.session_id;started=Date.now();show("Actividad iniciada. Escanea el modelo.","ok");await loadFloorLocations();await refreshTasks();$("model").focus()}catch(e){show("No se pudo iniciar: "+e.message,"error")}finally{busy=false;controls()}});
 $("finish").addEventListener("click",async()=>{if(pending){show("Confirma o corrige el registro pendiente antes de finalizar.","warn");return}busy=true;controls();try{await api("/session/finish",{session_id:session});session="";selectedTask=null;taskRows=[];started=0;tick();show("Actividad finalizada y confirmada por el servidor.","ok")}catch(e){show("No se pudo finalizar: "+e.message,"error")}finally{busy=false;controls()}});
-$("model").addEventListener("input",()=>{if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}scannedLabelSize=null;$("scanSize").textContent="";$("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";controls()});
+$("model").addEventListener("input",()=>{
+ if(pending){show("Hay una captura pendiente. Confírmala antes de cambiar el modelo.","warn");return}
+ ++lookupEpoch;resetCounts();capacitySizes=[];capacityVersion=null;scannedBarcode=null;scannedLabelSize=null;loadingSizes=false;
+ $("scanSize").textContent="";$("sizeRange").textContent="Consulta las tallas del nuevo ID en Capacidades por Talla.";
+ $("modelName").textContent=$("model").value.trim()?"ID "+$("model").value.trim():"Modelo sin escanear";
+ renderSizes();
+});
 $("model").addEventListener("change",findModel);
 $("model").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findModel()}});
-$("clear").addEventListener("click",()=>{for(const size of order)counts[size]=0;pending=null;renderSizes()});
-$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const command=spoken.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(command==="finalizar"){if(pending)throw Error("Confirma la captura pendiente antes de finalizar");$("finish").click();return}if(command==="siguiente"){if(pending)throw Error("Reintenta el guardado pendiente");$("save").click();return}if(pending)throw Error("La captura anterior sigue pendiente de confirmación");const parsed=parseVoice(spoken);for(const size of order)if(Object.hasOwn(parsed,size))counts[size]=parsed[size];renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
+$("clear").addEventListener("click",()=>{
+ for(const size of knownSizes())counts[size]=0;
+ pending=null;renderSizes();
+});
+$("voice").addEventListener("click",()=>{const Speech=window.SpeechRecognition||window.webkitSpeechRecognition;if(!Speech)return;recognition=new Speech();recognition.lang="es-MX";recognition.interimResults=false;recognition.maxAlternatives=1;recognition.onresult=e=>{try{const spoken=e.results[0][0].transcript;const command=spoken.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(command==="finalizar"){if(pending)throw Error("Confirma la captura pendiente antes de finalizar");$("finish").click();return}if(command==="siguiente"){if(pending)throw Error("Reintenta el guardado pendiente");$("save").click();return}if(pending)throw Error("La captura anterior sigue pendiente de confirmación");const parsed=parseVoice(spoken);for(const [size,qty] of Object.entries(parsed)){
+  if(!knownSizes().includes(size))throw Error("La talla "+size+" no corresponde a este modelo según Capacidades");
+  counts[size]=qty;
+ }renderSizes();show("Voz interpretada: "+spoken+". Revisa las cantidades antes de guardar.","warn")}catch(error){show(error.message,"error")}};recognition.onerror=e=>show("Micrófono: "+e.error+". Puedes escribir las tallas manualmente.","error");recognition.start()});
 $("save").addEventListener("click",async()=>{
  const model=$("model").value.trim();const sizes={};for(const size of knownSizes()){const n=counts[size];if(!Number.isSafeInteger(n)||n<0){show("Revisa las cantidades de todas las tallas.","error");return}if(n>0)sizes[size]=n}
- if(!model||!Object.keys(sizes).length||!session)return;
+ if(!model||!session){show("Inicia una actividad y escanea un ID.","warn");return}
+ if(!selectedTask&&!pending&&!capacitySizes.length){
+   show("Este modelo no tiene tallas disponibles del corte de Capacidades. No se puede guardar todavía.","error");return
+ }
+ if(!Object.keys(sizes).length){show("Indica las piezas por talla antes de guardar.","warn");return}
  if(selectedTask){
    for(const [size,qty] of Object.entries(sizes)){
      const max=selectedTask.remaining[size];

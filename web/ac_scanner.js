@@ -40,7 +40,7 @@ async function loadReader(){
 }
 function create({video,overlay,status,torchButton,onCode}){
  let stream=null,readerControls=null,frameId=0,generation=0,torch=false;
- let detector=null,busy=false;
+ let detector=null,busy=false,lastNativeScan=0;
  function statusText(message){status.textContent=message}
  function stop(){
    ++generation;
@@ -65,14 +65,15 @@ function create({video,overlay,status,torchButton,onCode}){
  }
  async function nativeLoop(mine){
    if(mine!==generation||overlay.hidden||!detector)return;
-   if(video.readyState>=2){
+   if(video.readyState>=2&&performance.now()-lastNativeScan>=160){
+     lastNativeScan=performance.now();
      try{
        const codes=await detector.detect(video);
        if(mine!==generation)return;
        for(const c of codes){if(c.rawValue){accept(c.rawValue);break}}
      }catch(e){/* seguir intentando, algunas imágenes son borrosas */}
    }
-   if(mine===generation)frameId=requestAnimationFrame(()=>nativeLoop(mine));
+   if(mine===generation&&!overlay.hidden)frameId=requestAnimationFrame(()=>nativeLoop(mine));
  }
  async function open(){
    if(!overlay.hidden)return;
@@ -83,7 +84,7 @@ function create({video,overlay,status,torchButton,onCode}){
      if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia)
        throw Error("La cámara requiere HTTPS y permisos del navegador");
      stream=await navigator.mediaDevices.getUserMedia({
-       audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}
+       audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}
      });
      if(mine!==generation){for(const t of stream.getTracks())t.stop();return}
      video.srcObject=stream;await video.play();
@@ -92,7 +93,24 @@ function create({video,overlay,status,torchButton,onCode}){
      const caps=track?.getCapabilities?.();
      torchButton.hidden=!caps?.torch;
      torch=false;
-     statusText("Centra las barras horizontales dentro del recuadro. Se leerán automáticamente.");
+     if(caps?.focusMode?.includes?.("continuous")){
+       try{await track.applyConstraints({advanced:[{focusMode:"continuous"}]})}catch(e){}
+     }
+     statusText("Escaneo automático activado. Apunta a las barras verticales; no necesitas tomar una foto.");
+     // Priorizar la lectura nativa, sin red ni retrasos de descarga.
+     if(typeof window.BarcodeDetector==="function"){
+       try{
+         const supported=await window.BarcodeDetector.getSupportedFormats();
+         if(mine!==generation)return;
+         if(supported.includes("code_128")){
+           detector=new window.BarcodeDetector({formats:["code_128"]});
+           statusText("Leyendo CODE128 automáticamente… Mantén la etiqueta centrada y enfocada.");
+           frameId=requestAnimationFrame(()=>nativeLoop(mine));
+           return;
+         }
+       }catch(e){/* El navegador no admite este formato; usar ZXing */}
+     }
+     statusText("Activando el lector CODE128 continuo…");
      try{
        const lib=await loadReader();
        if(mine!==generation)return;
@@ -100,17 +118,19 @@ function create({video,overlay,status,torchButton,onCode}){
        readerControls=await reader.decodeFromStream(stream,video,(result)=>{
          if(result?.getText)accept(result.getText());
        });
+       if(mine!==generation){readerControls?.stop?.();return}
+       statusText("Lectura automática activa. Centra la etiqueta con las barras verticales.");
      }catch(error){
        if(mine!==generation)return;
-       if("BarcodeDetector" in window){
+       if(typeof window.BarcodeDetector==="function"){
          try{
-           detector=new BarcodeDetector({formats:["code_128","code_39","ean_13","ean_8","itf","upc_a"]});
+           detector=new window.BarcodeDetector({formats:["code_128"]});
            statusText("Lector alternativo activo. Acerca la etiqueta al centro.");
            frameId=requestAnimationFrame(()=>nativeLoop(mine));
            return;
          }catch(e){/* no hay alternativa nativa en Safari */}
        }
-       statusText(error.message+". Puedes tomar una foto o escribir el ID.");
+       statusText(error.message+". La lectura automática no pudo activarse; puedes escribir el ID.");
      }
    }catch(error){
      if(mine!==generation)return;
@@ -122,7 +142,7 @@ function create({video,overlay,status,torchButton,onCode}){
        :/NotFound/.test(name)
        ?"No se encontró una cámara disponible."
        :"No se pudo abrir la cámara: "+(error.message||name));
-     // Mantener el panel abierto para que usuario use foto/manual.
+     // Mantener el panel abierto para captura manual.
    }
  }
  async function scanFile(file){

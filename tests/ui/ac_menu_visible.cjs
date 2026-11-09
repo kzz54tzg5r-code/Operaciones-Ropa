@@ -25,7 +25,7 @@ assert.match(html,/repeat\(2,minmax\(0,1fr\)\)/);
 assert.equal(matches('<option value="supervisor">Supervisor · AC</option>'),2);
 assert.equal(matches('<option value="gerente">Gerente · AC</option>'),2);
 assert.match(html,/colaborador_operativo','supervisor','gerente'\]\.includes\(\$\('#newRole'\)\.value\)/);
-assert.match(sw,/operaciones-ropa-runtime-safe-update-v416/);
+assert.match(sw,/operaciones-ropa-runtime-safe-update-v417/);
 for(const block of html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g)){
   if(block[1].trim())new vm.Script(block[1],{filename:"web/index.html"});
 }
