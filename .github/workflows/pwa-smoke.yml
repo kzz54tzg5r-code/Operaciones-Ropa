@@ -85,3 +85,4 @@ jobs:
           PY
           node --check web/pwa_install.js
           node --check web/pwa_brand.js
+          node tests/ui/ac_menu_visible.cjs
