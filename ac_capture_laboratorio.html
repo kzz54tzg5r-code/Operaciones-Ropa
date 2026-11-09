@@ -126,19 +126,26 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 const $=id=>document.getElementById(id);
 const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
-let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,manualEntry=false;
-const counts=Object.fromEntries(order.map(x=>[x,0]));
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,scannedBarcode=null,manualEntry=false,capacitySizes=[],capacityVersion=null,loadingSizes=false;
+const counts={};
+function resetCounts(){for(const key of Object.keys(counts))delete counts[key];}
 const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
 function updateStageOptions(){const select=$("stage");const current=select.value;select.replaceChildren();for(const stage of stageOptions[$("flow").value]){const option=document.createElement("option");option.textContent=stage;select.append(option)}if(stageOptions[$("flow").value].includes(current))select.value=current}
 function show(text,kind=""){const el=$("message");el.textContent=text;el.className="status "+kind}
 function needsTask(){return ["Acondicionar","Ubicar","Pizca"].includes($("stage").value)}
-function knownSizes(){return Array.from(new Set([...order,...(scannedLabelSize?[scannedLabelSize]:[]),...Object.keys(selectedTask?.remaining||{})]))}
+function knownSizes(){
+ // Sólo las tallas de Capacidades del ID/tienda, o las de una tarea ya autorizada.
+ // Nunca mostrar por defecto XCH, CH, M, G para un modelo infantil.
+ if(pending)return Object.keys(pending.sizes||{});
+ if(selectedTask)return Object.keys(selectedTask.remaining||{});
+ return capacitySizes;
+}
 function controls(){
  const active=!!session;
- const valid=Object.values(counts).some(n=>n>0);
+ const valid=knownSizes().some(size=>Number.isSafeInteger(counts[size])&&counts[size]>0);
  $("start").disabled=active||busy;
  $("finish").disabled=!active||busy;
- $("save").disabled=!active||busy||!$("model").value.trim()||!valid||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
+ $("save").disabled=!active||busy||!$("model").value.trim()||!valid||loadingSizes||(!selectedTask&&!pending&&!capacitySizes.length)||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
  $("voice").disabled=!active||busy||!!pending||!("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
  $("complete").disabled=!active||busy||!!pending||!selectedTask;
  $("refreshQueue").disabled=!active||busy;
@@ -159,12 +166,20 @@ function pad(v){return String(v).padStart(2,"0")}
 function tick(){const delta=started?Math.floor((Date.now()-started)/1000):0;$("clock").textContent=pad(Math.floor(delta/3600))+":"+pad(Math.floor(delta/60)%60)+":"+pad(delta%60)}
 function renderSizes(){
  const root=$("sizes");root.replaceChildren();
- for(const size of knownSizes()){
+ const listed=knownSizes();root.classList.toggle("empty",!listed.length);
+ if(!listed.length){
+   const label=document.createElement("p");label.className="small muted";
+   label.textContent=loadingSizes?"Consultando las tallas de este modelo…":
+      "No hay tallas cargadas para este ID y tienda. Revisa Capacidades por Talla.";
+   root.append(label);
+ }
+ for(const size of listed){
    if(!Object.hasOwn(counts,size))counts[size]=0;
    const wrap=document.createElement("div");
+   if(size===scannedLabelSize)wrap.className="scan-matched";
    const label=document.createElement("label");
    const input=document.createElement("input");
-   label.textContent=(names[size]||size)+" ("+size+")";
+   label.textContent=(names[size]||size)+(size===scannedLabelSize?" ✓ escaneada":"");
    input.type="number";input.min="0";input.step="1";input.inputMode="numeric";input.className="qty";input.value=String(counts[size]);input.setAttribute("aria-label","Piezas "+(names[size]||size));
    const limit=selectedTask?.remaining?.[size];
    if(Number.isInteger(limit))input.max=String(limit);
@@ -188,6 +203,7 @@ function renderSizes(){
  }
  controls();
 }
+
 async function loadFloorLocations(){
  const select=$("floorLocation");const desired=select.value;select.replaceChildren();
  const blank=document.createElement("option");blank.value="";blank.textContent="Seleccionar ubicación de piso";select.append(blank);
@@ -233,7 +249,7 @@ async function takeTask(task){
  try{
    await api("/tasks/"+encodeURIComponent(task.id)+"/claim",{session_id:session});
    selectedTask=task;
-   for(const size of Object.keys(counts))counts[size]=0;
+   resetCounts();capacitySizes=[];capacityVersion=null;scannedLabelSize=null;scannedBarcode=null;
    for(const size of Object.keys(task.remaining))counts[size]=0;
    $("model").value=task.model_id;$("color").value=task.color||"";
    renderSizes();
@@ -244,7 +260,7 @@ async function takeTask(task){
 }
 
 async function api(path,payload){const options={method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},credentials:"same-origin",body:JSON.stringify(payload)};let response=await fetch("/api/ac"+path,options);const body=await response.json().catch(()=>({}));if(!response.ok)throw Error(typeof body.detail==="string"?body.detail:"Error HTTP "+response.status);return body}
-function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;manualEntry=false;$("scanSize").textContent="";for(const size of Object.keys(counts))counts[size]=0;$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes();$("model").focus()}
+function clearModel(){lookupEpoch++;selectedTask=null;scannedLabelSize=null;scannedBarcode=null;capacitySizes=[];capacityVersion=null;loadingSizes=false;manualEntry=false;$("scanSize").textContent="";$("sizeRange").textContent="Escanea otro ID para consultar sus tallas.";resetCounts();$("model").value="";$("color").value="";$("modelName").textContent="Modelo sin escanear";$("modelDetails").textContent="Ingresa un ID para consultar la ficha.";const box=$("photo");box.replaceChildren();box.textContent="Fotografía oficial no disponible";pending=null;sessionStorage.removeItem("acPendingCapture");renderSizes()}
 
 const camera=window.ACScanner.create({
  video:$("cameraVideo"),overlay:$("cameraOverlay"),status:$("cameraStatus"),
