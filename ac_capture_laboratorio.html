@@ -356,6 +356,29 @@ $("applyAcStore").addEventListener("click",async()=>{
  }catch(error){show("No se pudo seleccionar tienda: "+error.message,"error")}
  finally{busy=false;controls()}
 });
+function showBonusPhoto(model,token,force=false){
+ const host=$("photo");host.replaceChildren();
+ // EXACTAMENTE el mismo servicio autenticado que utilizan Bonos 1–6.
+ // No depende del Excel AC ni de que el administrador elija tienda.
+ if(!/^\d{1,15}$/.test(model)){
+   host.textContent="La fotografía requiere un ID numérico del modelo.";return;
+ }
+ const img=document.createElement("img");img.alt="Fotografía oficial de Bonos del ID "+model;
+ img.style.cssText="display:block;width:100%;height:210px;object-fit:contain;background:#f7faff;border-radius:8px";
+ img.onerror=()=>{
+   if(token!==lookupEpoch||$("model").value.trim()!==model)return;
+   host.replaceChildren();
+   const error=document.createElement("div");error.className="ac-photo-error";
+   const label=document.createElement("span");
+   label.textContent="No se pudo mostrar la fotografía del ID "+model+" desde Bonos.";
+   const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto de Bonos";
+   retry.onclick=()=>{if(token===lookupEpoch&&$("model").value.trim()===model)showBonusPhoto(model,token,true)};
+   error.append(label,retry);host.append(error);
+ };
+ img.src="/api/bonuses/product-photo/"+encodeURIComponent(model)+
+   (force?"?retry=1&t="+Date.now():"");
+ host.append(img);
+}
 async function findModel(){
  const model=$("model").value.trim();const token=++lookupEpoch;
  if(!model){
@@ -366,7 +389,8 @@ async function findModel(){
  loadingSizes=true;
  if(!selectedTask){capacitySizes=[];capacityVersion=null}
  $("modelName").textContent="ID "+model;
- $("modelDetails").textContent="Buscando ficha oficial…";
+ $("modelDetails").textContent="Buscando metadatos del modelo…";
+ showBonusPhoto(model,token);
  $("sizeRange").textContent="Buscando tallas del modelo en Capacidades por Talla…";
  renderSizes();
  // Dos consultas independientes: si no hay foto, sigue mostrando las tallas;
@@ -424,31 +448,16 @@ async function findModel(){
  }
  renderSizes();
  if(modelResponse.status!=="fulfilled"){
-   $("modelDetails").textContent="No se pudo consultar la fotografía o ubicación. Las tallas se consultaron por separado.";
+   $("modelDetails").textContent="No se pudo consultar la ubicación del catálogo. La fotografía se consulta directamente desde Bonos.";
    return;
  }
  const info=modelResponse.value;
  $("modelName").textContent=info.name||"ID "+model;
  $("modelDetails").textContent=info.location?"Ubicación: "+info.location:"Ubicación oficial pendiente";
  if(info.color&&!$("color").value.trim()&&!selectedTask)$("color").value=info.color;
- const photo=$("photo");photo.replaceChildren();
- if(typeof info.photo_url==="string"&&info.photo_url.startsWith("/")&&!info.photo_url.startsWith("//")){
-   const img=document.createElement("img");img.alt="Fotografía oficial del modelo "+model;
-   img.style.cssText="width:100%;height:115px;object-fit:contain";
-   img.onerror=()=>{
-     if(token!==lookupEpoch)return;
-     photo.replaceChildren();
-     const label=document.createElement("span");label.className="small";
-     label.textContent="No se pudo mostrar la foto del ID "+model+".";
-     const retry=document.createElement("button");retry.type="button";retry.textContent="↻ Reintentar foto";
-     retry.onclick=()=>{
-       if(token!==lookupEpoch)return;
-       photo.replaceChildren();img.src=info.photo_url+"?retry=1&t="+Date.now();photo.append(img);
-     };
-     photo.append(label,retry);
-   };
-   img.src=info.photo_url;photo.append(img);
- }else photo.textContent="No hay fotografía para este ID";
+ // La foto ya se solicita independientemente, incluso si la consulta
+ // comercial o el corte de Capacidades regresan 403/404/503.
+
 }
 
 async function resumeSession(){
