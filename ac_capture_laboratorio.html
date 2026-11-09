@@ -141,7 +141,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #edf0f6;
 const $=id=>document.getElementById(id);
 const order=["XCH","CH","M","G","XG","XXG"];
 const names={XCH:"Extra chica",CH:"Chica",M:"Mediana",G:"Grande",XG:"Extra grande",XXG:"Doble extra grande"};
-let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,scannedBarcode=null,manualEntry=false,capacitySizes=[],capacityVersion=null,loadingSizes=false;
+let session="",started=0,busy=false,pending=null,recognition=null,lookupEpoch=0,selectedTask=null,taskRows=[],scannedLabelSize=null,scannedBarcode=null,manualEntry=false,capacitySizes=[],capacityVersion=null,loadingSizes=false,activeStore="";
 const counts={};
 function resetCounts(){for(const key of Object.keys(counts))delete counts[key];}
 const stageOptions={Surtido:["Separar","Acondicionar","Ubicar","Excedentes"],Resurtido:["Pizca","Acondicionar","Ubicar"]};
@@ -158,7 +158,7 @@ function knownSizes(){
 function controls(){
  const active=!!session;
  const valid=knownSizes().some(size=>Number.isSafeInteger(counts[size])&&counts[size]>0);
- $("start").disabled=active||busy;
+ $("start").disabled=active||busy||!activeStore;
  $("finish").disabled=!active||busy;
  $("save").disabled=!active||busy||!$("model").value.trim()||!valid||loadingSizes||(!selectedTask&&!pending&&!capacitySizes.length)||(needsTask()&&!selectedTask&&!pending)||($("flow").value==="Resurtido"&&$("stage").value==="Ubicar"&&!$("floorLocation").value&&!pending);
  $("voice").disabled=!active||busy||!!pending||!("SpeechRecognition" in window||"webkitSpeechRecognition" in window);
@@ -175,6 +175,8 @@ function controls(){
  $("queueSection").hidden=!active||!needsTask();
  $("floorSection").hidden=!active||$("flow").value!=="Resurtido"||$("stage").value!=="Ubicar";
  $("floorLocation").disabled=busy||!!pending;
+ $("acStore").disabled=active||busy||!!pending;
+ $("applyAcStore").disabled=active||busy||!!pending||!$("acStore").value;
 }
 
 function pad(v){return String(v).padStart(2,"0")}
@@ -319,6 +321,41 @@ window.addEventListener("pagehide",()=>camera.stop());
 document.addEventListener("visibilitychange",()=>{if(document.hidden)camera.stop()});
 
 async function getJson(path){const response=await fetch("/api/ac"+path,{credentials:"same-origin",headers:{Accept:"application/json"}});const value=await response.json().catch(()=>({}));if(!response.ok)throw Error(value.detail||"HTTP "+response.status);return value}
+async function initializeStoreChoice(identity){
+ activeStore=identity.store||"";
+ const chooser=$("acStoreChooser");
+ if(!["admin","superadmin"].includes(identity.role)){
+   chooser.hidden=true;controls();return;
+ }
+ try{
+   const data=await getJson("/stores");
+   const select=$("acStore");select.replaceChildren();
+   const blank=document.createElement("option");blank.value="";blank.textContent="Selecciona una tienda del proyecto";select.append(blank);
+   for(const store of data.stores||[]){
+     const opt=document.createElement("option");opt.value=store;opt.textContent=store;select.append(opt);
+   }
+   select.value=activeStore||"";
+   chooser.hidden=false;
+ }catch(error){
+   chooser.hidden=false;
+   show("No se pudieron consultar las tiendas del proyecto: "+error.message,"error");
+ }
+ controls();
+}
+$("acStore").addEventListener("change",controls);
+$("applyAcStore").addEventListener("click",async()=>{
+ if(session||pending){show("Finaliza la actividad y guarda las capturas pendientes antes de cambiar tienda.","warn");return}
+ const store=$("acStore").value;if(!store){show("Selecciona una tienda del proyecto.","warn");return}
+ busy=true;controls();
+ try{
+   await api("/select-store",{store});
+   activeStore=store;
+   // Recargar la sesión firmada garantiza que todos los módulos consulten
+   // la misma tienda, sin conservar las tallas del ID anterior.
+   window.location.reload();
+ }catch(error){show("No se pudo seleccionar tienda: "+error.message,"error")}
+ finally{busy=false;controls()}
+});
 async function findModel(){
  const model=$("model").value.trim();const token=++lookupEpoch;
  if(!model){
@@ -416,7 +453,14 @@ async function findModel(){
 
 async function resumeSession(){
  try{
-  const me=await getJson("/me");if(!me.store){show("Tu perfil todavía no tiene tienda asignada.","warn");return}
+  const me=await getJson("/me");
+  await initializeStoreChoice(me);
+  if(!me.store){
+    show(["admin","superadmin"].includes(me.role)
+      ?"Selecciona arriba la tienda del proyecto para consultar capacidades y registrar piezas. La foto puede consultarse por ID desde Bonos."
+      :"Tu perfil todavía no tiene una tienda autorizada; solicita la asignación al administrador.","warn");
+    return;
+  }
   const active=await getJson("/session/active");
   if(!active.session){sessionStorage.removeItem("acPendingCapture");show("Inicia una actividad para capturar modelos.");return}
   session=active.session.id;started=Date.parse(active.session.started_at)||Date.now();
