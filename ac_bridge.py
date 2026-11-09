@@ -4,6 +4,7 @@ from pathlib import Path
 from ac_capacities import CapacityStore
 from ac_storage import ACStore, suggested_quantity
 from ac_orders import OrderService
+from ac_stock_setup import StockSetup
 
 class ACBridge:
     def __init__(self, data_directory):
@@ -11,11 +12,13 @@ class ACBridge:
         self.capacities=CapacityStore(self.path)
         self.operation=ACStore(self.path)
         self.orders=OrderService(self)
+        self.stock_setup=StockSetup(self)
 
     def initialize(self):
         self.operation.initialize()
         self.capacities.initialize()
         self.orders.initialize()
+        self.stock_setup.initialize()
 
     def upload_capacities(self, excel_bytes, *, version, admin_user):
         """Única carga Excel del módulo nuevo; permisos se verifican en el servidor."""
