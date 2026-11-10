@@ -2419,9 +2419,12 @@ function setPeriodSelector(name,d){
   }
   const t=currentPeriodTypeForView(name);
   OPER_PERIOD.type=t;
-  const list=t==='day'?(d.available_dates||[]):t==='week'?(d.available_weeks||[]):t==='year'?((d.available_years||[]).length?(d.available_years||[]):[...new Set((d.available_months||[]).map(x=>String(x).slice(0,4)).filter(Boolean))]):(d.available_months||[]);
+  const sourceDates=(d.available_dates||[]).map(String);
+  let list=t==='day'?sourceDates:t==='week'?(d.available_weeks||[]):t==='year'?((d.available_years||[]).length?(d.available_years||[]):[...new Set((d.available_months||[]).map(x=>String(x).slice(0,4)).filter(Boolean))]):(d.available_months||[]);
+  list=[...new Set(list.map(String).filter(Boolean))].sort().reverse();
+  // El controlador V266 es la autoridad; este respaldo usa el mismo orden.
   lab.textContent=t==='day'?'Fecha':t==='week'?'Semana ISO':t==='year'?'Año':'Mes';
-  const current=OPER_PERIOD.value&&list.includes(OPER_PERIOD.value)?OPER_PERIOD.value:(list.at(-1)||'');
+  const current=OPER_PERIOD.value&&list.includes(OPER_PERIOD.value)?OPER_PERIOD.value:(list[0]||'');
   const monthNames=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const periodText=v=>{
     if(t==='month'){
