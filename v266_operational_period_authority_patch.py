@@ -119,6 +119,44 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     padding:0 5px!important;
   }
 }
+/* V419: etiqueta y botones ocupan filas independientes; sin encimados. */
+@media(min-width:901px){
+  html body #operativoPeriodBar .v266-period-view{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:20px 46px!important;
+    row-gap:6px!important;
+    min-height:72px!important;
+    height:auto!important;
+    align-content:end!important;
+    overflow:visible!important;
+  }
+  html body #operativoPeriodBar .v266-period-title{
+    position:static!important;
+    grid-row:1!important;
+    height:20px!important;
+    min-height:20px!important;
+    max-height:none!important;
+    padding:0 2px!important;
+    margin:0!important;
+    line-height:20px!important;
+    overflow:visible!important;
+    transform:none!important;
+    z-index:1!important;
+  }
+  html body #operativoPeriodBar .v266-period-buttons{
+    position:static!important;
+    grid-row:2!important;
+    height:46px!important;
+    min-height:46px!important;
+    margin:0!important;
+    transform:none!important;
+  }
+  html body #operativoPeriodBar .v266-period-btn{
+    height:46px!important;
+    min-height:46px!important;
+  }
+}
 </style>'''
 
     js = r'''<script id="v266-operational-period-authority-js">
