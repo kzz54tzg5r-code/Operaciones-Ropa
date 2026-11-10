@@ -91,8 +91,16 @@ def install(m):
     flex:none!important;
     margin:0!important;
     padding:0!important;
-    gap:2px!important;
+    gap:5px!important;
     align-self:end!important;
+    /* Mantener siempre una fila para el título y otra para los botones. */
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:14px 28px!important;
+    min-height:47px!important;
+    height:auto!important;
+    align-content:end!important;
+    overflow:visible!important;
   }
   body.v271-center-parity #operativoPeriodBar #operPeriodSelectWrap{
     grid-column:2!important;
@@ -125,6 +133,23 @@ def install(m):
     display:none!important;
   }
 
+  body.v271-center-parity #operativoPeriodBar .v266-period-title{
+    grid-row:1!important;
+    position:static!important;
+    transform:none!important;
+    align-self:center!important;
+    height:14px!important;
+    min-height:14px!important;
+    max-height:none!important;
+    overflow:visible!important;
+    margin:0!important;
+  }
+  body.v271-center-parity #operativoPeriodBar .v266-period-buttons{
+    grid-row:2!important;
+    position:static!important;
+    transform:none!important;
+    margin:0!important;
+  }
   body.v271-center-parity #operativoPeriodBar .v266-period-title,
   body.v271-center-parity #operativoPeriodBar .or-fcontrol label{
     min-height:9px!important;
