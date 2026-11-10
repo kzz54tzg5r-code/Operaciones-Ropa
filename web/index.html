@@ -3361,9 +3361,11 @@ function bindOperationalUpload(hasCurrent=false){
   };
 
   let droppedFile=null;
+  let uploadAfterPicker=false;
   const selectFile=(f,fromDrop=false)=>{
     if(!f)return;
-    if(fromDrop)droppedFile=f;
+    // La selección más reciente sustituye cualquier archivo arrastrado antes.
+    droppedFile=fromDrop?f:null;
     if(drop){
       const label=drop.querySelector('.ops-drop-label')||drop;
       if(label===drop){
@@ -3376,16 +3378,40 @@ function bindOperationalUpload(hasCurrent=false){
   };
 
   if(drop){
-    drop.onclick=()=>input.click();
+    // El input está dentro del dropzone: evitar que su clic burbujee y abra
+    // el selector por segunda vez, lo que cancelaba selecciones en Windows.
+    drop.onclick=e=>{if(e.target===input)return;input.click()};
+    input.onclick=e=>e.stopPropagation();
     ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag')}));
     ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
-    drop.addEventListener('drop',e=>selectFile(e.dataTransfer.files?.[0],true));
+    drop.addEventListener('drop',e=>{
+      const f=e.dataTransfer.files?.[0];
+      if(!f)return;
+      selectFile(f,true);
+      setProgress(0,'Archivo seleccionado. Pulsa Cargar archivo o Reemplazar archivo.');
+    });
   }
-  input.onchange=()=>selectFile(input.files?.[0],false);
+  input.onchange=()=>{
+    const f=input.files?.[0];
+    if(!f){uploadAfterPicker=false;return}
+    selectFile(f,false);
+    if(uploadAfterPicker){
+      uploadAfterPicker=false;
+      void upload();
+    }else{
+      setProgress(0,'Archivo seleccionado. Pulsa Cargar archivo o Reemplazar archivo.');
+    }
+  };
 
   async function upload(){
-    const f=input.files?.[0]||droppedFile;
-    if(!f){setProgress(0,'Selecciona o arrastra el Excel de Cambios y Muertos.');return}
+    const f=droppedFile||input.files?.[0];
+    if(!f){
+      // Al pulsar un botón sin selección, abrir el explorador de Windows
+      // y enviar automáticamente el archivo elegido.
+      uploadAfterPicker=true;
+      input.click();
+      return;
+    }
     if(!f.name.toLowerCase().endsWith('.xlsx')){setProgress(0,'Sólo se acepta Excel .xlsx.');return}
 
     validateBtn.disabled=true;
@@ -3418,6 +3444,8 @@ function bindOperationalUpload(hasCurrent=false){
       }
 
       input.value='';
+      droppedFile=null;
+      uploadAfterPicker=false;
       OPSDATA=null;
       OP_VIEW='Centro Ejecutivo';
       $$('[data-opview]').forEach(x=>x.classList.toggle('active',x.dataset.opview==='Centro Ejecutivo'));
