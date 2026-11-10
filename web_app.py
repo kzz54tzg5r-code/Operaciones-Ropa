@@ -7034,15 +7034,24 @@ async def start_operations_job(request: Request,file:UploadFile=File(...)):
                 f"Ya existe una carga de Cambios y Muertos en proceso (ID {active['id']}, "
                 f"estado {active['status']}). Consulta el resultado antes de subir otro Excel.",
             )
+        # Reintentar una limpieza segura justo antes de reservar espacio.
+        # Los archivos usados por trabajos pendientes o activos nunca se eliminan.
+        # La antigua limpieza solo corría al iniciar el servidor, de modo que
+        # un staging abandonado podía bloquear nuevas cargas indefinidamente.
+        await asyncio.to_thread(_cleanup_stale_upload_job_sources)
         free_bytes=shutil.disk_usage(STAGING_DIR).free
         expected_bytes=getattr(file,"size",None)
+        required_bytes=(expected_bytes if isinstance(expected_bytes,int) and expected_bytes >= 0 else 0)
         if free_bytes <= _OPERATIONS_UPLOAD_DISK_RESERVE or (
-            isinstance(expected_bytes,int) and expected_bytes > free_bytes - _OPERATIONS_UPLOAD_DISK_RESERVE
+            required_bytes and required_bytes > free_bytes - _OPERATIONS_UPLOAD_DISK_RESERVE
         ):
+            free_mb=free_bytes // (1024*1024)
+            needed_mb=max(0, (required_bytes + _OPERATIONS_UPLOAD_DISK_RESERVE - free_bytes + 1024*1024 - 1)//(1024*1024))
             raise HTTPException(
                 507,
-                "No hay espacio suficiente en el disco de Render para recibir este Excel "
-                "y conservar un margen de seguridad. No se modificaron los datos ni los respaldos.",
+                f"Espacio insuficiente en Render: {free_mb} MB libres; "
+                f"faltan al menos {needed_mb} MB para este Excel y la reserva de seguridad. "
+                "No se modificaron los datos publicados ni los respaldos.",
             )
         stage_path=STAGING_DIR/f"operations_job_{secrets.token_hex(10)}.xlsx"
         size=await _save_upload_stream(file,stage_path)
