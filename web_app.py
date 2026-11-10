@@ -682,6 +682,54 @@ ensure_user_security_columns()
 ensure_upload_history_columns()
 ensure_upload_job_columns()
 
+def _cleanup_operations_history_snapshots() -> int:
+    """Sólo elimina snapshots antiguos de Muertos y Cambios.
+
+    El historial de cargas permanece en SQLite como auditoría (fecha, usuario,
+    registros), pero ya no ocupa espacio con copias completas de los datos.
+    """
+    recovered=0
+    for path in OPERATIONS_HISTORY_DIR.glob("*.json.gz"):
+        try:
+            recovered+=path.stat().st_size
+            path.unlink()
+        except OSError:
+            continue
+    with db() as con:
+        con.execute(
+            "UPDATE upload_history SET archive_path='' "
+            "WHERE module='Cambios y Muertos' AND COALESCE(archive_path,'')<>''"
+        )
+    if recovered:
+        print(f"[OPS-STORAGE] snapshots históricos eliminados; liberados={recovered//(1024*1024)}MB",flush=True)
+    return recovered
+
+
+def _release_previous_operations_excel_for_upload(required_bytes: int) -> int:
+    """Libera el Excel anterior sólo si la base procesada vigente existe.
+
+    La información publicada en OPS_FILE sigue consultable durante el nuevo
+    análisis. Evita borrar el único origen de datos ante un JSON ausente.
+    """
+    raw_file=DATA_ROOT/"cambios_muertos_actual.xlsx"
+    if not raw_file.is_file() or not OPS_FILE.is_file():
+        return 0
+    try:
+        with OPS_FILE.open("rb") as source:
+            if b'"source_file"' not in source.read(65536):
+                return 0
+        # Sólo liberar si hace falta espacio para recibir el nuevo archivo.
+        free=shutil.disk_usage(STAGING_DIR).free
+        if free >= required_bytes+_OPERATIONS_UPLOAD_DISK_RESERVE:
+            return 0
+        size=raw_file.stat().st_size
+        raw_file.unlink()
+        print(f"[OPS-STORAGE] Excel anterior reemplazable liberado={size//(1024*1024)}MB; JSON vigente preservado",flush=True)
+        return size
+    except OSError:
+        return 0
+
+
 def _cleanup_stale_upload_job_sources():
     """Libera staging huérfano sin tocar cargas que sí deben retomarse."""
     try:
@@ -6854,16 +6902,11 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
     payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
 
     tmp_ops=DATA_ROOT/f"operations_publish_{token}.tmp.json"
-    snapshot_tmp=OPERATIONS_HISTORY_DIR/f"{token}.json.gz.tmp"
-    snapshot_path=OPERATIONS_HISTORY_DIR/f"{token}.json.gz"
     final_raw=DATA_ROOT/"cambios_muertos_actual.xlsx"
     try:
         _write_json_stream(tmp_ops,payload)
-        # El snapshot comprimido conserva cada corte para consultas y futuros
-        # comparativos sin duplicar en disco el Excel original.
-        with tmp_ops.open("rb") as source, gzip.open(snapshot_tmp,"wb",compresslevel=6) as target:
-            shutil.copyfileobj(source,target,length=1024*1024)
-        snapshot_tmp.replace(snapshot_path)
+        # Muertos y Cambios usa una sola base vigente; no generar
+        # respaldos históricos comprimidos de cada actualización.
 
         # V301: stage_path ya está dentro del mismo disco persistente (/var/data).
         # Antes se hacía shutil.copy2(stage_path, tmp_raw), lo que exigía otros
@@ -6894,10 +6937,14 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
                 "VALUES(?,?,?,?,?,?,?,?,1,?,?,?,?)",
                 ("Cambios y Muertos",filename,payload["uploaded_at"],username,", ".join(periods),
                  len(payload.get("rows") or []),len(payload.get("rejected_rows") or []),"; ".join(payload.get("errors") or []),
-                 job_id,str(snapshot_path.relative_to(DATA_ROOT)),"published","")
+                 job_id,"","published","")
             )
+        try:
+            _cleanup_operations_history_snapshots()
+        except Exception as exc:
+            print(f"[OPS-STORAGE] no se completó limpieza histórica: {type(exc).__name__}: {exc}",flush=True)
         return {
-            "ok":True,"message":"Excel procesado y publicado; la versión anterior quedó resguardada",
+            "ok":True,"message":"Excel procesado y publicado; sólo se conserva la base vigente",
             "file":filename,"rows":len(payload.get("rows") or []),"sheets":payload.get("sheets_used",[]),
             "weeks":payload.get("weeks",[]),"months":payload.get("months",[]),
             "operational_sheet":payload.get("operational_sheet",""),"operational_sheets":payload.get("operational_sheets",[]),
@@ -6906,7 +6953,7 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
             "missing_columns_by_sheet":payload.get("missing_columns_by_sheet",{}),"data_issues":payload.get("data_issues",[])[:100],
         }
     finally:
-        for path in (tmp_ops,snapshot_tmp):
+        for path in (tmp_ops,):
             try:path.unlink(missing_ok=True)
             except Exception:pass
 
@@ -7039,9 +7086,11 @@ async def start_operations_job(request: Request,file:UploadFile=File(...)):
         # La antigua limpieza solo corría al iniciar el servidor, de modo que
         # un staging abandonado podía bloquear nuevas cargas indefinidamente.
         await asyncio.to_thread(_cleanup_stale_upload_job_sources)
-        free_bytes=shutil.disk_usage(STAGING_DIR).free
+        await asyncio.to_thread(_cleanup_operations_history_snapshots)
         expected_bytes=getattr(file,"size",None)
         required_bytes=(expected_bytes if isinstance(expected_bytes,int) and expected_bytes >= 0 else 0)
+        await asyncio.to_thread(_release_previous_operations_excel_for_upload,required_bytes)
+        free_bytes=shutil.disk_usage(STAGING_DIR).free
         if free_bytes <= _OPERATIONS_UPLOAD_DISK_RESERVE or (
             required_bytes and required_bytes > free_bytes - _OPERATIONS_UPLOAD_DISK_RESERVE
         ):
