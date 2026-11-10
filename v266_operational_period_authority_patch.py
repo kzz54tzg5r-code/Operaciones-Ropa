@@ -259,14 +259,39 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
       return (metaCacheKey===endpoint?metaCache:null)||{};
     }
   }
+  function lastClosedMexicoDate(){
+    // Fecha de cierre = ayer, en la zona de operación, no la del servidor UTC.
+    const today=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const d=new Date(today+'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate()-1);
+    return d.toISOString().slice(0,10);
+  }
   function listFor(meta,mode){
-    if(mode==='day')return [...(meta.available_dates||meta.dates||[])].filter(Boolean).sort();
-    if(mode==='week')return [...(meta.available_weeks||meta.weeks||[])].filter(Boolean).sort();
-    if(mode==='month')return [...(meta.available_months||meta.months||[])].filter(Boolean).sort();
+    const newestFirst=arr=>[...new Set(arr.map(String).filter(Boolean))].sort().reverse();
+    if(mode==='day'){
+      const actual=newestFirst(meta.available_dates||meta.dates||[]);
+      // Incluir hasta siete días de cierre aún ausentes, distinguidos como
+      // "sin datos" en el desplegable, sin atribuirles movimientos.
+      if(!actual.length)return actual;
+      const cutoff=lastClosedMexicoDate();
+      const newest=actual[0];
+      if(/^\d{4}-\d{2}-\d{2}$/.test(newest)&&newest<cutoff){
+        const cursor=new Date(newest+'T12:00:00Z');
+        for(let i=0;i<7;i++){
+          cursor.setUTCDate(cursor.getUTCDate()+1);
+          const day=cursor.toISOString().slice(0,10);
+          if(day>cutoff)break;
+          actual.push(day);
+        }
+      }
+      return newestFirst(actual);
+    }
+    if(mode==='week')return newestFirst(meta.available_weeks||meta.weeks||[]);
+    if(mode==='month')return newestFirst(meta.available_months||meta.months||[]);
     if(mode==='year'){
       const direct=[...(meta.available_years||meta.years||[])].map(String).filter(Boolean);
-      if(direct.length)return [...new Set(direct)].sort();
-      return [...new Set((meta.available_months||[]).map(x=>String(x||'').slice(0,4)).filter(x=>/^\d{4}$/.test(x)))].sort();
+      if(direct.length)return newestFirst(direct);
+      return newestFirst((meta.available_months||[]).map(x=>String(x||'').slice(0,4)).filter(x=>/^\d{4}$/.test(x)));
     }
     return[];
   }
@@ -274,6 +299,10 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     if(mode==='month'){
       const m=String(v||'').match(/^(\d{4})-(\d{2})$/);
       if(m)return (MONTHS[Number(m[2])-1]||m[2])+' '+m[1];
+    }
+    if(mode==='day'){
+      const actual=new Set((metaCache?.available_dates||metaCache?.dates||[]).map(String));
+      return String(v||'')+(actual.has(String(v))?'':' · sin datos cargados');
     }
     return String(v||'');
   }
@@ -313,7 +342,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
         if(saved&&list.includes(saved))desired=saved;
       }catch(_){}
     }
-    if(!desired)desired=list.at(-1)||'';
+    if(!desired)desired=list[0]||'';
 
     sel.innerHTML=list.map(v=>'<option value="'+String(v).replace(/"/g,'&quot;')+'">'+displayValue(mode,v)+'</option>').join('');
     if(desired)sel.value=desired;
@@ -408,7 +437,7 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
         const meta=await loadMeta(false);
         const list=listFor(meta,mode);
         if(sel&&list.length){
-          const wanted=list.includes(String(value||''))?String(value):list.at(-1);
+          const wanted=list.includes(String(value||''))?String(value):list[0];
           const sig=[...sel.options].map(o=>o.value).join('¦');
           const expected=list.join('¦');
           if(sig!==expected)sel.innerHTML=list.map(v=>'<option value="'+String(v).replace(/"/g,'&quot;')+'">'+displayValue(mode,v)+'</option>').join('');
