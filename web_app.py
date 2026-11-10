@@ -715,9 +715,14 @@ def _release_previous_operations_excel_for_upload(required_bytes: int) -> int:
     if not raw_file.is_file() or not OPS_FILE.is_file():
         return 0
     try:
+        # source_file suele estar después de los miles de registros; validar
+        # el inicio del JSON por su lista de filas en vez de buscar esa llave al final.
+        if OPS_FILE.stat().st_size < 1024:
+            return 0
         with OPS_FILE.open("rb") as source:
-            if b'"source_file"' not in source.read(65536):
-                return 0
+            head=source.read(131072)
+        if b'"rows"' not in head:
+            return 0
         # Sólo liberar si hace falta espacio para recibir el nuevo archivo.
         free=shutil.disk_usage(STAGING_DIR).free
         if free >= required_bytes+_OPERATIONS_UPLOAD_DISK_RESERVE:
