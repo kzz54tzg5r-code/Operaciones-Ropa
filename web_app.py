@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import List
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from urllib.parse import urlparse
 import hashlib, hmac, json, math, os, secrets, sqlite3, unicodedata, shutil, socket, asyncio, subprocess, sys, io, threading, re, tempfile, gc, zipfile, gzip
 from functools import wraps, lru_cache
@@ -6759,10 +6760,12 @@ def upload_operations_current(request: Request):
     data=load_ops()
     if not data.get("source_file"):
         return {"available":False}
+    published_dates=list((load_operations_meta().get("available_dates") or []))
     return {
         "available":True,
         "file":data.get("source_file",""),
         "uploaded_at":data.get("uploaded_at",""),
+        "latest_data_date":max(published_dates) if published_dates else "",
         "uploaded_by":data.get("uploaded_by",""),
         "period":", ".join(data.get("months") or data.get("weeks") or []) or "Información no disponible",
         "operational_sheet":data.get("operational_sheet",""),
@@ -6864,7 +6867,7 @@ async def upload_operations_publish(request: Request):
         tmp_ops=DATA_ROOT/"operations_publish.tmp.json"
         payload["source_file"]=meta.get("filename") or final_path.name
         payload["uploaded_by"]=u["username"]
-        payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
+        payload["uploaded_at"]=datetime.now(ZoneInfo("America/Mexico_City")).isoformat(timespec="seconds")
         await asyncio.to_thread(_write_json_stream,tmp_ops,payload)
         await asyncio.to_thread(shutil.copy2, stage_path, final_path)
         await asyncio.to_thread(tmp_ops.replace, OPS_FILE)
@@ -6904,7 +6907,7 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
     payload=_parse_operations_external(stage_path,token)
     payload["source_file"]=filename
     payload["uploaded_by"]=username
-    payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
+    payload["uploaded_at"]=datetime.now(ZoneInfo("America/Mexico_City")).isoformat(timespec="seconds")
 
     tmp_ops=DATA_ROOT/f"operations_publish_{token}.tmp.json"
     final_raw=DATA_ROOT/"cambios_muertos_actual.xlsx"
@@ -7204,7 +7207,7 @@ async def upload_operations_legacy(request: Request,file:UploadFile=File(...)):
         payload=await asyncio.to_thread(_parse_operations_external,p,token)
         payload["source_file"]=filename
         payload["uploaded_by"]=u["username"]
-        payload["uploaded_at"]=datetime.now().isoformat(timespec="seconds")
+        payload["uploaded_at"]=datetime.now(ZoneInfo("America/Mexico_City")).isoformat(timespec="seconds")
 
         # Persistir metadatos y archivo fuente actual sin duplicar ~175 MB
         # en el disco persistente. El staging y DATA_ROOT comparten filesystem.
