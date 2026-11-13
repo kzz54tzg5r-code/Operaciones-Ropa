@@ -54,6 +54,70 @@ video{width:100%;max-height:60vh;background:#111;border-radius:14px}
 footer{font-size:11px;color:#64748b;padding-top:15px}
 @media(max-width:900px){.summary{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:1fr 1fr}header a{margin-left:0}}
 @media(max-width:600px){.wrap{padding:8px 8px 70px}header h1{font-size:17px}.summary{grid-template-columns:repeat(2,1fr)}.metric{padding:9px}.metric b{font-size:19px}.filters{grid-template-columns:1fr}.detail{grid-template-columns:110px minmax(0,1fr);gap:9px}.detail .photo{height:160px}.fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.field{padding:7px}.field span{font-size:12px}.panel{padding:10px}}
+
+/* Buen Fin: vista móvil en tarjetas con precios separados */
+.mobileModels{display:none}
+.bf-pricepair{display:grid;grid-template-columns:1fr 1fr;gap:7px;min-width:0}
+.bf-pricepair .price-amount{font-size:15px;font-weight:900;overflow-wrap:anywhere}
+.bf-pricepair .price-proposed{color:#c50070}
+.bf-price-label{font-size:10px;color:#64748b;font-weight:700;display:block;margin-bottom:3px}
+.bf-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
+.bf-pricepanel{background:#f7f9fe;border:1px solid #dfe7f4;border-radius:10px;padding:10px;min-width:0}
+.bf-pricepanel h3{font-size:12px;margin:0 0 8px;color:#163e7c}
+.bf-pricepanel .price-amount{font-size:18px}
+.bf-source{font-size:11px;color:#537291;margin:7px 0}
+.bf-mobile-card{background:#fff;border:1px solid #dfe6f2;border-radius:15px;padding:12px;box-shadow:0 3px 12px rgba(13,43,79,.04);min-width:0}
+.bf-cardhead{display:grid;grid-template-columns:93px minmax(0,1fr);gap:11px;align-items:start}
+.bf-cardhead .thumb{width:93px;height:117px;object-fit:contain}
+.bf-cardhead h3{font-size:15px;margin:4px 0;line-height:1.2;overflow-wrap:anywhere}
+.bf-cardhead .badge{margin:2px 0}
+.bf-card-strategy{font-size:12px;font-weight:800;color:#204b81;line-height:1.25;margin:8px 0}
+.bf-card-bottom{margin-top:10px}
+.bf-card-bottom button{width:100%;min-height:44px}
+.bf-card-warning{color:#a52825;font-size:11px;font-weight:800;margin:5px 0}
+@media(max-width:720px){
+  body{background:#f3f6fb}
+  header{padding:8px 11px;gap:9px}
+  header img{max-width:65px;max-height:49px}
+  header h1{font-size:18px}
+  header a{font-size:11px;flex:1 0 100%;text-align:center;padding:7px}
+  .wrap{padding:8px 9px 70px}
+  .panel{padding:12px;margin-top:9px}
+  h2{font-size:17px}
+  .summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .metric{padding:10px 8px;min-width:0}
+  .metric b{font-size:21px}
+  .metric span{font-size:10px}
+  #lookupControls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #lookupControls label{grid-column:1/-1;font-size:12px}
+  #lookupControls button{min-width:0;min-height:48px;font-size:13px;padding:9px 5px}
+  #openScanner{background:#ffeaf5;border-color:#f8aacd;color:#950052;font-weight:900}
+  input,select{font-size:16px;min-height:47px}
+  .filters{grid-template-columns:1fr 1fr;gap:8px}
+  .filters label:first-child{grid-column:1/-1}
+  .filters button{min-height:47px}
+  .detail{grid-template-columns:112px minmax(0,1fr);gap:10px}
+  .detail .photo{height:155px;width:100%}
+  .detail .fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .detail .field{padding:8px}
+  .detail .field b{font-size:10px}
+  .detail .field span{font-size:12px}
+  .bf-prices{grid-template-columns:1fr}
+  .bf-pricepanel .price-amount{font-size:19px}
+  #desktopModels{display:none}
+  .mobileModels{display:grid;gap:10px}
+  #detailMessage{font-weight:750;padding:8px 0}
+  .pages{justify-content:space-between}
+  .pages button{min-height:44px}
+  #scanStatus{font-size:14px}
+  video{max-height:66vh}
+}
+@media(max-width:365px){
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bf-cardhead{grid-template-columns:80px minmax(0,1fr);gap:8px}
+  .bf-cardhead .thumb{width:80px;height:104px}
+  .detail{grid-template-columns:95px minmax(0,1fr)}
+}
 </style>
 <script defer src="/static/ac_barcode.js?v=417"></script>
 <script defer src="/static/ac_scanner.js?v=417"></script>
@@ -64,14 +128,14 @@ footer{font-size:11px;color:#64748b;padding-top:15px}
 <div id="summary" class="summary"></div>
 <section class="panel">
 <h2>Consultar artículo</h2>
-<div class="row">
+<div class="row" id="lookupControls">
 <label style="flex:2 1 230px">ID o código de barras <input id="barcode" placeholder="Escanea o escribe el ID del modelo" inputmode="text" autocomplete="off"></label>
 <label style="flex:1 1 170px">Tienda para consultar color e inventario <input id="store" list="storeOptions" placeholder="Tu tienda o consulta nacional"></label>
 <datalist id="storeOptions"><option>Iztapalapa</option><option>Vallejo</option><option>Ecatepec</option><option>Veracruz</option><option>Puebla</option><option>Toluca</option><option>Arco Norte</option><option>Ixtapaluca</option></datalist>
 <button id="searchId" class="primary">Consultar</button>
 <button id="openScanner" class="secondary">📷 Escanear con cámara</button>
 </div>
-<p class="hint">Lectura automática con la cámara trasera, sin tomar foto. Las fotografías de producto se obtienen de la fuente que ya usan los Bonos por ID. Un retiro anterior no cancela una nueva estrategia.</p>
+<p class="hint">Lectura automática con la cámara trasera, sin tomar foto. Las fotografías de producto se obtienen de la fuente que ya usan los Bonos por ID. Un retiro anterior no cancela una nueva estrategia. En 3x2 el precio base se toma del mayoreo de la última carga de Capacidades.</p>
 <div id="detailMessage" class="hint" role="status"></div>
 <div id="detail"></div>
 </section>
@@ -84,7 +148,8 @@ footer{font-size:11px;color:#64748b;padding-top:15px}
 <button id="filterApply" class="secondary">Aplicar</button>
 </div>
 <div class="row" style="justify-content:space-between;margin:10px 0"><span class="hint" id="count"></span><span class="hint">Selecciona cualquier ID para abrir su ficha</span></div>
-<div class="tablewrap"><table><thead><tr><th>Foto</th><th>ID</th><th>Modelo / marca</th><th>Estrategia</th><th>Estado</th><th>Descuento</th><th>Precio tiendas</th><th>Precio Veracruz</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="tablewrap" id="desktopModels"><table><thead><tr><th>Foto</th><th>ID</th><th>Modelo / marca</th><th>Estrategia</th><th>Estado</th><th>Descuento</th><th>Tiendas · precio actual / propuesto</th><th>Veracruz · precio actual / propuesto</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div id="mobileRows" class="mobileModels" aria-label="Modelos, fotografías y precios"></div>
 <div class="pages"><button id="prev" class="secondary">Anterior</button><span id="pageInfo" class="hint"></span><button id="next" class="secondary">Siguiente</button></div>
 </section>
 <section class="panel"><h2>Retiros de promociones anteriores</h2>
@@ -97,7 +162,7 @@ footer{font-size:11px;color:#64748b;padding-top:15px}
 <div class="row"><input id="uploadFile" type="file" accept=".xlsx"><button class="primary" id="uploadBtn">Importar archivo Buen Fin</button></div>
 <div class="hint" id="uploadMessage" role="status"></div>
 </section>
-<footer>Los precios y descuentos proceden del archivo oficial cargado. Un precio sin dato se muestra como «No especificado». Revisa siempre el precio de venta vigente en caja.</footer>
+<footer>Precio actual y precio propuesto: listado oficial Buen Fin. Para 3x2 se usa el mayoreo del último Excel Capacidades procesado, sin inventar un precio promocional unitario. Confirmar el cobro en caja.</footer>
 </main>
 <div id="scannerOverlay" hidden><div class="scannerBox">
 <h2 style="color:white">Escáner de artículos</h2><video id="scannerVideo" autoplay muted playsinline></video>
@@ -114,6 +179,14 @@ let current=1,last=1,loaded=false,scanner=null;
 function txt(value){return value===null||value===undefined||value===''?'No especificado':String(value)}
 function price(value){return value===null||value===undefined?'—':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2}).format(value)}
 function discount(value){return value===null||value===undefined?'Mecánica promocional':(value*100).toLocaleString('es-MX',{maximumFractionDigits:2})+'%'}
+function is3x2(m){return m.estrategia===strategies[0]}
+function discountFor(m){return is3x2(m)?'2.º al 50% / 3x2':discount(m.descuento)}
+function offerPrice(m,n){return is3x2(m)?'En caja':price(n)}
+function sourceText(m){return is3x2(m)?'Mayoreo · última carga de Capacidades':'Fuente: listado Buen Fin'}
+function pricePair(m,a,b){return el('div',{className:'bf-pricepair'},[
+ el('div',{},[el('span',{className:'bf-price-label',textContent:is3x2(m)?'Mayoreo actual':'Precio actual'}),el('span',{className:'price-amount',textContent:price(a)})]),
+ el('div',{},[el('span',{className:'bf-price-label',textContent:'Precio propuesto'}),el('span',{className:'price-amount price-proposed',textContent:offerPrice(m,b)})])
+])}
 function el(tag,props={},children=[]){const n=document.createElement(tag);for(const [k,v] of Object.entries(props)){if(k==='className')n.className=v;else if(k==='textContent')n.textContent=v;else n.setAttribute(k,v)}for(const c of children)n.append(c);return n}
 function clear(target){target.replaceChildren()}
 function badge(v){return el('span',{className:'badge '+(v||'').toLowerCase().split(' ')[0],textContent:v})}
@@ -124,6 +197,9 @@ async function init(){
   $('searchId').onclick=()=>lookup($('barcode').value);
   $('barcode').addEventListener('keydown',e=>{if(e.key==='Enter')lookup($('barcode').value)});
   $('filterApply').onclick=()=>{current=1;list()};
+  $('store').addEventListener('change',()=>{if(loaded){current=1;list()}});
+  $('filterStatus').addEventListener('change',()=>{current=1;list()});
+  $('filterStrategy').addEventListener('change',()=>{current=1;list()});
   $('filterSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){current=1;list()}});
   $('prev').onclick=()=>{if(current>1){current--;list()}};
   $('next').onclick=()=>{if(current<last){current++;list()}};
@@ -165,27 +241,50 @@ function renderSummary(result){
 async function list(){
  if(!loaded)return;
  $('count').textContent='Consultando modelos…';
- const param=new URLSearchParams({q:$('filterSearch').value,estado:$('filterStatus').value,estrategia:$('filterStrategy').value,pagina:String(current),limite:'30'});
+ const q=new URLSearchParams({q:$('filterSearch').value,estado:$('filterStatus').value,
+ estrategia:$('filterStrategy').value,pagina:String(current),limite:'30',tienda:$('store').value});
  try{
-   const r=await api('/api/buen-fin/modelos?'+param);
-   const tbody=$('rows');clear(tbody);
-   for(const model of r.items){
-     const id=el('button',{className:'link',type:'button',textContent:model.id});id.onclick=()=>lookup(model.id);
-     const row=el('tr',{},[
-       el('td',{},[photo(model.id)]),el('td',{},[id]),
-       el('td',{},[el('strong',{textContent:txt(model.modelo)}),el('div',{className:'hint',textContent:txt(model.marca)})]),
-       el('td',{},[el('div',{textContent:model.estrategia}),
-           ...(model.retiro_previo?[el('span',{className:'badge',textContent:'Retiró promo anterior'})]:[])]),
-       el('td',{},[badge(model.estado)]),
-       el('td',{textContent:discount(model.descuento)}),
-       el('td',{},[el('div',{textContent:price(model.precio_tienda)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_tienda)})]),
-       el('td',{},[el('div',{textContent:price(model.precio_veracruz)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_veracruz)})])
-     ]);
-     tbody.append(row);
-   }
-   if(!r.items.length)tbody.append(el('tr',{},[el('td',{colspan:'8',textContent:'No se encontraron modelos con esos filtros.'})]));
-   last=Math.max(1,r.paginas);$('count').textContent=r.total.toLocaleString('es-MX')+' registros encontrados';
-   $('pageInfo').textContent='Página '+current+' de '+last;$('prev').disabled=current===1;$('next').disabled=current>=last;
+  const r=await api('/api/buen-fin/modelos?'+q),tbody=$('rows'),mobile=$('mobileRows');
+  clear(tbody);clear(mobile);
+  for(const m of r.items){
+   const id=el('button',{className:'link',type:'button',textContent:m.id});id.onclick=()=>lookup(m.id);
+   tbody.append(el('tr',{},[
+    el('td',{},[photo(m.id)]),el('td',{},[id]),
+    el('td',{},[el('strong',{textContent:txt(m.modelo)}),el('div',{className:'hint',textContent:txt(m.marca)})]),
+    el('td',{},[el('div',{textContent:m.estrategia}),...(m.retiro_previo?[el('span',{className:'badge',textContent:'Retiró promo anterior'})]:[])]),
+    el('td',{},[badge(m.estado)]),el('td',{textContent:discountFor(m)}),
+    el('td',{},[pricePair(m,m.precio_tienda,m.precio_promo_tienda)]),
+    el('td',{},[pricePair(m,m.precio_veracruz,m.precio_promo_veracruz)])
+   ]));
+   const card=el('article',{className:'bf-mobile-card'},[
+    el('div',{className:'bf-cardhead'},[photo(m.id),el('div',{},[
+      el('div',{className:'hint',textContent:'ID '+m.id+' · '+txt(m.marca)}),
+      el('h3',{textContent:txt(m.modelo)}),badge(m.estado),
+      el('div',{className:'bf-card-strategy',textContent:m.estrategia}),
+      el('div',{className:'hint',textContent:discountFor(m)})
+    ])])
+   ]);
+   const blocks=el('div',{className:'bf-prices'});
+   for(const [label,currentPrice,proposal] of [
+    ['Tiendas',m.precio_tienda,m.precio_promo_tienda],
+    ['Veracruz',m.precio_veracruz,m.precio_promo_veracruz]
+   ]) blocks.append(el('div',{className:'bf-pricepanel'},[el('h3',{textContent:label}),pricePair(m,currentPrice,proposal)]));
+   card.append(blocks,el('div',{className:'bf-source',textContent:sourceText(m)}));
+   if(is3x2(m)&&m.precio_tienda===null)card.append(el('p',{className:'bf-card-warning',textContent:'No se encontró mayoreo en el último Excel Capacidades.'}));
+   if(m.retiro_previo)card.append(el('p',{className:'hint',textContent:'Retirado de otra promoción'}));
+   const button=el('button',{className:'primary',type:'button',textContent:'Ver ficha · '+m.id});
+   button.onclick=()=>lookup(m.id);
+   card.append(el('div',{className:'bf-card-bottom'},[button]));
+   mobile.append(card);
+  }
+  if(!r.items.length){
+   tbody.append(el('tr',{},[el('td',{colspan:'8',textContent:'Sin modelos para estos filtros.'})]));
+   mobile.append(el('p',{className:'hint',textContent:'Sin modelos para estos filtros.'}));
+  }
+  last=Math.max(1,r.paginas);
+  $('count').textContent=r.total.toLocaleString('es-MX')+' registros encontrados';
+  $('pageInfo').textContent='Página '+current+' de '+last;
+  $('prev').disabled=current===1;$('next').disabled=current>=last;
  }catch(e){$('count').textContent=e.message}
 }
 async function lookup(raw){
@@ -209,13 +308,16 @@ async function lookup(raw){
      const box=el('div',{className:'strategy'});
      const head=el('div',{className:'head'},[el('b',{textContent:m.estrategia}),badge(m.estado)]);
      box.append(head);
-     const facts=el('div',{className:'fields'});
-     for(const [key,value] of [['Descuento',discount(m.descuento)],['Precio tiendas',price(m.precio_tienda)],['Precio promo tiendas',price(m.precio_promo_tienda)],
-       ['Precio Veracruz',price(m.precio_veracruz)],['Precio promo Veracruz',price(m.precio_promo_veracruz)],['Inventario tienda',m.inventario_tienda??'Sin dato'],
-       ['Mecánica',m.mecanica],['Vigencia',m.vigencia],['Nota',m.nota||'Sin notas: vigente']]){
-       facts.append(el('div',{className:'field'},[el('b',{textContent:key}),el('span',{textContent:txt(value)})]));
-     }
-     box.append(facts);right.append(box);
+     const prices=el('div',{className:'bf-prices'},[
+ el('div',{className:'bf-pricepanel'},[el('h3',{textContent:'Tiendas · precios'}),pricePair(m,m.precio_tienda,m.precio_promo_tienda)]),
+ el('div',{className:'bf-pricepanel'},[el('h3',{textContent:'Veracruz · precios'}),pricePair(m,m.precio_veracruz,m.precio_promo_veracruz)])
+]);
+const facts=el('div',{className:'fields'});
+for(const [key,value] of [['Descuento / mecánica',discountFor(m)],['Inventario tienda',m.inventario_tienda??'Sin dato'],
+ ['Mecánica',m.mecanica],['Vigencia',m.vigencia],['Nota',m.nota||'Sin notas: vigente']]){
+ facts.append(el('div',{className:'field'},[el('b',{textContent:key}),el('span',{textContent:txt(value)})]));
+}
+box.append(prices,el('div',{className:'bf-source',textContent:sourceText(m)}),facts);right.append(box);
    }
    if(d.retiros.length){
      const section=el('div',{className:'strategy'});

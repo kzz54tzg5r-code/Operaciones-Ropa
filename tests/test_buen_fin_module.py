@@ -60,3 +60,63 @@ def test_escaneo_y_cancelacion():
     assert _scan_id('ZX0987')==''
     assert _status('SE CANCELA DE ESTA PROMOCIÓN PARA PARTICIPAR EN 3X999')=='Cancelado'
     assert _status('NUEVO · Gancho sem 45 reactivado')=='Vigente'
+
+
+def test_precios_de_mayoreo_ultimo_capacidades_por_tienda():
+    import pandas as pd
+    from buen_fin_module import _wholesale_snapshot, _priced_record, _store_for_user
+
+    class FakeApp:
+        version = 1
+
+        def _capacity_source_entry(self, period=""):
+            return {"id": str(self.version), "status": "procesado",
+                    "name": "capacidades_ultima_carga.xlsx",
+                    "uploaded_at": "2026-11-13T12:00:00"}
+
+        def _latest_capacity_frame(self):
+            price = 159.90 if self.version == 2 else 119.90
+            return pd.DataFrame([
+                {"ID_ART": "1234567", "Tienda": "Iztapalapa", "Costo unitario": price},
+                {"ID_ART": "1234567", "Tienda": "Vallejo", "Costo unitario": price},
+                {"ID_ART": "1234567", "Tienda": "Veracruz", "Costo unitario": 129.90},
+                {"ID_ART": "7777777", "Tienda": "Iztapalapa", "Costo unitario": 1.00},
+            ])
+
+        def login_key(self, value):
+            return str(value or "").casefold().strip()
+
+        def store_names(self, active=True):
+            return ["Iztapalapa", "Vallejo", "Veracruz"]
+
+    FakeApp.pd = pd
+    app = FakeApp()
+    data = parse_workbook(_book())
+    three_for_two = next(x for x in data["rows"] if x["estrategia"] == STRATEGIES[0])
+    twenty_off = next(x for x in data["rows"] if x["estrategia"] == STRATEGIES[1])
+    snapshot = _wholesale_snapshot(app, data)
+    assert snapshot["source"]["archivo"] == "capacidades_ultima_carga.xlsx"
+    priced = _priced_record(app, three_for_two, snapshot, "Iztapalapa")
+    assert priced["precio_tienda"] == 119.90
+    assert priced["precio_veracruz"] == 129.90
+    assert priced["precio_promo_tienda"] is None
+    assert priced["precio_promo_veracruz"] is None
+    assert priced["fuente_precio"].startswith("Precio mayoreo")
+    assert _priced_record(app, twenty_off, snapshot)["precio_tienda"] == 399
+    assert _priced_record(app, twenty_off, snapshot)["precio_promo_tienda"] == 319.2
+    assert _store_for_user(app, {"role": "tienda", "store": "Iztapalapa"}, "Veracruz") == "Iztapalapa"
+
+    # Entra otro archivo de Capacidades: se renueva el precio, sin actualizar Buen Fin.
+    app.version = 2
+    latest = _wholesale_snapshot(app, data)
+    assert _priced_record(app, three_for_two, latest, "Iztapalapa")["precio_tienda"] == 159.90
+    assert _priced_record(app, three_for_two, latest, "Veracruz")["precio_tienda"] == 129.90
+
+    # No suponer que Veracruz tiene precio si la tienda no aparece en la fuente.
+    app._latest_capacity_frame = lambda: pd.DataFrame([
+        {"ID_ART": "1234567", "Tienda": "Iztapalapa", "Costo unitario": 100.00}
+    ])
+    app.version = 3
+    no_ver = _wholesale_snapshot(app, data)
+    assert _priced_record(app, three_for_two, no_ver, "Iztapalapa")["precio_veracruz"] is None
+    assert _priced_record(app, three_for_two, no_ver, "Vallejo")["precio_tienda"] is None
