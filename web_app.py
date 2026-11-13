@@ -1654,6 +1654,15 @@ def _activity_class(value):
     return original
 
 
+def _is_floor_dead_collection(value):
+    """Alias real de captura: Muertos de Piso de Venta es recolección de origen.
+
+    Clasificado/Acondicionado/Ubicado NO son nuevos ingresos y no se agregan.
+    """
+    normalized=normalize_col(value)
+    return ("muertos de piso" in normalized or "muertos piso" in normalized)
+
+
 def _motive_class(value):
     original=" ".join(str(value or "").split()).strip()
     n=normalize_col(original)
@@ -1904,7 +1913,7 @@ def _read_operational_sheet(path: Path, sheet: str, staff_lookup=None):
             issues.append({"sheet":sheet,"row":int(row_index)+2,"store":store,"activity":act_original,
                            "warning":"Ocurrencia vacía; la fila suma piezas pero no cuenta como recorrido."})
 
-        is_recoleccion=(activity=="Recolección de muertos")
+        is_recoleccion=(activity=="Recolección de muertos" or _is_floor_dead_collection(act_original))
         is_ingreso=(normalize_col(act_original)=="ingreso")
         is_operational_input=is_recoleccion or is_ingreso
         motive=_motive_class(reason) if is_operational_input else "No aplica"
@@ -2291,7 +2300,7 @@ def _read_operational_sheet_stream(book: dict, sheet: str, staff_lookup=None):
         if not occ:
             issues.append({"sheet":sheet,"row":int(row_number),"store":store,"activity":act_original,
                            "warning":"Ocurrencia vacía; la fila suma piezas pero no cuenta como recorrido."})
-        is_recoleccion=(activity=="Recolección de muertos")
+        is_recoleccion=(activity=="Recolección de muertos" or _is_floor_dead_collection(act_original))
         is_ingreso=(normalize_col(act_original)=="ingreso")
         is_operational_input=is_recoleccion or is_ingreso
         motive=_motive_class(reason) if is_operational_input else "No aplica"
@@ -5811,8 +5820,29 @@ def operations(
         d=store_map[s]; d["records"]+=1
         for key in ("muertos","cajas","probador","sistema_devoluciones","sin_clasificar","recolectadas","acondicionado","ubicado"):
             d[key]+=float(r.get(key) or 0)
+        # Datos publicados ANTES del arreglo: el parser antiguo no reconoció
+        # «Muertos de Piso de Venta» como entrada. Reconstituir sólo esos
+        # movimientos a partir de la fila original sin abrir/republicar el Excel
+        # ni volver a contar una fila que ya fue procesada correctamente.
+        old_floor_input=(
+            _is_floor_dead_collection(r.get("activity_original") or r.get("activity"))
+            and not any(float(r.get(key) or 0) for key in (
+                "muertos","cajas","probador","sistema_devoluciones",
+                "sin_clasificar","recolectadas"
+            ))
+        )
+        if old_floor_input:
+            motive_key={
+                "Muertos":"muertos","Cajas":"cajas","Probador":"probador",
+                "Sistema/Devoluciones":"sistema_devoluciones",
+                "Sin clasificar":"sin_clasificar",
+            }.get(_motive_class(r.get("reason")))
+            if motive_key:
+                pieces=float(r.get("pieces") or 0)
+                d[motive_key]+=pieces
+                d["recolectadas"]+=pieces
         d["recorridos"]+=float(r.get("recorridos") or 0)
-        if float(r.get("recolectadas") or 0)>0 or float(r.get("acondicionado") or 0)>0 or float(r.get("ubicado") or 0)>0:
+        if float(r.get("recolectadas") or 0)>0 or old_floor_input or float(r.get("acondicionado") or 0)>0 or float(r.get("ubicado") or 0)>0:
             d["productividad_piezas"]+=float(r.get("pieces") or 0)
 
     for r in conv_detail:
