@@ -2525,7 +2525,7 @@ async function fetchOpsForView(name){
   const compactFilterViews=['Centro Ejecutivo','Conversión','Recuperación Económica','Productividad por Colaborador','Ranking de Colaboradores','Cumplimiento de Recorridos','Índice Integral'];
   const area=compactFilterViews.includes(name)?'':($('#operAreaSelect')?.value||'');
   const activity=compactFilterViews.includes(name)?'':($('#operActivitySelect')?.value||'');
-  const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
+  const projectOnly=false; // Todas las tiendas en Cambios y Muertos.
   const url=`/api/operations?store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&compact=true&project_only=${projectOnly?'true':'false'}`;
   const now=Date.now(), cached=OPS_VIEW_CACHE.get(url);
   if(cached && now-cached.at<45000)return cached.data;
@@ -2574,10 +2574,7 @@ async function refreshOperativoMeta(){
 function scoreStatus(v){v=Number(v||0);return v>=85?'Sobresaliente':v>=70?'En meta':v>=55?'En riesgo':'Crítico'}
 function reportDownloadBar(name){
   const safeName=name.replaceAll("'","\\'");
-  // V407: en el detalle de Centro Operativo se ofrece únicamente Excel.
-  // Se conservan PDF/Excel de otras secciones y los endpoints existentes.
-  const pdfButton=name==='Centro Ejecutivo'?'':`<button onclick="downloadCurrentReport('pdf','${safeName}',this)">Descargar PDF</button>`;
-  return `<div class="report-actions">${pdfButton}<button onclick="downloadCurrentReport('xlsx','${safeName}',this)">Descargar Excel</button></div>`;
+  return `<div class="report-actions"><button onclick="downloadCurrentReport('pdf','${safeName}',this)">Descargar PDF</button></div>`;
 }
 async function downloadCurrentReport(format,name,button){
   const type=currentPeriodTypeForView(name);
@@ -2586,7 +2583,7 @@ async function downloadCurrentReport(format,name,button){
   const compactFilterViews=['Centro Ejecutivo','Conversión','Recuperación Económica','Productividad por Colaborador','Ranking de Colaboradores','Cumplimiento de Recorridos','Índice Integral'];
   const area=compactFilterViews.includes(name)?'':($('#operAreaSelect')?.value||'');
   const activity=compactFilterViews.includes(name)?'':($('#operActivitySelect')?.value||'');
-  const projectOnly=(name==='Operación Diaria'||name==='Cumplimiento de Recorridos');
+  const projectOnly=false; // Todas las tiendas en Cambios y Muertos.
   const url=`/api/export/operations?format=${encodeURIComponent(format)}&report=${encodeURIComponent(name)}&store=${encodeURIComponent(store)}&period_type=${encodeURIComponent(type)}&period_value=${encodeURIComponent(value)}&area=${encodeURIComponent(area)}&activity=${encodeURIComponent(activity)}&start_date=&end_date=&project_only=${projectOnly?'true':'false'}`;
   const old=button?.textContent||'Descargar';
   if(button){button.disabled=true;button.textContent=format==='pdf'?'Generando PDF...':'Generando Excel...'}
@@ -3722,4 +3719,42 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
 <link rel="stylesheet" href="/static/acordeon_jerarquico_v412.css?v=412">
 <script defer src="/static/acordeon_jerarquico_v412.js?v=412"></script>
 <link rel="stylesheet" href="/static/centro_movil_paridad_v413.css?v=413">
+<script id="ops-period-recent-first-fix-v420">
+(function(){
+  const id='operPeriodSelect';
+  let busy=false, observed=null;
+  function sortDates(){
+    if(busy)return;
+    const select=document.getElementById(id);
+    if(!select||select.options.length<2)return;
+    const original=Array.from(select.options);
+    const ordered=original.slice().sort((a,b)=>String(b.value).localeCompare(String(a.value)));
+    if(original.every((opt,i)=>opt===ordered[i]))return;
+    const current=select.value;
+    busy=true;
+    try{
+      const fragment=document.createDocumentFragment();
+      ordered.forEach(opt=>fragment.appendChild(opt));
+      select.appendChild(fragment);
+      select.value=current;
+    }finally{busy=false}
+  }
+  function init(){
+    const select=document.getElementById(id);
+    if(!select||observed===select)return;
+    observed=select;
+    new MutationObserver(()=>{if(!busy)sortDates()}).observe(select,{childList:true});
+    sortDates();
+  }
+  document.addEventListener('pointerdown',e=>{
+    if(e.target?.id===id){init();sortDates()}
+  },true);
+  document.addEventListener('focusin',e=>{
+    if(e.target?.id===id){init();sortDates()}
+  },true);
+  new MutationObserver(init).observe(document.documentElement,{childList:true,subtree:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+</script>
 </body></html>
