@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es-MX"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Buen Fin 2026 · Operaciones Ropa</title>
+<meta name="theme-color" content="#14376A">
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#142c51;background:#f5f7fc}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:1300px;margin:0 auto;padding:13px 17px 100px}
+header{background:linear-gradient(115deg,#0c3268,#234a85);color:white;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header img{max-width:105px;max-height:63px;object-fit:contain}
+header h1{font-size:20px;line-height:1.1;margin:0}header small{font-size:11px;color:#dde9ff}
+header a{margin-left:auto;color:#fff;text-decoration:none;border:1px solid #ffffff7d;padding:9px 13px;border-radius:9px}
+button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
+.primary{border:0;border-radius:9px;background:#ec007f;color:#fff;padding:11px 15px;font-weight:800}
+.secondary{border:1px solid #c8d8ed;border-radius:9px;background:#fff;color:#123a76;padding:10px 13px;font-weight:750}
+.panel{background:white;border:1px solid #dfe6f1;border-radius:13px;padding:15px;margin-top:12px;min-width:0}
+.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.row>*{min-width:0}
+h2{font-size:16px;margin:0 0 9px}p{line-height:1.45}.hint{font-size:12px;color:#64748b}
+.summary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:12px 0}
+.metric{border:1px solid #dfe6f1;border-radius:12px;background:#fff;padding:14px 12px}
+.metric b{font-size:23px;display:block;color:#173b76}.metric span{font-size:11px;color:#5b677b}
+label{font-size:12px;font-weight:800;display:flex;flex-direction:column;gap:5px;flex:1 1 160px}
+input,select{border:1px solid #ced9e9;border-radius:9px;background:#fff;color:#172d4b;padding:11px;min-height:42px;max-width:100%}
+input[type=file]{padding:7px;min-height:unset}
+.filters{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end}
+.notice{padding:11px 13px;border:1px solid #e6d7b3;background:#fffbef;border-radius:9px;color:#694917;font-size:12px}
+.error{color:#b42318}.ok{color:#137047}
+.badge{display:inline-block;border-radius:100px;padding:5px 9px;font-size:11px;font-weight:800;background:#e7edf8;color:#183c71}
+.badge.cancelado{background:#ffe5e5;color:#9b2424}
+.badge.reintegrado{background:#dcfce7;color:#17603d}
+.badge.pendiente{background:#fdf0d4;color:#8f5700}
+section{min-width:0}
+.tablewrap{overflow-x:auto;max-height:900px;border:1px solid #e2e8f0;border-radius:10px}
+table{width:100%;min-width:850px;border-collapse:collapse;font-size:12px}
+th{text-align:left;background:#153e78;color:#fff;position:sticky;top:0;padding:11px 9px}
+td{border-bottom:1px solid #edf0f6;padding:8px 9px;vertical-align:middle}
+tbody tr:hover{background:#f7faff}td button.link{border:0;background:none;color:#0c56a0;text-decoration:underline;font-weight:800}
+.thumb{width:42px;height:52px;object-fit:contain;background:#f4f6f9;border:1px solid #e3e6ec;border-radius:6px}
+.detail{display:grid;grid-template-columns:190px minmax(0,1fr);gap:15px}
+.detail .photo{width:100%;height:220px;object-fit:contain;background:#f2f5fa;border:1px solid #e0e6ef;border-radius:11px}
+.fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.field{background:#f8faff;padding:10px;border-radius:8px;overflow-wrap:anywhere}
+.field b{font-size:11px;color:#5a6d8a;display:block;margin-bottom:3px}
+.field span{font-weight:750;font-size:13px}
+.strategy{border:1px solid #dee6f1;border-radius:10px;padding:13px;margin:9px 0}
+.strategy .head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:7px}
+.strategy .head b{font-size:14px}
+.pages{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:10px}
+#scannerOverlay[hidden]{display:none!important}
+#scannerOverlay{position:fixed;inset:0;z-index:999;background:rgba(3,11,26,.94);color:white;display:flex;align-items:center;justify-content:center;padding:15px}
+.scannerBox{width:min(580px,100%);text-align:center}
+video{width:100%;max-height:60vh;background:#111;border-radius:14px}
+#scanStatus{font-size:13px;color:#e9f0ff;min-height:38px}
+footer{font-size:11px;color:#64748b;padding-top:15px}
+@media(max-width:900px){.summary{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:1fr 1fr}header a{margin-left:0}}
+@media(max-width:600px){.wrap{padding:8px 8px 70px}header h1{font-size:17px}.summary{grid-template-columns:repeat(2,1fr)}.metric{padding:9px}.metric b{font-size:19px}.filters{grid-template-columns:1fr}.detail{grid-template-columns:110px minmax(0,1fr);gap:9px}.detail .photo{height:160px}.fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.field{padding:7px}.field span{font-size:12px}.panel{padding:10px}}
+</style>
+<script defer src="/static/ac_barcode.js?v=417"></script>
+<script defer src="/static/ac_scanner.js?v=417"></script>
+</head><body>
+<header><img src="/static/price_shoes_white.svg?v=403" alt="Price Shoes"><div><h1>Buen Fin 2026</h1><small>Operaciones Ropa · Consulta, retiros y escaneo</small></div><a href="/">← Volver a Operaciones Ropa</a></header>
+<main class="wrap">
+<div id="generalMessage" class="notice" role="status">Consultando catálogo publicado…</div>
+<div id="summary" class="summary"></div>
+<section class="panel">
+<h2>Consultar artículo</h2>
+<div class="row">
+<label style="flex:2 1 230px">ID o código de barras <input id="barcode" placeholder="Escanea o escribe el ID del modelo" inputmode="text" autocomplete="off"></label>
+<label style="flex:1 1 170px">Tienda para consultar color e inventario <input id="store" list="storeOptions" placeholder="Tu tienda o consulta nacional"></label>
+<datalist id="storeOptions"><option>Iztapalapa</option><option>Vallejo</option><option>Ecatepec</option><option>Veracruz</option><option>Puebla</option><option>Toluca</option><option>Arco Norte</option><option>Ixtapaluca</option></datalist>
+<button id="searchId" class="primary">Consultar</button>
+<button id="openScanner" class="secondary">📷 Escanear con cámara</button>
+</div>
+<p class="hint">Lectura automática con la cámara trasera, sin tomar foto. Las fotografías de producto se obtienen de la fuente que ya usan los Bonos por ID. Un retiro anterior no cancela una nueva estrategia.</p>
+<div id="detailMessage" class="hint" role="status"></div>
+<div id="detail"></div>
+</section>
+<section class="panel">
+<h2>Modelos participantes por estrategia</h2>
+<div class="filters">
+<label>Buscar ID, modelo, marca o familia <input id="filterSearch" placeholder="Buscar en promociones"></label>
+<label>Estado<select id="filterStatus"><option value="">Todos</option><option>Vigente</option><option>Reintegrado</option><option>Cancelado</option><option>Pendiente de liberación</option></select></label>
+<label>Estrategia<select id="filterStrategy"><option value="">Todas las estrategias</option></select></label>
+<button id="filterApply" class="secondary">Aplicar</button>
+</div>
+<div class="row" style="justify-content:space-between;margin:10px 0"><span class="hint" id="count"></span><span class="hint">Selecciona cualquier ID para abrir su ficha</span></div>
+<div class="tablewrap"><table><thead><tr><th>Foto</th><th>ID</th><th>Modelo / marca</th><th>Estrategia</th><th>Estado</th><th>Descuento</th><th>Precio tiendas</th><th>Precio Veracruz</th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="pages"><button id="prev" class="secondary">Anterior</button><span id="pageInfo" class="hint"></span><button id="next" class="secondary">Siguiente</button></div>
+</section>
+<section class="panel"><h2>Retiros de promociones anteriores</h2>
+<p class="hint">Se consultan por ID dentro de la ficha. Las bajas del 10 y 13 de noviembre se conservan como eventos independientes de las estrategias vigentes.</p>
+<div id="withdrawnSummary" class="row"></div>
+</section>
+<section class="panel" id="adminArea" hidden>
+<h2>Actualizar listado oficial</h2>
+<p class="hint">Solo Administrador o Super Administrador. Se reemplaza el catálogo Buen Fin de forma atómica, sin alterar Capacidades, Bonos ni Cambios y Muertos. Las fotos no se importan: se consultan automáticamente en el macro.</p>
+<div class="row"><input id="uploadFile" type="file" accept=".xlsx"><button class="primary" id="uploadBtn">Importar archivo Buen Fin</button></div>
+<div class="hint" id="uploadMessage" role="status"></div>
+</section>
+<footer>Los precios y descuentos proceden del archivo oficial cargado. Un precio sin dato se muestra como «No especificado». Revisa siempre el precio de venta vigente en caja.</footer>
+</main>
+<div id="scannerOverlay" hidden><div class="scannerBox">
+<h2 style="color:white">Escáner de artículos</h2><video id="scannerVideo" autoplay muted playsinline></video>
+<p id="scanStatus">Abriendo cámara…</p>
+<div class="row" style="justify-content:center"><button id="torchButton" class="secondary" hidden>Encender linterna</button><button id="closeScanner" class="secondary">Cerrar escáner</button></div>
+</div></div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const statuses=['Vigente','Reintegrado','Cancelado','Pendiente de liberación'];
+const strategies=['2do al 50% o 3x2','FINDE 20-30%','Ganchos 40-50%','Todo a $399 y $499','Mamelucos 3x$999','Semana PUMA','Oport. Importados','Price Electro Home'];
+let current=1,last=1,loaded=false,scanner=null;
+function txt(value){return value===null||value===undefined||value===''?'No especificado':String(value)}
+function price(value){return value===null||value===undefined?'—':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2}).format(value)}
+function discount(value){return value===null||value===undefined?'Mecánica promocional':(value*100).toLocaleString('es-MX',{maximumFractionDigits:2})+'%'}
+function el(tag,props={},children=[]){const n=document.createElement(tag);for(const [k,v] of Object.entries(props)){if(k==='className')n.className=v;else if(k==='textContent')n.textContent=v;else n.setAttribute(k,v)}for(const c of children)n.append(c);return n}
+function clear(target){target.replaceChildren()}
+function badge(v){return el('span',{className:'badge '+(v||'').toLowerCase().split(' ')[0],textContent:v})}
+function photo(id,cl='thumb'){const img=el('img',{className:cl,alt:'Foto del modelo '+id,loading:'lazy',src:'/api/bonuses/product-photo/'+encodeURIComponent(id)});img.onerror=()=>{img.onerror=null;img.replaceWith(el('span',{className:'hint',textContent:'Sin foto disponible'}))};return img}
+async function api(url,init){const res=await fetch(url,{credentials:'same-origin',...init});if(res.status===401){location.assign('/');throw Error('Sesión expirada')}let data;try{data=await res.json()}catch(e){throw Error('Respuesta no disponible')}if(!res.ok)throw Error(typeof data.detail==='string'?data.detail:'Error al consultar');return data}
+async function init(){
+  for(const s of strategies)$('filterStrategy').append(el('option',{value:s,textContent:s}));
+  $('searchId').onclick=()=>lookup($('barcode').value);
+  $('barcode').addEventListener('keydown',e=>{if(e.key==='Enter')lookup($('barcode').value)});
+  $('filterApply').onclick=()=>{current=1;list()};
+  $('filterSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){current=1;list()}});
+  $('prev').onclick=()=>{if(current>1){current--;list()}};
+  $('next').onclick=()=>{if(current<last){current++;list()}};
+  $('openScanner').onclick=async()=>{
+    if(!scanner){if(!window.ACScanner){$('detailMessage').textContent='No se pudo iniciar el escáner';return}
+      scanner=window.ACScanner.create({video:$('scannerVideo'),overlay:$('scannerOverlay'),status:$('scanStatus'),torchButton:$('torchButton'),onCode:raw=>{
+        const parsed=window.ACBarcode?.parse(raw);
+        if(!parsed?.valid)return false;
+        $('barcode').value=parsed.modelId;
+        lookup(parsed.modelId);return true;
+      }});
+      $('torchButton').onclick=()=>scanner.switchTorch();
+      $('closeScanner').onclick=()=>scanner.stop();
+    }
+    await scanner.open();
+  };
+  $('uploadBtn').onclick=importFile;
+  try{
+    const root=await api('/api/bootstrap');
+    $('adminArea').hidden=!['superadmin','admin'].includes(root.user?.role||'');
+    if(root.user?.store)$('store').value=root.user.store;
+    const result=await api('/api/buen-fin/resumen');
+    loaded=result.cargado;
+    renderSummary(result);
+    if(loaded)await list();
+  }catch(error){$('generalMessage').textContent=error.message;$('generalMessage').className='notice error'}
+}
+function renderSummary(result){
+  const summ=$('summary');clear(summ);
+  if(!result.cargado){$('generalMessage').textContent='El módulo está listo. Un Administrador debe importar el Excel oficial Buen Fin 2026 una sola vez.';return}
+  const r=result.resumen||{},s=r.estados||{};
+  $('generalMessage').textContent='Catálogo '+txt(result.version)+' · Importado: '+txt(result.importado)+' · Archivo: '+txt(result.archivo);
+  for(const [label,value] of [['Registros de estrategia',r.registros||0],['IDs únicos',r.ids_unicos||0],['Vigentes',s.Vigente||0],['Reintegrados',s.Reintegrado||0],['Cancelados',s.Cancelado||0],['Pendientes de liberación',s['Pendiente de liberación']||0]]){
+    summ.append(el('div',{className:'metric'},[el('b',{textContent:Number(value).toLocaleString('es-MX')}),el('span',{textContent:label})]));
+  }
+  $('withdrawnSummary').replaceChildren(el('span',{className:'badge',textContent:'Retiro 10 nov: '+r.retiros_10}),
+     el('span',{className:'badge',textContent:'Retiro 13 nov: '+r.retiros_13}));
+}
+async function list(){
+ if(!loaded)return;
+ $('count').textContent='Consultando modelos…';
+ const param=new URLSearchParams({q:$('filterSearch').value,estado:$('filterStatus').value,estrategia:$('filterStrategy').value,pagina:String(current),limite:'30'});
+ try{
+   const r=await api('/api/buen-fin/modelos?'+param);
+   const tbody=$('rows');clear(tbody);
+   for(const model of r.items){
+     const id=el('button',{className:'link',type:'button',textContent:model.id});id.onclick=()=>lookup(model.id);
+     const row=el('tr',{},[
+       el('td',{},[photo(model.id)]),el('td',{},[id]),
+       el('td',{},[el('strong',{textContent:txt(model.modelo)}),el('div',{className:'hint',textContent:txt(model.marca)})]),
+       el('td',{textContent:model.estrategia}),el('td',{},[badge(model.estado)]),
+       el('td',{textContent:discount(model.descuento)}),
+       el('td',{},[el('div',{textContent:price(model.precio_tienda)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_tienda)})]),
+       el('td',{},[el('div',{textContent:price(model.precio_veracruz)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_veracruz)})])
+     ]);
+     tbody.append(row);
+   }
+   if(!r.items.length)tbody.append(el('tr',{},[el('td',{colspan:'8',textContent:'No se encontraron modelos con esos filtros.'})]));
+   last=Math.max(1,r.paginas);$('count').textContent=r.total.toLocaleString('es-MX')+' registros encontrados';
+   $('pageInfo').textContent='Página '+current+' de '+last;$('prev').disabled=current===1;$('next').disabled=current>=last;
+ }catch(e){$('count').textContent=e.message}
+}
+async function lookup(raw){
+ if(!raw.trim()){$('detailMessage').textContent='Escribe un ID o escanea su etiqueta';return}
+ $('barcode').value=raw;
+ $('detailMessage').textContent='Buscando modelo…';clear($('detail'));
+ try{
+   const p=new URLSearchParams({codigo:raw,tienda:$('store').value});
+   const d=await api('/api/buen-fin/articulo?'+p);
+   $('detailMessage').textContent=d.modelos.length+' estrategia(s) · '+d.retiros.length+' retiro(s) anterior(es)';
+   const holder=el('div',{className:'detail'});
+   const left=el('div',{},[photo(d.id,'photo'),el('div',{className:'hint',textContent:'Fuente: fotos de Bonos / macro por ID'})]);
+   const right=el('div');
+   const first=d.modelos[0]||d.retiros[0]||{};
+   const f=el('div',{className:'fields'});
+   for(const [k,v] of [['ID',d.id],['Modelo',first.modelo],['Marca',first.marca],['Corrida',first.corrida],['Color',d.color||'No disponible en catálogo'],['Tienda',d.tienda||'Sin tienda seleccionada']]){
+     f.append(el('div',{className:'field'},[el('b',{textContent:k}),el('span',{textContent:txt(v)})]));
+   }
+   right.append(f);
+   for(const m of d.modelos){
+     const box=el('div',{className:'strategy'});
+     const head=el('div',{className:'head'},[el('b',{textContent:m.estrategia}),badge(m.estado)]);
+     box.append(head);
+     const facts=el('div',{className:'fields'});
+     for(const [key,value] of [['Descuento',discount(m.descuento)],['Precio tiendas',price(m.precio_tienda)],['Precio promo tiendas',price(m.precio_promo_tienda)],
+       ['Precio Veracruz',price(m.precio_veracruz)],['Precio promo Veracruz',price(m.precio_promo_veracruz)],['Inventario tienda',m.inventario_tienda??'Sin dato'],
+       ['Mecánica',m.mecanica],['Vigencia',m.vigencia],['Nota',m.nota||'Sin notas: vigente']]){
+       facts.append(el('div',{className:'field'},[el('b',{textContent:key}),el('span',{textContent:txt(value)})]));
+     }
+     box.append(facts);right.append(box);
+   }
+   if(d.retiros.length){
+     const section=el('div',{className:'strategy'});
+     section.append(el('b',{textContent:'Historial de retiro de promoción anterior'}));
+     for(const retired of d.retiros){
+       section.append(el('p',{className:'hint',textContent:retired.fecha+': retirada «'+txt(retired.promocion_retirada)+'». Pasa a «'+txt(retired.estrategia_destino)+'». '+(retired.observacion||'')}));
+     }
+     right.append(section);
+   }
+   holder.append(left,right);$('detail').append(holder);
+   $('detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+ }catch(e){$('detailMessage').textContent=e.message;$('detailMessage').className='hint error'}
+}
+async function importFile(){
+ const file=$('uploadFile').files?.[0];
+ if(!file){$('uploadMessage').textContent='Selecciona el archivo Buen Fin .xlsx';return}
+ if(!/\.xlsx$/i.test(file.name)){$('uploadMessage').textContent='Solo se acepta .xlsx';return}
+ const button=$('uploadBtn');button.disabled=true;$('uploadMessage').textContent='Validando e importando estrategias y retiros…';
+ try{
+  const form=new FormData();form.append('file',file);
+  const response=await api('/api/buen-fin/importar',{method:'POST',body:form});
+  $('uploadMessage').textContent='Importación correcta: '+response.resumen.registros+' registros y '+response.resumen.retiros+' retiros.';
+  loaded=true;current=1;renderSummary(await api('/api/buen-fin/resumen'));await list();
+ }catch(e){$('uploadMessage').textContent='Error: '+e.message}
+ finally{button.disabled=false}
+}
+document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+</body></html>
