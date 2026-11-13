@@ -176,6 +176,9 @@ def parse_workbook(data):
                 "precio_socio": _money(row.get("O")),
                 "observacion": _plain(row.get("U")) if date == "2026-11-13" else "",
             })
+    retiro_by_id = Counter(x["id"] for x in withdrawn)
+    for record in records:
+        record["retiro_previo"] = retiro_by_id.get(record["id"], 0)
     status_counts = Counter(x["estado"] for x in records)
     by_strategy = {}
     for name in STRATEGIES:
@@ -240,6 +243,9 @@ def _scan_id(raw):
 
 def install(m):
     """Se instala tras V314; no cambia ninguna ruta comercial/operativa."""
+    from ac_catalog import ExistingCatalogLookup
+    catalog_lookup = ExistingCatalogLookup(m._latest_capacity_frame)
+
     @m.app.get("/buen-fin",include_in_schema=False)
     def page(request: Request):
         m.require_user(request)
@@ -323,9 +329,7 @@ def install(m):
         color=None
         if selected:
             try:
-                from ac_catalog import ExistingCatalogLookup
-                lookup=ExistingCatalogLookup(m._latest_capacity_frame)
-                detail=lookup(selected,product_id)
+                detail=catalog_lookup(selected,product_id)
                 color=detail.get("color") if detail else None
             except Exception:
                 color=None
