@@ -174,7 +174,9 @@ async function list(){
      const row=el('tr',{},[
        el('td',{},[photo(model.id)]),el('td',{},[id]),
        el('td',{},[el('strong',{textContent:txt(model.modelo)}),el('div',{className:'hint',textContent:txt(model.marca)})]),
-       el('td',{textContent:model.estrategia}),el('td',{},[badge(model.estado)]),
+       el('td',{},[el('div',{textContent:model.estrategia}),
+           ...(model.retiro_previo?[el('span',{className:'badge',textContent:'Retiró promo anterior'})]:[])]),
+       el('td',{},[badge(model.estado)]),
        el('td',{textContent:discount(model.descuento)}),
        el('td',{},[el('div',{textContent:price(model.precio_tienda)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_tienda)})]),
        el('td',{},[el('div',{textContent:price(model.precio_veracruz)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_veracruz)})])
