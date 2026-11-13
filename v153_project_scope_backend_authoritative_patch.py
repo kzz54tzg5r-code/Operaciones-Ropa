@@ -118,6 +118,36 @@ def install(m):
             _, qstart, qend = _year_bounds(original_value)
             query_type, query_value = "all", ""
 
+        # Todas las tiendas activas participan ahora en Cambios y Muertos.
+        # No condicionar los reportes al selector histórico «Proyecto».
+        # Se mantiene intacta la validación de rol/tienda dentro de _ops_call.
+        inclusive = await _ops_call(
+            request,
+            store=store,
+            period_type=query_type,
+            period_value=query_value,
+            area=area,
+            activity=activity,
+            start_date=qstart,
+            end_date=qend,
+            compact=compact,
+            project_only=False,
+        )
+        if isinstance(inclusive, dict):
+            out = dict(inclusive)
+            out["v153_project_scope"] = False
+            out["v153_project_store_count"] = len(out.get("stores") or [])
+            out["v153_project_stores"] = [r.get("store") for r in out.get("stores", []) if r.get("store")]
+            out["project_stores"] = list(out["v153_project_stores"])
+            out["period_type"] = original_type
+            out["period_value"] = original_value
+            from v375_center_card_metrics import center_card_metrics
+            out["center_card_metrics"] = center_card_metrics(out)
+            if original_type == "year":
+                out["start_date"], out["end_date"] = qstart, qend
+            return out
+        return inclusive
+
         project_names = set(m.project_store_names(True))
 
         # Tienda concreta: el endpoint project-scope es estricto; /api/operations
