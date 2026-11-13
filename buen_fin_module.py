@@ -269,7 +269,7 @@ def _wholesale_snapshot(m, dataset):
         entry = None
     source = dict(entry) if entry else {}
     key = (_plain(source.get("id")), _plain(source.get("uploaded_at")),
-           _plain(source.get("cache_file")), len(ids))
+           _plain(source.get("cache_file")), hashlib.sha256("|".join(sorted(ids)).encode("utf-8")).hexdigest())
     with _wholesale_lock:
         if _wholesale_cache["key"] == key and _wholesale_cache["data"] is not None:
             return _wholesale_cache["data"]
@@ -334,8 +334,10 @@ def _priced_record(m, record, wholesale, selected_store=""):
     selected_price = (price_by_store.get((ident, m.login_key(selected_store)))
                       if selected_store else None)
     veracruz = price_by_store.get((ident, m.login_key("Veracruz")))
-    output["precio_tienda"] = selected_price if selected_price is not None else company_price
-    output["precio_veracruz"] = veracruz if veracruz is not None else company_price
+    # Una tienda especificada no hereda el precio de otra si no tiene registro.
+    output["precio_tienda"] = (selected_price if selected_store else company_price)
+    # Veracruz tiene precio propio: no inventar un valor con la referencia nacional.
+    output["precio_veracruz"] = veracruz
     # El 3x2/segundo al 50% es una mecánica, no un precio unitario rebajado.
     # No fabricar un 'precio propuesto' con 33.33% ni asumir un ticket de 3 piezas.
     output["precio_promo_tienda"] = None
