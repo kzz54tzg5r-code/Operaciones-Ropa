@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: python -m pip install -q pytest fastapi python-multipart
+      - run: python -m pip install -q pytest fastapi python-multipart pandas
       - run: python -m pytest -q tests/test_buen_fin_module.py
       - name: Sintaxis Python + JS y referencia foto macro
         run: |
