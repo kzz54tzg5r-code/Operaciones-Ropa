@@ -506,4 +506,8 @@ _install_v405_access(web_app)
 from ac_production import install as _install_operaciones_ac
 _install_operaciones_ac(web_app)
 
+# Buen Fin 2026: módulo independiente; imágenes desde Bonos V314.
+from buen_fin_module import install as _install_buen_fin
+_install_buen_fin(web_app)
+
 app = web_app.app
