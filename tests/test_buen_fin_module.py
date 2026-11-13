@@ -67,7 +67,6 @@ def test_precios_de_mayoreo_ultimo_capacidades_por_tienda():
     from buen_fin_module import _wholesale_snapshot, _priced_record, _store_for_user
 
     class FakeApp:
-        pd = pd
         version = 1
 
         def _capacity_source_entry(self, period=""):
@@ -90,6 +89,7 @@ def test_precios_de_mayoreo_ultimo_capacidades_por_tienda():
         def store_names(self, active=True):
             return ["Iztapalapa", "Vallejo", "Veracruz"]
 
+    FakeApp.pd = pd
     app = FakeApp()
     data = parse_workbook(_book())
     three_for_two = next(x for x in data["rows"] if x["estrategia"] == STRATEGIES[0])
