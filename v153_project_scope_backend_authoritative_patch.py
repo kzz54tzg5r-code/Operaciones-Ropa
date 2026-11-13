@@ -109,7 +109,6 @@ def install(m):
         strict_project: bool = True,
     ):
         actor = m.require_user(request)
-        selected = m.effective_store(actor, store)
         original_type = str(period_type or "all").lower()
         original_value = str(period_value or "")
         query_type, query_value = original_type, original_value
@@ -147,120 +146,6 @@ def install(m):
                 out["start_date"], out["end_date"] = qstart, qend
             return out
         return inclusive
-
-        project_names = set(m.project_store_names(True))
-
-        # Tienda concreta: el endpoint project-scope es estricto; /api/operations
-        # normal conserva la tienda elegida para no romper análisis individuales.
-        if selected != "Compañía":
-            use_project = strict_project
-            data = await _ops_call(
-                request,
-                store=store,
-                period_type=query_type,
-                period_value=query_value,
-                area=area,
-                activity=activity,
-                start_date=qstart,
-                end_date=qend,
-                compact=compact,
-                project_only=use_project,
-            )
-            if isinstance(data, dict):
-                out = dict(data)
-                out["v153_project_scope"] = bool(use_project)
-                out["v153_project_store_count"] = 1 if selected in project_names and use_project else 0
-                out["v153_project_stores"] = sorted(project_names)
-                out["period_type"] = original_type
-                out["period_value"] = original_value
-                # V375: indicadores visuales independientes; la tabla mantiene valores reales.
-                from v375_center_card_metrics import center_card_metrics
-                out["center_card_metrics"] = center_card_metrics(out)
-                if original_type == "year":
-                    out["start_date"], out["end_date"] = qstart, qend
-                return out
-            return data
-
-        # Compañía: dos consultas cacheables sobre la base persistida. La primera
-        # es la fuente autoritativa de KPIs Proyecto; la segunda sólo aporta el
-        # comparativo de Recuperación de todas las tiendas y metadatos de filtros.
-        project_data = await _ops_call(
-            request,
-            store="Compañía",
-            period_type=query_type,
-            period_value=query_value,
-            area=area,
-            activity=activity,
-            start_date=qstart,
-            end_date=qend,
-            compact=compact,
-            project_only=True,
-        )
-        all_data = await _ops_call(
-            request,
-            store="Compañía",
-            period_type=query_type,
-            period_value=query_value,
-            area=area,
-            activity=activity,
-            start_date=qstart,
-            end_date=qend,
-            compact=True,
-            project_only=False,
-        )
-        if not isinstance(project_data, dict):
-            return project_data
-        if not isinstance(all_data, dict):
-            all_data = {}
-
-        out = dict(project_data)
-        # Aplicar el límite Proyecto también al origen de las tarjetas; nunca
-        # confiar sólo en el filtro del navegador ni en la cifra general.
-        # El detalle operativo y los KPIs comparten esta lista autorizada.
-        out["stores"] = [
-            dict(row) for row in (project_data.get("stores") or [])
-            if isinstance(row, dict) and row.get("store") in project_names
-        ]
-        # ÚNICA excepción al alcance Proyecto: comparativo de recuperación.
-        out["recovery_by_store"] = list(all_data.get("recovery_by_store") or [])
-        # El estado de la fuente DEV debe corresponder a todas las tiendas,
-        # igual que la tabla de recuperación (no sólo a las tiendas Proyecto).
-        if "recovery_source" in all_data:
-            out["recovery_source"] = dict(all_data.get("recovery_source") or {})
-
-        # Mantener catálogos/periodos completos para no perder opciones del filtro.
-        for key in (
-            "available_dates", "available_weeks", "available_months", "available_years",
-            "areas_available", "activities_available", "source_file", "source_name",
-            "loaded_at", "updated_at", "available",
-        ):
-            if key in all_data:
-                out[key] = all_data[key]
-
-        # V375: limitar cada tienda a su ingreso antes de consolidar tarjetas,
-        # sin modificar las métricas ni las filas del detalle real.
-        from v375_center_card_metrics import center_card_metrics
-        out["center_card_metrics"] = center_card_metrics(out)
-        out["v153_project_scope"] = True
-        out["v153_project_store_count"] = len(project_names)
-        out["v153_project_stores"] = sorted(project_names)
-        # Compatibilidad con PDF V152 / V151.
-        out["project_stores"] = sorted(project_names)
-        out["period_type"] = original_type
-        out["period_value"] = original_value
-        if original_type == "year":
-            out["start_date"], out["end_date"] = qstart, qend
-
-        pm = out.get("metrics") or {}
-        am = all_data.get("metrics") or {}
-        print(
-            "[V153-SCOPE] "
-            f"{original_type}:{original_value or qstart or 'hist'} · proyectos={len(project_names)} · "
-            f"dev_proyecto={float(pm.get('dev_pzs') or 0):.0f} vs dev_compania={float(am.get('dev_pzs') or 0):.0f} · "
-            f"total_proyecto={float(pm.get('total_pzs') or pm.get('ingresos') or 0):.0f} vs total_compania={float(am.get('total_pzs') or am.get('ingresos') or 0):.0f}",
-            flush=True,
-        )
-        return out
 
     def _remove_get(path: str):
         for route in list(m.app.router.routes):
