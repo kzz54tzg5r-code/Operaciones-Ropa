@@ -179,6 +179,14 @@ let current=1,last=1,loaded=false,scanner=null;
 function txt(value){return value===null||value===undefined||value===''?'No especificado':String(value)}
 function price(value){return value===null||value===undefined?'—':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:2}).format(value)}
 function discount(value){return value===null||value===undefined?'Mecánica promocional':(value*100).toLocaleString('es-MX',{maximumFractionDigits:2})+'%'}
+function is3x2(m){return m.estrategia===strategies[0]}
+function discountFor(m){return is3x2(m)?'2.º al 50% / 3x2':discount(m.descuento)}
+function offerPrice(m,n){return is3x2(m)?'En caja':price(n)}
+function sourceText(m){return is3x2(m)?'Mayoreo · última carga de Capacidades':'Fuente: listado Buen Fin'}
+function pricePair(m,a,b){return el('div',{className:'bf-pricepair'},[
+ el('div',{},[el('span',{className:'bf-price-label',textContent:is3x2(m)?'Mayoreo actual':'Precio actual'}),el('span',{className:'price-amount',textContent:price(a)})]),
+ el('div',{},[el('span',{className:'bf-price-label',textContent:'Precio propuesto'}),el('span',{className:'price-amount price-proposed',textContent:offerPrice(m,b)})])
+])}
 function el(tag,props={},children=[]){const n=document.createElement(tag);for(const [k,v] of Object.entries(props)){if(k==='className')n.className=v;else if(k==='textContent')n.textContent=v;else n.setAttribute(k,v)}for(const c of children)n.append(c);return n}
 function clear(target){target.replaceChildren()}
 function badge(v){return el('span',{className:'badge '+(v||'').toLowerCase().split(' ')[0],textContent:v})}
@@ -189,6 +197,9 @@ async function init(){
   $('searchId').onclick=()=>lookup($('barcode').value);
   $('barcode').addEventListener('keydown',e=>{if(e.key==='Enter')lookup($('barcode').value)});
   $('filterApply').onclick=()=>{current=1;list()};
+  $('store').addEventListener('change',()=>{if(loaded){current=1;list()}});
+  $('filterStatus').addEventListener('change',()=>{current=1;list()});
+  $('filterStrategy').addEventListener('change',()=>{current=1;list()});
   $('filterSearch').addEventListener('keydown',e=>{if(e.key==='Enter'){current=1;list()}});
   $('prev').onclick=()=>{if(current>1){current--;list()}};
   $('next').onclick=()=>{if(current<last){current++;list()}};
@@ -230,27 +241,50 @@ function renderSummary(result){
 async function list(){
  if(!loaded)return;
  $('count').textContent='Consultando modelos…';
- const param=new URLSearchParams({q:$('filterSearch').value,estado:$('filterStatus').value,estrategia:$('filterStrategy').value,pagina:String(current),limite:'30'});
+ const q=new URLSearchParams({q:$('filterSearch').value,estado:$('filterStatus').value,
+ estrategia:$('filterStrategy').value,pagina:String(current),limite:'30',tienda:$('store').value});
  try{
-   const r=await api('/api/buen-fin/modelos?'+param);
-   const tbody=$('rows');clear(tbody);
-   for(const model of r.items){
-     const id=el('button',{className:'link',type:'button',textContent:model.id});id.onclick=()=>lookup(model.id);
-     const row=el('tr',{},[
-       el('td',{},[photo(model.id)]),el('td',{},[id]),
-       el('td',{},[el('strong',{textContent:txt(model.modelo)}),el('div',{className:'hint',textContent:txt(model.marca)})]),
-       el('td',{},[el('div',{textContent:model.estrategia}),
-           ...(model.retiro_previo?[el('span',{className:'badge',textContent:'Retiró promo anterior'})]:[])]),
-       el('td',{},[badge(model.estado)]),
-       el('td',{textContent:discount(model.descuento)}),
-       el('td',{},[el('div',{textContent:price(model.precio_tienda)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_tienda)})]),
-       el('td',{},[el('div',{textContent:price(model.precio_veracruz)}),el('div',{className:'hint',textContent:'Promo: '+price(model.precio_promo_veracruz)})])
-     ]);
-     tbody.append(row);
-   }
-   if(!r.items.length)tbody.append(el('tr',{},[el('td',{colspan:'8',textContent:'No se encontraron modelos con esos filtros.'})]));
-   last=Math.max(1,r.paginas);$('count').textContent=r.total.toLocaleString('es-MX')+' registros encontrados';
-   $('pageInfo').textContent='Página '+current+' de '+last;$('prev').disabled=current===1;$('next').disabled=current>=last;
+  const r=await api('/api/buen-fin/modelos?'+q),tbody=$('rows'),mobile=$('mobileRows');
+  clear(tbody);clear(mobile);
+  for(const m of r.items){
+   const id=el('button',{className:'link',type:'button',textContent:m.id});id.onclick=()=>lookup(m.id);
+   tbody.append(el('tr',{},[
+    el('td',{},[photo(m.id)]),el('td',{},[id]),
+    el('td',{},[el('strong',{textContent:txt(m.modelo)}),el('div',{className:'hint',textContent:txt(m.marca)})]),
+    el('td',{},[el('div',{textContent:m.estrategia}),...(m.retiro_previo?[el('span',{className:'badge',textContent:'Retiró promo anterior'})]:[])]),
+    el('td',{},[badge(m.estado)]),el('td',{textContent:discountFor(m)}),
+    el('td',{},[pricePair(m,m.precio_tienda,m.precio_promo_tienda)]),
+    el('td',{},[pricePair(m,m.precio_veracruz,m.precio_promo_veracruz)])
+   ]));
+   const card=el('article',{className:'bf-mobile-card'},[
+    el('div',{className:'bf-cardhead'},[photo(m.id),el('div',{},[
+      el('div',{className:'hint',textContent:'ID '+m.id+' · '+txt(m.marca)}),
+      el('h3',{textContent:txt(m.modelo)}),badge(m.estado),
+      el('div',{className:'bf-card-strategy',textContent:m.estrategia}),
+      el('div',{className:'hint',textContent:discountFor(m)})
+    ])])
+   ]);
+   const blocks=el('div',{className:'bf-prices'});
+   for(const [label,currentPrice,proposal] of [
+    ['Tiendas',m.precio_tienda,m.precio_promo_tienda],
+    ['Veracruz',m.precio_veracruz,m.precio_promo_veracruz]
+   ]) blocks.append(el('div',{className:'bf-pricepanel'},[el('h3',{textContent:label}),pricePair(m,currentPrice,proposal)]));
+   card.append(blocks,el('div',{className:'bf-source',textContent:sourceText(m)}));
+   if(is3x2(m)&&m.precio_tienda===null)card.append(el('p',{className:'bf-card-warning',textContent:'No se encontró mayoreo en el último Excel Capacidades.'}));
+   if(m.retiro_previo)card.append(el('p',{className:'hint',textContent:'Retirado de otra promoción'}));
+   const button=el('button',{className:'primary',type:'button',textContent:'Ver ficha · '+m.id});
+   button.onclick=()=>lookup(m.id);
+   card.append(el('div',{className:'bf-card-bottom'},[button]));
+   mobile.append(card);
+  }
+  if(!r.items.length){
+   tbody.append(el('tr',{},[el('td',{colspan:'8',textContent:'Sin modelos para estos filtros.'})]));
+   mobile.append(el('p',{className:'hint',textContent:'Sin modelos para estos filtros.'}));
+  }
+  last=Math.max(1,r.paginas);
+  $('count').textContent=r.total.toLocaleString('es-MX')+' registros encontrados';
+  $('pageInfo').textContent='Página '+current+' de '+last;
+  $('prev').disabled=current===1;$('next').disabled=current>=last;
  }catch(e){$('count').textContent=e.message}
 }
 async function lookup(raw){
@@ -274,13 +308,16 @@ async function lookup(raw){
      const box=el('div',{className:'strategy'});
      const head=el('div',{className:'head'},[el('b',{textContent:m.estrategia}),badge(m.estado)]);
      box.append(head);
-     const facts=el('div',{className:'fields'});
-     for(const [key,value] of [['Descuento',discount(m.descuento)],['Precio tiendas',price(m.precio_tienda)],['Precio promo tiendas',price(m.precio_promo_tienda)],
-       ['Precio Veracruz',price(m.precio_veracruz)],['Precio promo Veracruz',price(m.precio_promo_veracruz)],['Inventario tienda',m.inventario_tienda??'Sin dato'],
-       ['Mecánica',m.mecanica],['Vigencia',m.vigencia],['Nota',m.nota||'Sin notas: vigente']]){
-       facts.append(el('div',{className:'field'},[el('b',{textContent:key}),el('span',{textContent:txt(value)})]));
-     }
-     box.append(facts);right.append(box);
+     const prices=el('div',{className:'bf-prices'},[
+ el('div',{className:'bf-pricepanel'},[el('h3',{textContent:'Tiendas · precios'}),pricePair(m,m.precio_tienda,m.precio_promo_tienda)]),
+ el('div',{className:'bf-pricepanel'},[el('h3',{textContent:'Veracruz · precios'}),pricePair(m,m.precio_veracruz,m.precio_promo_veracruz)])
+]);
+const facts=el('div',{className:'fields'});
+for(const [key,value] of [['Descuento / mecánica',discountFor(m)],['Inventario tienda',m.inventario_tienda??'Sin dato'],
+ ['Mecánica',m.mecanica],['Vigencia',m.vigencia],['Nota',m.nota||'Sin notas: vigente']]){
+ facts.append(el('div',{className:'field'},[el('b',{textContent:key}),el('span',{textContent:txt(value)})]));
+}
+box.append(prices,el('div',{className:'bf-source',textContent:sourceText(m)}),facts);right.append(box);
    }
    if(d.retiros.length){
      const section=el('div',{className:'strategy'});
