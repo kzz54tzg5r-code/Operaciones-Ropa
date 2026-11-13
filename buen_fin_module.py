@@ -241,6 +241,112 @@ def _scan_id(raw):
     return barcode.group(1) if barcode else ""
 
 
+_wholesale_lock = RLock()
+_wholesale_cache = {"key": None, "data": None}
+
+
+def _store_for_user(m, user, requested=""):
+    """Limita la tienda a una del padrón sin permitir saltar el alcance del usuario."""
+    role = _plain(user.get("role"))
+    bound = _plain(user.get("store"))
+    selected = _plain(requested) if role in {"superadmin", "admin", "director"} else bound
+    active = {m.login_key(name): name for name in m.store_names(True)}
+    return active.get(m.login_key(selected), "")
+
+
+def _wholesale_snapshot(m, dataset):
+    """Precio mayoreo del ÚLTIMO Excel Capacidades procesado, no de Bonos.
+
+    El parser comercial conserva PRECIO MAYOREO en Costo unitario; Precio
+    unitario mezcla menudeo/oferta y sería una fuente equivocada.
+    Cacheamos únicamente IDs participantes, nunca el dataframe de 196 mil filas.
+    """
+    global _wholesale_cache
+    ids = {r["id"] for r in dataset.get("rows", []) if r.get("estrategia") == STRATEGIES[0]}
+    try:
+        entry = m._capacity_source_entry("")
+    except Exception:
+        entry = None
+    source = dict(entry) if entry else {}
+    key = (_plain(source.get("id")), _plain(source.get("uploaded_at")),
+           _plain(source.get("cache_file")), len(ids))
+    with _wholesale_lock:
+        if _wholesale_cache["key"] == key and _wholesale_cache["data"] is not None:
+            return _wholesale_cache["data"]
+        empty = {"company": {}, "store": {}, "source": {
+            "archivo": _plain(source.get("name")), "cargado": _plain(source.get("uploaded_at")),
+            "fecha_corte": _plain(source.get("report_date")), "disponible": False}}
+        if not entry or not ids:
+            return empty
+        try:
+            frame = m._latest_capacity_frame()
+            columns = {"ID_ART", "Costo unitario", "Tienda"}
+            if frame is None or frame.empty or not columns.issubset(frame.columns):
+                return empty
+            subset = frame.loc[
+                frame["ID_ART"].astype(str).str.replace(r"\.0$", "", regex=True).str.strip().isin(ids),
+                ["ID_ART", "Tienda", "Costo unitario"],
+            ].copy()
+            if subset.empty:
+                return empty
+            subset["Costo unitario"] = m.pd.to_numeric(subset["Costo unitario"], errors="coerce")
+            subset = subset.loc[
+                subset["Costo unitario"].gt(0) & subset["Costo unitario"].lt(1_000_000)
+            ]
+            if subset.empty:
+                return empty
+            votes_by_id = {}
+            votes_by_store = {}
+            for row in subset.itertuples(index=False, name=None):
+                ident, store, value = row
+                ident = _plain(ident).removesuffix(".0")
+                price = round(float(value), 2)
+                if ident not in ids:
+                    continue
+                votes_by_id.setdefault(ident, Counter())[price] += 1
+                skey = m.login_key(_plain(store))
+                votes_by_store.setdefault((ident, skey), Counter())[price] += 1
+            def majority(counter):
+                # Un ID puede repetirse por ubicación: se toma su precio más frecuente.
+                return sorted(counter.items(), key=lambda item: (-item[1], item[0]))[0][0]
+            result = {
+                "company": {ident: majority(v) for ident, v in votes_by_id.items()},
+                "store": {key: majority(v) for key, v in votes_by_store.items()},
+                "source": {**empty["source"], "disponible": bool(votes_by_id)},
+            }
+            _wholesale_cache = {"key": key, "data": result}
+            return result
+        except Exception as exc:
+            print("[BUEN-FIN] Capacidades mayoreo no disponible: " + type(exc).__name__, flush=True)
+            # Nunca inventar precios si el último Excel no se puede leer.
+            return empty
+
+
+def _priced_record(m, record, wholesale, selected_store=""):
+    """Mantener precios actuales/propuestos del Excel salvo mecánica 3x2."""
+    output = {k: v for k, v in record.items() if k != "inventario"}
+    if record.get("estrategia") != STRATEGIES[0]:
+        output["fuente_precio"] = "Listado oficial Buen Fin"
+        return output
+    ident = record["id"]
+    price_by_store = wholesale["store"]
+    company_price = wholesale["company"].get(ident)
+    selected_price = (price_by_store.get((ident, m.login_key(selected_store)))
+                      if selected_store else None)
+    veracruz = price_by_store.get((ident, m.login_key("Veracruz")))
+    output["precio_tienda"] = selected_price if selected_price is not None else company_price
+    output["precio_veracruz"] = veracruz if veracruz is not None else company_price
+    # El 3x2/segundo al 50% es una mecánica, no un precio unitario rebajado.
+    # No fabricar un 'precio propuesto' con 33.33% ni asumir un ticket de 3 piezas.
+    output["precio_promo_tienda"] = None
+    output["precio_promo_veracruz"] = None
+    output["descuento"] = None
+    output["fuente_precio"] = "Precio mayoreo · último Excel Capacidades"
+    output["fuente_capacidades"] = wholesale["source"]
+    output["precio_mayoreo_tienda_especifico"] = selected_price is not None
+    return output
+
+
 def install(m):
     """Se instala tras V314; no cambia ninguna ruta comercial/operativa."""
     from ac_catalog import ExistingCatalogLookup
@@ -286,8 +392,8 @@ def install(m):
 
     @m.app.get("/api/buen-fin/modelos")
     def list_models(request:Request, q:str="", estado:str="", estrategia:str="",
-                    pagina:int=1, limite:int=30):
-        m.require_user(request)
+                    pagina:int=1, limite:int=30, tienda:str=""):
+        user = m.require_user(request)
         dataset=_load(m)
         if not dataset:
             return {"items":[],"total":0,"pagina":1,"paginas":0}
@@ -301,7 +407,16 @@ def install(m):
                        r["subcategoria"],r["estrategia"])).casefold())]
         total=len(items);start=(pagina-1)*limite
         # Inventario por tienda sólo en consulta detallada para mantener ligera la vista.
-        result=[{k:v for k,v in r.items() if k!="inventario"} for r in items[start:start+limite]]
+        selected = _store_for_user(m, user, tienda)
+        wholesale = _wholesale_snapshot(m, dataset) if any(
+            r["estrategia"] == STRATEGIES[0] for r in items[start:start+limite]
+        ) else None
+        result = [
+            _priced_record(m, r, wholesale, selected) if wholesale else
+            {**{k: v for k, v in r.items() if k != "inventario"},
+             "fuente_precio": "Listado oficial Buen Fin"}
+            for r in items[start:start+limite]
+        ]
         return {"items":result,"total":total,"pagina":pagina,
                 "paginas":(total+limite-1)//limite}
 
@@ -318,14 +433,11 @@ def install(m):
         withdrawals=[r for r in dataset["retiros"] if r["id"]==product_id]
         if not rows and not withdrawals:
             raise HTTPException(404,"ID no incluido en las estrategias o retiros del Buen Fin")
-        # Respetar tienda del usuario sin consultar datos de otra tienda.
-        real_store=_plain(user.get("store"))
-        elevated=str(user.get("role")) in ("admin","superadmin","director")
-        selected=(tienda if elevated and tienda else real_store).strip()
-        allowed={str(s).casefold():s for s in m.store_names(True)}
-        selected=allowed.get(selected.casefold(),"")
-        if not elevated and selected.casefold()!=real_store.casefold():
-            selected=""
+        # Alcance de tienda y precio mayoreo se calculan por ID en la última carga.
+        selected = _store_for_user(m, user, tienda)
+        wholesale = _wholesale_snapshot(m, dataset) if any(
+            r["estrategia"] == STRATEGIES[0] for r in rows
+        ) else None
         color=None
         if selected:
             try:
@@ -335,9 +447,10 @@ def install(m):
                 color=None
         response_rows=[]
         for r in rows:
-            item=dict(r)
-            item["inventario_tienda"]=r["inventario"].get(selected) if selected else None
-            item.pop("inventario",None)
+            item = _priced_record(m, r, wholesale, selected) if wholesale else {
+                **{k: v for k, v in r.items() if k != "inventario"},
+                "fuente_precio": "Listado oficial Buen Fin"}
+            item["inventario_tienda"] = r["inventario"].get(selected) if selected else None
             response_rows.append(item)
         return {"id":product_id,"tienda":selected,"color":color or None,
                 "modelos":response_rows,"retiros":withdrawals,
