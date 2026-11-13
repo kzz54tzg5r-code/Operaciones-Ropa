@@ -1825,7 +1825,7 @@ const OPER_TITLES={
   'Eficiencia Operativa':'Acondicionado, ubicado y pendientes por tienda',
   'Cumplimiento de Recorridos':'Realizados vs meta configurada',
   'Indicadores Diarios':'KPIs por fecha y tienda',
-  'Ranking de Tiendas':'Comparativo integral de las 17 tiendas del proyecto',
+  'Ranking de Tiendas':'Comparativo integral de las tiendas activas',
   'Ranking de Colaboradores':'Top y oportunidades por cumplimiento de productividad',
   'Índice Integral':'Score combinado de conversión, recuperación, productividad, recorridos y pendiente',
   'Alertas Inteligentes':'Desviaciones contra metas con datos reales',
@@ -2225,7 +2225,7 @@ function opTable(rows,rec=[]){
   return `<div class="tablewrap"><table class="table"><thead><tr>
   <th>#</th><th>Tienda</th><th>Conversión</th><th>Dev Pzs</th><th>Muertos</th><th>Cajas</th><th>Probador</th><th>Ingresos</th>
   <th>Acondicionado (Habilitado)</th><th>Pend. Acond.</th><th>% Acond.</th><th>Ubicado</th><th>Pend. Ubicar</th><th>% Ubicado</th><th>Recorridos</th>
-  </tr></thead><tbody>${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+  </tr></thead><tbody>${ordered.map((r,i)=>`<tr class="">
   <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td><b>${pct(cm[String(r.store)]||0)}</b></td>
   <td>${fmt(r.dev_pzs)}</td><td>${fmt(r.muertos)}</td><td>${fmt(r.cajas)}</td><td>${fmt(r.probador)}</td><td><b>${fmt(r.ingresos)}</b></td>
   <td>${fmt(r.acondicionado)}</td><td>${fmt(r.pendiente_acondicionar)}</td><td>${pct(r.pct_acondicionado)}</td>
@@ -2237,7 +2237,7 @@ function operationalDetailTable(rows,rec=[]){
   return `<div class="tablewrap"><table class="table"><thead><tr>
     <th>Ranking</th><th>Tienda</th><th>Muertos</th><th>Probador</th><th>Cajas</th><th>Piezas recolectadas</th>
     <th>Recorridos realizados</th><th>Acondicionado</th><th>Ubicado</th><th>Pendiente de acondicionar</th><th>Pendiente de ubicar</th>
-  </tr></thead><tbody>${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+  </tr></thead><tbody>${ordered.map((r,i)=>`<tr class="">
     <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.muertos)}</td><td>${fmt(r.probador)}</td><td>${fmt(r.cajas)}</td>
     <td><b>${fmt(r.recolectadas)}</b></td><td>${fmt(r.recorridos)}</td><td>${fmt(r.acondicionado)}</td><td>${fmt(r.ubicado)}</td>
     <td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td>
@@ -2325,7 +2325,7 @@ function recoveryTable(rows){
     Number(b.recovery_pct||0)-Number(a.recovery_pct||0)
   );
   return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>Conversión</th><th>Valor devolución</th><th>Recuperación $</th><th>Recup. %</th><th>Pend. Pzs</th><th>Pend. $</th></tr></thead><tbody>
-  ${ordered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(r.return_value)}</td><td>${fmtMoney(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoney(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
+  ${ordered.map((r,i)=>`<tr class=""><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(r.return_value)}</td><td>${fmtMoney(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoney(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function recoveryStoreImpactTable(rows){
   const ordered=[...(rows||[])].filter(r=>Number(r.dev_pzs||0)>0||Number(r.converted_pieces||0)>0)
@@ -2334,7 +2334,7 @@ function recoveryStoreImpactTable(rows){
   return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>% Recuperación</th><th>Ticket prom.</th><th>Valor devolución</th><th>Venta recuperada est.</th><th>Pendiente $</th></tr></thead><tbody>
   ${ordered.map((r,i)=>{
     const dev=Number(r.dev_pzs||0), ticket=dev?Number(r.return_value||0)/dev:0;
-    return `<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b>${r.is_project?' <span class="tag" style="margin-left:6px">Proyecto</span>':''}</td><td>${fmt(dev)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(ticket)}</td><td>${fmtMoney(r.return_value)}</td><td><b>${fmtMoney(r.recovered_value)}</b></td><td>${fmtMoney(r.pending_value)}</td></tr>`;
+    return `<tr class=""><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(dev)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(ticket)}</td><td>${fmtMoney(r.return_value)}</td><td><b>${fmtMoney(r.recovered_value)}</b></td><td>${fmtMoney(r.pending_value)}</td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 function recoveryMoneyTopChart(rows){
@@ -2345,7 +2345,7 @@ function recoveryMoneyTopChart(rows){
   return `<div class="bars">${data.map((r,i)=>`<div class="bar"><span>#${i+1} · ${r.store}</span><div class="track"><div class="fill" style="width:${Math.max(2,Number(r.recovered_value||0)/max*100)}%"></div></div><b>${fmtMoney(r.recovered_value)}</b></div>`).join('')}</div>`;
 }
 function recoveryLogicPanel(){
-  return `<div class="panel"><div class="panel-head"><b>Lógica de cálculo</b><span class="status ok">Datos del proyecto</span></div>
+  return `<div class="panel"><div class="panel-head"><b>Lógica de cálculo</b><span class="status ok">Datos de todas las tiendas</span></div>
     <div class="preview-grid">
       <div class="preview-item">1 · Pzas recuperadas<b>Ventas posteriores asignadas FIFO a Dev Pzs del mismo ID / color / semana.</b></div>
       <div class="preview-item">2 · % Recuperación<b>Pzas recuperadas ÷ Dev Pzs. Los totales se calculan sobre sumas.</b></div>
@@ -2684,10 +2684,7 @@ async function renderOperativoView(name,force=false){
     }
     const mt=d.metrics||{}, stores=d.stores||[], rec=[...(d.recovery_by_store||[])].sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0));
     const projectNames=new Set((d.project_stores||[]).map(String));
-    const projectStores=orderByConversion(
-      stores.filter(x=>x.is_project || projectNames.has(String(x.store))),
-      rec
-    );
+    const projectStores=orderByConversion(stores,rec);
     let out=monthlyCrossTable(mt);
     out+=`<div class="subtitle" style="margin-top:-4px;margin-bottom:14px">
       Regla de recuperación: una devolución sólo recupera venta del mismo ID/SKU y tienda desde la fecha de devolución hasta el domingo de esa misma semana ISO.
@@ -2695,7 +2692,7 @@ async function renderOperativoView(name,force=false){
     const scope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
     out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Histórico',scope);
-    out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>${projectStores.length?operationalDetailTable(projectStores,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto. Selecciónalas en Metas y tiendas y pulsa Guardar selección.</div>'}`;
+    out+=`<div class="title">Detalle operativo · todas las tiendas</div>${projectStores.length?operationalDetailTable(projectStores,rec):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>'}`;
     out+=projectStores.length?opsComboSvg(projectStores,OPER_PERIOD.value||d.period_value||'Histórico',scope,rec):'';
     out+=reportDownloadBar(name);
     $('#operativoDynamicContent').innerHTML=out;return;
@@ -2716,24 +2713,24 @@ async function renderOperativoView(name,force=false){
 
   if(name==='Operación Diaria'){
     const dailyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
-    const orderedDaily=orderByConversion(stores.filter(x=>x.is_project),rec);
+    const orderedDaily=orderByConversion(stores,rec);
     out=monthlyCrossTable(mt,true);
     out+=`<div class="title">Detalle operativo · ${OPER_PERIOD.value||'Día consultado'}</div>${operationalDetailTable(orderedDaily,rec)}`;
     out+=opsComboSvg(orderedDaily,OPER_PERIOD.value||d.period_value||'Día consultado',dailyScope,rec);
   }else if(name==='Reporte Semanal'){
-    const weeklyProjects=orderByConversion(stores.filter(x=>x.is_project),rec);
+    const weeklyProjects=orderByConversion(stores,rec);
     const weeklyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
     out=monthlyCrossTable(mt);
     out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope);
-    out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
+    out+=`<div class="title">Detalle operativo · todas las tiendas</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>');
     out+=weeklyProjects.length?opsComboSvg(weeklyProjects,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope,rec):'';
   }else if(name==='Reporte Mensual'){
     out=monthlyCrossTable(mt);
-    const monthlyProjects=orderByConversion(stores.filter(x=>x.is_project),rec);
+    const monthlyProjects=orderByConversion(stores,rec);
     out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'));
-    out+=`<div class="title">Detalle operativo · tiendas del proyecto</div>`+(monthlyProjects.length?operationalDetailTable(monthlyProjects,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
+    out+=`<div class="title">Detalle operativo · todas las tiendas</div>`+(monthlyProjects.length?operationalDetailTable(monthlyProjects,rec):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>');
     out+=monthlyProjects.length?opsComboSvg(monthlyProjects,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'),rec):'';
   }else if(name==='Conversión'){
     out=reportKpis([
@@ -2763,7 +2760,7 @@ async function renderOperativoView(name,force=false){
     ]);
     out+=`<div class="grid"><div class="panel"><div class="panel-head"><b>Top tiendas por venta recuperada estimada</b><span class="status">Mayor a menor</span></div>${recoveryMoneyTopChart(rec)}</div>${recoveryLogicPanel()}</div>`;
     out+=`<div class="title">Recuperación por tienda</div>${recoveryStoreImpactTable(rec)}`;
-    out+=`<div class="note" style="margin-top:8px">Las tiendas marcadas como Proyecto se resaltan. El reporte conserva todas las tiendas disponibles en el alcance seleccionado.</div>`;
+    out+=`<div class="note" style="margin-top:8px">Todas las tiendas activas participan en Cambios y Muertos.</div>`;
   }else if(name==='Productividad por Colaborador'||name==='Ranking de Colaboradores'){
     const top=prod.slice(0,3), bottom=[...prod].sort((a,b)=>a.pct-b.pct).slice(0,3);
     out=reportKpis([
@@ -2805,12 +2802,12 @@ async function renderOperativoView(name,force=false){
   }else if(name==='Ranking de Tiendas'){
     const rr=[...(d.recovery_by_store||[])].sort((a,b)=>Number(b.conversion_pct||0)-Number(a.conversion_pct||0)||Number(b.recovery_pct||0)-Number(a.recovery_pct||0));
     out=reportKpis([
-      kpiCard('Tiendas del proyecto',fmt(rr.length),'Comparativo por conversión + recuperación','#3366CC'),
+      kpiCard('Tiendas activas',fmt(rr.length),'Comparativo por conversión + recuperación','#3366CC'),
       kpiCard('Conversión compañía',pct(mt.conversion_pct),'Dev Pzs convertidas','#10B981'),
       kpiCard('Recuperación compañía',pct(mt.recovery_pct),'Recuperación económica','#EC007C')
     ])+recoveryTable(rr);
   }else if(name==='Índice Integral'){
-    const scoreRows=(d.score_by_store||[]).filter(x=>x.is_project).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+    const scoreRows=(d.score_by_store||[]).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     out=`<div class="donut-row"><div class="donut" style="--p:${Math.min(100,mt.score_integral||0)};--dc:#1769e8" data-label="${Number(mt.score_integral||0).toFixed(1)}"></div>
     <div style="flex:1;min-width:250px">${reportKpis([
       kpiCard('Conversión',pct(mt.conversion_pct),'40% del índice','#10B981'),
@@ -2818,7 +2815,7 @@ async function renderOperativoView(name,force=false){
       kpiCard('Recorridos',pct(mt.pct_recorridos),'20% del índice','#EF4444'),
       kpiCard('Score integral',Number(mt.score_integral||0).toFixed(1)+'/100',scoreStatus(mt.score_integral),'#1769e8')
     ])}</div></div>
-    <div class="title">Score por tienda del proyecto</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Conversión 40%</th><th>Productividad 40%</th><th>Recorridos 20%</th><th>Score</th><th>Estatus</th></tr></thead><tbody>${scoreRows.map((r,i)=>`<tr class="project-row"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${pct(r.conversion_pct)}</td><td>${pct(r.productivity_pct)}</td><td>${pct(r.recorridos_pct)}</td><td><b>${Number(r.score||0).toFixed(1)}</b></td><td>${scoreStatus(r.score)}</td></tr>`).join('')||'<tr><td colspan="7">Información no disponible</td></tr>'}</tbody></table></div>`;
+    <div class="title">Score por tienda</div><div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Conversión 40%</th><th>Productividad 40%</th><th>Recorridos 20%</th><th>Score</th><th>Estatus</th></tr></thead><tbody>${scoreRows.map((r,i)=>`<tr class="project-row"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${pct(r.conversion_pct)}</td><td>${pct(r.productivity_pct)}</td><td>${pct(r.recorridos_pct)}</td><td><b>${Number(r.score||0).toFixed(1)}</b></td><td>${scoreStatus(r.score)}</td></tr>`).join('')||'<tr><td colspan="7">Información no disponible</td></tr>'}</tbody></table></div>`;
   }else if(name==='Alertas Inteligentes'){
     const alerts=[];
     const g=d.goals||{};
@@ -3063,7 +3060,7 @@ function renderCombinedOps(d){
 
   const staticRec=d.recovery_by_store||[];
   const staticOrdered=orderByConversion(rows,staticRec);
-  $('#operativoTable').innerHTML=staticOrdered.map((r,i)=>`<tr class="${r.is_project?'project-row':''}">
+  $('#operativoTable').innerHTML=staticOrdered.map((r,i)=>`<tr class="">
     <td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.muertos)}</td><td>${fmt(r.probador)}</td><td>${fmt(r.cajas)}</td><td><b>${fmt(r.recolectadas)}</b></td>
     <td>${fmt(r.recorridos)}</td><td>${fmt(r.acondicionado)}</td><td>${fmt(r.ubicado)}</td><td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td>
   </tr>`).join('');
