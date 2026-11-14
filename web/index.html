@@ -2423,13 +2423,15 @@ function opsComboSvg(rows,period,scope,rec=[]){
 function fmtMoneyThousandsCell(value){
   const amount=Number(value||0);
   if(!Number.isFinite(amount))return '—';
-  return '
+  return '$'+Math.round(amount/1000).toLocaleString('es-MX');
+}
+function recoveryTable(rows){
   const ordered=[...(rows||[])].sort((a,b)=>
     Number(b.conversion_pct||0)-Number(a.conversion_pct||0) ||
     Number(b.recovery_pct||0)-Number(a.recovery_pct||0)
   );
-  return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>Conversión</th><th>Valor devolución</th><th>Recuperación $</th><th>Recup. %</th><th>Pend. Pzs</th><th>Pend. $</th></tr></thead><tbody>
-  ${ordered.map((r,i)=>`<tr class=""><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoney(r.return_value)}</td><td>${fmtMoney(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoney(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="tablewrap"><table class="table"><thead><tr><th>#</th><th>Tienda</th><th>Dev Pzs</th><th>Pzas recuperadas</th><th>Conversión</th><th>Valor DEV (miles $)</th><th>Recup. (miles $)</th><th>Recup. %</th><th>Pend. Pzs</th><th>Pend. (miles $)</th></tr></thead><tbody>
+  ${ordered.map((r,i)=>`<tr class=""><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${fmt(r.dev_pzs)}</td><td>${fmt(r.converted_pieces)}</td><td><b>${pct(r.conversion_pct)}</b></td><td>${fmtMoneyThousandsCell(r.return_value)}</td><td>${fmtMoneyThousandsCell(r.recovered_value)}</td><td>${pct(r.recovery_pct)}</td><td>${fmt(r.pending_pieces)}</td><td>${fmtMoneyThousandsCell(r.pending_value)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 function recoveryStoreImpactTable(rows){
   const ordered=[...(rows||[])].filter(r=>Number(r.dev_pzs||0)>0||Number(r.converted_pieces||0)>0)
