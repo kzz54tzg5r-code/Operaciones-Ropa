@@ -77,8 +77,8 @@ html body #operativoDynamicContent .or365-detail-chart{
   margin:5px 0 9px!important;padding:11px!important;
   background:#fff!important;border:1px solid #d9e6f2!important;
   border-radius:10px!important;box-shadow:none!important;
-  overflow-x:auto!important;overflow-y:hidden!important;
-  -webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;
+  overflow-x:hidden!important;overflow-y:visible!important;
+  box-sizing:border-box!important;
 }
 html body #operativoDynamicContent .or365-detail-chart .or365-chart-title{
   margin:0 0 4px!important;color:#153f74!important;
@@ -89,9 +89,9 @@ html body #operativoDynamicContent .or365-detail-chart .or365-chart-hint{
   font-size:10px!important;color:#697b90!important;margin:0 0 4px!important
 }
 html body #operativoDynamicContent svg.or365-vertical-svg{
-  width:100%!important;max-width:none!important;
-  min-width:var(--or365-min-width,640px)!important;
-  height:auto!important;max-height:360px!important;
+  width:100%!important;max-width:100%!important;
+  min-width:0!important;
+  height:auto!important;max-height:none!important;
   display:block!important;overflow:visible!important
 }
 @media(max-width:900px){
@@ -103,7 +103,7 @@ html body #operativoDynamicContent svg.or365-vertical-svg{
 @media(max-width:520px){
  html body #operativoDynamicContent table.ops-zero-table{min-width:1060px!important}
  html body #operativoDynamicContent table.ops-zero-table :is(th,td){font-size:9px!important}
- html body #operativoDynamicContent svg.or365-vertical-svg{max-height:330px!important}
+ html body #operativoDynamicContent svg.or365-vertical-svg{max-height:none!important}
 }
 @media print{
  html body #operativoDynamicContent .or365-detail-chart{overflow:visible!important}
