@@ -6896,6 +6896,13 @@ async def upload_operations_publish(request: Request):
                  meta.get("period",""),len(payload.get("rows") or []),int(meta.get("rejected_records") or 0),
                  "; ".join(meta.get("errors") or []))
             )
+        # Actualizar colaboradores del Excel publicado en el mismo momento;
+        # errores del padrón no deben revertir el archivo ya publicado.
+        sync_roster=globals().get("sync_operations_collaborators")
+        if callable(sync_roster):
+            try:sync_roster(payload=payload,force=True)
+            except Exception as exc:
+                print(f"[COLLAB-ROSTER] sync publication: {type(exc).__name__}: {exc}",flush=True)
         stage_path.unlink(missing_ok=True)
         meta_file.unlink(missing_ok=True)
         payload_file.unlink(missing_ok=True)
@@ -6969,6 +6976,13 @@ def _publish_operations_payload(stage_path: Path, filename: str, username: str, 
             _cleanup_operations_history_snapshots()
         except Exception as exc:
             print(f"[OPS-STORAGE] no se completó limpieza histórica: {type(exc).__name__}: {exc}",flush=True)
+        sync_roster=globals().get("sync_operations_collaborators")
+        if callable(sync_roster):
+            try:
+                synced=sync_roster(payload=payload,force=True)
+                print(f"[COLLAB-ROSTER] actualizados {synced} nombres desde Excel publicado",flush=True)
+            except Exception as exc:
+                print(f"[COLLAB-ROSTER] error de sincronización: {type(exc).__name__}: {exc}",flush=True)
         return {
             "ok":True,"message":"Excel procesado y publicado; sólo se conserva la base vigente",
             "file":filename,"rows":len(payload.get("rows") or []),"sheets":payload.get("sheets_used",[]),
