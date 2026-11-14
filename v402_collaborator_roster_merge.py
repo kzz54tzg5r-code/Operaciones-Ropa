@@ -83,6 +83,14 @@ def install(m):
     @m.app.get("/api/operations/collaborator-admin-v402")
     def collaborator_admin(request:Request,store:str="Compañía"):
         authorized(request)
+        # Incorporar los nombres de la base vigente antes de presentar el
+        # padrón, sin reactivar bajas ni romper alias ya unificados.
+        sync = getattr(m, "sync_operations_collaborators", None)
+        if callable(sync):
+            try:
+                sync()
+            except Exception as exc:
+                print(f"[COLLAB-ROSTER] sync error: {type(exc).__name__}: {exc}", flush=True)
         return list_data(store)
 
     @m.app.post("/api/operations/collaborator-admin-v402/status")
