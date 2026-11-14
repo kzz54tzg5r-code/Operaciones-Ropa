@@ -3757,4 +3757,34 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
   else init();
 })();
 </script>
+<script id="ops-en-piso-description-v421">
+(function(){
+  // Sólo el subtítulo de la tarjeta En piso, sin afectar nombres de tiendas,
+  // encabezados de tabla ni valores numéricos.
+  function update(root){
+    if(!root)return;
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    let textNode;
+    while((textNode=walker.nextNode())){
+      if(textNode.nodeValue&&textNode.nodeValue.includes('Mercancía ubicada en tienda')){
+        textNode.nodeValue=textNode.nodeValue.replaceAll('Mercancía ubicada en tienda','Mercancía ubicada');
+      }
+    }
+  }
+  function install(){
+    const container=document.getElementById('page-operativo');
+    if(!container||container.dataset.enPisoDescriptionV421)return;
+    container.dataset.enPisoDescriptionV421='1';
+    update(container);
+    new MutationObserver(records=>{
+      for(const record of records){
+        if(record.type==='characterData')update(record.target.parentNode);
+        else for(const node of record.addedNodes)if(node.nodeType===1)update(node);
+      }
+    }).observe(container,{subtree:true,childList:true,characterData:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);
+  else install();
+})();
+</script>
 </body></html>
