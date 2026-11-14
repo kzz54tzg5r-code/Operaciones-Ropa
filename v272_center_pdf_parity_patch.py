@@ -564,16 +564,39 @@ def install(m):
             rows = list(project_stores or [])
             if not rows:
                 return
-            # Mismo ranking que la tabla visible: mayor Total pzs primero.
-            rows.sort(key=lambda r: (-_num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")), str(r.get("store") or "")))
-            section(f"Detalle operativo · {period_label()}")
+            # Score específico de esta tabla: promedio simple de
+            # habilitado, ubicado y recorridos, cada uno topado a 100%.
+            # Se usa el porcentaje de recorridos calculado por el backend
+            # con la meta real del periodo y tienda.
+            route_lookup={
+                str(item.get("store") or ""): _num(item.get("recorridos_pct"))
+                for item in (data.get("score_by_store") or [])
+                if isinstance(item,dict)
+            }
+            all_stores=[item for item in (data.get("stores") or []) if isinstance(item,dict)]
+            total_target=_num((data.get("metrics") or {}).get("meta_recorridos"))
+            per_store_target=total_target/len(all_stores) if all_stores else 0
+
+            def pct_parts(r):
+                total=_num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos"))
+                # Los porcentajes mostrados por el reporte usan Total Pzs.
+                habilitado=(_num(r.get("pct_acondicionado")) if r.get("pct_acondicionado") is not None
+                            else (_num(r.get("acondicionado"))/total*100 if total else 0))
+                ubicado=(_num(r.get("pct_ubicado")) if r.get("pct_ubicado") is not None
+                         else (_num(r.get("ubicado"))/total*100 if total else 0))
+                recorridos=route_lookup.get(str(r.get("store") or ""),
+                    _num(r.get("recorridos"))/per_store_target*100 if per_store_target else 0)
+                bounded=[min(100,max(0,value)) for value in (habilitado,ubicado,recorridos)]
+                return habilitado,ubicado,sum(bounded)/3
+
+            rows.sort(key=lambda r: (-pct_parts(r)[2],str(r.get("store") or "")))
             headers = [
                 "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
                 "Pend.\nant.", "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
                 "Ubicado", "% Acondi-\ncionado", "%\nUbicado",
-                "Pendiente\nacond.", "Pendiente\nubicar"
+                "Pendiente\nacond.", "Pendiente\nubicar", "Score\n%"
             ]
-            fracs = [.04,.12,.055,.057,.059,.05,.062,.063,.069,.076,.059,.068,.059,.085,.078]
+            fracs = [.04,.117,.052,.054,.055,.048,.059,.061,.066,.073,.056,.065,.056,.080,.071,.068]
             total_w = W - 2*M
             # Normaliza fracciones para ocupar el ancho exacto de la página.
             norm = sum(fracs)
@@ -595,7 +618,10 @@ def install(m):
                                      align="left" if i == 1 else "center")
                 y -= head_h
 
-            ensure(head_h + min(len(rows), 18)*row_h + 12, "Detalle operativo")
+            # Reservar título + cabecera + primeras filas ANTES de escribir
+            # el título. Evita títulos huérfanos al final de la hoja anterior.
+            ensure(18 + head_h + min(len(rows),2)*row_h + 10, "Detalle operativo")
+            section(f"Detalle operativo · {period_label()}")
             head()
             for idx,r in enumerate(rows, start=1):
                 if y-row_h < 26:
@@ -603,32 +629,27 @@ def install(m):
                     head()
                 total = r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")
                 total_num=_num(total)
-                pa = (_num(r.get("pct_acondicionado")) if r.get("pct_acondicionado") is not None
-                      else _num(r.get("acondicionado"))/total_num*100 if total_num else 0)
-                pu = (_num(r.get("pct_ubicado")) if r.get("pct_ubicado") is not None
-                      else _num(r.get("ubicado"))/total_num*100 if total_num else 0)
+                pa,pu,score_pct=pct_parts(r)
                 # V406: bandas claras y azul suave por renglón, también para Proyecto.
                 set_fill("#FFFFFF" if idx%2 else "#E4EFFD")
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
-                if r.get("is_project"):
-                    set_fill(BLUE)
-                    c.rect(M, y-row_h+2, 2.5, row_h, fill=1, stroke=0)
                 values = [
                     f"#{idx}", r.get("store"), n(r.get("dev_pzs")),
                     n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
                     n(r.get("pendiente_anterior")), n(total),
                     n(r.get("recorridos")), n(r.get("acondicionado")),
                     n(r.get("ubicado")), pc(pa), pc(pu),
-                    n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar"))
+                    n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar")),
+                    pc(score_pct)
                 ]
                 for i,val in enumerate(values):
                     tone = TEXT
-                    if i in (11,12):
+                    if i in (11,12,15):
                         tone = GREEN_DARK if _num(val[:-1]) >= 80 else "#DC2626"
                     elif i in (2,3,4,5,6,7,8,9,10) and _num(val)==0:
                         tone = "#DC2626"
                     set_fill(tone)
-                    font="Helvetica-Bold" if i in (0,1,7,11,12) else "Helvetica"
+                    font="Helvetica-Bold" if i in (0,1,7,11,12,15) else "Helvetica"
                     text_value,size=fitted_cell(val,widths[i],7.6,font)
                     c.setFont(font,size)
                     if i==1:
