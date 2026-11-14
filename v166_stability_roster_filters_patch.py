@@ -97,10 +97,20 @@ def install(m):
         reason = norm(r.get("reason"))
         return any(x in act for x in ("acondicion", "habilit", "ubic", "recoleccion")) or "caja" in reason or "probador" in reason
 
-    def sync_collaborators():
+    # La lista administrativa se alimenta de TODOS los nombres válidos del
+    # Excel publicado, no sólo de movimientos con productividad > 0.
+    # Las bajas y unificaciones son decisiones administrativas persistentes.
+    _sync_marker = {"value": None}
+
+    def sync_collaborators(payload=None, force=False):
+        data = payload if isinstance(payload, dict) else (m.load_ops() or {})
+        marker=(str(data.get("uploaded_at") or ""),str(data.get("source_file") or ""),
+                len(data.get("rows") or []))
+        if not force and marker == _sync_marker["value"]:
+            return 0
         found = {}
-        for r in list((m.load_ops() or {}).get("rows") or []):
-            if not is_productive_row(r):
+        for r in (data.get("rows") or []):
+            if not isinstance(r, dict):
                 continue
             name = " ".join(str(r.get("name") or "").split()).strip()
             store = str(r.get("store") or "").strip()
@@ -135,6 +145,12 @@ def install(m):
                         item["store"], item["name_key"], item["name"], 1,
                         item["first_seen"], item["last_seen"], item["last_activity"], now, "sync-v166"
                     ))
+        _sync_marker["value"] = marker
+        return len(found)
+
+    # Permitir sincronización inmediata al publicar una nueva base y también
+    # al consultar el padrón desde cualquier pantalla administrativa.
+    m.sync_operations_collaborators = sync_collaborators
 
     try:
         sync_collaborators()
