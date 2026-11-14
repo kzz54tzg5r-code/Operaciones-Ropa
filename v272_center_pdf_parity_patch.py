@@ -807,7 +807,7 @@ def install(m):
              n(total_pzs), None, None, "#00999F"),
             ("En proceso", "Acondicionamiento de mercancía", "Acondicionado",
              n(acond), pc(pct_ac), f"{n(pend_acond)} pzas por acondicionar", PURPLE),
-            ("En piso", "Mercancía ubicada en tienda", "Ubicado",
+            ("En piso", "Mercancía ubicada", "Ubicado",
              n(ubicado), pc(pct_ub), f"{n(pend_ub)} pzas por ubicar", BLUE),
             ("Recorridos", "Realizados frente a la meta", "Recorridos",
              f"{n(recorridos)} / {n(meta_rec)}", pc(pct_rec), None, ORANGE),
