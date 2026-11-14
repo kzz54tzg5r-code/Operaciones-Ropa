@@ -63,15 +63,18 @@ def install(m):
         LINE = "#D8E0EB"
         TEXT = "#173B73"
         MUTED = "#667085"
-        PROJECT = "#DDEAFF"
+        PROJECT = "#DDEAFF"  # Retenido para estilos legados, no para marcar tiendas
         M = 24
         y = H - M
 
         # La impresión refleja el mismo tope de 100% por tienda de las
         # tarjetas web; las filas del detalle conservan captura real.
         from v375_center_card_metrics import center_card_metrics
+        # La vista presenta piezas efectivas capturadas en las tarjetas,
+        # mientras las franjas de pendiente usan el tope por tienda.
+        raw_mt = dict(data.get("metrics") or {})
         mt = dict(data.get("center_card_metrics") or (
-            center_card_metrics(data) if data.get("stores") else data.get("metrics") or {}
+            center_card_metrics(data) if data.get("stores") else raw_mt
         ))
         project_stores, recovery = m._operations_export_sections(data)
         report_name = str(report or "").lower()
@@ -208,10 +211,7 @@ def install(m):
             nonlocal y
             set_fill(MUTED)
             c.setFont("Helvetica", 9.0)
-            project_count = int(data.get("v151_project_store_count") or len(project_stores) or 0)
             left = f"Periodo: {period_label()}   ·   Tienda: {scope}"
-            if project_count:
-                left += f"   ·   Alcance KPI: {project_count} tiendas Proyecto"
             c.drawString(M, y, left)
             y -= 15
 
@@ -429,12 +429,17 @@ def install(m):
             # Recuperación por tienda también forma parte del reporte diario.
             rows = sorted(
                 list(recovery or []),
-                key=lambda r: (-_num(r.get("conversion_pct")), -_num(r.get("recovery_pct")), str(r.get("store") or "")),
+                # Mismo ranking visual que la tabla del Centro Operativo.
+                key=lambda r: (-_num(r.get("dev_pzs")), str(r.get("store") or "")),
             )
             if not rows:
                 return
 
-            section("Recuperación por tienda · importes en miles de pesos")
+            section("Recuperación por tienda", size=14)
+            set_fill(MUTED)
+            c.setFont("Helvetica", 8)
+            c.drawString(M, y, "Comparativo del periodo y tienda seleccionados · unidades y pesos en miles")
+            y -= 18
             # V272.2: abreviaturas + 2 líneas; el encabezado gana alto y
             # cada columna necesita menos ancho horizontal.
             headers = [
@@ -471,15 +476,13 @@ def install(m):
                 if y-row_h < 24:
                     new_page("Recuperación")
                     head()
-                bg = PROJECT if r.get("is_project") else ("#FFFFFF" if idx%2 else "#EEF4FB")
+                # Mismas filas alternadas del portal; todas las tiendas participan.
+                bg = "#FFFFFF" if idx%2 else "#EEF4FB"
                 set_fill(bg)
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
-                if r.get("is_project"):
-                    set_fill(BLUE)
-                    c.rect(M, y-row_h+2, 2.5, row_h, fill=1, stroke=0)
                 values = [
                     f"#{idx}",
-                    f"{r.get('store')}{' · Proyecto' if r.get('is_project') else ''}",
+                    str(r.get("store") or ""),
                     n(r.get("dev_pzs")),
                     n(r.get("converted_pieces")),
                     pc(r.get("conversion_pct")),
@@ -738,8 +741,8 @@ def install(m):
         probador = _num(mt.get("probador"))
         cajas = _num(mt.get("cajas"))
         total_pzs = _num(mt.get("total_pzs") if mt.get("total_pzs") is not None else mt.get("ingresos"))
-        acond = _num(mt.get("acondicionado"))
-        ubicado = _num(mt.get("ubicado"))
+        acond = _num(raw_mt.get("acondicionado", mt.get("acondicionado")))
+        ubicado = _num(raw_mt.get("ubicado", mt.get("ubicado")))
         recorridos = _num(mt.get("recorridos"))
         meta_rec = _num(mt.get("meta_recorridos"))
         pending_prev = _num(mt.get("pendiente_anterior"))
@@ -748,8 +751,8 @@ def install(m):
         pend_acond = _num(mt.get("pendiente_acondicionar")) if mt.get("pendiente_acondicionar") is not None else max(total_pzs-acond,0)
         pend_ub = _num(mt.get("pendiente_ubicar")) if mt.get("pendiente_ubicar") is not None else max(total_pzs-ubicado,0)
         total_pending = pend_acond + pend_ub
-        pct_ac = _num(mt.get("pct_acondicionado")) if mt.get("pct_acondicionado") is not None else (acond/total_pzs*100 if total_pzs else 0)
-        pct_ub = _num(mt.get("pct_ubicado")) if mt.get("pct_ubicado") is not None else (ubicado/total_pzs*100 if total_pzs else 0)
+        pct_ac = acond/total_pzs*100 if total_pzs else 0
+        pct_ub = ubicado/total_pzs*100 if total_pzs else 0
         pct_rec = _num(mt.get("pct_recorridos")) if mt.get("pct_recorridos") is not None else (recorridos/meta_rec*100 if meta_rec else 0)
 
         card_row([
