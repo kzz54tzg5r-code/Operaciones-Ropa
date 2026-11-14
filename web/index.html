@@ -400,6 +400,33 @@ html body #loginView .server-msg-v15{color:rgba(255,255,255,.87)!important}
  html body #loginView .login-brand-v15{font-size:25px!important}
 }
 </style>
+<style id="ops-login-heading-final-v427">
+/* Aislar el encabezado del estilo heredado que duplica la marca.
+   La página usa un único H1 independiente. */
+html body #loginView .login-brand-v15,
+html body #loginView .login-sub-v15{
+  display:none!important;
+  visibility:hidden!important;
+}
+html body #loginView #opsLoginHeadingV427{
+  display:block!important;
+  color:#fff!important;
+  font:800 clamp(23px,2.2vw,32px)/1.2 Georgia,serif!important;
+  text-align:center!important;
+  white-space:normal!important;
+  letter-spacing:0!important;
+  margin:12px 0 25px!important;
+  width:100%!important;
+  max-width:100%!important;
+}
+html body #loginView #opsLoginHeadingV427::before,
+html body #loginView #opsLoginHeadingV427::after{
+  content:none!important;display:none!important;
+}
+html body #loginView .login-v15-card{
+  overflow:hidden!important;
+}
+</style>
 </head>
 <body>
 
@@ -408,8 +435,7 @@ html body #loginView .server-msg-v15{color:rgba(255,255,255,.87)!important}
   <div class="login-v15-shade"></div>
   <div class="login-v15-card">
     <img src="/static/price_shoes_white.svg?v=403" class="login-logo-v15" alt="Price Shoes" width="211" height="121" fetchpriority="high">
-    <div class="login-brand-v15">Operaciones Ropa</div>
-    <div class="login-sub-v15">Acceso al sistema</div>
+    <h1 id="opsLoginHeadingV427" class="ops-login-heading-v427">Operaciones Ropa</h1>
 
     <div id="ownerSetup" class="hidden login-form-v15">
       <div class="login-owner-title">Crear propietario del sistema</div>
@@ -5425,24 +5451,5 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
   else boot();
 })();
 </script>
-<script id="ops-login-title-single-v426">
-(function(){
-  function fixTitle(){
-    const card=document.querySelector('#loginView .login-v15-card');
-    if(!card)return;
-    const title=card.querySelector('.login-brand-v15');
-    if(title&&title.textContent!=='Operaciones Ropa')title.textContent='Operaciones Ropa';
-    for(const other of card.querySelectorAll('.login-brand-v15')){
-      if(other!==title)other.remove();
-    }
-    const sub=card.querySelector('.login-sub-v15');
-    if(sub){sub.textContent='';sub.hidden=true;}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fixTitle);
-  else fixTitle();
-  // Only watch card's first-level content, to avoid reprocessing on typing.
-  const card=document.querySelector('#loginView .login-v15-card');
-  if(card)new MutationObserver(fixTitle).observe(card,{childList:true,subtree:false});
-})();
-</script>
+
 </body></html>
