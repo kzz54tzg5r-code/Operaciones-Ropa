@@ -3757,30 +3757,54 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
   else init();
 })();
 </script>
-<script id="ops-en-piso-description-v421">
+<script id="ops-en-piso-description-v422">
 (function(){
-  // Sólo el subtítulo de la tarjeta En piso, sin afectar nombres de tiendas,
-  // encabezados de tabla ni valores numéricos.
-  function update(root){
-    if(!root)return;
+  // La tarjeta se genera dinámicamente; cada actualización puede reconstruir
+  // el texto o incluso añadir un nodo de texto directamente al DOM.
+  // Revisar también mutaciones childList/texto, no sólo nuevos elementos.
+  const original='Mercancía ubicada en tienda';
+  const replacement='Mercancía ubicada';
+  let running=false;
+  function correct(root){
+    if(!root||!root.isConnected)return;
     const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-    let textNode;
-    while((textNode=walker.nextNode())){
-      if(textNode.nodeValue&&textNode.nodeValue.includes('Mercancía ubicada en tienda')){
-        textNode.nodeValue=textNode.nodeValue.replaceAll('Mercancía ubicada en tienda','Mercancía ubicada');
+    let node;
+    while((node=walker.nextNode())){
+      if(node.nodeValue&&node.nodeValue.includes(original)){
+        node.nodeValue=node.nodeValue.split(original).join(replacement);
       }
     }
   }
   function install(){
     const container=document.getElementById('page-operativo');
-    if(!container||container.dataset.enPisoDescriptionV421)return;
-    container.dataset.enPisoDescriptionV421='1';
-    update(container);
+    if(!container)return;
+    correct(container);
+    if(container.dataset.enPisoDescriptionV422)return;
+    container.dataset.enPisoDescriptionV422='1';
     new MutationObserver(records=>{
-      for(const record of records){
-        if(record.type==='characterData')update(record.target.parentNode);
-        else for(const node of record.addedNodes)if(node.nodeType===1)update(node);
-      }
+      if(running)return;
+      running=true;
+      try{
+        for(const record of records){
+          if(record.type==='characterData'){
+            correct(record.target.parentNode);
+          }else{
+            // Cubre los nodos tipo texto que antes se ignoraban.
+            for(const node of record.addedNodes){
+              if(node.nodeType===Node.TEXT_NODE){
+                if(node.nodeValue&&node.nodeValue.includes(original))
+                  node.nodeValue=node.nodeValue.split(original).join(replacement);
+              }else if(node.nodeType===Node.ELEMENT_NODE){
+                correct(node);
+              }
+            }
+            // Si una biblioteca reemplaza todo el contenido, el padre sigue
+            // siendo un punto de acceso seguro para la nueva descripción.
+            if(record.target&&record.target.nodeType===Node.ELEMENT_NODE)
+              correct(record.target);
+          }
+        }
+      }finally{running=false}
     }).observe(container,{subtree:true,childList:true,characterData:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install);
