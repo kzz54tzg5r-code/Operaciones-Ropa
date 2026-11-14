@@ -500,9 +500,12 @@ def install(m):
             for frac in fracs[:-1]:
                 acc += total_w*frac
                 xs.append(acc)
-            # 17 filas comerciales deben caber con cuatro KPI en primera hoja.
-            row_h = 14.95
-            head_h = 29
+            # Las 17 tiendas deben permanecer junto a las tarjetas en la
+            # primera página. La altura anterior (14.95 x 17 + 29) activaba
+            # ensure() y dejaba media hoja vacía antes de saltar a página 2.
+            # 13.2 pt mantiene texto legible a 8.1 pt.
+            row_h = 13.2
+            head_h = 25
 
             def head():
                 nonlocal y
@@ -517,6 +520,9 @@ def install(m):
                     )
                 y -= head_h
 
+            # Reservar sólo el alto real que necesita la tabla. Para el
+            # alcance habitual de 17 tiendas cabe en la primera hoja; si el
+            # número de tiendas es mayor, se pagina normalmente.
             ensure(head_h + min(len(rows), 17)*row_h + 8, "Recuperación")
             head()
             for idx, r in enumerate(rows, start=1):
@@ -545,9 +551,9 @@ def install(m):
                     label,size=fitted_cell(val,total_w*fracs[i],8.1,font)
                     c.setFont(font,size)
                     if i==1:
-                        c.drawString(xs[i]+3,y-11.6,label)
+                        c.drawString(xs[i]+3,y-10.0,label)
                     else:
-                        c.drawCentredString(xs[i]+total_w*fracs[i]/2,y-11.6,label)
+                        c.drawCentredString(xs[i]+total_w*fracs[i]/2,y-10.0,label)
                 y -= row_h
             y -= 6
 
