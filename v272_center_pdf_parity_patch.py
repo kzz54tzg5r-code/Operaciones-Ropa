@@ -112,8 +112,10 @@ def install(m):
             return f"{_num(v):.1f}%"
 
         def money(v):
+            # La unidad 'miles de pesos' está en la cabecera; en cada celda
+            # mostrar sólo pesos expresados en miles, redondeados sin decimales.
             amount = _num(v) / 1000.0
-            return f"${amount:,.1f} mil" if amount else "$0 mil"
+            return f"${amount:,.0f}"
 
         def safe(v):
             if v is None:
