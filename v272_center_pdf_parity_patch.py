@@ -215,6 +215,50 @@ def install(m):
             c.drawString(M, y, left)
             y -= 15
 
+        def draw_card_icon(index, x, y, tone):
+            """Íconos vectoriales equivalentes a la interfaz web.
+
+            Se dibujan en ReportLab, por lo que no necesitan emojis, tipografías
+            externas ni imágenes descargadas. (x, y) es la esquina inferior.
+            """
+            c.saveState()
+            try:
+                set_stroke(tone)
+                c.setLineWidth(1.5)
+                c.setLineCap(1)
+                c.setLineJoin(1)
+                if index == 0:
+                    # Ingresado: caja isométrica.
+                    p=c.beginPath()
+                    p.moveTo(x+1,y+11);p.lineTo(x+9,y+15);p.lineTo(x+17,y+11)
+                    p.lineTo(x+17,y+2);p.lineTo(x+9,y-2);p.lineTo(x+1,y+2)
+                    p.close()
+                    c.drawPath(p,stroke=1,fill=0)
+                    c.line(x+1,y+11,x+9,y+7)
+                    c.line(x+9,y+7,x+17,y+11)
+                    c.line(x+9,y+7,x+9,y-2)
+                elif index == 1:
+                    # En proceso: círculos concéntricos.
+                    c.circle(x+9,y+7,8,stroke=1,fill=0)
+                    c.circle(x+9,y+7,3.4,stroke=1,fill=0)
+                elif index == 2:
+                    # En piso: fachada y exhibidor.
+                    p=c.beginPath()
+                    p.moveTo(x+1,y+10);p.lineTo(x+3,y+15);p.lineTo(x+15,y+15)
+                    p.lineTo(x+17,y+10);p.close()
+                    c.drawPath(p,stroke=1,fill=0)
+                    c.line(x+2,y+10,x+16,y+10)
+                    c.rect(x+3,y-1,12,11,stroke=1,fill=0)
+                    c.rect(x+7,y-1,4,7,stroke=1,fill=0)
+                else:
+                    # Recorridos: barras verticales con línea de base.
+                    c.line(x+1,y-1,x+17,y-1)
+                    c.line(x+4,y,x+4,y+9)
+                    c.line(x+9,y,x+9,y+15)
+                    c.line(x+14,y,x+14,y+6)
+            finally:
+                c.restoreState()
+
         def card_row(items):
             """V406: misma jerarquía visual del Centro en web; posiciones sin choques."""
             nonlocal y
@@ -232,9 +276,12 @@ def install(m):
                 c.roundRect(x, yy, card_w, card_h, 8, fill=1, stroke=1)
                 set_fill(tone)
                 c.roundRect(x, yy + card_h - 3.5, card_w, 3.5, 1.5, fill=1, stroke=0)
+                # Mismo icono y color que el encabezado de cada tarjeta web.
+                # Separado del texto para que nunca se encime al exportar.
+                draw_card_icon(idx, x + 12, yy + 104, tone)
                 set_fill(TEXT)
                 c.setFont("Helvetica-Bold", 11.5)
-                c.drawString(x + 11, yy + 109, label)
+                c.drawString(x + 35, yy + 109, label)
                 set_fill(MUTED)
                 desc_text,desc_size=fitted_cell(desc,card_w-22,7.8,"Helvetica")
                 c.setFont("Helvetica",desc_size)
