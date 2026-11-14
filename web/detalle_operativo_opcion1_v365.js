@@ -21,23 +21,25 @@
   window.opsComboSvg=function(rows,period,scope,rec=[]){
     // No modificar ni normalizar registros: solo leerlos para dibujar el gráfico.
     const data=(Array.isArray(rows)?rows:[])
-      .filter(row=>row && paint.some(p=>numeric(row[p.key])>0))
+      .filter(row=>row && String(row.store||'').trim())
       .slice().sort((a,b)=>numeric(b.ingresos)-numeric(a.ingresos));
     if(!data.length){
       return '<div class="infoempty">Información no disponible para Ingreso vs Acondicionado vs Ubicado.</div>';
     }
-    const width=Math.max(650,Math.round(data.length*112+104));
-    const height=333,left=61,right=25,top=52,bottom=65;
+    // Vista completa: distribuir todas las tiendas dentro del ancho del panel.
+    // El SVG se ajusta al contenedor sin ancho mínimo ni barra horizontal.
+    const width=Math.max(1050,Math.round(data.length*86+92));
+    const height=385,left=58,right=22,top=54,bottom=91;
     const plotHeight=height-top-bottom,plotWidth=width-left-right,baseline=top+plotHeight;
     const maximum=Math.max(1,...data.flatMap(row=>paint.map(p=>numeric(row[p.key]))));
     const groupWidth=plotWidth/data.length;
-    const barWidth=Math.min(20,Math.max(11,groupWidth*.18));
+    const barWidth=Math.min(17,Math.max(10,groupWidth*.19));
     const gap=Math.min(4,groupWidth*.035);
     const fmtTick=n=>escapeText(numberLabel(n));
     const y=value=>baseline-(numeric(value)/maximum*plotHeight);
     const parts=['<svg class="combo-svg or365-vertical-svg" role="img" '+
       'aria-label="Gráfico mixto: ingresos y acondicionado en barras, ubicado como línea rosa" '+
-      'style="--or365-min-width:'+width+'px" viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMinYMin meet">'];
+      'viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet">'];
     parts.push('<title>Ingresos, acondicionado y ubicado por tienda</title>');
     for(let i=0;i<=4;i++){
       const value=maximum*i/4,yy=y(value);
@@ -88,9 +90,10 @@
       labels.push('<text x="'+center.toFixed(2)+'" y="'+ubicLabelY.toFixed(2)+
         '" text-anchor="middle" font-size="9" font-weight="800" fill="#e50076" '+
         'paint-order="stroke" stroke="#fff" stroke-width="3">'+fmtTick(ubic)+'</text>');
-      parts.push('<text x="'+center.toFixed(2)+'" y="'+(baseline+22)+
-        '" font-size="10" text-anchor="middle" fill="#29496c">'+escapeText(row.store)+'</text>');
-      parts.push('<text x="'+center.toFixed(2)+'" y="'+(baseline+36)+
+      // Rótulo inclinado: las 17 tiendas caben sin superposición.
+      parts.push('<text transform="translate('+center.toFixed(2)+','+(baseline+17)+') rotate(-37)"'+
+        ' font-size="11" text-anchor="end" fill="#29496c">'+escapeText(row.store)+'</text>');
+      parts.push('<text x="'+center.toFixed(2)+'" y="'+(height-8)+
         '" font-size="9" text-anchor="middle" fill="#708197">#'+(i+1)+'</text>');
     });
     // Ubicado: línea continua con marcas visibles (incluye ceros reales).
@@ -107,7 +110,7 @@
     const textScope=escapeText(scope||'Todas las tiendas');
     return '<div class="chart-box chart-scroll or365-detail-chart" data-or365-chart="mixed-bars-line">'+
       '<h3 class="or365-chart-title">Ingresos vs Acondicionado vs Ubicado · '+textScope+' · '+textPeriod+'</h3>'+
-      '<div class="or365-chart-hint">Comparativo por tienda · desliza horizontalmente para ver todas las tiendas</div>'+
+      '<div class="or365-chart-hint">Comparativo por tienda · todas las tiendas visibles en una sola gráfica</div>'+
       parts.join('')+'</div>';
   };
 })();
