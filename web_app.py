@@ -6106,26 +6106,14 @@ def operations(
 
 
 def _operations_export_sections(data: dict):
-    """Unifica el alcance de exportación entre pantalla, PDF y Excel.
+    """Exportar el mismo alcance autorizado que presentan las tablas web.
 
-    Recuperación conserva todas las tiendas del alcance consultado y marca las
-    tiendas Proyecto. El detalle operativo incluye exclusivamente Proyecto.
+    Todas las tiendas activas participan en Cambios y Muertos, sin la antigua
+    selección Proyecto. No altera el filtro individual ni los permisos del API.
     """
-    configured=data.get("project_stores")
-    if configured is None:
-        configured=project_store_names(True)
-    project_names={str(name).strip() for name in configured if str(name).strip()}
-
-    def marked(row):
-        item=dict(row)
-        store=str(item.get("store") or "").strip()
-        item["is_project"]=bool(item.get("is_project")) or store in project_names
-        return item
-
-    all_stores=[marked(row) for row in data.get("stores",[])]
-    project_stores=[row for row in all_stores if row.get("is_project")]
-    recovery=[marked(row) for row in data.get("recovery_by_store",[])]
-    return project_stores,recovery
+    stores=[dict(row) for row in (data.get("stores") or []) if isinstance(row,dict)]
+    recovery=[dict(row) for row in (data.get("recovery_by_store") or []) if isinstance(row,dict)]
+    return stores,recovery
 
 
 def _report_export_payload(data: dict, report: str):
