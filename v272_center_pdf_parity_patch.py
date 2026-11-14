@@ -568,8 +568,11 @@ def install(m):
             # habilitado, ubicado y recorridos, cada uno topado a 100%.
             # Se usa el porcentaje de recorridos calculado por el backend
             # con la meta real del periodo y tienda.
+            # Usar la misma fuente de meta/recorridos por tienda que el
+            # reporte web. Normalizar la clave para evitar fallos por espacios
+            # o diferencias de mayúsculas en el nombre de la tienda.
             route_lookup={
-                str(item.get("store") or ""): _num(item.get("recorridos_pct"))
+                str(item.get("store") or "").strip().casefold(): _num(item.get("recorridos_pct"))
                 for item in (data.get("score_by_store") or [])
                 if isinstance(item,dict)
             }
@@ -584,12 +587,15 @@ def install(m):
                             else (_num(r.get("acondicionado"))/total*100 if total else 0))
                 ubicado=(_num(r.get("pct_ubicado")) if r.get("pct_ubicado") is not None
                          else (_num(r.get("ubicado"))/total*100 if total else 0))
-                recorridos=route_lookup.get(str(r.get("store") or ""),
-                    _num(r.get("recorridos"))/per_store_target*100 if per_store_target else 0)
+                key=str(r.get("store") or "").strip().casefold()
+                recorridos=route_lookup.get(
+                    key,
+                    _num(r.get("recorridos"))/per_store_target*100 if per_store_target else 0
+                )
                 bounded=[min(100,max(0,value)) for value in (habilitado,ubicado,recorridos)]
                 return habilitado,ubicado,sum(bounded)/3
 
-            rows.sort(key=lambda r: (-pct_parts(r)[2],str(r.get("store") or "")))
+            rows.sort(key=lambda r: (-pct_parts(r)[2],str(r.get("store") or "").casefold()))
             headers = [
                 "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
                 "Pend.\nant.", "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
