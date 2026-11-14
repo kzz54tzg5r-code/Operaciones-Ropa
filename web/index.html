@@ -2795,7 +2795,7 @@ async function renderOperativoView(name,force=false){
     const scope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
     out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Histórico',scope);
-    out+=`<div class="title">Detalle operativo · todas las tiendas</div>${projectStores.length?operationalDetailTable(projectStores,rec):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>'}`;
+    out+=`<div class="title">Detalle operativo · todas las tiendas</div>${projectStores.length?operationalDetailTable(projectStores,rec,d.score_by_store||[]):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>'}`;
     out+=projectStores.length?opsComboSvg(projectStores,OPER_PERIOD.value||d.period_value||'Histórico',scope,rec):'';
     out+=reportDownloadBar(name);
     $('#operativoDynamicContent').innerHTML=out;return;
@@ -2818,7 +2818,7 @@ async function renderOperativoView(name,force=false){
     const dailyScope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
     const orderedDaily=orderByConversion(stores,rec);
     out=monthlyCrossTable(mt,true);
-    out+=`<div class="title">Detalle operativo · ${OPER_PERIOD.value||'Día consultado'}</div>${operationalDetailTable(orderedDaily,rec)}`;
+    out+=`<div class="title">Detalle operativo · ${OPER_PERIOD.value||'Día consultado'}</div>${operationalDetailTable(orderedDaily,rec,d.score_by_store||[])}`;
     out+=opsComboSvg(orderedDaily,OPER_PERIOD.value||d.period_value||'Día consultado',dailyScope,rec);
   }else if(name==='Reporte Semanal'){
     const weeklyProjects=orderByConversion(stores,rec);
@@ -2826,14 +2826,14 @@ async function renderOperativoView(name,force=false){
     out=monthlyCrossTable(mt);
     out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope);
-    out+=`<div class="title">Detalle operativo · todas las tiendas</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>');
+    out+=`<div class="title">Detalle operativo · todas las tiendas</div>`+(weeklyProjects.length?operationalDetailTable(weeklyProjects,rec,d.score_by_store||[]):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>');
     out+=weeklyProjects.length?opsComboSvg(weeklyProjects,OPER_PERIOD.value||d.period_value||'Semana',weeklyScope,rec):'';
   }else if(name==='Reporte Mensual'){
     out=monthlyCrossTable(mt);
     const monthlyProjects=orderByConversion(stores,rec);
     out+=`<div class="title">Recuperación por tienda</div>`+recoveryTable(rec);
     out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'));
-    out+=`<div class="title">Detalle operativo · todas las tiendas</div>`+(monthlyProjects.length?operationalDetailTable(monthlyProjects,rec):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>');
+    out+=`<div class="title">Detalle operativo · todas las tiendas</div>`+(monthlyProjects.length?operationalDetailTable(monthlyProjects,rec,d.score_by_store||[]):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>');
     out+=monthlyProjects.length?opsComboSvg(monthlyProjects,OPER_PERIOD.value||d.period_value||'Mes',($('#operStoreSelect')?.value||'Compañía'),rec):'';
   }else if(name==='Conversión'){
     out=reportKpis([
@@ -2940,7 +2940,7 @@ async function renderOperativoView(name,force=false){
       kpiCard('Pendiente de acondicionar',fmt(mt.pendiente_acondicionar),'Recolectadas - Acondicionado','#F59E0B'),
       kpiCard('Pendiente de ubicar',fmt(mt.pendiente_ubicar),'Acondicionado - Ubicado','#EF4444')
     ]);
-    out+=operationalDetailTable(stores,rec)+`<div class="title">Detalle por actividad</div>`+activityDetailTable(activityDetail)+`<div class="title">Recuperación</div>`+recoveryTable(rec);
+    out+=operationalDetailTable(stores,rec,d.score_by_store||[])+`<div class="title">Detalle por actividad</div>`+activityDetailTable(activityDetail)+`<div class="title">Recuperación</div>`+recoveryTable(rec);
   }else if(name==='Perfil de Usuario'){
     out=`<div class="card"><h3>${USER?.username||'Usuario'}</h3><div class="big">${roleLabel[USER?.role]||USER?.role||''}</div><small>${USER?.store?'Tienda asignada: '+USER.store:'Alcance: Compañía'}</small></div>`;
   }else if(name==='Inteligencia Operativa'){
