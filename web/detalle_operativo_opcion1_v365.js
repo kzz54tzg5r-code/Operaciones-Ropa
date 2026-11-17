@@ -308,3 +308,100 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
   else init();
 })();
+
+
+/* V439 — Detalle operativo diario: mismos campos, Pendientes antes de % x Indicador.
+   No altera los cálculos ni las vistas semanal, mensual y anual. */
+(function(){
+  'use strict';
+  const marker='orDetailDailyV439';
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ').trim().toLowerCase();
+  function installStyle(){
+    if(document.getElementById('or-detail-daily-v439-style'))return;
+    const style=document.createElement('style');
+    style.id='or-detail-daily-v439-style';
+    style.textContent=[
+      '#page-operativo table.or-detail-daily-v439{width:100%!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important;}',
+      '#page-operativo table.or-detail-daily-v439 thead tr.or-daily-group-row th{background:#103968!important;color:#fff!important;text-align:center!important;vertical-align:middle!important;font-size:12px!important;font-weight:800!important;padding:7px 3px!important;position:static!important;white-space:nowrap!important;}',
+      '#page-operativo table.or-detail-daily-v439 thead tr:not(.or-daily-group-row) th{position:static!important;text-align:center!important;vertical-align:middle!important;}',
+      '#page-operativo table.or-detail-daily-v439 .or-daily-boundary{border-left:2px dashed #e53935!important;}',
+      '#page-operativo table.or-detail-daily-v439 tbody td.or-daily-score{background:#d3d8df!important;}',
+      '#page-operativo table.or-detail-daily-v439 thead th.or-daily-rank,',
+      '#page-operativo table.or-detail-daily-v439 tbody td.or-daily-rank{text-align:center!important;}',
+      '#page-operativo .or-detail-daily-v439-wrapper{overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important;max-height:none!important;height:auto!important;}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+  function apply(table){
+    if(table.dataset[marker]==='1'||!table.tHead||table.tHead.rows.length!==1||!table.tBodies.length)return;
+    const header=table.tHead.rows[0];
+    const cols=Array.from(header.cells);
+    if(cols.length!==16)return;
+    const labels=cols.map(th=>norm(th.textContent));
+    // El diario conserva Pend. Ant. y carece de % Recorridos.
+    const checks=[[1,'tienda'],[2,'dev'],[3,'muertos'],[4,'proba'],[5,'cajas'],
+      [6,'pend'],[7,'total'],[8,'recorridos'],[9,'acondi'],[10,'ubicado'],
+      [11,'% acond'],[12,'% ubicado'],[13,'pendiente'],[14,'pendiente'],[15,'score']];
+    if(!checks.every(([i,label])=>labels[i].includes(label)))return;
+    if(labels[6].includes('acond')||labels[6].includes('ubicar')||labels[6].includes('ubicado'))return;
+    installStyle();
+    const order=[0,1,2,3,4,5,6,7,8,9,10,13,14,11,12,15];
+    cols[0].textContent='Rank.';
+    cols[13].textContent='Acond.';
+    cols[14].textContent='Ubicar';
+    cols[11].textContent='% Acond.';
+    cols[12].textContent='% Ubicado';
+    cols[15].textContent='Score %';
+    header.replaceChildren(...order.map(i=>cols[i]));
+    for(const tbody of table.tBodies){
+      for(const tr of tbody.rows){
+        const cells=Array.from(tr.cells);
+        if(cells.length!==16)continue;
+        tr.replaceChildren(...order.map(i=>cells[i]));
+        const ordered=Array.from(tr.cells);
+        ordered[0].classList.add('or-daily-rank');
+        [2,8,11,13,15].forEach(i=>ordered[i].classList.add('or-daily-boundary'));
+        [13,14].forEach(i=>{
+          const td=ordered[i],val=Number(td.textContent.replace('%','').replace(/,/g,'').trim());
+          if(!Number.isFinite(val))return;
+          td.style.setProperty('color',val>=80?'#008744':val>=60?'#ad7100':'#d51d25','important');
+          td.style.setProperty('font-weight','800','important');
+        });
+        ordered[15].classList.add('or-daily-score');
+      }
+    }
+    const lower=Array.from(header.cells);
+    lower[0].classList.add('or-daily-rank');
+    [2,8,11,13,15].forEach(i=>lower[i].classList.add('or-daily-boundary'));
+    const band=document.createElement('tr');band.className='or-daily-group-row';
+    for(const [count,title] of [[2,''],[6,'Recolección'],[3,'Actividad'],
+      [2,'Pendientes'],[2,'% x Indicador'],[1,'Score']]){
+      const th=document.createElement('th');th.colSpan=count;th.textContent=title;
+      if(title)th.classList.add('or-daily-boundary');
+      band.appendChild(th);
+    }
+    table.tHead.insertBefore(band,header);
+    table.classList.add('or-detail-daily-v439');
+    const wrap=table.closest('.tablewrap');
+    if(wrap)wrap.classList.add('or-detail-daily-v439-wrapper');
+    table.dataset[marker]='1';
+  }
+  function scan(){
+    const page=document.getElementById('page-operativo');
+    if(page)page.querySelectorAll('table').forEach(apply);
+  }
+  function init(){
+    const root=document.getElementById('page-operativo');
+    if(!root||root.dataset.orDailyObserverV439)return;
+    root.dataset.orDailyObserverV439='1';
+    let queued=false;
+    new MutationObserver(()=>{
+      if(queued)return;queued=true;
+      requestAnimationFrame(()=>{queued=false;scan()});
+    }).observe(root,{subtree:true,childList:true});
+    scan();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
