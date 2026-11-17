@@ -712,7 +712,9 @@ body.v238-module-operativo #operPeriodMode{
           esc(devWarning)+'</div>';
     }
     if(typeof monthlyCrossTable==='function')out+=monthlyCrossTable(mt,mode==='day');
-    if(typeof recoveryTable==='function'){
+    // El reporte diario comienza directamente con Detalle operativo.
+    // Recuperación por tienda se conserva en semana, mes y año.
+    if(mode!=='day' && typeof recoveryTable==='function'){
       out+='<div class="title">Recuperación por tienda</div>'+recoveryTable(rec);
     }
     const ordered=typeof orderByConversion==='function'
