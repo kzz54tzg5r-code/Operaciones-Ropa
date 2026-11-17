@@ -162,6 +162,112 @@ def build_missing(m, allowed_stores, period_type, period_value):
             "store_count": len({r["store"] for r in rows})}
 
 
+def _inline_daily_collaborators(original_pdf, result):
+    """Usar el espacio realmente libre de la última página del PDF diario.
+
+    El generador del detalle indica su última coordenada Y en los metadatos.
+    Si no existe ese dato o no cabe un bloque legible, conservar el anexo normal.
+    No cubrir encabezados, tablas, logos, ni alterar datos.
+    """
+    source=PdfReader(BytesIO(original_pdf))
+    subject=str((source.metadata.subject if source.metadata else "") or "")
+    marker=re.search(r"OR-DETAIL-LAST-Y=([0-9.]+)",subject)
+    if not marker or not source.pages:
+        return original_pdf, list(result.get("rows") or [])
+    last=source.pages[-1]
+    W=float(last.mediabox.width)
+    H=float(last.mediabox.height)
+    if W<700 or H<500:
+        return original_pdf, list(result.get("rows") or [])
+    top=min(float(marker.group(1))-14,H-105)
+    bottom=31
+    heading_h=78
+    row_h=17.0
+    rows=list(result.get("rows") or [])
+    capacity=min(len(rows),max(0,int((top-bottom-heading_h)//row_h)))
+    # No dejar una minitabla huérfana bajo la tabla operativa.
+    if capacity<3:
+        return original_pdf,rows
+
+    overlay=BytesIO()
+    c=canvas.Canvas(overlay,pagesize=(W,H),pageCompression=1)
+    M=27
+    usable=W-2*M
+    title_color=colors.HexColor("#173B73")
+    navy=colors.HexColor("#194D82")
+    muted=colors.HexColor("#667085")
+    pink=colors.HexColor("#EC007C")
+    stripe=colors.HexColor("#EEF4FB")
+    from v407_week_display import format_week_label
+    c.setStrokeColor(colors.HexColor("#D8E0EB"))
+    c.line(M,top+6,W-M,top+6)
+    y=top-13
+    c.setFillColor(title_color)
+    c.setFont("Helvetica-Bold",13)
+    c.drawString(M,y,"Colaboradores sin productividad")
+    c.setFont("Helvetica-Bold",9.2)
+    c.setFillColor(pink)
+    c.drawRightString(W-M,y,f"{result.get('count',len(rows))} colaboradores · {result.get('store_count',0)} tiendas")
+    y-=19
+    c.setFillColor(muted)
+    c.setFont("Helvetica",8.0)
+    c.drawString(M,y,f"Periodo: {format_week_label(result.get('period_value') or 'Consulta')} · "
+                     f"{result.get('start_date') or ''} a {result.get('end_date') or ''}")
+    y-=15
+    c.drawString(M,y,"Sin captura no significa inasistencia; validar jornada con la tienda.")
+    y-=11
+
+    cols=["#","Colaborador","Tienda","Último registro","Estatus"]
+    parts=[.058,.365,.17,.19,.217]
+    widths=[usable*part for part in parts]
+    xs=[M]
+    for width in widths[:-1]:
+        xs.append(xs[-1]+width)
+    head_h=22
+    c.setFillColor(navy)
+    c.roundRect(M,y-head_h,usable,head_h,4,stroke=0,fill=1)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold",8.0)
+    for i,label in enumerate(cols):
+        if i==0:c.drawCentredString(xs[i]+widths[i]/2,y-15,label)
+        else:c.drawString(xs[i]+5,y-15,label)
+    y-=head_h
+
+    def fit(value,width,font):
+        text=str(value if value not in ("",None) else "—")
+        size=8.3
+        while size>=6.8 and c.stringWidth(text,font,size)>width-10:
+            size-=.2
+        while text and c.stringWidth(text,font,size)>width-10:
+            text=text[:-2]+"…" if len(text)>2 else ""
+        return text,size
+
+    for index,item in enumerate(rows[:capacity],1):
+        c.setFillColor(colors.white if index%2 else stripe)
+        c.rect(M,y-row_h,usable,row_h,stroke=0,fill=1)
+        values=[str(index),item.get("name") or "—",item.get("store") or "—",
+                item.get("last_date") or "Sin registro","Sin productividad"]
+        for i,value in enumerate(values):
+            font="Helvetica-Bold" if i in (0,1,4) else "Helvetica"
+            label,size=fit(value,widths[i],font)
+            c.setFont(font,size)
+            c.setFillColor(pink if i==4 else title_color)
+            if i==0:c.drawCentredString(xs[i]+widths[i]/2,y-11.4,label)
+            else:c.drawString(xs[i]+5,y-11.4,label)
+        y-=row_h
+    c.save()
+    overlay.seek(0)
+    page=PdfReader(overlay).pages[0]
+    writer=PdfWriter()
+    for p in source.pages[:-1]:
+        writer.add_page(p)
+    last.merge_page(page)
+    writer.add_page(last)
+    output=BytesIO()
+    writer.write(output)
+    return output.getvalue(),rows[capacity:]
+
+
 def appendix(original_pdf, result):
     """Anexo con identidad visual de Centro Operativo, en el extremo final del PDF.
 
@@ -182,6 +288,12 @@ def appendix(original_pdf, result):
     stripe=colors.HexColor("#EEF4FB")
     border=colors.HexColor("#D8E0EB")
     ink=colors.white
+    # En día, colocar colaboradores al pie del detalle si queda espacio real.
+    if result.get("period_type") == "day":
+        original_pdf,remaining=_inline_daily_collaborators(original_pdf,result)
+        if not remaining:
+            return original_pdf
+        result=dict(result,rows=remaining)
     rows=result.get("rows") or []
     # Dimensionar el ancho por contenido, no dividirlo en siete columnas minúsculas.
     cols=["#","Colaborador","Tienda","Último registro","Estatus"]
