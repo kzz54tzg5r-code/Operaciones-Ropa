@@ -25,7 +25,12 @@ def install(m):
 (function(){
  const n=v=>Number(v||0), pt=v=>`${n(v).toFixed(1)}%`, pc=v=>n(v)>=80?'v117-good':(n(v)>=65?'v117-warn':'v117-bad');
  const zero=v=>n(v)===0?`<b class="zero-alert">${fmt(v)}</b>`:fmt(v);
- operationalDetailTable=function(stores,recovery=[],scoreRows=[]){
+ operationalDetailTable=function(stores,recovery=[],scoreRows=[],periodMode=null){
+   // Día conserva todas las columnas. En periodos agregados el saldo
+   // anterior no es un flujo sumable y se muestra % Recorridos en lugar
+   // de % Ubicado. El Score continúa usando los tres porcentajes.
+   const currentMode=periodMode||document.querySelector('#operPeriodMode')?.value||'day';
+   const aggregated=['week','month','year'].includes(currentMode);
    // Score de Detalle operativo: promedio de los tres cumplimientos, todos
    // limitados a 100%. Recorridos se toma de la meta real por tienda/período.
    const routes=new Map((scoreRows||[]).map(r=>[String(r.store||''),Number(r.recorridos_pct)||0]));
@@ -39,8 +44,8 @@ def install(m):
    };
    const rows=[...(stores||[])].sort((a,b)=>values(b).score-values(a).score||String(a.store||'').localeCompare(String(b.store||'')));
    return `<div class="tablewrap"><table class="table ops-zero-table"><thead><tr>
-   <th>Ranking</th><th>Tienda</th><th>Dev pzs</th><th>Muertos</th><th>Probador</th><th>Cajas</th><th>Pend. Ant.</th><th>Total pzs</th><th>Recorridos realizados</th><th>Acondicionado</th><th>Ubicado</th><th>% Acondicionado</th><th>% Ubicado</th><th>Pendiente de acondicionar</th><th>Pendiente de ubicar</th><th>Score %</th>
-   </tr></thead><tbody>${rows.map((r,i)=>{const t=Number(r.total_pzs??r.ingresos??0),{pa,pu,score}=values(r);return `<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${zero(r.dev_pzs)}</td><td>${zero(r.muertos)}</td><td>${zero(r.probador)}</td><td>${zero(r.cajas)}</td><td>${zero(r.pendiente_anterior||0)}</td><td><b>${fmt(t)}</b></td><td>${zero(r.recorridos)}</td><td>${zero(r.acondicionado)}</td><td>${zero(r.ubicado)}</td><td><b class="v117-pct ${pc(pa)}">${pt(pa)}</b></td><td><b class="v117-pct ${pc(pu)}">${pt(pu)}</b></td><td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td><td><b class="v117-pct ${pc(score)}">${pt(score)}</b></td></tr>`}).join('')}</tbody></table></div>`;
+   <th>Ranking</th><th>Tienda</th><th>Dev pzs</th><th>Muertos</th><th>Probador</th><th>Cajas</th>${aggregated?'':'<th>Pend. Ant.</th>'}<th>Total pzs</th><th>Recorridos realizados</th><th>Acondicionado</th><th>Ubicado</th><th>% Acondicionado</th><th>${aggregated?'% Recorridos':'% Ubicado'}</th><th>Pendiente de acondicionar</th><th>Pendiente de ubicar</th><th>Score %</th>
+   </tr></thead><tbody>${rows.map((r,i)=>{const t=Number(r.total_pzs??r.ingresos??0),{pa,pu,pr,score}=values(r);return `<tr class="${r.is_project?'project-row':''}"><td><b>#${i+1}</b></td><td><b>${r.store}</b></td><td>${zero(r.dev_pzs)}</td><td>${zero(r.muertos)}</td><td>${zero(r.probador)}</td><td>${zero(r.cajas)}</td>${aggregated?'':`<td>${zero(r.pendiente_anterior||0)}</td>`}<td><b>${fmt(t)}</b></td><td>${zero(r.recorridos)}</td><td>${zero(r.acondicionado)}</td><td>${zero(r.ubicado)}</td><td><b class="v117-pct ${pc(pa)}">${pt(pa)}</b></td><td><b class="v117-pct ${pc(aggregated?pr:pu)}">${pt(aggregated?pr:pu)}</b></td><td>${fmt(r.pendiente_acondicionar)}</td><td>${fmt(r.pendiente_ubicar)}</td><td><b class="v117-pct ${pc(score)}">${pt(score)}</b></td></tr>`}).join('')}</tbody></table></div>`;
  };
  const oldRender=renderOperativoView;
  renderOperativoView=async function(name,force=false){
