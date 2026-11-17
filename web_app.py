@@ -6267,7 +6267,10 @@ def _build_operations_pdf(data: dict, report: str, scope: str="Compañía") -> b
     def mixed_chart(title,rows):
         nonlocal y
         if not rows: return
-        h=245; ensure(h+24); section(title)
+        # Gráfico compacto en los cortes semanal, mensual y anual: misma escala y ancho, menor altura.
+        compact_period = str(data.get("period_type") or "").lower() in ("week", "weekly", "semana", "month", "monthly", "mes", "year", "yearly", "anio", "año", "annual", "anual")
+        h = 180 if compact_period else 245
+        ensure(h+24); section(title)
         vals=[float(r.get(k) or 0) for r in rows for k in ("recolectadas","acondicionado","ubicado")]; maxv=max(vals+[1]); x0=M+45; x1=width-M-15; base=y-h+38; top=y-18; plot_h=top-base; groupw=(x1-x0)/max(1,len(rows)); barw=min(12,groupw*.24)
         c.setStrokeColor(colors.HexColor(LINE));
         for q in range(5):
