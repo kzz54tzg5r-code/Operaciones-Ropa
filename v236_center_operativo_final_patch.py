@@ -230,8 +230,9 @@ def install(m):
         const ordered=typeof orderByConversion==='function'?orderByConversion(stores.filter(x=>x.is_project),rec):stores.filter(x=>x.is_project);
         const scope=p.store==='Compañía'?'Todas las tiendas':p.store;
         let extra='';
-        if(typeof recoveryTable==='function')extra+='<div class="title">Recuperación por tienda</div>'+recoveryTable(rec);
-        if(typeof recoveryHorizontalChart==='function')extra+=recoveryHorizontalChart(rec,p.value||LABEL[p.type]||'',scope);
+        // Sólo semana, mes y año incorporan la tabla de Recuperación por tienda.
+        if(p.type!=='day'&&typeof recoveryTable==='function')extra+='<div class="title">Recuperación por tienda</div>'+recoveryTable(rec);
+        if(p.type!=='day'&&typeof recoveryHorizontalChart==='function')extra+=recoveryHorizontalChart(rec,p.value||LABEL[p.type]||'',scope);
         if(typeof operationalDetailTable==='function')extra+='<div class="title">Detalle operativo · tiendas del proyecto</div>'+(ordered.length?operationalDetailTable(ordered,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
         if(ordered.length&&typeof opsComboSvg==='function')extra+=opsComboSvg(ordered,p.value||LABEL[p.type]||'',scope,rec);
         if(typeof reportDownloadBar==='function')extra+=reportDownloadBar('Centro Ejecutivo');
