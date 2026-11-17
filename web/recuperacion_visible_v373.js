@@ -14,9 +14,16 @@
  const title=s=>{const e=document.createElement('h3');e.className='or373-title';e.textContent=s;return e};
  const el=(tag,cls,value)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(value!==undefined)e.textContent=String(value);return e};
  let current='',loading='',queued=false;
+ function selectedMode(){
+  // La barra visible V266/V403 es autoritativa. En ciertas transiciones
+  // #operPeriodMode conserva temporalmente el modo de la consulta anterior.
+  return q('#operativoPeriodBar .v266-period-btn.active')?.dataset.mode ||
+         q('#v403CenterModes button[data-mode].active')?.dataset.mode ||
+         q('#operPeriodMode')?.value || 'day';
+ }
  function params(){
   return {
-   period_type:q('#operPeriodMode')?.value||'day',
+   period_type:selectedMode(),
    period_value:q('#operPeriodSelect')?.value||'',
    store:q('#operStoreSelect')?.value||'Compañía',
    area:'', activity:'', compact:'true'
@@ -111,8 +118,17 @@
  function render(){
   if(!valid())return;
   const root=q('#operativoDynamicContent'),original=q('.ocl-original',root)||root;
-  if(!original?.querySelector('.monthly-cross-table'))return;
+  if(!original)return;
   const filter=params(),key=JSON.stringify(filter);
+  if(filter.period_type==='day'){
+    // El módulo V373 estaba inyectando SIEMPRE la tabla, incluso cuando
+    // V240 y V236 ya habían omitido correctamente la recuperación diaria.
+    // Limpiar las copias antiguas al cambiar a Día.
+    original.querySelectorAll('.or373-mount,.or373-recovery-panel').forEach(node=>node.remove());
+    current='';loading='';
+    return;
+  }
+  if(!original.querySelector('.monthly-cross-table'))return;
   const detail=[...original.querySelectorAll(':scope > .title')].find(x=>/^Detalle operativo/i.test(x.textContent.trim()));
   const target=detail||original.querySelector('.chart-box')||original.lastElementChild;
   if(!target)return;
@@ -141,6 +157,9 @@
   const root=q('#operativoDynamicContent');
   if(root)new MutationObserver(schedule).observe(root,{childList:true,subtree:false});
   ['operPeriodMode','operPeriodSelect','operStoreSelect'].forEach(id=>q('#'+id)?.addEventListener('change',schedule));
+  q('#operativoPeriodBar')?.addEventListener('click',e=>{
+    if(e.target.closest('.v266-period-btn,#v403CenterModes button[data-mode]'))schedule();
+  },true);
   window.addEventListener('or356:center-data',schedule);
   q('#operativoNav')?.addEventListener('click',schedule);
   schedule();
