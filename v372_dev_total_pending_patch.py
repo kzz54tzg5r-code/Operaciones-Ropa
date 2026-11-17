@@ -342,6 +342,11 @@ def install(m):
         result = old(*args, **kwargs)
         if not isinstance(result, dict):
             return result
+        # Los endpoints compactos comparten respuestas cacheadas entre
+        # consultas. No modificar el objeto fuente al descontar arrastres:
+        # cada consulta debe partir de los mismos movimientos originales.
+        from copy import deepcopy
+        result = deepcopy(result)
         reported = result.get("recovery_by_store") or ()
         no_dev = not any(_number(r.get("dev_pzs")) > 0 for r in reported)
         fifo = ()
