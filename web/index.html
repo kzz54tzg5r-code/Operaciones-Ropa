@@ -2793,8 +2793,12 @@ async function renderOperativoView(name,force=false){
       Regla de recuperación: una devolución sólo recupera venta del mismo ID/SKU y tienda desde la fecha de devolución hasta el domingo de esa misma semana ISO.
     </div>`;
     const scope=$('#operStoreSelect')?.value==='Compañía'?'Todas las tiendas':($('#operStoreSelect')?.value||'Todas las tiendas');
-    out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;
-    out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Histórico',scope);
+    // Recuperación por tienda sólo se muestra en Semana, Mensual y Anual.
+    // En Día conservar las tarjetas y el detalle operativo sin esta tabla.
+    if(OPER_PERIOD.type!=='day'){
+      out+=`<div class="title">Recuperación por tienda</div>${recoveryTable(rec)}`;
+      out+=recoveryHorizontalChart(rec,OPER_PERIOD.value||d.period_value||'Histórico',scope);
+    }
     out+=`<div class="title">Detalle operativo · todas las tiendas</div>${projectStores.length?operationalDetailTable(projectStores,rec,d.score_by_store||[]):'<div class="infoempty">No hay información operativa de tiendas para el periodo seleccionado.</div>'}`;
     out+=projectStores.length?opsComboSvg(projectStores,OPER_PERIOD.value||d.period_value||'Histórico',scope,rec):'';
     out+=reportDownloadBar(name);
