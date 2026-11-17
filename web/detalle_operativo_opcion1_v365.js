@@ -114,3 +114,87 @@
       parts.join('')+'</div>';
   };
 })();
+
+
+/* V431: paridad visual de Detalle operativo en Día/Semana/Mes/Año.
+   Reordenar columnas sin alterar el conjunto de datos ni el score. */
+(function(){
+  'use strict';
+  const normalize = value => String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ').trim().toLowerCase();
+  function correctTable(table){
+    if(table.dataset.orDetailPercentV431==='1'||!table.tHead||!table.tBodies.length)return;
+    const header=table.tHead.rows[0];
+    if(!header)return;
+    const original=Array.from(header.cells);
+    const labels=original.map(cell=>normalize(cell.textContent));
+    const find=(...parts)=>labels.findIndex(label=>parts.every(part=>label.includes(part)));
+    const store=find('tienda'), total=find('total','pzs'), routes=find('recorridos','realiz'),
+      acond=find('acondicionado'), ubic=find('ubicado'),
+      percentRoutes=find('%','recorridos'), percentAcond=find('%','acondi'),
+      percentUbic=find('%','ubicado'),
+      pendAcond=find('pendiente','acond'), pendUbic=find('pendiente','ubicar'), score=find('score');
+    // Aplicar sólo a la tabla operativa de 15 campos; no modificar recuperación ni otras tablas.
+    if([store,total,routes,acond,ubic,percentRoutes,percentAcond,pendAcond,pendUbic,score].some(i=>i<0))return;
+    if(original.length<14 || table.tBodies[0].rows.length===0)return;
+    const before=original.slice(0,ubic+1).map((_,i)=>i);
+    const trailing=original.map((_,i)=>i).filter(i=>!before.includes(i) &&
+      ![percentRoutes,percentAcond,percentUbic,pendAcond,pendUbic,score].includes(i));
+    const order=[...before,percentRoutes,percentAcond,...(percentUbic>=0?[percentUbic]:[]),
+      pendAcond,pendUbic,score,...trailing];
+    const formatPercent = (ubicado,total) => {
+      const asNum=text=>{
+        const cleaned=String(text||'').replace(/[^0-9.,-]/g,'').replace(/,/g,'');
+        return Number(cleaned)||0;
+      };
+      const den=asNum(total),num=asNum(ubicado);
+      return (den>0?num/den*100:0).toFixed(1)+'%';
+    };
+    table.dataset.orDetailPercentV431='1';
+    const heads=[...original];
+    heads[percentRoutes].textContent='% Recorridos';
+    heads[percentAcond].textContent='% Acond.';
+    heads[pendAcond].textContent='Pend. Acond.';
+    heads[pendUbic].textContent='Pend. Ubicar';
+    if(percentUbic>=0)heads[percentUbic].textContent='% Ubicado';
+    else {
+      const newHead=document.createElement('th');
+      newHead.textContent='% Ubicado';
+      const pivot=order.indexOf(percentAcond);
+      order.splice(pivot+1,0,heads.length);
+      heads.push(newHead);
+    }
+    header.replaceChildren(...order.map(i=>heads[i]));
+    for(const body of table.tBodies){
+      for(const row of body.rows){
+        const cells=Array.from(row.cells);
+        if(cells.length!==original.length)continue;
+        if(percentUbic<0){
+          const cell=document.createElement('td');
+          cell.textContent=formatPercent(cells[ubic]?.textContent,cells[total]?.textContent);
+          cell.style.fontWeight='700';
+          cells.push(cell);
+        }
+        row.replaceChildren(...order.map(i=>cells[i]));
+      }
+    }
+  }
+  function scan(){
+    const root=document.getElementById('page-operativo')||document;
+    root.querySelectorAll('table').forEach(correctTable);
+  }
+  function init(){
+    const root=document.getElementById('page-operativo')||document.body;
+    if(!root||root.dataset.orDetailObserverV431)return;
+    root.dataset.orDetailObserverV431='1';
+    let queued=false;
+    new MutationObserver(()=>{
+      if(queued)return;
+      queued=true;
+      requestAnimationFrame(()=>{queued=false;scan();});
+    }).observe(root,{childList:true,subtree:true});
+    scan();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
