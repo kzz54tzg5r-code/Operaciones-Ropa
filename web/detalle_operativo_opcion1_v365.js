@@ -198,3 +198,74 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
   else init();
 })();
+
+
+/* V432: encabezados agrupados y separadores rojos punteados en Detalle operativo. */
+(function(){
+  'use strict';
+  const cssId='or-detail-groups-v432-css';
+  function installCss(){
+    if(document.getElementById(cssId))return;
+    const style=document.createElement('style');
+    style.id=cssId;
+    style.textContent=[
+      'table.or-detail-groups-v432{border-collapse:separate!important;border-spacing:0!important;}',
+      'table.or-detail-groups-v432 thead tr.or-detail-groups-row th{background:#164779!important;color:white!important;text-align:center!important;font-size:12px!important;font-weight:800!important;padding:7px 5px!important;white-space:nowrap!important;}',
+      'table.or-detail-groups-v432 thead tr.or-detail-groups-row th.or-detail-group-name{background:#0d386a!important;letter-spacing:.2px!important;}',
+      'table.or-detail-groups-v432 thead tr.or-detail-groups-row th.or-detail-group-division{border-left:2px dashed #e53935!important;}',
+      'table.or-detail-groups-v432 thead tr.or-detail-groups-row th.or-detail-group-activity{border-right:2px dashed #e53935!important;}',
+      'table.or-detail-groups-v432 thead tr:not(.or-detail-groups-row)>th:nth-child(3),',
+      'table.or-detail-groups-v432 thead tr:not(.or-detail-groups-row)>th:nth-child(8),',
+      'table.or-detail-groups-v432 thead tr:not(.or-detail-groups-row)>th:nth-child(11),',
+      'table.or-detail-groups-v432 tbody tr>td:nth-child(3),',
+      'table.or-detail-groups-v432 tbody tr>td:nth-child(8),',
+      'table.or-detail-groups-v432 tbody tr>td:nth-child(11){border-left:2px dashed #e53935!important;}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+  const normalized=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+  function group(table){
+    if(table.dataset.orDetailGroupsV432||table.dataset.orDetailPercentV431!=='1')return;
+    if(!table.tHead||table.tHead.rows.length!==1||table.tBodies.length<1)return;
+    const cells=Array.from(table.tHead.rows[0].cells);
+    if(cells.length!==16)return;
+    const titles=cells.map(cell=>normalized(cell.textContent));
+    const required=[[0,'ranking'],[1,'tienda'],[2,'dev'],[6,'total'],[7,'recorridos'],[8,'acondicionado'],[9,'ubicado'],[10,'% recorridos']];
+    if(!required.every(([i,label])=>titles[i].includes(label)))return;
+    installCss();
+    table.dataset.orDetailGroupsV432='1';
+    table.classList.add('or-detail-groups-v432');
+    const row=document.createElement('tr');
+    row.className='or-detail-groups-row';
+    const add=(span,text,cls)=>{
+      const th=document.createElement('th');
+      th.colSpan=span;
+      th.textContent=text;
+      if(cls)th.className=cls;
+      row.appendChild(th);
+    };
+    add(2,'');
+    add(5,'Recolección','or-detail-group-name or-detail-group-division');
+    add(3,'Actividad','or-detail-group-name or-detail-group-division or-detail-group-activity');
+    add(6,'','or-detail-group-division');
+    table.tHead.insertBefore(row,table.tHead.firstChild);
+  }
+  function scan(){
+    const root=document.getElementById('page-operativo')||document;
+    root.querySelectorAll('table').forEach(group);
+  }
+  function init(){
+    const root=document.getElementById('page-operativo')||document.body;
+    if(!root||root.dataset.orDetailGroupObserverV432)return;
+    root.dataset.orDetailGroupObserverV432='1';
+    let queued=false;
+    new MutationObserver(()=>{
+      if(queued)return;
+      queued=true;
+      requestAnimationFrame(()=>{queued=false;scan();});
+    }).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['data-or-detail-percent-v431']});
+    scan();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
