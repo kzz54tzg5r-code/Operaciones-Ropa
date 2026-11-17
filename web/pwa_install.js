@@ -20,7 +20,7 @@
   const originals = new WeakMap();
   const valueOf = el => ['checkbox', 'radio'].includes(el.type) ? el.checked : el.value;
   const eligible = el => el?.matches?.('input,textarea,select') &&
-    !el.closest('#loginView,.filters,.v165-subfilters,.or-filter-panel-v3,#viewRoleBox,.v313-filters,.v293-filters,.v302-filters,.v330-layout,.v330-source') &&
+    !el.closest('#loginView,.filters,.v165-subfilters,.or-filter-panel-v3,#operativoPeriodBar,#globalFilters,#operativoFilterBar,#viewRoleBox,.v313-filters,.v293-filters,.v302-filters,.v330-layout,.v330-source') &&
     !['hidden', 'button', 'submit'].includes(el.type);
   document.addEventListener('focusin', event => {
     if (eligible(event.target) && !originals.has(event.target)) originals.set(event.target, valueOf(event.target));
@@ -85,6 +85,12 @@
       .or-update-banner button{margin-left:auto;flex:0 0 auto;border:0;border-radius:8px;background:#0d7ff4;color:#fff;
         min-height:40px;padding:0 14px;font-size:11px;font-weight:900;cursor:pointer;pointer-events:auto!important;touch-action:manipulation;position:relative;z-index:2}
       .or-update-banner button:disabled{opacity:.65}
+      .or-update-banner .or-update-close{
+        margin-left:0!important;flex:0 0 28px!important;width:28px!important;
+        min-height:28px!important;height:28px!important;padding:0!important;
+        border-radius:50%!important;background:#eef3f9!important;color:#173b73!important;
+        font-size:20px!important;line-height:1!important;
+      }
       .pwa-install-hint{position:fixed;left:10px;right:10px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:19000;
         max-width:520px;margin:0 auto;background:#fff;border:1px solid #dce4ee;border-radius:16px;padding:11px 12px;
         box-shadow:0 14px 40px rgba(18,59,115,.22);display:flex;gap:10px;align-items:center;color:#123b73;
@@ -116,9 +122,19 @@
     document.querySelectorAll('.or-update-banner:not(.or-update-current)').forEach(banner => banner.remove());
     updateVisible = false;
   };
+  // Los filtros de consulta nunca son borradores operativos.
+  // Descartar marcas antiguas que pudieron quedar en memoria al cambiar fechas.
+  const pruneFilterEdits = () => {
+    for (const el of edits) {
+      if (!el.isConnected || el.closest('#operativoPeriodBar,#globalFilters,#operativoFilterBar,.filters,.or-filter-panel-v3')) {
+        edits.delete(el);
+      }
+    }
+  };
 
   const refreshAndReload = async (button, automatic = false) => {
     if (refreshing) return;
+    pruneFilterEdits();
     if (!safeToRefresh()) {
       const message = document.querySelector('.or-update-banner:not(.or-update-current) span');
       // Nunca interrumpir una solicitud que está guardando datos.
@@ -196,9 +212,14 @@
         <strong>Nueva versión disponible</strong>
         <span>Operaciones Ropa ya fue actualizada en el servidor. No necesitas reinstalarla.</span>
       </div>
-      <button type="button">Actualizar</button>
+      <button type="button" class="or-update-apply">Actualizar</button>
+      <button type="button" class="or-update-close" aria-label="Cerrar aviso de actualización" title="Cerrar aviso">×</button>
     `;
-    banner.querySelector('button')?.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); refreshAndReload(event.currentTarget); });
+    banner.querySelector('.or-update-apply')?.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); refreshAndReload(event.currentTarget); });
+    banner.querySelector('.or-update-close')?.addEventListener('click', event => {
+      event.preventDefault();
+      dismissUpdateBanner();
+    });
     document.body.appendChild(banner);
     // The badge identifies the loaded build, never the pending server build.
     renderVersion(loadedBuild);
@@ -231,6 +252,7 @@
         renderVersion(loadedBuild);
       }
       if (version !== loadedBuild) {
+        pruneFilterEdits();
         showUpdateBanner(version);
         return { available: true, version };
       }
