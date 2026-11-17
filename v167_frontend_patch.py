@@ -24,6 +24,36 @@ def install(m):
 .v167-sales-head{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap}.v167-sales-controls{display:flex;gap:6px}.v167-sales-controls select{height:36px;border:1px solid #cbd9e8;border-radius:9px;padding:0 28px 0 9px;color:#173f78;font-weight:850}.v167-sales th button{border:0;background:transparent;color:#fff;font:inherit;font-weight:900;cursor:pointer}.v167-pos{color:#118a52}.v167-neg{color:#d92d20}.v167-rank{font-weight:950}
 .v167-safe-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin:8px 0}.v167-safe-tabs button{border:1px solid #d7e1ed;background:#fff;color:#173f78;border-radius:10px;padding:9px;font-size:8px;font-weight:900}.v167-safe-tabs button.active{background:#176fe8;color:#fff}
 @media(max-width:900px){.v167-hour{min-width:580px;grid-template-columns:42px repeat(7,68px)}.v167-matrix-visual{overflow:auto}.v167-trends{grid-template-columns:1fr}.v167-safe-tabs{grid-template-columns:repeat(5,120px);overflow:auto}}
+/* V425: los iconos de las tarjetas deben quedar en el encabezado,
+   nunca entre el título y el valor ni encima de los números. */
+html body #page-operativo #operativoDynamicContent .report-kpi:not(.v268-option10-card){
+  position:relative!important;
+}
+html body #page-operativo #operativoDynamicContent .report-kpi:not(.v268-option10-card) > .v167-card-icon{
+  position:absolute!important;
+  inset:9px 11px auto auto!important;
+  left:auto!important;top:9px!important;right:11px!important;bottom:auto!important;
+  transform:none!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  width:28px!important;height:28px!important;min-width:28px!important;
+  margin:0!important;padding:4px!important;
+  background:#eff6ff!important;border:0!important;border-radius:9px!important;
+  box-sizing:border-box!important;
+  z-index:1!important;pointer-events:none!important;
+}
+html body #page-operativo #operativoDynamicContent .report-kpi:not(.v268-option10-card) > .v167-card-icon svg{
+  display:block!important;width:19px!important;height:19px!important;
+  max-width:19px!important;max-height:19px!important;
+}
+html body #page-operativo #operativoDynamicContent .report-kpi:not(.v268-option10-card) > .rk-label{
+  position:relative!important;z-index:2!important;
+  padding-right:37px!important;min-height:25px!important;
+  box-sizing:border-box!important;
+}
+html body #page-operativo #operativoDynamicContent .report-kpi:not(.v268-option10-card) > .rk-value{
+  position:relative!important;z-index:2!important;
+  clear:both!important;
+}
 </style>'''
 
     js = r'''<script id="v167-ui-js">
