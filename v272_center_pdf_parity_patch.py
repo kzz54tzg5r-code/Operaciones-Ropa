@@ -615,17 +615,35 @@ def install(m):
             for width in widths[:-1]:
                 xs.append(xs[-1]+width)
             row_h = 19.4
-            head_h = 33
+            group_h = 17
+            label_h = 33
+            head_h = group_h + label_h
+            # Límites de Recolección, Actividad y Porcentajes.
+            group_breaks = [headers.index("Dev\npzs"), headers.index("Recorr.\nrealiz."), headers.index("%\nRecorridos")]
+            def group_guides(y_bottom,y_top):
+                c.saveState()
+                c.setStrokeColor(colors.HexColor("#E53935"))
+                c.setLineWidth(1.0)
+                c.setDash(2, 2)
+                for col in group_breaks:
+                    c.line(xs[col], y_bottom, xs[col], y_top)
+                c.restoreState()
 
             def head():
                 nonlocal y
                 set_fill(BLUE_DARK)
                 c.roundRect(M, y-head_h+2, total_w, head_h, 4, fill=1, stroke=0)
+                # Nivel superior: grupos alineados exactamente con sus columnas.
                 c.setFillColor(colors.white)
+                c.setFont("Helvetica-Bold", 8.5)
+                for name,start,end in (("Recolección",2,7),("Actividad",7,10)):
+                    cx=(xs[start]+xs[end-1]+widths[end-1])/2
+                    c.drawCentredString(cx,y-12,name)
                 for i, h in enumerate(headers):
-                    draw_header_cell(xs[i], widths[i], y, head_h, h,
+                    draw_header_cell(xs[i], widths[i], y-group_h, label_h, h,
                                      font_size=6.3,
                                      align="left" if i == 1 else "center")
+                group_guides(y-head_h+2,y+2)
                 y -= head_h
 
             # Reservar título + cabecera + primeras filas ANTES de escribir
@@ -672,6 +690,7 @@ def install(m):
                         c.drawString(xs[i]+2.5, y-13.3, text_value)
                     else:
                         c.drawCentredString(xs[i]+widths[i]/2, y-13.3, text_value)
+                group_guides(y-row_h+2,y+2)
                 y -= row_h
             y -= 17  # Dejar aire entre última fila y título/gráfico.
 
