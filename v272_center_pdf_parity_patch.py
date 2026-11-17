@@ -853,7 +853,10 @@ def install(m):
         section("Reporte completo por tienda · tablas y gráficos")
         y -= 4  # Separar títulos sin desbordar las 17 tiendas de la hoja.
 
-        draw_recovery_table()
+        # Misma visibilidad que Centro Operativo en pantalla:
+        # Recuperación por tienda sólo en Semana, Mensual y Anual.
+        if period_type in ("week", "month", "year"):
+            draw_recovery_table()
         draw_operational_detail()
         draw_combo_chart()
 
