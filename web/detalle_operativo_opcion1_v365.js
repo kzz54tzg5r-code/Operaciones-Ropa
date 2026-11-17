@@ -488,3 +488,102 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addStyles);
   else addStyles();
 })();
+
+
+/* V442: una sola celda superior evita que los colspans desplazados por estilos
+   heredados deformen la geometría del grupo. Las bandas se posicionan contra
+   los bordes REALES de los 16 encabezados inferiores y se recalculan al resize. */
+(function(){
+  'use strict';
+  const STYLE='or-groups-geometry-v442';
+  function installStyle(){
+    if(document.getElementById(STYLE))return;
+    const style=document.createElement('style');
+    style.id=STYLE;
+    style.textContent=[
+      '#page-operativo table.or-detail-daily-v439 thead tr.or-daily-group-row>th.or-group-overlay-cell-v442,',
+      '#page-operativo table.or-detail-groups-v434 thead tr.or-detail-groups-row>th.or-group-overlay-cell-v442',
+      '{position:relative!important;box-sizing:border-box!important;height:36px!important;',
+      'min-height:36px!important;padding:0!important;border:0!important;',
+      'width:auto!important;max-width:none!important;text-align:left!important;}',
+      '#page-operativo .or-group-band-v442{position:absolute!important;display:flex!important;',
+      'align-items:center!important;justify-content:center!important;box-sizing:border-box!important;',
+      'top:0!important;height:100%!important;margin:0!important;padding:0 2px!important;',
+      'background:#103968!important;color:#fff!important;text-align:center!important;',
+      'font-size:12px!important;font-weight:800!important;line-height:1.1!important;',
+      'white-space:nowrap!important;pointer-events:none!important;}',
+      '#page-operativo .or-group-band-v442.or-group-alt-v442{background:#285989!important;}',
+      '#page-operativo .or-group-band-v442.or-group-boundary-v442{border-left:2px dashed #e53935!important;}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+  function upgrade(table){
+    if(table.dataset.orGroupsGeometryV442==='1'||!table.tHead||table.tHead.rows.length!==2)return;
+    const top=table.tHead.rows[0],bottom=table.tHead.rows[1];
+    if(!top.classList.contains('or-daily-group-row')&&!top.classList.contains('or-detail-groups-row'))return;
+    if(bottom.cells.length!==16)return;
+    const daily=table.classList.contains('or-detail-daily-v439');
+    const spans=daily?[
+      [0,2,''],[2,8,'Recolección'],[8,11,'Actividad'],
+      [11,13,'Pendientes'],[13,15,'% x Indicador'],[15,16,'Score']
+    ]:[
+      [0,2,''],[2,7,'Recolección'],[7,10,'Actividad'],
+      [10,12,'Pendientes'],[12,15,'% x Indicador'],[15,16,'Score']
+    ];
+    installStyle();
+    const cell=document.createElement('th');
+    cell.colSpan=16;cell.className='or-group-overlay-cell-v442';
+    cell.setAttribute('aria-label','Grupos: Recolección, Actividad, Pendientes, % x Indicador y Score');
+    const nodes=spans.map(([start,end,label],index)=>{
+      const band=document.createElement('span');
+      band.className='or-group-band-v442'+
+        ((index===3||index===4)?' or-group-alt-v442':'')+
+        (index>1?' or-group-boundary-v442':'');
+      band.textContent=label;
+      cell.appendChild(band);
+      return {start,end,band};
+    });
+    // Marcar antes de mutar para que los observadores existentes no rearmen la fila.
+    table.dataset.orGroupsGeometryV442='1';
+    top.replaceChildren(cell);
+    function layout(){
+      if(!table.isConnected)return;
+      const th=table.tHead?.rows[1];
+      if(!th||th.cells.length!==16)return;
+      const rect=cell.getBoundingClientRect();
+      if(rect.width<=0)return;
+      for(const {start,end,band} of nodes){
+        const first=th.cells[start].getBoundingClientRect();
+        const last=th.cells[end-1].getBoundingClientRect();
+        band.style.left=(first.left-rect.left)+'px';
+        band.style.width=Math.max(1,last.right-first.left)+'px';
+      }
+    }
+    requestAnimationFrame(layout);
+    if(typeof ResizeObserver==='function'){
+      const ro=new ResizeObserver(()=>requestAnimationFrame(layout));
+      ro.observe(table);
+    }else{
+      window.addEventListener('resize',()=>requestAnimationFrame(layout),{passive:true});
+    }
+  }
+  function scan(){
+    const root=document.getElementById('page-operativo');
+    if(!root)return;
+    root.querySelectorAll('table.or-detail-daily-v439,table.or-detail-groups-v434')
+      .forEach(upgrade);
+  }
+  function init(){
+    const root=document.getElementById('page-operativo');
+    if(!root||root.dataset.orGroupOverlayObserverV442)return;
+    root.dataset.orGroupOverlayObserverV442='1';
+    let queued=false;
+    new MutationObserver(()=>{
+      if(queued)return;queued=true;
+      requestAnimationFrame(()=>{queued=false;scan();});
+    }).observe(root,{childList:true,subtree:true});
+    scan();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
