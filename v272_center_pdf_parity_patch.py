@@ -600,10 +600,10 @@ def install(m):
             headers = [
                 "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
                 "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
-                "Ubicado", "%\nRecorridos", "%\nAcond.", "%\nUbicado",
-                "Acond.", "Ubicar", "Score\n%"
+                "Ubicado", "Acond.", "Ubicar", "%\nRecorridos",
+                "%\nAcond.", "%\nUbicado", "Score\n%"
             ]
-            fracs = [.038,.112,.051,.053,.054,.049,.064,.068,.072,.058,.060,.057,.057,.080,.071,.066]
+            fracs = [.038,.112,.051,.053,.054,.049,.064,.068,.072,.058,.080,.071,.060,.057,.057,.066]
             if not is_aggregate:
                 headers.insert(6,"Pend.\nant.")
                 fracs.insert(6,.058)
@@ -619,7 +619,7 @@ def install(m):
             label_h = 33
             head_h = group_h + label_h
             # Límites de Recolección, Actividad y Porcentajes.
-            group_breaks = [headers.index(name) for name in ("Dev\npzs", "Recorr.\nrealiz.", "%\nRecorridos", "Acond.", "Score\n%")]
+            group_breaks = [headers.index(name) for name in ("Dev\npzs", "Recorr.\nrealiz.", "Acond.", "%\nRecorridos", "Score\n%")]
             def group_guides(y_bottom,y_top):
                 c.saveState()
                 c.setStrokeColor(colors.HexColor("#E53935"))
@@ -638,8 +638,8 @@ def install(m):
                 c.setFont("Helvetica-Bold", 8.5)
                 for name,first,last in (("Recolección","Dev\npzs","Total\npzs"),
                     ("Actividad","Recorr.\nrealiz.","Ubicado"),
-                    ("% x Indicador","%\nRecorridos","%\nUbicado"),
                     ("Pendientes","Acond.","Ubicar"),
+                    ("% x Indicador","%\nRecorridos","%\nUbicado"),
                     ("Score","Score\n%","Score\n%")):
                     start=headers.index(first); end=headers.index(last)
                     cx=(xs[start]+xs[end]+widths[end])/2
@@ -666,17 +666,17 @@ def install(m):
                 # V406: bandas claras y azul suave por renglón, también para Proyecto.
                 set_fill("#FFFFFF" if idx%2 else "#E4EFFD")
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
-                # Fondo gris claro exclusivo de los tres indicadores porcentuales.
-                set_fill("#EEF1F4")
-                for key in ("%\nRecorridos", "%\nAcond.", "%\nUbicado"):
-                    ci=headers.index(key)
-                    c.rect(xs[ci],y-row_h+2,widths[ci],row_h,fill=1,stroke=0)
+                # Únicamente Score lleva fondo gris más oscuro.
+                set_fill("#D3D8DF")
+                ci=headers.index("Score\n%")
+                c.rect(xs[ci],y-row_h+2,widths[ci],row_h,fill=1,stroke=0)
                 values = [
                     f"#{idx}", r.get("store"), n(r.get("dev_pzs")),
                     n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
                     n(total), n(r.get("recorridos")), n(r.get("acondicionado")),
-                    n(r.get("ubicado")), pc(pr), pc(pa), pc(pu),
+                    n(r.get("ubicado")),
                     n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar")),
+                    pc(pr), pc(pa), pc(pu),
                     pc(score_pct)
                 ]
                 if not is_aggregate:
@@ -689,7 +689,8 @@ def install(m):
                 for i,val in enumerate(values):
                     tone = TEXT
                     if i in pct_columns:
-                        tone = GREEN_DARK if _num(val[:-1]) >= 80 else "#DC2626"
+                        val_num = _num(str(val).rstrip("%"))
+                        tone = GREEN_DARK if val_num >= 80 else ("#AD7100" if val_num >= 60 else "#DC2626")
                     elif i not in (0,1) and _num(val)==0:
                         tone = "#DC2626"
                     set_fill(tone)
