@@ -81,6 +81,96 @@ def _pending_opening_for_period(row, kind, period, start="", end=""):
     return opening
 
 
+def _prev_sunday_week_balance(old, args, kwargs, kind, period):
+    """Devuelve pendientes de cierre de la semana ISO anterior, por tienda.
+
+    El cierre se obtiene de las mismas fuentes y alcance que Centro Operativo;
+    no se suma dos veces ni se modifican registros. Si no es verificable,
+    evita inventar cifras de arrastre.
+    """
+    if kind not in ("day", "week"):
+        return {}
+    try:
+        from datetime import date, timedelta
+        from copy import deepcopy
+        target = date.fromisoformat(str(period)[:10]) if kind=="day" else date.fromisocalendar(int(str(period)[:4]),int(str(period).split("-W")[1]),1)
+        if kind=="day" and target.weekday()!=0:
+            return {}
+        monday=target-timedelta(days=target.weekday())
+        sunday=monday-timedelta(days=1)
+        iso=sunday.isocalendar()
+        previous_week=f"{iso.year}-W{iso.week:02d}"
+        # Centro Operativo utiliza filtros nombrados; evitar pasar filtros
+        # duplicados si una ruta antigua usa parámetros posicionales.
+        if not ("period_type" in kwargs and "period_value" in kwargs):
+            return {}
+        query=dict(kwargs)
+        query.update(period_type="week",period_value=previous_week,
+                     start_date="",end_date="")
+        earlier=deepcopy(old(*args,**query))
+        if not isinstance(earlier,dict):
+            return {}
+        prior=reconcile_result(earlier,kind="week",period=previous_week)
+        return {
+            _key(row.get("store")):{
+                "acondicionar":max(_number(row.get("pendiente_acondicionar")),0),
+                "ubicar":max(_number(row.get("pendiente_ubicar")),0),
+            }
+            for row in prior.get("stores",[])
+            if isinstance(row,dict) and row.get("store")
+        }
+    except Exception as exc:
+        print(f"[V372-CARRY] cierre dominical no disponible: {type(exc).__name__}: {exc}",flush=True)
+        return {}
+
+
+def _allocate_sunday_work(result, source, balance, kind, period, canon=None):
+    """El lunes consume primero el saldo del domingo; la semana excluye
+    sólo esas piezas de sus avances nuevos, por tienda y por actividad.
+    """
+    if not balance or not isinstance(result,dict):
+        return result
+    from datetime import date
+    if kind=="day":
+        for row in result.get("stores",[]):
+            prior=balance.get(_key(row.get("store")))
+            if prior:
+                row["pendiente_anterior"]=prior["acondicionar"]
+                row["pendiente_anterior_ubicar"]=prior["ubicar"]
+        return result
+    if kind!="week":
+        return result
+    try:
+        monday=date.fromisocalendar(int(period[:4]),int(period.split("-W")[1]),1).isoformat()
+    except (ValueError,IndexError):
+        return result
+    monday_work=defaultdict(lambda:dict(acondicionado=0.,ubicado=0.))
+    for row in (source.get("rows") or []):
+        if not isinstance(row,dict) or str(row.get("date") or "")[:10]!=monday:
+            continue
+        st=canon(row.get("store")) if callable(canon) else row.get("store")
+        slot=monday_work[_key(st)]
+        slot["acondicionado"]+=max(_number(row.get("acondicionado")),0)
+        slot["ubicado"]+=max(_number(row.get("ubicado")),0)
+    for row in result.get("stores",[]):
+        key=_key(row.get("store"))
+        prior=balance.get(key)
+        if prior is None:
+            continue
+        monday_ops=monday_work.get(key,{})
+        for field,pending_field,label in (
+            ("acondicionado","acondicionar","acondicionado"),
+            ("ubicado","ubicar","ubicado"),
+        ):
+            reported=max(_number(row.get(field)),0)
+            old_work=min(reported,max(_number(monday_ops.get(field)),0),
+                         prior[pending_field])
+            row[field]=reported-old_work
+            row[f"{field}_arrastre_domingo"]=old_work
+            row[f"{field}_total_realizado"]=reported
+    return result
+
+
 def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", canon=None):
     """Usa exclusivamente recovery_by_store para determinar las tiendas visibles.
 
@@ -163,7 +253,17 @@ def reconcile_result(result, fifo=(), kind="all", period="", start="", end="", c
         row["total_pzs"] = total
         row["ingresos"] = total
         row["pendiente_acondicionar"] = max(total - acondicionado, 0.0)
-        row["pendiente_ubicar"] = max(total - ubicado, 0.0)
+        # La cola de Ubicado puede ser mayor a la de Acondicionado.
+        # El lunes conserva el cierre dominical de cada etapa por separado.
+        ubic_base=total
+        if kind=="day" and str(period or "")[:10]:
+            try:
+                from datetime import date
+                if date.fromisoformat(str(period)[:10]).weekday()==0:
+                    ubic_base=total-max(_number(row.get("pendiente_anterior")),0)+max(_number(row.get("pendiente_anterior_ubicar")),0)
+            except (ValueError,TypeError):
+                pass
+        row["pendiente_ubicar"] = max(ubic_base - ubicado, 0.0)
         row["pct_acondicionado"] = acondicionado / total * 100 if total else 0.0
         row["pct_ubicado"] = ubicado / total * 100 if total else 0.0
         # Campo heredado separado: permite conservar análisis circuito.
@@ -267,10 +367,13 @@ def install(m):
                     f" sample_source_dates={','.join(sorted({str(r.get('date')) for r in fifo})[-3:])}",
                     flush=True,
                 )
-        return reconcile_result(
-            result, fifo, kind, period, start, end,
-            getattr(m, "_normalize_store_value", None)
-        )
+        canon=getattr(m, "_normalize_store_value", None)
+        # Sólo cuando existe un cierre dominical calculable se descuenta
+        # la parte del trabajo del lunes que pertenecía a esa cola.
+        balance=_prev_sunday_week_balance(old,args,kwargs,kind,period)
+        if balance:
+            result=_allocate_sunday_work(result,m.load_ops(),balance,kind,period,canon)
+        return reconcile_result(result, fifo, kind, period, start, end, canon)
     m.operations = operations_fixed
     # V153 calls m.operations at request time for both main and project-scope.
     m._V372_DEV_CALCULATIONS = True
