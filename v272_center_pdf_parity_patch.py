@@ -684,15 +684,20 @@ def install(m):
             rec_lookup = {str(r.get("store") or ""): _num(r.get("conversion_pct")) for r in recovery or []}
             rows.sort(key=lambda r: (-rec_lookup.get(str(r.get("store") or ""), 0), str(r.get("store") or "")))
 
-            # V272.1: el gráfico se dimensiona según las tiendas con información.
-            # Con 1-5 tiendas no se estira de lado a lado ni deja barras aisladas.
+            # V430: Semana, Mensual y Anual ocupan media hoja de alto,
+            # con altura FIJA (sin estirar según el espacio libre).
+            # Evita que el gráfico se distorsione en una página independiente.
             count = len(rows)
-            # Primero evaluar el alto disponible de la página ACTUAL.
-            # El gráfico usa el espacio restante tras Detalle Operativo;
-            # no saltar a una nueva hoja basándose en una altura fija.
-            if y < 246:
-                new_page("Gráfico operativo")
-            chart_h = max(184, min(456, y - 62))
+            aggregate_chart = period_type in ("week", "month", "year")
+            if aggregate_chart:
+                chart_h = min(260, H * .46)
+                if y < chart_h + 80:
+                    new_page("Gráfico operativo")
+            else:
+                # El diseño diario conserva su alto actual.
+                if y < 246:
+                    new_page("Gráfico operativo")
+                chart_h = max(184, min(456, y - 62))
             section(f"Ingreso vs Acondicionado vs Ubicado · {scope} · {period_label()}")
 
             available_w = W - 2*M - 52
