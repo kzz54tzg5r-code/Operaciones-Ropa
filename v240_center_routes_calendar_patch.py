@@ -723,7 +723,7 @@ body.v238-module-operativo #operPeriodMode{
     if(typeof operationalDetailTable==='function'){
       const detailLabel=mode==='day'?'Detalle operativo · '+value:'Detalle operativo · tiendas del proyecto';
       out+='<div class="title">'+esc(detailLabel)+'</div>'+
-        (ordered.length?operationalDetailTable(ordered,rec):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
+        (ordered.length?operationalDetailTable(ordered,rec,data?.score_by_store||[],mode):'<div class="infoempty">No hay tiendas guardadas como Proyecto.</div>');
     }
     if(ordered.length&&typeof opsComboSvg==='function'){
       const scope=(q('#operStoreSelect')?.value||'Compañía')==='Compañía'?'Todas las tiendas':q('#operStoreSelect').value;
