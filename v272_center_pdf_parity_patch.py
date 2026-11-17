@@ -706,36 +706,37 @@ def install(m):
             y -= 17  # Dejar aire entre última fila y título/gráfico.
 
         def draw_combo_chart():
-            nonlocal y
+            nonlocal y, W, H
             rows = list(data.get("stores") or project_stores or [])
             rows = [r for r in rows if _num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")) or _num(r.get("acondicionado")) or _num(r.get("ubicado"))]
             if not rows:
                 return
 
-            rec_lookup = {str(r.get("store") or ""): _num(r.get("conversion_pct")) for r in recovery or []}
-            rows.sort(key=lambda r: (-rec_lookup.get(str(r.get("store") or ""), 0), str(r.get("store") or "")))
+            # Misma lectura visual que la gráfica del portal: tiendas por ingresos descendentes.
+            rows.sort(key=lambda r: (-_num(r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")), str(r.get("store") or "")))
 
-            # V430: Semana, Mensual y Anual ocupan media hoja de alto,
-            # con altura FIJA (sin estirar según el espacio libre).
-            # Evita que el gráfico se distorsione en una página independiente.
+            # V435: gráfica independiente con página horizontal 16:9, para que las
+            # 17 tiendas queden legibles y no se compriman en carta horizontal.
+            # Las páginas de tarjetas y tablas conservan su tamaño original.
             count = len(rows)
             aggregate_chart = period_type in ("week", "month", "year")
             if aggregate_chart:
-                chart_h = min(260, H * .46)
-                if y < chart_h + 80:
-                    new_page("Gráfico operativo")
+                c.showPage()
+                W, H = 1152, 648  # 16:9; sólo la página del gráfico.
+                c.setPageSize((W, H))
+                page_header("Gráfico operativo")
+                chart_h = 382
             else:
-                # El diseño diario conserva su alto actual.
                 if y < 246:
                     new_page("Gráfico operativo")
                 chart_h = max(184, min(456, y - 62))
             section(f"Ingreso vs Acondicionado vs Ubicado · {scope} · {period_label()}")
 
             available_w = W - 2*M - 52
-            desired_w = max(300, min(available_w, 105*count + 100))
+            desired_w = max(300, min(available_w, 62*count + 95))
             x0 = M + 40 + max(0, (available_w - desired_w)/2)
             x1 = x0 + desired_w
-            base = y - chart_h + 24
+            base = y - chart_h + (66 if aggregate_chart else 24)
             top = y - 14
             plot_h = max(60, top - base)
             plot_w = x1 - x0
@@ -785,10 +786,18 @@ def install(m):
                 if ubic > 0:
                     numeric_labels.append((cx, py+15, n(ubic), PINK, 0))
 
-                # Tienda horizontal, centrada; evita texto inclinado/ilegible.
+                # En 16:9 los nombres giran levemente como en el portal, así
+                # se leen todas las tiendas sin chocar entre etiquetas.
                 set_fill(TEXT)
                 c.setFont("Helvetica-Bold", label_fs)
-                c.drawCentredString(cx, base-11, fit(r.get("store"), 14))
+                if aggregate_chart and count > 10:
+                    c.saveState()
+                    c.translate(cx,base-15)
+                    c.rotate(36)
+                    c.drawRightString(0,0,fit(r.get("store"),16))
+                    c.restoreState()
+                else:
+                    c.drawCentredString(cx, base-11, fit(r.get("store"), 14))
 
             if len(points) > 1:
                 set_stroke(PINK)
