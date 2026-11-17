@@ -912,7 +912,7 @@ def install(m):
         if period_type in ("week", "month", "year"):
             draw_recovery_table()
         draw_operational_detail()
-        draw_combo_chart()
+        # V436: no incluir gráficas en el PDF; conservar las tablas y tarjetas.
 
         c.save()
         pdf = bio.getvalue()
