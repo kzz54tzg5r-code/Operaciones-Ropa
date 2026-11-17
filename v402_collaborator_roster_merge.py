@@ -105,7 +105,7 @@ def install(m):
         project_stores=set(getattr(m,"PROJECT_STORES",()) or ())
         if not store or store=="Compañía" or (project_stores and store not in project_stores):
             raise HTTPException(400,"Selecciona una tienda válida")
-        if len(name)<3 or len(name)>180 or not re.fullmatch(r"[^\\x00-\\x1f\\x7f]+",name):
+        if len(name)<3 or len(name)>180 or not re.fullmatch(r"[^\x00-\x1f\x7f]+",name):
             raise HTTPException(400,"Escribe un nombre válido de 3 a 180 caracteres")
         key=normalize_key(name)
         now=datetime.now().isoformat(timespec="seconds")
