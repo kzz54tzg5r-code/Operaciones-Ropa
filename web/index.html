@@ -427,6 +427,32 @@ html body #loginView .login-v15-card{
   overflow:hidden!important;
 }
 </style>
+<style id="ops-single-period-v429">
+/* Protección contra la barra V403 duplicada y contra controles encimados. */
+#operativoPeriodBar #v403CenterModes,
+#operativoPeriodBar .v403-center-view{display:none!important}
+@media(min-width:1100px){
+ body.v403-center-mode #operativoPeriodBar .or-report-filter-grid>.v266-period-view{
+   display:grid!important;position:relative!important;
+   grid-template-columns:minmax(0,1fr)!important;
+   grid-template-rows:20px 46px!important;
+   gap:6px!important;align-content:stretch!important;
+   overflow:visible!important;
+ }
+ body.v403-center-mode #operativoPeriodBar .v266-period-title{
+   position:static!important;inset:auto!important;
+   grid-row:1!important;align-self:center!important;
+   height:20px!important;line-height:20px!important;
+   margin:0!important;transform:none!important;
+ }
+ body.v403-center-mode #operativoPeriodBar .v266-period-buttons{
+   position:static!important;inset:auto!important;
+   grid-row:2!important;align-self:stretch!important;
+   height:46px!important;min-height:46px!important;
+   margin:0!important;transform:none!important;
+ }
+}
+</style>
 </head>
 <body>
 
@@ -3815,7 +3841,7 @@ start().catch(e=>{document.getElementById('bootLoading')?.remove();$('#loginMsg'
 <link rel="stylesheet" href="/static/colaborador_bajas_unificacion_v402.css?v=402">
 <script src="/static/colaborador_bajas_unificacion_v402.js?v=402" defer></script>
 <link rel="stylesheet" href="/static/reporte_visual_v403.css?v=403">
-<script src="/static/centro_periodos_v403.js?v=403" defer></script>
+<script src="/static/centro_periodos_v403.js?v=429-single-mode" defer></script>
 <link rel="stylesheet" href="/static/access_history_option4_v405.css?v=405">
 <script src="/static/access_history_option4_v405.js?v=408" defer></script>
 <link rel="stylesheet" href="/static/reporte_adaptable_v407.css?v=407">
