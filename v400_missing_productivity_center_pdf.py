@@ -288,12 +288,8 @@ def appendix(original_pdf, result):
     stripe=colors.HexColor("#EEF4FB")
     border=colors.HexColor("#D8E0EB")
     ink=colors.white
-    # En día, colocar colaboradores al pie del detalle si queda espacio real.
-    if result.get("period_type") == "day":
-        original_pdf,remaining=_inline_daily_collaborators(original_pdf,result)
-        if not remaining:
-            return original_pdf
-        result=dict(result,rows=remaining)
+    # Recuperación de estabilidad V438: el anexo se genera en su propia página.
+    # La inserción in situ V437 se desactiva tras un error 502 al descargar PDF.
     rows=result.get("rows") or []
     # Dimensionar el ancho por contenido, no dividirlo en siete columnas minúsculas.
     cols=["#","Colaborador","Tienda","Último registro","Estatus"]
