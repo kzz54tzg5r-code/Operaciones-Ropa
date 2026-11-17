@@ -538,7 +538,7 @@
       const band=document.createElement('span');
       band.className='or-group-band-v442'+
         ((index===3||index===4)?' or-group-alt-v442':'')+
-        (index>1?' or-group-boundary-v442':'');
+        (index>0?' or-group-boundary-v442':'');
       band.textContent=label;
       cell.appendChild(band);
       return {start,end,band};
