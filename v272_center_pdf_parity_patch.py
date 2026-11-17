@@ -913,6 +913,10 @@ def install(m):
             draw_recovery_table()
         draw_operational_detail()
         # V436: no incluir gráficas en el PDF; conservar las tablas y tarjetas.
+        # V437: comunicar espacio libre real de la última página del detalle.
+        # El anexo diario de colaboradores podrá comenzar aquí, sin solapamientos.
+        if period_type == "day":
+            c.setSubject(f"OR-DETAIL-LAST-Y={max(0,y):.1f}")
 
         c.save()
         pdf = bio.getvalue()
