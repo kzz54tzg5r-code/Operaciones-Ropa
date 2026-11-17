@@ -93,6 +93,43 @@ def install(m):
                 print(f"[COLLAB-ROSTER] sync error: {type(exc).__name__}: {exc}", flush=True)
         return list_data(store)
 
+    @m.app.post("/api/operations/collaborator-admin-v402/create")
+    async def create_collaborator(request: Request):
+        """Alta manual en padrón, sin crear usuarios ni alterar capturas."""
+        actor=authorized(request)
+        body=await request.json()
+        if not isinstance(body,dict):
+            raise HTTPException(400,"Datos de alta inválidos")
+        store=str(body.get("store") or "").strip()
+        name=" ".join(str(body.get("name") or "").split())
+        project_stores=set(getattr(m,"PROJECT_STORES",()) or ())
+        if not store or store=="Compañía" or (project_stores and store not in project_stores):
+            raise HTTPException(400,"Selecciona una tienda válida")
+        if len(name)<3 or len(name)>180 or not re.fullmatch(r"[^\\x00-\\x1f\\x7f]+",name):
+            raise HTTPException(400,"Escribe un nombre válido de 3 a 180 caracteres")
+        key=normalize_key(name)
+        now=datetime.now().isoformat(timespec="seconds")
+        with m.db() as con:
+            existing=con.execute(
+                "SELECT active FROM operation_collaborators WHERE store=? AND name_key=?",
+                (store,key)).fetchone()
+            alias=con.execute(
+                "SELECT 1 FROM operation_collaborator_aliases WHERE store=? AND alias_key=?",
+                (store,key)).fetchone()
+            if existing is not None or alias is not None:
+                raise HTTPException(409,"Este colaborador ya existe o está unificado. Revísalo antes de darlo de alta.")
+            con.execute(
+                "INSERT INTO operation_collaborators "
+                "(store,name_key,name,active,first_seen,last_seen,last_activity,updated_at,updated_by) "
+                "VALUES(?,?,?,?,?,?,?,?,?)",
+                (store,key,name,1,now[:10],"","",now,actor["username"]))
+            con.execute(
+                "INSERT INTO operation_collaborator_admin_audit "
+                "(store,name_key,action,changed_at,changed_by) VALUES(?,?,?,?,?)",
+                (store,key,"Alta manual",now,actor["username"]))
+        return {"ok":True,"store":store,"name":name,
+                "message":"Colaborador agregado al padrón como activo. No se crearon capturas ni cuentas de acceso."}
+
     @m.app.post("/api/operations/collaborator-admin-v402/status")
     async def batch_status(request:Request):
         actor=authorized(request)
