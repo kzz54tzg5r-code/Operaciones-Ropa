@@ -593,16 +593,20 @@ def install(m):
                     _num(r.get("recorridos"))/per_store_target*100 if per_store_target else 0
                 )
                 bounded=[min(100,max(0,value)) for value in (habilitado,ubicado,recorridos)]
-                return habilitado,ubicado,sum(bounded)/3
+                return habilitado,ubicado,recorridos,sum(bounded)/3
 
-            rows.sort(key=lambda r: (-pct_parts(r)[2],str(r.get("store") or "").casefold()))
+            rows.sort(key=lambda r: (-pct_parts(r)[3],str(r.get("store") or "").casefold()))
+            is_aggregate=period_type in ("week", "month", "year")
             headers = [
                 "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
-                "Pend.\nant.", "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
-                "Ubicado", "% Acondi-\ncionado", "%\nUbicado",
+                "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
+                "Ubicado", "% Acondi-\ncionado", "%\nRecorridos" if is_aggregate else "%\nUbicado",
                 "Pendiente\nacond.", "Pendiente\nubicar", "Score\n%"
             ]
-            fracs = [.04,.117,.052,.054,.055,.048,.059,.061,.066,.073,.056,.065,.056,.080,.071,.068]
+            fracs = [.04,.122,.054,.056,.057,.051,.066,.070,.076,.060,.073,.070,.090,.079,.072]
+            if not is_aggregate:
+                headers.insert(6,"Pend.\nant.")
+                fracs = [.04,.117,.052,.054,.055,.048,.059,.061,.066,.073,.056,.065,.056,.080,.071,.068]
             total_w = W - 2*M
             # Normaliza fracciones para ocupar el ancho exacto de la página.
             norm = sum(fracs)
@@ -635,27 +639,32 @@ def install(m):
                     head()
                 total = r.get("total_pzs") if r.get("total_pzs") is not None else r.get("ingresos")
                 total_num=_num(total)
-                pa,pu,score_pct=pct_parts(r)
+                pa,pu,pr,score_pct=pct_parts(r)
                 # V406: bandas claras y azul suave por renglón, también para Proyecto.
                 set_fill("#FFFFFF" if idx%2 else "#E4EFFD")
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
                 values = [
                     f"#{idx}", r.get("store"), n(r.get("dev_pzs")),
                     n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
-                    n(r.get("pendiente_anterior")), n(total),
-                    n(r.get("recorridos")), n(r.get("acondicionado")),
-                    n(r.get("ubicado")), pc(pa), pc(pu),
+                    n(total), n(r.get("recorridos")), n(r.get("acondicionado")),
+                    n(r.get("ubicado")), pc(pa), pc(pr if is_aggregate else pu),
                     n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar")),
                     pc(score_pct)
                 ]
+                if not is_aggregate:
+                    values.insert(6,n(r.get("pendiente_anterior")))
+                pct_columns={headers.index("% Acondi-\ncionado"),
+                             headers.index("%\nRecorridos" if is_aggregate else "%\nUbicado"),
+                             headers.index("Score\n%")}
+                bold_columns=pct_columns|{0,1,headers.index("Total\npzs")}
                 for i,val in enumerate(values):
                     tone = TEXT
-                    if i in (11,12,15):
+                    if i in pct_columns:
                         tone = GREEN_DARK if _num(val[:-1]) >= 80 else "#DC2626"
-                    elif i in (2,3,4,5,6,7,8,9,10) and _num(val)==0:
+                    elif i not in (0,1) and _num(val)==0:
                         tone = "#DC2626"
                     set_fill(tone)
-                    font="Helvetica-Bold" if i in (0,1,7,11,12,15) else "Helvetica"
+                    font="Helvetica-Bold" if i in bold_columns else "Helvetica"
                     text_value,size=fitted_cell(val,widths[i],7.6,font)
                     c.setFont(font,size)
                     if i==1:
