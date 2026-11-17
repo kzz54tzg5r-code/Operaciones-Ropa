@@ -600,13 +600,13 @@ def install(m):
             headers = [
                 "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
                 "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
-                "Ubicado", "% Acondi-\ncionado", "%\nRecorridos" if is_aggregate else "%\nUbicado",
-                "Pendiente\nacond.", "Pendiente\nubicar", "Score\n%"
+                "Ubicado", "%\nRecorridos", "%\nAcond.", "%\nUbicado",
+                "Pend.\nAcond.", "Pend.\nUbicar", "Score\n%"
             ]
-            fracs = [.04,.122,.054,.056,.057,.051,.066,.070,.076,.060,.073,.070,.090,.079,.072]
+            fracs = [.038,.112,.051,.053,.054,.049,.064,.068,.072,.058,.060,.057,.057,.080,.071,.066]
             if not is_aggregate:
                 headers.insert(6,"Pend.\nant.")
-                fracs = [.04,.117,.052,.054,.055,.048,.059,.061,.066,.073,.056,.065,.056,.080,.071,.068]
+                fracs.insert(6,.058)
             total_w = W - 2*M
             # Normaliza fracciones para ocupar el ancho exacto de la página.
             norm = sum(fracs)
@@ -647,14 +647,15 @@ def install(m):
                     f"#{idx}", r.get("store"), n(r.get("dev_pzs")),
                     n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
                     n(total), n(r.get("recorridos")), n(r.get("acondicionado")),
-                    n(r.get("ubicado")), pc(pa), pc(pr if is_aggregate else pu),
+                    n(r.get("ubicado")), pc(pr), pc(pa), pc(pu),
                     n(r.get("pendiente_acondicionar")), n(r.get("pendiente_ubicar")),
                     pc(score_pct)
                 ]
                 if not is_aggregate:
                     values.insert(6,n(r.get("pendiente_anterior")))
-                pct_columns={headers.index("% Acondi-\ncionado"),
-                             headers.index("%\nRecorridos" if is_aggregate else "%\nUbicado"),
+                pct_columns={headers.index("%\nRecorridos"),
+                             headers.index("%\nAcond."),
+                             headers.index("%\nUbicado"),
                              headers.index("Score\n%")}
                 bold_columns=pct_columns|{0,1,headers.index("Total\npzs")}
                 for i,val in enumerate(values):
