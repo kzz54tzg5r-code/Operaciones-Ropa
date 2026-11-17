@@ -461,3 +461,30 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize);
   else initialize();
 })();
+
+
+/* V441: corregir la CAUSA del desplazamiento de Recolección.
+   Con table-layout:fixed el navegador calcula el ancho de columnas a partir
+   de la primera fila con colspan; eso genera un grupo desplazado. En auto,
+   los 16 encabezados inferiores determinan las columnas y los colspan las
+   agrupan sin distorsionar sus límites. */
+(function(){
+  'use strict';
+  function addStyles(){
+    if(document.getElementById('or-groups-column-align-v441'))return;
+    const style=document.createElement('style');
+    style.id='or-groups-column-align-v441';
+    style.textContent=[
+      '#page-operativo table.or-detail-daily-v439,',
+      '#page-operativo table.or-detail-groups-v434',
+      '{table-layout:auto!important;width:100%!important;border-collapse:separate!important;border-spacing:0!important;}',
+      '#page-operativo table.or-detail-daily-v439 thead tr.or-daily-group-row>th,',
+      '#page-operativo table.or-detail-groups-v434 thead tr.or-detail-groups-row>th',
+      '{width:auto!important;min-width:0!important;max-width:none!important;box-sizing:border-box!important;text-align:center!important;vertical-align:middle!important;}',
+      '#page-operativo th.or-recoleccion-v440{padding-left:0!important;padding-right:0!important;}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addStyles);
+  else addStyles();
+})();
