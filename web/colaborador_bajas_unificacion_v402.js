@@ -166,6 +166,15 @@
         <label class="v402-search">Buscar colaborador <input id="v402Search" placeholder="Nombre o variante"></label>
         <button type="button" id="v402Refresh">Actualizar padrón</button>
       </div>
+      <form id="v402CreateForm" class="v402-filters" style="margin-top:10px;padding:12px;border:1px solid #d7e3f2;border-radius:12px;background:#f5f8fc">
+        <label>Tienda del nuevo colaborador
+          <select id="v402CreateStore" required><option value="">Selecciona tienda</option></select>
+        </label>
+        <label class="v402-search">Nombre completo
+          <input id="v402CreateName" autocomplete="off" maxlength="180" required placeholder="Nombre y apellidos del colaborador">
+        </label>
+        <button id="v402CreateButton" type="submit">+ Agregar colaborador</button>
+      </form>
       <div class="v402-actions">
         <b id="v402Selected">0 seleccionados</b>
         <button type="button" id="v402Deactivate" disabled>Dar de baja seleccionados</button>
@@ -187,6 +196,38 @@
     $('#v402Status',node).onchange=renderTable;
     $('#v402Search',node).oninput=renderTable;
     $('#v402Refresh',node).onclick=()=>refresh(true);
+    const createStore=$('#v402CreateStore',node);
+    const availableStores=['Iztapalapa','Vallejo','Ecatepec','Toluca','Arco Norte','Ixtapaluca',
+      'Querétaro','Centro','Olivar','León','Puebla','Puebla Sur','Aguascalientes','Veracruz',
+      'Naucalpan','Miravalle','Atemajac'];
+    availableStores.forEach(store=>createStore.add(new Option(store,store)));
+    $('#v402CreateForm',node).onsubmit=async event=>{
+      event.preventDefault();
+      if(inflight)return;
+      const store=createStore.value;
+      const name=($('#v402CreateName',node).value||'').replace(/\\s+/g,' ').trim();
+      if(!store||name.length<3)return toast('Selecciona tienda y escribe el nombre completo.',true);
+      const duplicate=records.some(row=>row.store===store &&
+        (row.name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()===
+        name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase());
+      if(duplicate)return toast('Este nombre ya existe en esa tienda. Revisa el padrón.',true);
+      const button=$('#v402CreateButton',node);
+      button.disabled=true;button.textContent='Guardando...';
+      try{
+        const response=await request('/api/operations/collaborator-admin-v402/create',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({store,name})
+        });
+        await refresh();
+        $('#v402Store',node).value=store;
+        $('#v402Status',node).value='Todos';
+        $('#v402Search',node).value=name;
+        $('#v402CreateName',node).value='';
+        renderTable();
+        toast(response.message||'Colaborador agregado correctamente.');
+      }catch(error){toast('No se pudo agregar: '+(error.message||error),true);}
+      finally{button.disabled=false;button.textContent='+ Agregar colaborador';}
+    };
     $('#v402Deactivate',node).onclick=()=>updateStatus(false);
     $('#v402Reactivate',node).onclick=()=>updateStatus(true);
     $('#v402Merge',node).onclick=merge;
