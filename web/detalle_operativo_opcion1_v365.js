@@ -405,3 +405,59 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
   else init();
 })();
+
+
+/* V440: centrar Recolección exactamente sobre su colspan (Día, Semana, Mes, Año).
+   Un estilo heredado fuerza el segundo th del encabezado a alineación izquierda;
+   centrar el texto con una capa absoluta independiente evita esa interferencia. */
+(function(){
+  'use strict';
+  const rootSelector='#page-operativo';
+  const sheetId='or-recoleccion-center-v440';
+  function css(){
+    if(document.getElementById(sheetId))return;
+    const sheet=document.createElement('style');
+    sheet.id=sheetId;
+    sheet.textContent=[
+      rootSelector+' table.or-detail-daily-v439 thead tr.or-daily-group-row th.or-recoleccion-v440,',
+      rootSelector+' table.or-detail-groups-v434 thead tr.or-detail-groups-row th.or-recoleccion-v440',
+      '{position:relative!important;text-align:center!important;padding-left:0!important;padding-right:0!important;}',
+      rootSelector+' th.or-recoleccion-v440 > span.or-recoleccion-label-v440',
+      '{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;',
+      'display:flex!important;align-items:center!important;justify-content:center!important;',
+      'text-align:center!important;padding:0!important;margin:0!important;',
+      'font:inherit!important;color:inherit!important;line-height:1.1!important;pointer-events:none!important;}'
+    ].join('');
+    document.head.appendChild(sheet);
+  }
+  function apply(){
+    const root=document.querySelector(rootSelector);
+    if(!root)return;
+    root.querySelectorAll('table.or-detail-daily-v439, table.or-detail-groups-v434').forEach(table=>{
+      const row=table.tHead?.rows[0];
+      if(!row||!row.classList.contains('or-daily-group-row')&&!row.classList.contains('or-detail-groups-row'))return;
+      const header=Array.from(row.cells).find(th=>th.textContent.trim()==='Recolección');
+      if(!header||header.classList.contains('or-recoleccion-v440'))return;
+      css();
+      header.classList.add('or-recoleccion-v440');
+      const label=document.createElement('span');
+      label.className='or-recoleccion-label-v440';
+      label.textContent='Recolección';
+      header.replaceChildren(label);
+    });
+  }
+  function initialize(){
+    const root=document.querySelector(rootSelector);
+    if(!root||root.dataset.orRecoleccionObserverV440)return;
+    root.dataset.orRecoleccionObserverV440='1';
+    let pending=false;
+    new MutationObserver(()=>{
+      if(pending)return;
+      pending=true;
+      requestAnimationFrame(()=>{pending=false;apply();});
+    }).observe(root,{childList:true,subtree:true});
+    apply();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initialize);
+  else initialize();
+})();
