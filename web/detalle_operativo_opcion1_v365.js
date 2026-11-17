@@ -200,88 +200,108 @@
 })();
 
 
-/* V433: encabezados agrupados estables, separación por indicador y pendientes.
-   Se ejecuta después de V431 (que mantiene el orden de los valores). */
+/* V434: Detalle operativo sin scroll interno ni sticky; pendientes antes de porcentajes. */
 (function(){
   'use strict';
-  const cssId='or-detail-groups-v433-css';
+  const cssId='or-detail-groups-v434-css';
   function installCss(){
     if(document.getElementById(cssId))return;
     const style=document.createElement('style');
     style.id=cssId;
     style.textContent=[
-      'table.or-detail-groups-v433{border-collapse:separate!important;border-spacing:0!important;}',
-      'table.or-detail-groups-v433 thead tr.or-detail-groups-row>th{position:sticky!important;top:0!important;z-index:12!important;height:34px!important;min-height:34px!important;box-sizing:border-box!important;background:#123e70!important;color:#fff!important;text-align:center!important;vertical-align:middle!important;font-size:12px!important;font-weight:800!important;padding:6px 4px!important;white-space:nowrap!important;}',
-      'table.or-detail-groups-v433 thead tr:not(.or-detail-groups-row)>th{position:sticky!important;top:34px!important;z-index:11!important;background:#194d82!important;color:white!important;text-align:center!important;vertical-align:middle!important;}',
-      'table.or-detail-groups-v433 thead tr.or-detail-groups-row>th.or-detail-group-name{background:#103968!important;}',
-      'table.or-detail-groups-v433 thead tr.or-detail-groups-row>th.or-detail-separator,',
-      'table.or-detail-groups-v433 thead tr:not(.or-detail-groups-row)>th.or-detail-separator,',
-      'table.or-detail-groups-v433 tbody tr>td.or-detail-separator{border-left:2px dashed #e53935!important;}',
-      'table.or-detail-groups-v433 tbody tr>td.or-detail-percent-cell{background:#eef1f4!important;}',
-      'table.or-detail-groups-v433 thead tr>th.or-detail-rank,',
-      'table.or-detail-groups-v433 tbody tr>td.or-detail-rank{text-align:center!important;vertical-align:middle!important;}'
+      '#page-operativo .or-detail-fixed-v434{overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important;max-height:none!important;height:auto!important;scrollbar-width:none!important;}',
+      '#page-operativo table.or-detail-groups-v434{border-collapse:separate!important;border-spacing:0!important;width:100%!important;table-layout:fixed!important;}',
+      '#page-operativo table.or-detail-groups-v434 thead tr.or-detail-groups-row>th{position:static!important;top:auto!important;z-index:auto!important;background:#103968!important;color:white!important;height:34px!important;text-align:center!important;vertical-align:middle!important;font-size:12px!important;font-weight:800!important;padding:7px 3px!important;white-space:nowrap!important;}',
+      '#page-operativo table.or-detail-groups-v434 thead tr:not(.or-detail-groups-row)>th{position:static!important;top:auto!important;z-index:auto!important;background:#194d82!important;color:white!important;text-align:center!important;vertical-align:middle!important;}',
+      '#page-operativo table.or-detail-groups-v434 .or-detail-separator{border-left:2px dashed #e53935!important;}',
+      '#page-operativo table.or-detail-groups-v434 tbody tr>td.or-detail-score{background:#d3d8df!important;}',
+      '#page-operativo table.or-detail-groups-v434 thead tr>th.or-detail-rank,',
+      '#page-operativo table.or-detail-groups-v434 tbody tr>td.or-detail-rank{text-align:center!important;vertical-align:middle!important;}',
+      '#page-operativo table.or-detail-groups-v434 tbody tr>td.or-detail-indicator{background:transparent!important;}',
+      '#page-operativo table.or-detail-groups-v434 tbody tr:nth-child(even)>td.or-detail-indicator{background:#eaf1f9!important;}'
     ].join('');
     document.head.appendChild(style);
   }
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
-  function group(table){
-    if(table.dataset.orDetailGroupsV433==='1'||table.dataset.orDetailPercentV431!=='1')return;
+  function apply(table){
+    if(table.dataset.orDetailGroupsV434==='1'||table.dataset.orDetailPercentV431!=='1')return;
     if(!table.tHead||table.tHead.rows.length!==1||!table.tBodies.length)return;
-    const cells=Array.from(table.tHead.rows[0].cells);
-    if(cells.length!==16)return;
-    const labels=cells.map(cell=>norm(cell.textContent));
-    if(!([[1,'tienda'],[2,'dev'],[6,'total'],[7,'recorridos'],[8,'acondicionado'],
+    const row=table.tHead.rows[0], heads=Array.from(row.cells);
+    if(heads.length!==16)return;
+    const titles=heads.map(cell=>norm(cell.textContent));
+    const checks=[[1,'tienda'],[2,'dev'],[6,'total'],[7,'recorridos'],[8,'acondicionado'],
       [9,'ubicado'],[10,'% recorridos'],[11,'% acond'],[12,'% ubicado'],
-      [13,'pend. acond'],[14,'pend. ubicar'],[15,'score']]
-       .every(([i,text])=>labels[i].includes(text))))return;
+      [13,'pend. acond'],[14,'pend. ubicar'],[15,'score']];
+    if(!checks.every(([i,t])=>titles[i].includes(t)))return;
     installCss();
-    const firstRow=table.tHead.rows[0];
-    cells[0].textContent='Rank.';
-    cells[0].classList.add('or-detail-rank');
-    cells[13].textContent='Acond.';
-    cells[14].textContent='Ubicar';
-    // Marcar los límites de cada uno de los grupos de columnas.
-    const separators=[2,7,10,13,15];
-    separators.forEach(i=>cells[i].classList.add('or-detail-separator'));
-    const row=document.createElement('tr');
-    row.className='or-detail-groups-row';
-    function add(count,label,classes=''){
-      const th=document.createElement('th');
-      th.colSpan=count;th.textContent=label;th.className=classes;
-      row.appendChild(th);
-    }
-    add(2,'');
-    add(5,'Recolección','or-detail-group-name or-detail-separator');
-    add(3,'Actividad','or-detail-group-name or-detail-separator');
-    add(3,'% x Indicador','or-detail-group-name or-detail-separator');
-    add(2,'Pendientes','or-detail-group-name or-detail-separator');
-    add(1,'Score','or-detail-group-name or-detail-separator');
+    // Cada fila se mueve por columnas completas para conservar sus valores originales.
+    const order=[0,1,2,3,4,5,6,7,8,9,13,14,10,11,12,15];
+    heads[0].textContent='Rank.';
+    heads[13].textContent='Acond.';
+    heads[14].textContent='Ubicar';
+    heads[15].textContent='Score %';
+    row.replaceChildren(...order.map(i=>heads[i]));
     for(const body of table.tBodies){
       for(const tr of body.rows){
-        const tds=Array.from(tr.cells);
-        if(tds.length!==16)continue;
-        tds[0].classList.add('or-detail-rank');
-        separators.forEach(i=>tds[i].classList.add('or-detail-separator'));
-        [10,11,12].forEach(i=>tds[i].classList.add('or-detail-percent-cell'));
+        const cells=Array.from(tr.cells);
+        if(cells.length!==16)continue;
+        tr.replaceChildren(...order.map(i=>cells[i]));
       }
     }
-    table.classList.add('or-detail-groups-v433');
-    table.dataset.orDetailGroupsV433='1';
-    table.tHead.insertBefore(row,firstRow);
+    const separators=[2,7,10,12,15];
+    const bottomHeads=Array.from(row.cells);
+    separators.forEach(i=>bottomHeads[i].classList.add('or-detail-separator'));
+    bottomHeads[0].classList.add('or-detail-rank');
+    const grouped=document.createElement('tr');
+    grouped.className='or-detail-groups-row';
+    function add(span,label,klass=''){
+      const cell=document.createElement('th');
+      cell.colSpan=span;cell.textContent=label;cell.className=klass;
+      grouped.appendChild(cell);
+    }
+    add(2,'');
+    add(5,'Recolección','or-detail-separator');
+    add(3,'Actividad','or-detail-separator');
+    add(2,'Pendientes','or-detail-separator');
+    add(3,'% x Indicador','or-detail-separator');
+    add(1,'Score','or-detail-separator');
+    table.tHead.insertBefore(grouped,row);
+    for(const body of table.tBodies){
+      for(const tr of body.rows){
+        if(tr.cells.length!==16)continue;
+        const cells=Array.from(tr.cells);
+        cells[0].classList.add('or-detail-rank');
+        separators.forEach(i=>cells[i].classList.add('or-detail-separator'));
+        [12,13,14].forEach(i=>{
+          const cell=cells[i];
+          cell.classList.add('or-detail-indicator');
+          const num=Number(String(cell.textContent||'').replace('%','').trim());
+          if(!Number.isFinite(num))return;
+          // Semáforo: verde >=80; ámbar 60–79.9; rojo <60.
+          cell.style.setProperty('color',num>=80?'#008744':num>=60?'#ad7100':'#d51d25','important');
+          cell.style.setProperty('font-weight','800','important');
+        });
+        cells[15].classList.add('or-detail-score');
+      }
+    }
+    table.classList.add('or-detail-groups-v434');
+    const wrapper=table.closest('.tablewrap');
+    if(wrapper)wrapper.classList.add('or-detail-fixed-v434');
+    table.dataset.orDetailGroupsV434='1';
   }
   function scan(){
     const root=document.getElementById('page-operativo')||document;
-    root.querySelectorAll('table').forEach(group);
+    root.querySelectorAll('table').forEach(apply);
   }
   function init(){
     const root=document.getElementById('page-operativo')||document.body;
-    if(!root||root.dataset.orDetailGroupObserverV433)return;
-    root.dataset.orDetailGroupObserverV433='1';
-    let scheduled=false;
+    if(!root||root.dataset.orDetailObserverV434)return;
+    root.dataset.orDetailObserverV434='1';
+    let queued=false;
     new MutationObserver(()=>{
-      if(scheduled)return;
-      scheduled=true;
-      requestAnimationFrame(()=>{scheduled=false;scan()});
+      if(queued)return;
+      queued=true;
+      requestAnimationFrame(()=>{queued=false;scan()});
     }).observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['data-or-detail-percent-v431']});
     scan();
   }
