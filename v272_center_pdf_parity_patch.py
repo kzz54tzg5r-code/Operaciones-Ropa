@@ -601,7 +601,7 @@ def install(m):
                 "Rank.", "Tienda", "Dev\npzs", "Muertos", "Probador", "Cajas",
                 "Total\npzs", "Recorr.\nrealiz.", "Acondi-\ncionado",
                 "Ubicado", "%\nRecorridos", "%\nAcond.", "%\nUbicado",
-                "Pend.\nAcond.", "Pend.\nUbicar", "Score\n%"
+                "Acond.", "Ubicar", "Score\n%"
             ]
             fracs = [.038,.112,.051,.053,.054,.049,.064,.068,.072,.058,.060,.057,.057,.080,.071,.066]
             if not is_aggregate:
@@ -619,7 +619,7 @@ def install(m):
             label_h = 33
             head_h = group_h + label_h
             # Límites de Recolección, Actividad y Porcentajes.
-            group_breaks = [headers.index("Dev\npzs"), headers.index("Recorr.\nrealiz."), headers.index("%\nRecorridos")]
+            group_breaks = [headers.index(name) for name in ("Dev\npzs", "Recorr.\nrealiz.", "%\nRecorridos", "Acond.", "Score\n%")]
             def group_guides(y_bottom,y_top):
                 c.saveState()
                 c.setStrokeColor(colors.HexColor("#E53935"))
@@ -636,8 +636,13 @@ def install(m):
                 # Nivel superior: grupos alineados exactamente con sus columnas.
                 c.setFillColor(colors.white)
                 c.setFont("Helvetica-Bold", 8.5)
-                for name,start,end in (("Recolección",2,7),("Actividad",7,10)):
-                    cx=(xs[start]+xs[end-1]+widths[end-1])/2
+                for name,first,last in (("Recolección","Dev\npzs","Total\npzs"),
+                    ("Actividad","Recorr.\nrealiz.","Ubicado"),
+                    ("% x Indicador","%\nRecorridos","%\nUbicado"),
+                    ("Pendientes","Acond.","Ubicar"),
+                    ("Score","Score\n%","Score\n%")):
+                    start=headers.index(first); end=headers.index(last)
+                    cx=(xs[start]+xs[end]+widths[end])/2
                     c.drawCentredString(cx,y-12,name)
                 for i, h in enumerate(headers):
                     draw_header_cell(xs[i], widths[i], y-group_h, label_h, h,
@@ -661,6 +666,11 @@ def install(m):
                 # V406: bandas claras y azul suave por renglón, también para Proyecto.
                 set_fill("#FFFFFF" if idx%2 else "#E4EFFD")
                 c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
+                # Fondo gris claro exclusivo de los tres indicadores porcentuales.
+                set_fill("#EEF1F4")
+                for key in ("%\nRecorridos", "%\nAcond.", "%\nUbicado"):
+                    ci=headers.index(key)
+                    c.rect(xs[ci],y-row_h+2,widths[ci],row_h,fill=1,stroke=0)
                 values = [
                     f"#{idx}", r.get("store"), n(r.get("dev_pzs")),
                     n(r.get("muertos")), n(r.get("probador")), n(r.get("cajas")),
