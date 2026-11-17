@@ -2334,7 +2334,40 @@ def _read_operational_sheet_stream(book: dict, sheet: str, staff_lookup=None):
 
 
 def _xlsx_monthly_rows(archive: zipfile.ZipFile, member: str, shared_value):
-    """Itera sólo columnas requeridas sin materializar la hoja completa."""
+    """Lectura de filas XLSX con memoria acotada y eventos filtrados.
+
+    Los archivos mensuales contienen millones de elementos XML. lxml envía
+    únicamente eventos de cierre de fila (en C), en lugar de generar un evento
+    Python por cada <v>, <c>, etc. Mantener alternativa stdlib en caso de
+    no disponer de lxml; no cambiar los valores ni las columnas procesadas.
+    """
+    try:
+        from lxml import etree as fast_etree
+    except ImportError:
+        fast_etree=None
+
+    if fast_etree is not None:
+        row_tag="{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row"
+        cell_tag="{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c"
+        with archive.open(member) as stream:
+            for _event,row in fast_etree.iterparse(
+                stream, events=("end",), tag=row_tag,
+                resolve_entities=False, no_network=True
+            ):
+                current={}
+                for cell in row.iterchildren(tag=cell_tag):
+                    column=_xlsx_column_index(cell.attrib.get("r",""))
+                    if column in (1,7,24,25,26,27,28) or column>=29:
+                        current[column]=_xlsx_cell_value(cell,shared_value)
+                yield current
+                row.clear()
+                parent=row.getparent()
+                if parent is not None:
+                    # Descartar filas previas, evitando retener el XML entero.
+                    while row.getprevious() is not None:
+                        del parent[0]
+        return
+
     current={}
     with archive.open(member) as stream:
         for _event,elem in ET.iterparse(stream,events=("end",)):
