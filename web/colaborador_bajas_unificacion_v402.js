@@ -205,11 +205,11 @@
       event.preventDefault();
       if(inflight)return;
       const store=createStore.value;
-      const name=($('#v402CreateName',node).value||'').replace(/\\s+/g,' ').trim();
+      const name=($('#v402CreateName',node).value||'').replace(/\s+/g,' ').trim();
       if(!store||name.length<3)return toast('Selecciona tienda y escribe el nombre completo.',true);
       const duplicate=records.some(row=>row.store===store &&
-        (row.name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase()===
-        name.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase());
+        (row.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()===
+        name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase());
       if(duplicate)return toast('Este nombre ya existe en esa tienda. Revisa el padrón.',true);
       const button=$('#v402CreateButton',node);
       button.disabled=true;button.textContent='Guardando...';
