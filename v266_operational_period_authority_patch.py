@@ -157,6 +157,74 @@ html body #operativoPeriodBar #operPeriodModeWrap{display:none!important}
     min-height:46px!important;
   }
 }
+/* V428: cuatro filtros correctamente alineados en Centro Operativo.
+   Mantener idéntica altura de título y control sin capas superpuestas. */
+@media(min-width:1100px){
+ html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid{
+   display:grid!important;
+   grid-template-columns:minmax(330px,1.5fr) minmax(195px,.92fr) minmax(220px,1.05fr) minmax(126px,.5fr) 46px!important;
+   grid-template-rows:72px!important;
+   column-gap:8px!important;row-gap:0!important;
+   align-items:stretch!important;
+   width:100%!important;
+   min-width:0!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar .v266-period-view{
+   grid-column:1!important;grid-row:1!important;
+   width:100%!important;min-width:0!important;
+   height:72px!important;min-height:72px!important;
+   grid-template-rows:20px 46px!important;row-gap:6px!important;
+   align-self:stretch!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap{
+   grid-column:2!important;grid-row:1!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar #operStoreWrap{
+   grid-column:3!important;grid-row:1!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar #operPeriodApply{
+   grid-column:4!important;grid-row:1!important;
+   height:46px!important;min-height:46px!important;
+   width:100%!important;align-self:end!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid>.or-filter-reset,
+ html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid>.or-filter-refresh{
+   grid-column:5!important;grid-row:1!important;
+   height:46px!important;min-height:46px!important;align-self:end!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap,
+ html body.v403-center-mode #operativoPeriodBar #operStoreWrap{
+   display:grid!important;grid-template-rows:20px 46px!important;
+   row-gap:6px!important;min-height:72px!important;
+   align-self:stretch!important;margin:0!important;padding:0!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap>label,
+ html body.v403-center-mode #operativoPeriodBar #operStoreWrap>label{
+   position:static!important;
+   display:flex!important;align-items:center!important;
+   height:20px!important;min-height:20px!important;
+   line-height:20px!important;margin:0!important;padding:0 2px!important;
+   transform:none!important;overflow:visible!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar #operPeriodSelectWrap>select,
+ html body.v403-center-mode #operativoPeriodBar #operStoreWrap>select{
+   width:100%!important;height:46px!important;min-height:46px!important;
+   margin:0!important;align-self:end!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar .v403-center-view{
+   display:none!important;
+ }
+}
+@media(min-width:768px) and (max-width:1099px){
+ html body.v403-center-mode #operativoPeriodBar .or-report-filter-grid{
+   display:grid!important;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)!important;
+   gap:8px!important;align-items:end!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar .v266-period-view{
+   min-width:0!important;width:100%!important;
+ }
+ html body.v403-center-mode #operativoPeriodBar .v403-center-view{display:none!important}
+}
 </style>'''
 
     js = r'''<script id="v266-operational-period-authority-js">
