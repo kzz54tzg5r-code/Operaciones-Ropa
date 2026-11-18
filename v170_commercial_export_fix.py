@@ -215,7 +215,23 @@ window.fetch=function(input,init){
     if(raw.includes('/api/export/operations/project-scope-v151')) raw=raw.replace('/api/export/operations/project-scope-v151','/api/export/operations-v170');
     if(typeof input==='string') input=raw; else if(raw!==input?.url) input=new Request(raw,input);
   }catch(_){ }
-  return priorFetch(input,init);
+  const currentUrl=typeof input==='string'?input:(input?.url||'');
+  const isPdfExport=currentUrl.includes('/api/export/operations-v170') &&
+    /(?:[?&])format=pdf(?:&|$)/i.test(currentUrl);
+  if(!isPdfExport)return priorFetch(input,init);
+  // V444: repetir solo descargas GET seguras si Render devuelve 502/503/504,
+  // por ejemplo durante un despliegue. Máximo tres solicitudes en total.
+  return (async()=>{
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const response=await priorFetch(input,init);
+        if(![502,503,504].includes(response.status)||attempt===2)return response;
+      }catch(error){
+        if(attempt===2)throw error;
+      }
+      await new Promise(resolve=>setTimeout(resolve,attempt===0?1300:2700));
+    }
+  })();
 };
 
 window.loadModelTables=async function(){
