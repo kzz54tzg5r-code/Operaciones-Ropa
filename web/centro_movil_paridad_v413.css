@@ -190,3 +190,118 @@
     font-size:9px!important;
   }
 }
+
+
+/* V445 — revisión móvil. Restaurar diseño PC compacto sin tablas duplicadas.
+   Se evita afectar la visualización de escritorio o los cálculos de datos. */
+@media screen and (max-width:900px), screen and (max-device-width:600px){
+  /* La tabla antigua Categoría/Indicador/Valor ya está representada por
+     Ingresado, En proceso, En piso y Recorridos; no duplicarla debajo. */
+  html body #page-operativo #operativoDynamicContent .monthly-cross-desktop,
+  html body #page-operativo #operativoDynamicContent .monthly-cross-mobile,
+  html body #page-operativo #operativoDynamicContent .mct-kpi-grid,
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell .ocl-original .monthly-cross-desktop,
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell .ocl-original .monthly-cross-mobile,
+  html body.or410-ui.or356-center-active #page-operativo .ocl-shell .ocl-original .mct-kpi-grid,
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original .tablewrap.monthly-cross-desktop{
+    display:none!important;
+  }
+
+  /* El área principal sigue el ancho de pantalla; sólo se desplazan
+     horizontalmente tablas anchas. Evitar cifras o títulos encimados. */
+  html body #page-operativo,
+  html body #page-operativo #operativoDynamicContent,
+  html body.or356-center-active #page-operativo .ocl-shell,
+  html body.or356-center-active #page-operativo .ocl-original,
+  html body.or356-center-active #page-operativo .ocl-full{
+    min-width:0!important;max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original :is(.title,h2,h3){
+    max-width:100%!important;overflow-wrap:break-word!important;
+    word-break:normal!important;
+  }
+  /* Anulación explícita de V434/V439 que habían quitado el scroll
+     necesario en pantallas estrechas. No aparece una barra deslizable:
+     el contenido se consulta con el gesto lateral nativo. */
+  html body.or410-ui.or356-center-active #page-operativo #operativoDynamicContent .ocl-original
+  .tablewrap:has(>table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)),
+  html body.or410-ui #page-operativo #operativoDynamicContent
+  .tablewrap:has(>table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)){
+    display:block!important;position:relative!important;
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    height:auto!important;max-height:none!important;
+    overflow-x:auto!important;overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-x:contain!important;
+    touch-action:pan-x pan-y!important;
+    scrollbar-width:none!important;
+    border-radius:10px!important;
+  }
+  html body #page-operativo #operativoDynamicContent
+  .tablewrap:has(>table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table))::-webkit-scrollbar{
+    display:none!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table){
+    width:max-content!important;min-width:1140px!important;
+    max-width:none!important;table-layout:auto!important;
+    border-collapse:separate!important;border-spacing:0!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table) :is(th,td){
+    box-sizing:border-box!important;
+    font-size:10px!important;line-height:1.18!important;
+    padding:7px 5px!important;
+    overflow-wrap:normal!important;word-break:normal!important;
+  }
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table) tbody td{
+    white-space:nowrap!important;
+  }
+  /* Ranking y Tienda se mantienen visibles al deslizar a la derecha. */
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  thead tr:not(.or-detail-groups-row):not(.or-daily-group-row)>th:first-child,
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  tbody tr>td:first-child{
+    position:sticky!important;left:0!important;z-index:5!important;
+    width:49px!important;min-width:49px!important;max-width:49px!important;
+  }
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  thead tr:not(.or-detail-groups-row):not(.or-daily-group-row)>th:nth-child(2),
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  tbody tr>td:nth-child(2){
+    position:sticky!important;left:49px!important;z-index:5!important;
+    min-width:113px!important;max-width:145px!important;
+    box-shadow:2px 0 3px rgba(12,48,84,.11)!important;
+  }
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  thead tr:not(.or-detail-groups-row):not(.or-daily-group-row)>th:nth-child(-n+2){
+    z-index:7!important;background:#194d82!important;color:#fff!important;
+  }
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  tbody tr:nth-child(odd)>td:nth-child(-n+2){background:#fff!important;}
+  html body #page-operativo #operativoDynamicContent
+  table:is(.or-detail-daily-v439,.or-detail-groups-v434,.ops-zero-table)
+  tbody tr:nth-child(even)>td:nth-child(-n+2){background:#eaf1f9!important;}
+
+  /* Mantener tarjeta/resumen y gráfica dentro del ancho móvil (no páginas
+     desbordadas a los lados), sin modificar la geometría del SVG. */
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original
+  :is(.or365-detail-chart,.chart-box,.report-kpis,.ocl-lanes){
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  html body.or410-ui.or356-center-active #page-operativo .ocl-original
+  .or365-detail-chart svg{
+    display:block!important;width:100%!important;max-width:100%!important;
+    min-width:0!important;height:auto!important;
+  }
+}
