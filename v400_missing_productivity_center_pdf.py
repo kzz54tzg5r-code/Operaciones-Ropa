@@ -71,11 +71,19 @@ def build_missing(m, allowed_stores, period_type, period_value):
     empty = {"rows": [], "count": 0, "store_count": 0,
              "period_type": period_type, "period_value": period_value,
              "start_date": first.isoformat(), "end_date": last.isoformat(),
-             "coverage": "Padrón activo con historial; no equivale a asistencia"}
+             "coverage": "Padrón activo con historial; no equivale a asistencia",
+             "roster_count": 0, "roster_store_count": 0,
+             "stores_without_roster": sorted(allowed),
+             "manual_historical_count": 0, "store_summary": []}
     if not allowed:
         return empty
     roster = {}
     aliases = {}
+    manual_audit_keys = set()
+    manual_historical_keys = set()
+    # Las altas manuales del padrón NO son una fecha de contratación.
+    # Si se capturaron después de la semana consultada, no deben desaparecer
+    # del cruce. Se identifican explícitamente y se señalan como provisionales.
     with m.db() as con:
         alias_table=con.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='operation_collaborator_aliases'"
@@ -92,18 +100,42 @@ def build_missing(m, allowed_stores, period_type, period_value):
         if not exists:
             return empty
         q = ",".join("?" for _ in allowed)
+        audit_exists = con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='operation_collaborator_admin_audit'"
+        ).fetchone()
+        if audit_exists:
+            for item in con.execute(
+                f"SELECT DISTINCT store,name_key FROM operation_collaborator_admin_audit "
+                f"WHERE action='Alta manual' AND store IN ({q})",
+                tuple(sorted(allowed))
+            ).fetchall():
+                manual_audit_keys.add((item["store"], norm(item["name_key"])))
         for r in con.execute(
             f"SELECT store,name_key,name,first_seen,last_seen,last_activity "
             f"FROM operation_collaborators WHERE active=1 AND store IN ({q})", tuple(sorted(allowed))
         ).fetchall():
             r = dict(r)
-            if r["first_seen"] and str(r["first_seen"])[:10] > last.isoformat():
-                continue
             key = (r["store"], norm(r["name_key"] or r["name"]))
-            if key[1]:
-                roster[key] = r
+            if not key[1]:
+                continue
+            first_observed = str(r["first_seen"] or "")[:10]
+            if first_observed and first_observed > last.isoformat():
+                if key not in manual_audit_keys:
+                    # Sólo excluir altas observadas con evidencia después del
+                    # periodo; la fecha de captura administrativa no es evidencia.
+                    continue
+                manual_historical_keys.add(key)
+            roster[key] = r
+    roster_stores = {key[0] for key in roster}
+    base_coverage = {
+        "roster_count": len(roster),
+        "roster_store_count": len(roster_stores),
+        "stores_without_roster": sorted(allowed - roster_stores),
+        "manual_historical_count": len(manual_historical_keys),
+    }
     if not roster or through < first:
-        return empty
+        return {**empty, **base_coverage}
 
     seen = defaultdict(set)
     latest = {}
@@ -158,8 +190,19 @@ def build_missing(m, allowed_stores, period_type, period_value):
             "status": "Sin captura de productividad",
         })
     rows.sort(key=lambda r: (r["store"].casefold(), r["name"].casefold()))
-    return {**empty, "rows": rows, "count": len(rows),
-            "store_count": len({r["store"] for r in rows})}
+    coverage_by_store = []
+    for store in sorted(allowed):
+        keys = [key for key in roster if key[0] == store]
+        active_with_capture = sum(bool(seen.get(key)) for key in keys)
+        coverage_by_store.append({
+            "store": store, "active_roster": len(keys),
+            "with_productivity": active_with_capture,
+            "without_productivity": len(keys) - active_with_capture,
+            "manual_historical": sum(key in manual_historical_keys for key in keys),
+        })
+    return {**empty, **base_coverage, "rows": rows, "count": len(rows),
+            "store_count": len({r["store"] for r in rows}),
+            "store_summary": coverage_by_store}
 
 
 def _inline_daily_collaborators(original_pdf, result):
