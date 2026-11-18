@@ -28,6 +28,49 @@
     const rows=Array.isArray(data.rows)?data.rows:[];
     const caption=el('div','or400-note','Padrón activo del proyecto. Sin captura no significa inasistencia; validar turnos y asistencia con cada tienda.');
     host.append(caption);
+    const eligible=Number(data.roster_count||0);
+    const stores=Number(data.roster_store_count||0);
+    const scopeStores=Array.isArray(data.store_summary)?data.store_summary:[];
+    const verified=scopeStores.reduce((n,row)=>n+Number(row.with_productivity||0),0);
+    host.append(el('div','or400-note',
+      'Padrón considerado: '+fmt(eligible)+' colaboradores activos en '+fmt(stores)+
+      ' tiendas. Con captura: '+fmt(verified)+'. Sin captura: '+fmt(rows.length)+'.'));
+    const missingStores=Array.isArray(data.stores_without_roster)?data.stores_without_roster:[];
+    if(missingStores.length){
+      const warn=el('div','or400-note',
+        'ATENCIÓN: sin colaboradores activos en el padrón de '+missingStores.length+
+        ' tienda(s): '+missingStores.join(', ')+'. No equivale a cero ausencias.');
+      warn.style.color='#9a3412';warn.style.fontWeight='700';
+      host.append(warn);
+    }
+    if(Number(data.manual_historical_count||0)>0){
+      const manual=el('div','or400-note',
+        'Se incluyeron '+fmt(data.manual_historical_count)+
+        ' altas manuales registradas después del periodo consultado. '+
+        'La fecha de captura en el padrón no prueba la fecha de contratación; verifica su vigencia en la semana.');
+      manual.style.color='#92400e';
+      host.append(manual);
+    }
+    if(scopeStores.length){
+      const details=el('details','or400-coverage-details');
+      const label=el('summary','or400-note','Ver cobertura del padrón por tienda');
+      label.style.cursor='pointer';label.style.fontWeight='700';
+      details.append(label);
+      const panel=el('div','or400-table-scroll');
+      const t=el('table','or400-table');
+      const th=el('thead'),hrow=el('tr');
+      ['Tienda','Activos en padrón','Con productividad','Sin productividad']
+        .forEach(name=>hrow.append(el('th',null,name)));
+      th.append(hrow);t.append(th);
+      const tbody=el('tbody');
+      scopeStores.forEach(item=>{
+        const tr=el('tr');
+        [item.store,fmt(item.active_roster),fmt(item.with_productivity),
+          fmt(item.without_productivity)].forEach((value)=>tr.append(el('td',null,value)));
+        tbody.append(tr);
+      });
+      t.append(tbody);panel.append(t);details.append(panel);host.append(details);
+    }
     if(!rows.length){
       host.append(el('div','or400-empty','Sin colaboradores activos pendientes de captura para los filtros seleccionados.'));
       return;
