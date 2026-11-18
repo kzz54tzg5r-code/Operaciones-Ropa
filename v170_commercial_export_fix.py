@@ -18,6 +18,7 @@ import time
 from collections import defaultdict
 
 from fastapi import HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 
 
@@ -149,14 +150,31 @@ def install(m):
     ):
         if old_export is None:
             raise HTTPException(500, "Exportador no disponible")
+        # V444: el exportador V151 es síncrono y realiza consultas y
+        # generación ReportLab. Ejecutarlo directamente dentro de esta ruta
+        # asíncrona bloqueaba el event loop, provocando 502 intermitentes
+        # durante exportaciones pesadas. FastAPI usa threadpool para rutas
+        # síncronas; conservar ese comportamiento también en el wrapper V170.
         async with export_lock:
-            result = old_export(request=request, format=format, report=report, store=store,
-                period_type=period_type, period_value=period_value, area=area, activity=activity,
-                start_date=start_date, end_date=end_date)
-            if inspect.isawaitable(result): result = await result
-            if not isinstance(result, Response) or int(getattr(result, "status_code", 500)) >= 400:
-                raise HTTPException(500, "No fue posible construir el reporte")
-            return result
+            args=dict(request=request, format=format, report=report, store=store,
+                      period_type=period_type, period_value=period_value,
+                      area=area, activity=activity, start_date=start_date,
+                      end_date=end_date)
+            started=time.monotonic()
+            try:
+                if inspect.iscoroutinefunction(old_export):
+                    result = await old_export(**args)
+                else:
+                    result = await run_in_threadpool(old_export, **args)
+                if inspect.isawaitable(result):
+                    result = await result
+                if not isinstance(result, Response) or int(getattr(result, "status_code", 500)) >= 400:
+                    raise HTTPException(500, "No fue posible construir el reporte")
+                return result
+            finally:
+                print(f"[V444-PDF] exportacion finalizada: formato={format}, "
+                      f"periodo={period_type}, segundos={time.monotonic()-started:.1f}",
+                      flush=True)
 
     # Exponer el OCR para que el endpoint V170 lo reutilice sin duplicar parser.
     try:
