@@ -331,8 +331,22 @@ def appendix(original_pdf, result):
     stripe=colors.HexColor("#EEF4FB")
     border=colors.HexColor("#D8E0EB")
     ink=colors.white
-    # Recuperación de estabilidad V438: el anexo se genera en su propia página.
-    # La inserción in situ V437 se desactiva tras un error 502 al descargar PDF.
+    # V447: llenar automáticamente el espacio disponible de la última página
+    # antes de crear una página adicional; conservar el anexo tradicional como
+    # ruta segura si no existe espacio o si ocurre cualquier problema al unir.
+    all_rows=list(result.get("rows") or [])
+    start_index=0
+    try:
+        compact_pdf, remaining=_inline_daily_collaborators(original_pdf,result)
+        if len(remaining) < len(all_rows):
+            original_pdf=compact_pdf
+            start_index=len(all_rows)-len(remaining)
+            if not remaining:
+                return original_pdf
+            result={**result,"rows":remaining}
+    except Exception as exc:
+        # No permitir que una optimización de paginación provoque Error 502.
+        print(f"[V447-PDF] Ajuste automático omitido: {type(exc).__name__}: {exc}",flush=True)
     rows=result.get("rows") or []
     # Dimensionar el ancho por contenido, no dividirlo en siete columnas minúsculas.
     cols=["#","Colaborador","Tienda","Último registro","Estatus"]
@@ -443,7 +457,7 @@ def appendix(original_pdf, result):
         c.setFillColor(colors.white if idx%2 else stripe)
         c.rect(M,y-row_h,usable,row_h,stroke=0,fill=1)
         values=[
-            str(idx),item.get("name") or "—",item.get("store") or "—",
+            str(start_index+idx),item.get("name") or "—",item.get("store") or "—",
             item.get("last_date") or "Sin registro","Sin productividad",
         ]
         for col,(x,w,value) in enumerate(zip(xs,widths,values)):
