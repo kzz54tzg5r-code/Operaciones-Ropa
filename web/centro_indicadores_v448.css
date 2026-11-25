@@ -32,3 +32,17 @@
 #page-operativo .or448-more{background:#e7f0ff;border:1px solid #b4d0fa;color:#095398;padding:6px 10px;border-radius:7px;font-weight:700;cursor:pointer}
 @media(max-width:960px){#page-operativo .or448-grid{grid-template-columns:minmax(0,1fr)}#page-operativo .or448-reading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}#page-operativo .or448-reading h4{grid-column:1/-1}#page-operativo .or448-read-item{margin:3px}}
 @media(max-width:520px){#page-operativo .or448-summary{padding:6px}#page-operativo .or448-heading h3{font-size:15px!important}#page-operativo .or448-reading{grid-template-columns:minmax(0,1fr)}#page-operativo .or448-table th{font-size:10px!important}#page-operativo .or448-legend{font-size:9px}}
+
+/* V451: la tabla cabe completa en escritorio sin perder los semáforos.
+   En móvil conserva desplazamiento horizontal solamente dentro de la tabla. */
+#page-operativo .or448-table{table-layout:fixed!important;width:100%!important;min-width:730px!important;max-width:none!important}
+#page-operativo .or448-table th:nth-child(1){width:5%}
+#page-operativo .or448-table th:nth-child(2){width:17%}
+#page-operativo .or448-table th:nth-child(3){width:12%}
+#page-operativo .or448-table th:nth-child(4){width:15%}
+#page-operativo .or448-table th:nth-child(5){width:12%}
+#page-operativo .or448-table th:nth-child(6){width:12%}
+#page-operativo .or448-table th:nth-child(7){width:14%}
+#page-operativo .or448-table th:nth-child(8){width:13%}
+#page-operativo .or448-table tbody td{overflow:hidden!important;text-overflow:ellipsis!important}
+#page-operativo .or448-meter{width:100%;min-width:0!important;box-sizing:border-box}
