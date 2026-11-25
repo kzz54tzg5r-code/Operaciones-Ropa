@@ -83,16 +83,24 @@ function metric(value,productivity=false){
 }
 function renderTable(rows){
  const card=node('div','or448-table-card'),scroll=node('div','or448-scroll'),table=node('table','or448-table'),thead=node('thead'),head=node('tr');
+ // V451: nunca convertir nodos HTML a cadena: el navegador mostraba
+ // literalmente "[object HTMLSpanElement]" en las columnas del resumen.
+ const textCell=text=>{const td=document.createElement('td');td.textContent=String(text??'');return td;};
+ const metricCell=(number,productivity=false)=>{
+   const td=document.createElement('td');
+   td.appendChild(metric(number,productivity));
+   return td;
+ };
  ['#','Tienda','Colabs. con productividad','Prod. promedio por colaborador','% Acond.','% Ubicado','% Recorridos','Score %']
  .forEach(t=>head.append(node('th','',t)));
  thead.append(head);table.append(thead);
  const body=node('tbody'),rendered=[];
  rows.forEach((r,i)=>{
   const tr=node('tr');
-  tr.append(node('td','', '#'+(i+1)),node('td','',r.store),
-    node('td','',metric(r.collaborators,true)),node('td','',metric(r.average,true)),
-    node('td','',metric(r.acond)),node('td','',metric(r.ubicado)),
-    node('td','',metric(r.recorridos)),node('td','',metric(r.score)));
+  tr.append(textCell('#'+(i+1)),textCell(r.store),
+    metricCell(r.collaborators,true),metricCell(r.average,true),
+    metricCell(r.acond),metricCell(r.ubicado),
+    metricCell(r.recorridos),metricCell(r.score));
   if(i>=10)tr.hidden=true;
   rendered.push(tr);body.append(tr);
  });
