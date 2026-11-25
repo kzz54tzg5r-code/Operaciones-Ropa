@@ -123,14 +123,30 @@ function renderTable(rows){
 function readout(rows){
  const panel=node('aside','or448-reading');
  panel.append(node('h4','', '◈ Lectura ejecutiva'));
+ // V458: mostrar TODAS las tiendas en atención; antes se cortaba a 3.
+ // Se ordenan de menor a mayor Score, sin omitir tiendas con 0%.
+ const attention=rows.filter(r=>r.score<60)
+   .sort((a,b)=>a.score-b.score||a.store.localeCompare(b.store,'es-MX'));
  const data=[
   ['Mejor desempeño (Score %)',rows.filter(r=>r.score>=80).slice(0,3),'good','No hay tiendas con Score ≥80%.'],
   ['Desempeño medio',rows.filter(r=>r.score>=60&&r.score<80).slice(0,3),'medium','No hay tiendas entre 60 y 79.9%.'],
-  ['Atención prioritaria',rows.filter(r=>r.score<60).sort((a,b)=>a.score-b.score).slice(0,3),'low','Sin tiendas con Score bajo 60%.']
+  ['Atención prioritaria ('+attention.length+' tiendas)',attention,'low','Sin tiendas con Score bajo 60%.']
  ];
  for(const [title,stores,tone,empty] of data){
   const block=node('div','or448-read-item '+tone);
-  block.append(node('strong','',title),node('span','',stores.length?stores.map(s=>s.store+' ('+pct(s.score)+')').join(' · '):empty));
+  block.append(node('strong','',title));
+  if(tone==='low' && stores.length){
+   const list=node('div','or448-risk-list');
+   for(const store of stores){
+    const row=node('div','or448-risk-row');
+    row.append(node('span','or448-risk-store',store.store),
+      node('span','or448-risk-score',pct(store.score)));
+    list.append(row);
+   }
+   block.append(list);
+  }else{
+   block.append(node('span','',stores.length?stores.map(s=>s.store+' ('+pct(s.score)+')').join(' · '):empty));
+  }
   panel.append(block);
  }
  return panel;
