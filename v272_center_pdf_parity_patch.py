@@ -473,91 +473,199 @@ def install(m):
                     y -= row_h
             y -= 7
 
-        def draw_recovery_table():
-            nonlocal y
-            # Recuperación por tienda también forma parte del reporte diario.
-            rows = sorted(
-                list(recovery or []),
-                # Mismo ranking visual que la tabla del Centro Operativo.
-                key=lambda r: (-_num(r.get("dev_pzs")), str(r.get("store") or "")),
-            )
-            if not rows:
-                return
+        def draw_store_indicators_table():
+            """V452: sustituir Recuperación por tienda por el resumen aprobado.
 
-            section("Recuperación por tienda", size=14)
-            set_fill(MUTED)
-            c.setFont("Helvetica", 8)
-            c.drawString(M, y, "Comparativo del periodo y tienda seleccionados · unidades y pesos en miles")
-            y -= 18
-            # V272.2: abreviaturas + 2 líneas; el encabezado gana alto y
-            # cada columna necesita menos ancho horizontal.
+            Igual que en Centro Operativo, el conteo se hace por colaborador
+            único con piezas positivas, separando tiendas con captura digital
+            de registros del reporte operativo para no duplicar la producción.
+            """
+            nonlocal y
+            import unicodedata
+            from collections import defaultdict
+
+            def key(value):
+                text = unicodedata.normalize("NFKD", str(value or ""))
+                return " ".join(text.encode("ascii","ignore").decode().casefold().split())
+
+            # El reporte ya aplicó los permisos y filtros de tienda y periodo.
+            current_stores = list(project_stores or [])
+            if not current_stores:
+                return
+            allowed = {key(r.get("store")) for r in current_stores}
+            people = {}
+
+            for item in (data.get("productivity") or []):
+                if not isinstance(item, dict):
+                    continue
+                st = key(item.get("store"))
+                nm = key(item.get("employee_no") or item.get("name") or item.get("employee_name"))
+                pieces = _num(item.get("pieces"))
+                if st not in allowed or not nm or pieces <= 0:
+                    continue
+                # La respuesta operativa ya contiene un registro consolidado
+                # por colaborador y tienda.
+                people[(st,nm)] = {"store": st, "pieces": pieces, "origin": "operativo"}
+
+            # Aplicar el mismo criterio que la tabla web V448: si una tienda
+            # tiene capturas digitales, reemplazar la fuente operativa de esa
+            # tienda en vez de sumar ambas fuentes.
+            try:
+                from v400_missing_productivity_center_pdf import bounds
+                start, end = bounds(period_type, period_value)
+                with m.db() as con:
+                    names = [r.get("store") for r in current_stores if r.get("store")]
+                    marks = ",".join("?" for _ in names)
+                    captures = con.execute(
+                        "SELECT store,employee_no,employee_name,pieces,muertos,cajas,probador "
+                        "FROM cm_productivity_capture "
+                        "WHERE status='finished' AND date>=? AND date<=? "
+                        f"AND store IN ({marks})",
+                        (start.isoformat(),end.isoformat(),*names)
+                    ).fetchall() if names else []
+                digital = {}
+                for entry in captures:
+                    entry = dict(entry)
+                    st = key(entry.get("store"))
+                    nm = key(entry.get("employee_no") or entry.get("employee_name"))
+                    if st not in allowed or not nm:
+                        continue
+                    pieces = _num(entry.get("pieces"))
+                    if pieces <= 0:
+                        pieces = sum(_num(entry.get(t)) for t in ("muertos","cajas","probador"))
+                    if pieces <= 0:
+                        continue
+                    pk = (st,nm)
+                    digital[pk] = digital.get(pk,0.0) + pieces
+                digital_stores = {st for st,_ in digital}
+                for pk in list(people):
+                    if pk[0] in digital_stores:
+                        del people[pk]
+                for (st,nm),pieces in digital.items():
+                    people[(st,nm)] = {"store":st,"pieces":pieces,"origin":"digital"}
+            except Exception as exc:
+                # No bloquear una descarga PDF porque el origen digital
+                # todavía no esté creado o se esté actualizando.
+                print("[V452-PDF] Productividad digital no disponible: "
+                      f"{type(exc).__name__}: {exc}", flush=True)
+
+            totals = defaultdict(lambda: {"people":0,"pieces":0.0})
+            for person in people.values():
+                st = person["store"]
+                totals[st]["people"] += 1
+                totals[st]["pieces"] += person["pieces"]
+
+            route_lookup = {
+                key(item.get("store")): _num(item.get("recorridos_pct"))
+                for item in (data.get("score_by_store") or [])
+                if isinstance(item,dict) and item.get("store")
+            }
+            all_stores = [item for item in (data.get("stores") or []) if isinstance(item,dict)]
+            total_target = _num((data.get("metrics") or {}).get("meta_recorridos"))
+            route_target = total_target/len(all_stores) if all_stores else 0.0
+
+            result_rows = []
+            for item in current_stores:
+                st = key(item.get("store"))
+                total = _num(item.get("total_pzs") if item.get("total_pzs") is not None
+                             else item.get("ingresos"))
+                ac = (_num(item.get("pct_acondicionado"))
+                      if item.get("pct_acondicionado") is not None
+                      else (100*_num(item.get("acondicionado"))/total if total else 0.0))
+                ub = (_num(item.get("pct_ubicado"))
+                      if item.get("pct_ubicado") is not None
+                      else (100*_num(item.get("ubicado"))/total if total else 0.0))
+                route = route_lookup.get(
+                    st, 100*_num(item.get("recorridos"))/route_target if route_target else 0.0
+                )
+                score = sum(min(100.0,max(0.0,z)) for z in (ac,ub,route))/3.0
+                prod = totals[st]
+                count = prod["people"]
+                average = prod["pieces"]/count if count else None
+                result_rows.append((str(item.get("store") or ""),count,average,ac,ub,route,score))
+
+            result_rows.sort(key=lambda r: (-r[6],key(r[0])))
             headers = [
-                "#", "Tienda", "Dev\nPzs", "Pzas\nrecup.", "Conv.\n%",
-                "Valor\nDev. mil", "Recup.\n$ mil", "Recup.\n%", "Pend.\nPzs", "Pend.\n$ mil"
+                "#","Tienda","Colabs. con\nproductividad","Prod. promedio\npor colaborador",
+                "% Acond.","% Ubicado","% Recorridos","Score %"
             ]
-            fracs = [.04,.18,.075,.085,.075,.13,.13,.075,.08,.13]
+            fracs = [.045,.18,.13,.165,.12,.12,.12,.12]
             total_w = W - 2*M
-            xs = [M]
-            acc = M
-            for frac in fracs[:-1]:
-                acc += total_w*frac
-                xs.append(acc)
-            # Las 17 tiendas deben permanecer junto a las tarjetas en la
-            # primera página. La altura anterior (14.95 x 17 + 29) activaba
-            # ensure() y dejaba media hoja vacía antes de saltar a página 2.
-            # 13.2 pt mantiene texto legible a 8.1 pt.
-            row_h = 13.2
-            head_h = 25
+            widths = [total_w*f for f in fracs]
+            xs=[M]
+            for width in widths[:-1]:
+                xs.append(xs[-1]+width)
+            head_h=30.0
+            row_h=14.0
+
+            def colors_for_percent(number):
+                if number >= 80:
+                    return "#D9F4E8","#007348"
+                if number >= 60:
+                    return "#FFF0D5","#925700"
+                return "#FFE0E5","#B9192D"
 
             def head():
                 nonlocal y
                 set_fill(BLUE_DARK)
-                c.roundRect(M, y-head_h+2, total_w, head_h, 4, fill=1, stroke=0)
-                c.setFillColor(colors.white)
-                for i, h in enumerate(headers):
-                    draw_header_cell(
-                        xs[i], total_w*fracs[i], y, head_h, h,
-                        font_size=6.6,
-                        align="left" if i == 1 else "center",
-                    )
+                c.roundRect(M,y-head_h+2,total_w,head_h,4,fill=1,stroke=0)
+                for i, label in enumerate(headers):
+                    draw_header_cell(xs[i],widths[i],y,head_h,label,
+                                     font_size=6.8,
+                                     align="left" if i == 1 else "center")
                 y -= head_h
 
-            # Reservar sólo el alto real que necesita la tabla. Para el
-            # alcance habitual de 17 tiendas cabe en la primera hoja; si el
-            # número de tiendas es mayor, se pagina normalmente.
-            ensure(head_h + min(len(rows), 17)*row_h + 8, "Recuperación")
+            # Mantener el encabezado unido a las primeras filas. Nunca dejar
+            # un título huérfano ni crear una página por una tabla vacía.
+            ensure(18 + 18 + head_h + min(2,len(result_rows))*row_h + 5,
+                   "Resumen por tiendas")
+            section("Resumen por tiendas · indicadores %",size=14)
+            set_fill(MUTED)
+            c.setFont("Helvetica",7.5)
+            c.drawString(M,y,"Colaboradores con captura, productividad promedio y porcentajes del periodo")
+            y -= 17
             head()
-            for idx, r in enumerate(rows, start=1):
-                if y-row_h < 24:
-                    new_page("Recuperación")
+            for idx,(store,count,average,ac,ub,route,score) in enumerate(result_rows,1):
+                if y-row_h < 25:
+                    new_page("Resumen por tiendas")
                     head()
-                # Mismas filas alternadas del portal; todas las tiendas participan.
-                bg = "#FFFFFF" if idx%2 else "#EEF4FB"
-                set_fill(bg)
-                c.rect(M, y-row_h+2, total_w, row_h, fill=1, stroke=0)
+                set_fill("#FFFFFF" if idx%2 else "#EAF2FC")
+                c.rect(M,y-row_h+2,total_w,row_h,fill=1,stroke=0)
                 values = [
-                    f"#{idx}",
-                    str(r.get("store") or ""),
-                    n(r.get("dev_pzs")),
-                    n(r.get("converted_pieces")),
-                    pc(r.get("conversion_pct")),
-                    money(r.get("return_value")),
-                    money(r.get("recovered_value")),
-                    pc(r.get("recovery_pct")),
-                    n(r.get("pending_pieces")),
-                    money(r.get("pending_value")),
+                    f"#{idx}",store,str(count),
+                    n(average) if average is not None else "—",
+                    pc(ac),pc(ub),pc(route),pc(score)
                 ]
-                for i, val in enumerate(values):
-                    set_fill(TEXT)
-                    font="Helvetica-Bold" if i in (0,1) else "Helvetica"
-                    label,size=fitted_cell(val,total_w*fracs[i],8.1,font)
-                    c.setFont(font,size)
-                    if i==1:
-                        c.drawString(xs[i]+3,y-10.0,label)
+                for col,val in enumerate(values):
+                    if col in (2,3):
+                        bg,fg="#DEEBFF",TEXT
+                    elif col>=4:
+                        bg,fg=colors_for_percent((ac,ub,route,score)[col-4])
                     else:
-                        c.drawCentredString(xs[i]+total_w*fracs[i]/2,y-10.0,label)
+                        bg,fg=None,TEXT
+                    if bg:
+                        set_fill(bg)
+                        c.roundRect(xs[col]+2,y-row_h+3,widths[col]-4,row_h-3,
+                                    3,fill=1,stroke=0)
+                    set_fill(fg)
+                    font="Helvetica-Bold" if col in (0,1,2,3,7) else "Helvetica"
+                    txt,size=fitted_cell(val,widths[col]-4,7.8,font)
+                    c.setFont(font,size)
+                    if col==1:
+                        c.drawString(xs[col]+5,y-9.5,txt)
+                    else:
+                        c.drawCentredString(xs[col]+widths[col]/2,y-9.5,txt)
                 y -= row_h
-            y -= 6
+            y -= 5
+            if y>50:
+                set_fill(MUTED)
+                c.setFont("Helvetica",6.6)
+                c.drawString(
+                    M,y,
+                    "Prod. promedio = piezas / colaboradores con captura. "
+                    "Score = promedio de Acond., Ubicado y Recorridos (tope 100%)."
+                )
+                y -= 11
 
         def draw_operational_detail():
             nonlocal y
@@ -902,15 +1010,12 @@ def install(m):
              f"{n(recorridos)} / {n(meta_rec)}", pc(pct_rec), None, ORANGE),
         ])
 
-        # En la pantalla no existe una matriz adicional entre las tarjetas y
-        # el reporte expandido. La impresión respeta esa misma jerarquía.
+        # V452: el resumen aprobado de indicadores reemplaza a la tabla
+        # Recuperación por tienda en los PDFs Día, Semana, Mes y Año.
+        # Es el mismo orden de columnas de Centro Operativo web.
+        draw_store_indicators_table()
         section("Reporte completo por tienda · tablas y gráficos")
-        y -= 4  # Separar títulos sin desbordar las 17 tiendas de la hoja.
-
-        # Misma visibilidad que Centro Operativo en pantalla:
-        # Recuperación por tienda sólo en Semana, Mensual y Anual.
-        if period_type in ("week", "month", "year"):
-            draw_recovery_table()
+        y -= 4
         draw_operational_detail()
         # V436: no incluir gráficas en el PDF; conservar las tablas y tarjetas.
         # V447: comunicar espacio utilizable al anexo de colaboradores en
