@@ -754,6 +754,15 @@ body.v238-module-operativo #operPeriodMode{
         recovery_by_store:data?.recovery_by_store||[],
       };
       if(host)host.innerHTML=centerHtml(data,mode,value);
+      // V448: reutilizar exactamente los indicadores y alcance ya consultados.
+      // El resumen por tiendas se monta después de las cuatro tarjetas, sin
+      // pedir de nuevo el pesado reporte operativo.
+      window.OR448_CENTER_DATA={
+        response:data,
+        request:{period_type:mode,period_value:value,store:q('#operStoreSelect')?.value||'Compañía'},
+        sequence:seq
+      };
+      window.dispatchEvent(new CustomEvent('or448:center-data'));
       centerRecoveryAttempts.delete([mode,value,q('#operStoreSelect')?.value||'Compañía'].join('|'));
       markCenter(mode);
       ensureCenterControls(dmeta,mode,false);
