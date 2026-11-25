@@ -34,9 +34,11 @@ function setup(){
 }
 function dataRows(data,digital){
  const all=(Array.isArray(data?.stores)?data.stores:[]).filter(r=>r&&r.store);
- const names=new Set((data?.project_stores||[]).map(norm));
+ const names=new Set((data?.project_stores||[]).map(x=>norm(typeof x==='string'?x:x?.store||x?.name)).filter(Boolean));
  const selected=norm(window.OR448_CENTER_DATA?.request?.store);
- const stores=all.filter(r=>(!names.size||names.has(norm(r.store)))&&(!selected||selected==='compania'||selected==='compañia'||norm(r.store)===selected));
+ const allowed=r=>!selected||selected==='compania'||norm(r.store)===selected;
+ const byName=all.filter(r=>(!names.size||names.has(norm(r.store)))&&allowed(r));
+ const stores=byName.length?byName:all.filter(r=>r.is_project!==false&&allowed(r));
  const goals=numeric(data?.metrics?.meta_recorridos);
  const storeGoal=goals&&stores.length?goals/stores.length:null;
  const routes=new Map((data?.score_by_store||[]).filter(r=>r&&r.store).map(r=>[norm(r.store),numeric(r.recorridos_pct)]));
