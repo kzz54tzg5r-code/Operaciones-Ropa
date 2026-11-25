@@ -5,7 +5,7 @@
 if(window.OR448_SUMMARY_INSTALLED)return;
 window.OR448_SUMMARY_INSTALLED=true;
 const query=(s,r=document)=>r.querySelector(s);
-const node=(tag,cls,label)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(label!==undefined)e.textContent=label;return e};
+const node=(tag,cls,label)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(label!==undefined){if(label instanceof Node)e.append(label);else e.textContent=String(label);}return e};
 const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
 const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace(/[, %]/g,''));return Number.isFinite(n)?n:null};
 const fmt=v=>v==null?'—':Math.round(v).toLocaleString('es-MX');
