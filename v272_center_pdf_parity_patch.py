@@ -610,7 +610,7 @@ def install(m):
 
             result_rows.sort(key=lambda r: (-r[6],key(r[0])))
             headers = [
-                "#","Tienda","Colabs. con\nproductividad","Prod. promedio\npor colaborador",
+                "#","Tienda","Colabs. con\nproductividad","Pzas prom.\nx Colaborador",
                 "% Productividad\nvs Meta","% Acond.","% Ubicado","% Recorridos","Score %"
             ]
             fracs = [.045,.145,.12,.135,.115,.11,.11,.11,.11]
