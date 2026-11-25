@@ -1,0 +1,34 @@
+
+/* V448 — resumen de tiendas, sólo Centro Operativo. */
+#page-operativo .or448-summary{margin:9px 0;background:#f8fbff;border:1px solid #cbdff8;border-radius:12px;padding:11px;min-width:0;color:#153b70}
+#page-operativo .or448-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+#page-operativo .or448-heading h3{margin:0!important;font-size:clamp(16px,1.65vw,21px)!important;line-height:1.2!important;color:#123b73!important;font-weight:850}
+#page-operativo .or448-heading p{margin:2px 0 0;font-size:11px;color:#5d718c}
+#page-operativo .or448-legend{display:flex;flex-wrap:wrap;gap:7px;font-size:10px;align-items:center}
+#page-operativo .or448-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+#page-operativo .or448-dot.good{background:#008653}#page-operativo .or448-dot.medium{background:#d89a1d}#page-operativo .or448-dot.low{background:#d73241}
+#page-operativo .or448-grid{display:grid;grid-template-columns:minmax(0,2.65fr) minmax(205px,1fr);gap:10px;align-items:stretch}
+#page-operativo .or448-table-card,#page-operativo .or448-reading{border:1px solid #d5e4f6;border-radius:9px;background:#fff;min-width:0;overflow:hidden}
+#page-operativo .or448-scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+#page-operativo .or448-table{width:100%;min-width:760px;border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+#page-operativo .or448-table th{background:#154a7f!important;color:white!important;font-size:11px!important;line-height:1.15!important;padding:9px 5px!important;white-space:normal!important;text-align:center!important;vertical-align:middle!important;position:static!important}
+#page-operativo .or448-table td{font-size:11px!important;line-height:1.12!important;text-align:center!important;padding:3px 4px!important;border-bottom:1px solid #e3ebf5;white-space:nowrap!important;position:static!important}
+#page-operativo .or448-table td:first-child{font-weight:750;color:#123b73}
+#page-operativo .or448-table td:nth-child(2){text-align:left!important;font-weight:800;color:#153b70}
+#page-operativo .or448-table tbody tr:nth-child(even){background:#eaf2fc}
+#page-operativo .or448-meter{padding:4px 5px;border-radius:6px;font-weight:800;display:block;min-width:48px}
+#page-operativo .or448-meter.good{background:#d9f4e8;color:#007348}
+#page-operativo .or448-meter.medium{background:#fff0d5;color:#925700}
+#page-operativo .or448-meter.low{background:#ffe0e5;color:#b9192d}
+#page-operativo .or448-meter.unknown{background:#eef1f5;color:#617082}
+#page-operativo .or448-meter.productivity{background:#deebff;color:#123b73}
+#page-operativo .or448-reading h4{background:#eef5fe;margin:0!important;padding:10px 12px;font-size:13px!important;color:#103b71}
+#page-operativo .or448-read-item{margin:8px;padding:9px;border-radius:8px;font-size:11px;line-height:1.35}
+#page-operativo .or448-read-item strong{display:block;font-weight:800;margin-bottom:3px}
+#page-operativo .or448-read-item.good{background:#e5f8ee;color:#075735}
+#page-operativo .or448-read-item.medium{background:#fff3dc;color:#875000}
+#page-operativo .or448-read-item.low{background:#ffe9ed;color:#a31b31}
+#page-operativo .or448-footer{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:7px;font-size:10px;color:#536b85}
+#page-operativo .or448-more{background:#e7f0ff;border:1px solid #b4d0fa;color:#095398;padding:6px 10px;border-radius:7px;font-weight:700;cursor:pointer}
+@media(max-width:960px){#page-operativo .or448-grid{grid-template-columns:minmax(0,1fr)}#page-operativo .or448-reading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}#page-operativo .or448-reading h4{grid-column:1/-1}#page-operativo .or448-read-item{margin:3px}}
+@media(max-width:520px){#page-operativo .or448-summary{padding:6px}#page-operativo .or448-heading h3{font-size:15px!important}#page-operativo .or448-reading{grid-template-columns:minmax(0,1fr)}#page-operativo .or448-table th{font-size:10px!important}#page-operativo .or448-legend{font-size:9px}}
