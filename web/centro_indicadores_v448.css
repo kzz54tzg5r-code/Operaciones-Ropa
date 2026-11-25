@@ -46,3 +46,17 @@
 #page-operativo .or448-table th:nth-child(8){width:13%}
 #page-operativo .or448-table tbody td{overflow:hidden!important;text-overflow:ellipsis!important}
 #page-operativo .or448-meter{width:100%;min-width:0!important;box-sizing:border-box}
+
+/* V453: nueve indicadores visibles. Ancho adaptable y nueva meta independiente. */
+#page-operativo .or448-scroll{max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important}
+#page-operativo .or448-table{width:100%!important;min-width:880px!important;max-width:none!important;table-layout:fixed!important}
+#page-operativo .or448-table th:nth-child(1){width:4%!important}
+#page-operativo .or448-table th:nth-child(2){width:15%!important}
+#page-operativo .or448-table th:nth-child(3){width:11%!important}
+#page-operativo .or448-table th:nth-child(4){width:15%!important}
+#page-operativo .or448-table th:nth-child(5){width:12%!important}
+#page-operativo .or448-table th:nth-child(6){width:11%!important}
+#page-operativo .or448-table th:nth-child(7){width:11%!important}
+#page-operativo .or448-table th:nth-child(8){width:11%!important}
+#page-operativo .or448-table th:nth-child(9){width:10%!important}
+#page-operativo .or448-table th:nth-child(5){font-weight:850!important}
