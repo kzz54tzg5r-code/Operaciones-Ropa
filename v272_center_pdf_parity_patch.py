@@ -1015,8 +1015,8 @@ def install(m):
         # Recuperación por tienda en los PDFs Día, Semana, Mes y Año.
         # Es el mismo orden de columnas de Centro Operativo web.
         draw_store_indicators_table()
-        section("Reporte completo por tienda · tablas y gráficos")
-        y -= 4
+        # Detalle operativo tiene su propio encabezado y control de salto;
+        # no dejar un segundo título aislado al final de la hoja anterior.
         draw_operational_detail()
         # V436: no incluir gráficas en el PDF; conservar las tablas y tarjetas.
         # V447: comunicar espacio utilizable al anexo de colaboradores en
