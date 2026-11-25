@@ -157,3 +157,19 @@
   }
   html body #page-operativo .or448-summary .or448-reading h4{grid-column:1/-1}
 }
+
+/* V457: Score % pasa a la tercera columna (después de Tienda).
+   Distribución 100%, evita encabezados y semáforos cortados en PC. */
+#page-operativo .or448-summary .or448-table th:nth-child(1){width:4%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(2){width:15%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(3){width:11%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(4){width:11%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(5){width:12%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(6){width:13%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(7){width:10%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(8){width:11%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(9){width:13%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(3),
+#page-operativo .or448-summary .or448-table th:nth-child(6){
+  font-weight:850!important;
+}
