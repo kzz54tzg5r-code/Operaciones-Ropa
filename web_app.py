@@ -1386,6 +1386,9 @@ def load_ops():
         return _OPS_DATA_CACHE["data"]
     try:
         data=json.loads(OPS_FILE.read_text(encoding="utf-8"))
+        # Actualiza en memoria la base publicada al 24/11 sin exigir nueva carga.
+        # No se modifica ni se vuelve a escribir el Excel original.
+        _apply_recorridos_rule(data.get("rows") or [])
         _OPS_DATA_CACHE["stamp"]=stamp
         _OPS_DATA_CACHE["data"]=data
         return data
@@ -1773,6 +1776,47 @@ def _resolve_staff_name(raw_name, store, lookup):
     uniq=sorted(set(candidates))
     return uniq[0] if len(uniq)==1 else cleaned
 
+# V459: desde 2026-11-23 los recorridos se detectan por D=Recorrido y
+# F=Muertos de Piso de Venta, sin depender del 1 de la columna K.
+_RECORRIDOS_BY_ACTIVITY_FROM = "2026-11-23"
+
+
+def _apply_recorridos_rule(rows):
+    """Conservar regla histórica hasta 22/11; desde 23/11 contar 1 por ocurrencia.
+
+    Distintos motivos (G) pueden ocupar varias filas de un mismo recorrido.
+    No se modifican cantidades, actividades ni otros indicadores.
+    Idempotente: se ejecuta al importar y al consultar la base vigente.
+    """
+    seen = set()
+    corrected = 0
+    for idx, row in enumerate(rows):
+        date = str(row.get("date") or "")[:10]
+        if date < _RECORRIDOS_BY_ACTIVITY_FROM:
+            continue
+        table = normalize_col(row.get("table") or "")
+        activity = normalize_col(row.get("activity_original") or row.get("activity") or "")
+        qualifying = (table == "recorrido" and activity == "muertos de piso de venta")
+        if qualifying:
+            store = normalize_col(row.get("store") or "")
+            occurrence = _clean_occurrence(row.get("occurrence"))
+            if occurrence:
+                event = (store, date, occurrence)
+            else:
+                # Sin Ocurrencia no fusionar filas no relacionadas:
+                # utilizar marca de captura sólo si el Excel la conserva.
+                capture = str(row.get("capture_timestamp") or "").strip()
+                event = (store, date, capture) if capture else ("row", idx)
+            new_value = 0.0 if event in seen else 1.0
+            seen.add(event)
+        else:
+            new_value = 0.0
+        if float(row.get("recorridos") or 0) != new_value:
+            row["recorridos"] = new_value
+            corrected += 1
+    return corrected
+
+
 def _dedupe_operational_rows(rows):
     """Elimina sólo filas completamente iguales a nivel operativo; occurrence por sí solo nunca deduplica piezas."""
     seen=set(); out=[]; removed=0
@@ -1909,7 +1953,7 @@ def _read_operational_sheet(path: Path, sheet: str, staff_lookup=None):
             continue
 
         is_recorrido_table="recorrido" in normalize_col(table)
-        if not occ:
+        if not occ and date_iso < _RECORRIDOS_BY_ACTIVITY_FROM:
             issues.append({"sheet":sheet,"row":int(row_index)+2,"store":store,"activity":act_original,
                            "warning":"Ocurrencia vacía; la fila suma piezas pero no cuenta como recorrido."})
 
@@ -2297,7 +2341,7 @@ def _read_operational_sheet_stream(book: dict, sheet: str, staff_lookup=None):
             continue
         pcs=float(pcs_raw)
         is_recorrido_table="recorrido" in normalize_col(table)
-        if not occ:
+        if not occ and date_iso < _RECORRIDOS_BY_ACTIVITY_FROM:
             issues.append({"sheet":sheet,"row":int(row_number),"store":store,"activity":act_original,
                            "warning":"Ocurrencia vacía; la fila suma piezas pero no cuenta como recorrido."})
         is_recoleccion=(activity=="Recolección de muertos" or _is_floor_dead_collection(act_original))
@@ -2794,6 +2838,7 @@ def parse_operations_excel(path: Path, persist: bool=True):
                 )
 
             rows,duplicate_rows_removed=_dedupe_operational_rows(rows)
+            _apply_recorridos_rule(rows)
             weeks=sorted({f"{int(row['year_iso'])}-W{int(row['week_iso']):02d}" for row in rows if row.get("year_iso") and row.get("week_iso")})
             recovery_fifo,daily_weeks,recovery_months,recovery_errors=_stream_monthly_recovery_fifo(
                 path,monthly_sheets,stream_book=stream_book
