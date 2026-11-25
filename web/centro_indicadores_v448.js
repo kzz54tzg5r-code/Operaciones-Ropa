@@ -45,13 +45,19 @@ function dataRows(data,digital){
  // Una persona se cuenta una vez por tienda. Si hay captura digital en la
  // tienda, se sustituye la lectura Excel de esa tienda: nunca se suman ambas.
  const people=new Map();
+ const configuredDailyGoal=numeric(data?.goals?.productividad_diaria);
+ const apiDailyGoal=numeric(digital?.target_daily);
+ const dailyGoal=(configuredDailyGoal>0?configuredDailyGoal:apiDailyGoal>0?apiDailyGoal:784);
  function put(records,origin){
   for(const r of Array.isArray(records)?records:[]){
    const p=numeric(r.pieces);if(p==null||p<=0)continue;
    const st=norm(r.store),person=norm(r.employee_no||r.name||r.employee_name);
    if(!st||!person)continue;
    const key=st+'|'+person;
-   if(!people.has(key))people.set(key,{store:st,pieces:p,days:Math.max(1,numeric(r.days)||1),origin});
+   const days=Math.max(1,numeric(r.days)||1);
+   const sourceTarget=numeric(r.target);
+   const target=sourceTarget>0?sourceTarget:dailyGoal*days;
+   if(!people.has(key))people.set(key,{store:st,pieces:p,days,target,origin});
   }
  }
  put(data?.productivity,'Excel');
@@ -63,8 +69,8 @@ function dataRows(data,digital){
  }
  const totals=new Map();
  for(const person of people.values()){
-  const agg=totals.get(person.store)||{collaborators:0,pieces:0,days:0};
-  agg.collaborators++;agg.pieces+=person.pieces;agg.days+=person.days;
+  const agg=totals.get(person.store)||{collaborators:0,pieces:0,days:0,target:0};
+  agg.collaborators++;agg.pieces+=person.pieces;agg.days+=person.days;agg.target+=person.target;
   totals.set(person.store,agg);
  }
  return stores.map(r=>{
@@ -75,11 +81,18 @@ function dataRows(data,digital){
   const score=[acond,ubicado,recorridos].reduce((sum,v)=>sum+Math.min(100,Math.max(0,v)),0)/3;
   const prod=totals.get(key);
   return {store:String(r.store),acond,ubicado,recorridos,score,
-    collaborators:prod?prod.collaborators:0,average:prod?.collaborators?prod.pieces/prod.collaborators:null};
+    collaborators:prod?prod.collaborators:0,
+    average:prod?.collaborators?prod.pieces/prod.collaborators:null,
+    productivityPct:prod?.target>0?100*prod.pieces/prod.target:null};
  }).sort((a,b)=>b.score-a.score||a.store.localeCompare(b.store,'es-MX'));
 }
 function metric(value,productivity=false){
  return node('span','or448-meter '+(productivity?'productivity':cls(value)),productivity?fmt(value):pct(value));
+}
+function productivityGoalMetric(value){
+ // % vs Meta no comparte los rangos del semáforo operativo.
+ const state=value==null?'unknown':value>=100?'good':value>=80?'medium':'low';
+ return node('span','or448-meter '+state,pct(value));
 }
 function renderTable(rows){
  const card=node('div','or448-table-card'),scroll=node('div','or448-scroll'),table=node('table','or448-table'),thead=node('thead'),head=node('tr');
@@ -91,7 +104,7 @@ function renderTable(rows){
    td.appendChild(metric(number,productivity));
    return td;
  };
- ['#','Tienda','Colabs. con productividad','Prod. promedio por colaborador','% Acond.','% Ubicado','% Recorridos','Score %']
+ ['#','Tienda','Colabs. con productividad','Prod. promedio por colaborador','% Productividad vs Meta','% Acond.','% Ubicado','% Recorridos','Score %']
  .forEach(t=>head.append(node('th','',t)));
  thead.append(head);table.append(thead);
  const body=node('tbody'),rendered=[];
@@ -99,12 +112,13 @@ function renderTable(rows){
   const tr=node('tr');
   tr.append(textCell('#'+(i+1)),textCell(r.store),
     metricCell(r.collaborators,true),metricCell(r.average,true),
+    (()=>{const td=document.createElement('td');td.append(productivityGoalMetric(r.productivityPct));return td;})(),
     metricCell(r.acond),metricCell(r.ubicado),
     metricCell(r.recorridos),metricCell(r.score));
   if(i>=10)tr.hidden=true;
   rendered.push(tr);body.append(tr);
  });
- if(!rows.length){const tr=node('tr'),td=node('td','', 'Sin tiendas disponibles para el filtro seleccionado');td.colSpan=8;tr.append(td);body.append(tr);}
+ if(!rows.length){const tr=node('tr'),td=node('td','', 'Sin tiendas disponibles para el filtro seleccionado');td.colSpan=9;tr.append(td);body.append(tr);}
  table.append(body);scroll.append(table);card.append(scroll);return {card,rendered};
 }
 function readout(rows){
@@ -127,7 +141,7 @@ function paint(el,data,digital,message){
  const rows=dataRows(data,digital);el.replaceChildren();
  const heading=node('div','or448-heading'),copy=node('div'),legend=node('div','or448-legend');
  copy.append(node('h3','', '▥ Resumen por tiendas · indicadores %'),
-  node('p','', 'Por tienda: colaboradores que capturaron, productividad promedio y porcentajes del periodo.'));
+  node('p','', 'Por tienda: colaboradores que capturaron, productividad promedio, % contra meta y porcentajes operativos.'));
  [['good','≥ 80%'],['medium','60–79.9%'],['low','< 60%']].forEach(([key,label])=>{
   const item=node('span');item.append(node('i','or448-dot '+key),document.createTextNode(label));legend.append(item);
  });
@@ -135,7 +149,7 @@ function paint(el,data,digital,message){
  const grid=node('div','or448-grid'),result=renderTable(rows);
  grid.append(result.card,readout(rows));el.append(grid);
  const foot=node('div','or448-footer');
- foot.append(node('span','',message||'Prod. prom.: piezas procesadas ÷ colaboradores con captura del periodo. Score: promedio de % Acond., % Ubicado y % Recorridos (topados a 100%).'));
+ foot.append(node('span','',message||'Prod. prom.: piezas ÷ colaboradores con captura. % Productividad vs Meta: piezas ÷ suma de metas por colaborador-día. Score: promedio de % Acond., % Ubicado y % Recorridos (topados a 100%).'));
  if(rows.length>10){
   const more=node('button','or448-more','Ver las '+rows.length+' tiendas');more.type='button';let opened=false;
   more.addEventListener('click',()=>{
