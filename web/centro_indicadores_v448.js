@@ -104,7 +104,7 @@ function renderTable(rows){
    td.appendChild(metric(number,productivity));
    return td;
  };
- ['#','Tienda','Colabs. con productividad','Prod. promedio por colaborador','% Productividad vs Meta','% Acond.','% Ubicado','% Recorridos','Score %']
+ ['#','Tienda','Colabs. con productividad','Pzas prom. x Colaborador','% Productividad vs Meta','% Acond.','% Ubicado','% Recorridos','Score %']
  .forEach(t=>head.append(node('th','',t)));
  thead.append(head);table.append(thead);
  const body=node('tbody'),rendered=[];
