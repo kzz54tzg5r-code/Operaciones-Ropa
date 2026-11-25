@@ -609,6 +609,7 @@ def install(m):
                 nonlocal y
                 set_fill(BLUE_DARK)
                 c.roundRect(M,y-head_h+2,total_w,head_h,4,fill=1,stroke=0)
+                c.setFillColor(colors.white)
                 for i, label in enumerate(headers):
                     draw_header_cell(xs[i],widths[i],y,head_h,label,
                                      font_size=6.8,
