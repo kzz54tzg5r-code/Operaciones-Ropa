@@ -494,6 +494,12 @@ def install(m):
                 return
             allowed = {key(r.get("store")) for r in current_stores}
             people = {}
+            # La meta diaria se toma de la configuración activa del proyecto;
+            # para periodos largos se suma por colaborador-día.
+            try:
+                daily_goal = _num(m.get_goals().get("productividad_diaria")) or 784.0
+            except Exception:
+                daily_goal = 784.0
 
             for item in (data.get("productivity") or []):
                 if not isinstance(item, dict):
@@ -505,7 +511,12 @@ def install(m):
                     continue
                 # La respuesta operativa ya contiene un registro consolidado
                 # por colaborador y tienda.
-                people[(st,nm)] = {"store": st, "pieces": pieces, "origin": "operativo"}
+                days = max(1,int(_num(item.get("days"))))
+                target = _num(item.get("target")) or daily_goal*days
+                people[(st,nm)] = {
+                    "store":st, "pieces":pieces, "days":days,
+                    "target":target, "origin":"operativo"
+                }
 
             # Aplicar el mismo criterio que la tabla web V448: si una tienda
             # tiene capturas digitales, reemplazar la fuente operativa de esa
@@ -517,7 +528,7 @@ def install(m):
                     names = [r.get("store") for r in current_stores if r.get("store")]
                     marks = ",".join("?" for _ in names)
                     captures = con.execute(
-                        "SELECT store,employee_no,employee_name,pieces,muertos,cajas,probador "
+                        "SELECT store,employee_no,employee_name,date,pieces,muertos,cajas,probador "
                         "FROM cm_productivity_capture "
                         "WHERE status='finished' AND date>=? AND date<=? "
                         f"AND store IN ({marks})",
@@ -536,24 +547,32 @@ def install(m):
                     if pieces <= 0:
                         continue
                     pk = (st,nm)
-                    digital[pk] = digital.get(pk,0.0) + pieces
+                    d = digital.setdefault(pk,{"pieces":0.0,"dates":set()})
+                    d["pieces"] += pieces
+                    if entry.get("date"):
+                        d["dates"].add(str(entry["date"])[:10])
                 digital_stores = {st for st,_ in digital}
                 for pk in list(people):
                     if pk[0] in digital_stores:
                         del people[pk]
-                for (st,nm),pieces in digital.items():
-                    people[(st,nm)] = {"store":st,"pieces":pieces,"origin":"digital"}
+                for (st,nm),item in digital.items():
+                    days = max(1,len(item["dates"]))
+                    people[(st,nm)] = {
+                        "store":st, "pieces":item["pieces"],"days":days,
+                        "target":daily_goal*days,"origin":"digital"
+                    }
             except Exception as exc:
                 # No bloquear una descarga PDF porque el origen digital
                 # todavía no esté creado o se esté actualizando.
                 print("[V452-PDF] Productividad digital no disponible: "
                       f"{type(exc).__name__}: {exc}", flush=True)
 
-            totals = defaultdict(lambda: {"people":0,"pieces":0.0})
+            totals = defaultdict(lambda: {"people":0,"pieces":0.0,"target":0.0})
             for person in people.values():
                 st = person["store"]
                 totals[st]["people"] += 1
                 totals[st]["pieces"] += person["pieces"]
+                totals[st]["target"] += person["target"]
 
             route_lookup = {
                 key(item.get("store")): _num(item.get("recorridos_pct"))
@@ -582,14 +601,19 @@ def install(m):
                 prod = totals[st]
                 count = prod["people"]
                 average = prod["pieces"]/count if count else None
-                result_rows.append((str(item.get("store") or ""),count,average,ac,ub,route,score))
+                pct_productivity = (100.0*prod["pieces"]/prod["target"]
+                                    if prod["target"] > 0 else None)
+                result_rows.append(
+                    (str(item.get("store") or ""),count,average,pct_productivity,
+                     ac,ub,route,score)
+                )
 
             result_rows.sort(key=lambda r: (-r[6],key(r[0])))
             headers = [
                 "#","Tienda","Colabs. con\nproductividad","Prod. promedio\npor colaborador",
-                "% Acond.","% Ubicado","% Recorridos","Score %"
+                "% Productividad\nvs Meta","% Acond.","% Ubicado","% Recorridos","Score %"
             ]
-            fracs = [.045,.18,.13,.165,.12,.12,.12,.12]
+            fracs = [.045,.145,.12,.135,.115,.11,.11,.11,.11]
             total_w = W - 2*M
             widths = [total_w*f for f in fracs]
             xs=[M]
@@ -626,7 +650,7 @@ def install(m):
             c.drawString(M,y,"Colaboradores con captura, productividad promedio y porcentajes del periodo")
             y -= 17
             head()
-            for idx,(store,count,average,ac,ub,route,score) in enumerate(result_rows,1):
+            for idx,(store,count,average,prod_pct,ac,ub,route,score) in enumerate(result_rows,1):
                 if y-row_h < 25:
                     new_page("Resumen por tiendas")
                     head()
@@ -635,13 +659,23 @@ def install(m):
                 values = [
                     f"#{idx}",store,str(count),
                     n(average) if average is not None else "—",
+                    pc(prod_pct) if prod_pct is not None else "—",
                     pc(ac),pc(ub),pc(route),pc(score)
                 ]
                 for col,val in enumerate(values):
                     if col in (2,3):
                         bg,fg="#DEEBFF",TEXT
-                    elif col>=4:
-                        bg,fg=colors_for_percent((ac,ub,route,score)[col-4])
+                    elif col == 4:
+                        if prod_pct is None:
+                            bg,fg="#EEF1F5",MUTED
+                        elif prod_pct >= 100:
+                            bg,fg="#D9F4E8","#007348"
+                        elif prod_pct >= 80:
+                            bg,fg="#FFF0D5","#925700"
+                        else:
+                            bg,fg="#FFE0E5","#B9192D"
+                    elif col>=5:
+                        bg,fg=colors_for_percent((ac,ub,route,score)[col-5])
                     else:
                         bg,fg=None,TEXT
                     if bg:
@@ -649,7 +683,7 @@ def install(m):
                         c.roundRect(xs[col]+2,y-row_h+3,widths[col]-4,row_h-3,
                                     3,fill=1,stroke=0)
                     set_fill(fg)
-                    font="Helvetica-Bold" if col in (0,1,2,3,7) else "Helvetica"
+                    font="Helvetica-Bold" if col in (0,1,2,3,4,8) else "Helvetica"
                     txt,size=fitted_cell(val,widths[col]-4,7.8,font)
                     c.setFont(font,size)
                     if col==1:
@@ -663,8 +697,8 @@ def install(m):
                 c.setFont("Helvetica",6.6)
                 c.drawString(
                     M,y,
-                    "Prod. promedio = piezas / colaboradores con captura. "
-                    "Score = promedio de Acond., Ubicado y Recorridos (tope 100%)."
+                    "Prod. prom. = piezas / colaboradores. % Prod. vs Meta = piezas / "
+                    "meta acumulada por colaborador-día. Score operativo: indicadores topados a 100%."
                 )
                 y -= 11
 
