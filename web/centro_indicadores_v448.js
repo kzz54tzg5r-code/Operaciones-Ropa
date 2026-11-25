@@ -104,17 +104,16 @@ function renderTable(rows){
    td.appendChild(metric(number,productivity));
    return td;
  };
- ['#','Tienda','Colabs. con productividad','Pzas prom. x Colaborador','% Productividad vs Meta','% Acond.','% Ubicado','% Recorridos','Score %']
+ ['#','Tienda','Score %','Colabs. con productividad','Pzas prom. x Colaborador','% Productividad vs Meta','% Acond.','% Ubicado','% Recorridos']
  .forEach(t=>head.append(node('th','',t)));
  thead.append(head);table.append(thead);
  const body=node('tbody'),rendered=[];
  rows.forEach((r,i)=>{
   const tr=node('tr');
-  tr.append(textCell('#'+(i+1)),textCell(r.store),
+  tr.append(textCell('#'+(i+1)),textCell(r.store),metricCell(r.score),
     metricCell(r.collaborators,true),metricCell(r.average,true),
     (()=>{const td=document.createElement('td');td.append(productivityGoalMetric(r.productivityPct));return td;})(),
-    metricCell(r.acond),metricCell(r.ubicado),
-    metricCell(r.recorridos),metricCell(r.score));
+    metricCell(r.acond),metricCell(r.ubicado),metricCell(r.recorridos));
   if(i>=10)tr.hidden=true;
   rendered.push(tr);body.append(tr);
  });
