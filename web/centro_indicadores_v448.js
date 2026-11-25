@@ -73,7 +73,7 @@ function dataRows(data,digital){
   const score=[acond,ubicado,recorridos].reduce((sum,v)=>sum+Math.min(100,Math.max(0,v)),0)/3;
   const prod=totals.get(key);
   return {store:String(r.store),acond,ubicado,recorridos,score,
-    collaborators:prod?prod.collaborators:0,average:prod?.days?prod.pieces/prod.days:null};
+    collaborators:prod?prod.collaborators:0,average:prod?.collaborators?prod.pieces/prod.collaborators:null};
  }).sort((a,b)=>b.score-a.score||a.store.localeCompare(b.store,'es-MX'));
 }
 function metric(value,productivity=false){
@@ -81,7 +81,7 @@ function metric(value,productivity=false){
 }
 function renderTable(rows){
  const card=node('div','or448-table-card'),scroll=node('div','or448-scroll'),table=node('table','or448-table'),thead=node('thead'),head=node('tr');
- ['#','Tienda','Colabs. con productividad','Prod. prom. por colab.','% Acond.','% Ubicado','% Recorridos','Score %']
+ ['#','Tienda','Colabs. con productividad','Prod. promedio por colaborador','% Acond.','% Ubicado','% Recorridos','Score %']
  .forEach(t=>head.append(node('th','',t)));
  thead.append(head);table.append(thead);
  const body=node('tbody'),rendered=[];
@@ -125,7 +125,7 @@ function paint(el,data,digital,message){
  const grid=node('div','or448-grid'),result=renderTable(rows);
  grid.append(result.card,readout(rows));el.append(grid);
  const foot=node('div','or448-footer');
- foot.append(node('span','',message||'Prod. prom.: piezas ÷ colaborador-días con captura. Score: promedio de % Acond., % Ubicado y % Recorridos (topados a 100%).'));
+ foot.append(node('span','',message||'Prod. prom.: piezas procesadas ÷ colaboradores con captura del periodo. Score: promedio de % Acond., % Ubicado y % Recorridos (topados a 100%).'));
  if(rows.length>10){
   const more=node('button','or448-more','Ver las '+rows.length+' tiendas');more.type='button';let opened=false;
   more.addEventListener('click',()=>{
