@@ -608,12 +608,14 @@ def install(m):
                      ac,ub,route,score)
                 )
 
-            result_rows.sort(key=lambda r: (-r[6],key(r[0])))
+            # Mantener ranking por Score, igual que en el resumen de pantalla.
+            result_rows.sort(key=lambda r: (-r[7],key(r[0])))
             headers = [
-                "#","Tienda","Colabs. con\nproductividad","Pzas prom.\nx Colaborador",
-                "% Productividad\nvs Meta","% Acond.","% Ubicado","% Recorridos","Score %"
+                "#","Tienda","Score %","Colabs. con\nproductividad",
+                "Pzas prom.\nx Colaborador","% Productividad\nvs Meta",
+                "% Acond.","% Ubicado","% Recorridos"
             ]
-            fracs = [.045,.145,.12,.135,.115,.11,.11,.11,.11]
+            fracs = [.045,.155,.11,.115,.12,.12,.11,.115,.11]
             total_w = W - 2*M
             widths = [total_w*f for f in fracs]
             xs=[M]
@@ -657,15 +659,17 @@ def install(m):
                 set_fill("#FFFFFF" if idx%2 else "#EAF2FC")
                 c.rect(M,y-row_h+2,total_w,row_h,fill=1,stroke=0)
                 values = [
-                    f"#{idx}",store,str(count),
+                    f"#{idx}",store,pc(score),str(count),
                     n(average) if average is not None else "—",
                     pc(prod_pct) if prod_pct is not None else "—",
-                    pc(ac),pc(ub),pc(route),pc(score)
+                    pc(ac),pc(ub),pc(route)
                 ]
                 for col,val in enumerate(values):
-                    if col in (2,3):
+                    if col in (3,4):
                         bg,fg="#DEEBFF",TEXT
-                    elif col == 4:
+                    elif col == 2:
+                        bg,fg=colors_for_percent(score)
+                    elif col == 5:
                         if prod_pct is None:
                             bg,fg="#EEF1F5",MUTED
                         elif prod_pct >= 100:
@@ -674,8 +678,8 @@ def install(m):
                             bg,fg="#FFF0D5","#925700"
                         else:
                             bg,fg="#FFE0E5","#B9192D"
-                    elif col>=5:
-                        bg,fg=colors_for_percent((ac,ub,route,score)[col-5])
+                    elif col >= 6:
+                        bg,fg=colors_for_percent((ac,ub,route)[col-6])
                     else:
                         bg,fg=None,TEXT
                     if bg:
@@ -683,7 +687,7 @@ def install(m):
                         c.roundRect(xs[col]+2,y-row_h+3,widths[col]-4,row_h-3,
                                     3,fill=1,stroke=0)
                     set_fill(fg)
-                    font="Helvetica-Bold" if col in (0,1,2,3,4,8) else "Helvetica"
+                    font="Helvetica-Bold" if col in (0,1,2,3,4,5) else "Helvetica"
                     txt,size=fitted_cell(val,widths[col]-4,7.8,font)
                     c.setFont(font,size)
                     if col==1:
