@@ -93,3 +93,67 @@
   #page-operativo .or448-grid{grid-template-columns:minmax(0,1fr)!important}
   #page-operativo .or448-table{width:100%!important;min-width:820px!important}
 }
+
+/* V456 — mostrar Score % completo en escritorio, sin desplazar la tabla.
+   Se prioriza la tabla y la lectura ejecutiva usa una columna compacta.
+   Móvil conserva el desplazamiento horizontal interno. */
+@media (min-width:1100px){
+  html body #page-operativo .or448-summary .or448-grid{
+    grid-template-columns:minmax(0,1fr) 220px!important;
+    gap:7px!important;
+  }
+  html body #page-operativo .or448-summary .or448-table-card,
+  html body #page-operativo .or448-summary .or448-scroll{
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body #page-operativo .or448-summary .or448-table{
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    table-layout:fixed!important;
+  }
+  html body #page-operativo .or448-summary .or448-reading{
+    width:220px!important;min-width:0!important;max-width:220px!important;
+    box-sizing:border-box!important;
+  }
+  html body #page-operativo .or448-summary .or448-reading h4{
+    padding:9px 7px!important;font-size:11px!important;
+  }
+  html body #page-operativo .or448-summary .or448-read-item{
+    margin:5px!important;padding:7px!important;font-size:10px!important;
+    overflow-wrap:anywhere!important;
+  }
+  html body #page-operativo .or448-summary .or448-table :is(th,td){
+    padding-left:2px!important;padding-right:2px!important;
+    overflow-wrap:normal!important;box-sizing:border-box!important;
+  }
+  html body #page-operativo .or448-summary .or448-table th{
+    font-size:10px!important;line-height:1.12!important;
+  }
+  html body #page-operativo .or448-summary .or448-table td{
+    font-size:10.5px!important;
+  }
+  html body #page-operativo .or448-summary .or448-meter{
+    padding-left:2px!important;padding-right:2px!important;
+    white-space:nowrap!important;
+  }
+}
+/* Porcentajes de columnas suman exactamente 100%, Score recibe 12%. */
+#page-operativo .or448-summary .or448-table th:nth-child(1){width:4%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(2){width:15%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(3){width:11%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(4){width:13%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(5){width:13%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(6){width:10%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(7){width:10%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(8){width:12%!important}
+#page-operativo .or448-summary .or448-table th:nth-child(9){width:12%!important}
+@media (min-width:901px) and (max-width:1099px){
+  html body #page-operativo .or448-summary .or448-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  html body #page-operativo .or448-summary .or448-reading{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:5px;
+  }
+  html body #page-operativo .or448-summary .or448-reading h4{grid-column:1/-1}
+}
