@@ -331,7 +331,7 @@ def install(m):
             st = src.stat()
             stamp = str(st.st_mtime_ns) + ":" + str(st.st_size)
             dbmeta = dict(con.execute("SELECT k,v FROM meta"))
-            if dbmeta.get("version") != "243.1" or dbmeta.get("source_stamp") != stamp:
+            if dbmeta.get("version") != "243.2" or dbmeta.get("source_stamp") != stamp:
                 return None, None
             sql = ("SELECT store,SUM(sales),SUM(dev),SUM(sales_value) "
                    "FROM daily WHERE date>=? AND date<=? ")
@@ -380,9 +380,15 @@ def install(m):
             try:
                 result = baseline(request=request, store=selected,
                                   period_type=period_type, period_value=period_value)
-                return {**metadata, "status": result.get("status") or "building",
+                result_status = result.get("status") or "building"
+                # Nunca mostrar un "Preparando información" infinito si el
+                # motor diario informó un error concreto de validación.
+                if result.get("error") and result_status == "building":
+                    result_status = "error"
+                return {**metadata, "status": result_status,
                         "error": result.get("error") or "",
-                        "phase": "sales", "retry_seconds": 5}
+                        "phase": "sales",
+                        "retry_seconds": result.get("retry_seconds", 8)}
             except Exception as exc:
                 return {**metadata, "status": "error",
                         "error": "No fue posible preparar ventas: " + type(exc).__name__}
@@ -494,7 +500,7 @@ def install(m):
      },Math.max(4,Number(d.retry_seconds||5))*1000);
    }
    if(d.status!=='ready'){
-     var waiting=d.status==='building',info=waiting?'Preparando el resumen diario en segundo plano…':(d.error||'No fue posible consultar el reporte.');
+     var waiting=d.status==='building',info=waiting?'Recalculando ventas y devoluciones del Excel publicado. No se muestran porcentajes hasta validar sus fechas y totales.':(d.error||'No fue posible consultar el reporte.');
      return '<div class="v331-root"><div class="v331-toolbar"><div><b>'+esc(waiting?'Preparando información':'Consulta no disponible')+'</b><small style="display:block">'+esc(info)+'</small></div>'+pill(waiting?'Procesando':'Revisar','warn')+'</div><button type="button" class="v331-retry" onclick="window.v331Refresh()">Reintentar consulta</button></div>';
    }
    var noRate=m.sell_through_pct==null;
