@@ -11,6 +11,7 @@ import math
 import json
 import sqlite3
 import threading
+import time
 from datetime import date, datetime, timedelta
 
 from fastapi import Request
@@ -98,8 +99,8 @@ def install(m):
 
     cache_path = m.DATA_ROOT / "recovery_rate_daily_v243.sqlite3"
     cache_lock = threading.Lock()
-    cache_state = {"building": False, "error": ""}
-    cache_version = "243.1"
+    cache_state = {"building": False, "error": "", "retry_at": 0.0}
+    cache_version = "243.2"
     stock_lock = threading.Lock()
     stock_cache = {"key": "", "building": False, "ready": None, "error": ""}
     stock_cache_file = m.DATA_ROOT / "recovery_rate_stock_v243_v2.json"
@@ -177,73 +178,113 @@ def install(m):
                 """
             )
 
+            # V460: el resumen auxiliar debe utilizar EXACTAMENTE el mismo
+            # detector de Tienda / fecha / Ventas / DEV / pesos que la carga
+            # principal. No asumir que la fecha está siempre en la fila 1,
+            # ni que la tienda está siempre en la columna Z.
+            from itertools import chain
+            from daily_sales_headers import (
+                detect_monthly_layout, locate_daily_headers,
+                infer_dated_groups_without_labels,
+            )
+            begin_stamp = source_stamp()
+            source_sheets = 0
+            dates_seen = set()
             with m._xlsx_stream_book(src) as book:
                 archive = book["archive"]
                 shared_value = book["shared_value"]
                 names = list(book["sheet_paths"])
                 sheets = [name for name in names if m._monthly_sheet_name(name)]
                 sheets_used = []
+                if not sheets:
+                    raise ValueError("El Excel no contiene hojas mensuales válidas para calcular ventas y DEV.")
+                print(f"[V460-RECOVERY] Iniciando cache diario: {len(sheets)} hojas.", flush=True)
+                upsert = """
+                    INSERT INTO daily(store,date,year_iso,week_iso,sales,dev,sales_value,return_value)
+                    VALUES(?,?,?,?,?,?,?,?)
+                    ON CONFLICT(store,date) DO UPDATE SET
+                      sales=daily.sales+excluded.sales,
+                      dev=daily.dev+excluded.dev,
+                      sales_value=daily.sales_value+excluded.sales_value,
+                      return_value=daily.return_value+excluded.return_value
+                """
 
                 for sheet in sheets:
                     member = book["sheet_paths"].get(sheet, "")
                     if not member or member not in archive.namelist():
-                        continue
-                    rows = m._xlsx_monthly_rows(archive, member, shared_value)
-                    first = dict(next(rows, {}) or {})
-                    next(rows, None)
-                    date_columns = []
-                    max_column = max(first.keys(), default=28)
-                    for index in range(29, max_column + 1, 3):
-                        date_iso, week_iso, year_iso, _month = m._safe_date_iso(first.get(index))
-                        if date_iso and week_iso and year_iso:
-                            date_columns.append((index, date_iso, int(week_iso), int(year_iso)))
-                    if not date_columns:
-                        continue
-
+                        raise ValueError(f"{sheet}: hoja mensual no encontrada.")
+                    row_iter = m._xlsx_monthly_rows(archive, member, shared_value)
+                    header_rows = [dict(next(row_iter, {}) or {}) for _ in range(18)]
+                    layout = detect_monthly_layout(header_rows)
+                    store_col = layout["store_col"]
+                    dev_col = layout["monthly_dev_col"]
+                    daily_col = layout["first_daily_col"]
+                    groups, warnings, header_index = locate_daily_headers(
+                        header_rows, first_daily_index=daily_col
+                    )
+                    inferred = False
+                    if not groups:
+                        groups, header_index = infer_dated_groups_without_labels(
+                            header_rows, first_daily_index=daily_col
+                        )
+                        if groups:
+                            warnings = []
+                            inferred = True
+                    if not groups or warnings:
+                        raise ValueError(
+                            f"{sheet}: encabezados no comprobados: " +
+                            "; ".join(warnings[:3] or ["fechas/columnas no identificadas"])
+                        )
+                    month_dev_total = 0.0
+                    daily_dev_total = 0.0
+                    valid_articles = 0
                     batch = []
-                    for values in rows:
+                    for values in chain(header_rows[header_index + 1:], row_iter):
                         values = dict(values or {})
-                        store = m._normalize_store_value(values.get(25, ""))
-                        if not store:
+                        store = m._normalize_store_value(values.get(store_col, ""))
+                        model = str(values.get(1) or "").strip()
+                        if not store or not model:
                             continue
+                        valid_articles += 1
+                        month_dev_total += max(num(values.get(dev_col, 0)), 0.0)
                         price = max(num(values.get(24, 0)), 0.0)
-                        for index, date_iso, week_iso, year_iso in date_columns:
+                        for index, date_iso, week_iso, year_iso, _month in groups:
                             sales = max(num(values.get(index, 0)), 0.0)
                             dev = max(num(values.get(index + 1, 0)), 0.0)
                             sales_value = max(num(values.get(index + 2, 0)), 0.0)
+                            daily_dev_total += dev
                             if sales <= 0 and dev <= 0 and sales_value <= 0:
                                 continue
-                            return_value = max(price * dev, 0.0)
-                            batch.append((store, date_iso, year_iso, week_iso, sales, dev, sales_value, return_value))
+                            batch.append((
+                                store, date_iso, int(year_iso), int(week_iso),
+                                sales, dev, sales_value, price * dev
+                            ))
+                            dates_seen.add(date_iso)
                             if len(batch) >= 5000:
-                                target.executemany(
-                                    """
-                                    INSERT INTO daily(store,date,year_iso,week_iso,sales,dev,sales_value,return_value)
-                                    VALUES(?,?,?,?,?,?,?,?)
-                                    ON CONFLICT(store,date) DO UPDATE SET
-                                      sales=daily.sales+excluded.sales,
-                                      dev=daily.dev+excluded.dev,
-                                      sales_value=daily.sales_value+excluded.sales_value,
-                                      return_value=daily.return_value+excluded.return_value
-                                    """,
-                                    batch,
-                                )
+                                target.executemany(upsert, batch)
                                 batch.clear()
                     if batch:
-                        target.executemany(
-                            """
-                            INSERT INTO daily(store,date,year_iso,week_iso,sales,dev,sales_value,return_value)
-                            VALUES(?,?,?,?,?,?,?,?)
-                            ON CONFLICT(store,date) DO UPDATE SET
-                              sales=daily.sales+excluded.sales,
-                              dev=daily.dev+excluded.dev,
-                              sales_value=daily.sales_value+excluded.sales_value,
-                              return_value=daily.return_value+excluded.return_value
-                            """,
-                            batch,
+                        target.executemany(upsert, batch)
+                    if valid_articles == 0:
+                        raise ValueError(f"{sheet}: no hay artículos válidos; se rechaza el resumen incompleto.")
+                    tolerance = max(1.0, month_dev_total * 0.01)
+                    if abs(month_dev_total - daily_dev_total) > tolerance:
+                        raise ValueError(
+                            f"{sheet}: devoluciones diarias no concilian con total mensual "
+                            f"({daily_dev_total:,.0f} vs. {month_dev_total:,.0f})."
                         )
                     target.commit()
                     sheets_used.append(sheet)
+                    source_sheets += 1
+                    print(
+                        f"[V460-RECOVERY] {sheet}: {len(groups)} fechas verificadas; "
+                        f"DEV {daily_dev_total:,.0f}; {valid_articles} artículos.",
+                        flush=True,
+                    )
+                if source_sheets != len(sheets) or not dates_seen:
+                    raise ValueError("Resumen diario incompleto: faltan hojas o fechas.")
+                if source_stamp() != begin_stamp:
+                    raise ValueError("El archivo fue reemplazado durante el cálculo; se descarta el resumen obsoleto.")
 
             target.executemany(
                 "INSERT OR REPLACE INTO meta(k,v) VALUES(?,?)",
@@ -268,6 +309,8 @@ def install(m):
         with cache_lock:
             if cache_state["building"]:
                 return True
+            if cache_state["error"] and time.monotonic() < cache_state["retry_at"]:
+                return False
             cache_state["building"] = True
             cache_state["error"] = ""
 
@@ -276,7 +319,8 @@ def install(m):
                 build_daily_cache()
             except Exception as exc:
                 cache_state["error"] = f"{type(exc).__name__}: {exc}"
-                print(f"[V243] Error construyendo cache diario: {cache_state['error']}", flush=True)
+                cache_state["retry_at"] = time.monotonic() + 60.0
+                print(f"[V460-RECOVERY] Falló resumen diario: {cache_state['error']}", flush=True)
             finally:
                 cache_state["building"] = False
                 try:
@@ -477,7 +521,11 @@ def install(m):
 
         if not cache_ready():
             start_cache_build()
-            return loading_payload("building" if not cache_state.get("error") else "error")
+            state = "error" if cache_state.get("error") else "building"
+            payload = loading_payload(state)
+            payload["phase"] = "sales"
+            payload["retry_seconds"] = 60 if state == "error" else 8
+            return payload
 
         if not period_value:
             meta = m.load_operations_meta()
